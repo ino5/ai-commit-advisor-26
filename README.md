@@ -12,6 +12,7 @@
 - Git author 기반 개발자 자동 추출 및 role/skills 관리
 - 프로그램 목록 Excel 업로드
 - 개발계획 Excel 업로드
+- 프로그램 상세 분석 화면: 특정 프로그램의 계획, AI 진척도, 관련 커밋, 개발자 기여, 리스크 확인
 - 커밋 기준 프로그램-커밋 매핑 분석
 - 기존 프로그램 기준 매핑 분석 유지
 - 실시간 AI 코드리뷰: 작업트리, staged 변경, 최신 커밋, 특정 커밋 분석
@@ -236,7 +237,27 @@ LLM 출력 형식:
 
 기존 방식입니다. 프로그램별로 후보 커밋을 추리고 각 프로그램-커밋 조합을 LLM으로 분석합니다. 정확도를 더 세밀하게 보고 싶을 때 사용할 수 있지만, 커밋과 프로그램 수가 많으면 실행 시간이 길어질 수 있습니다.
 
-### 7. AI Code Review
+### 7. Program Detail
+
+특정 프로그램을 선택해 개발 현황을 한 화면에서 확인합니다. 새 메뉴 구조에서는 `프로젝트 관리 > Program Detail`에서 사용할 수 있습니다.
+
+주요 기능:
+
+- 프로그램 목록 조회
+- `program_name` 검색
+- 상태/담당자 필터
+- 프로그램 기본 정보 표시
+- AI 진척도와 구현상태별 매핑 수 표시
+- 관련 커밋 목록 조회 및 관련도순 정렬
+- 구현상태/개발자별 관련 커밋 필터
+- 커밋 상세: commit message, changed files, diff snippet, LLM 판단 근거
+- 관련 개발자 수, 개발자별 커밋 수, 기여 비율 차트
+- 첫 커밋일, 마지막 커밋일, 최근 30일/90일 커밋 수
+- 계획 종료일 경과, 관련 커밋 없음, 판단불가만 존재 조건 기반 Risk Level 표시
+
+새로운 LLM 호출은 하지 않고, 기존 `program_commit_mappings`, `git_commits`, `commit_files` 데이터를 사용합니다.
+
+### 8. AI Code Review
 
 로컬 Git 저장소의 변경 사항 또는 커밋을 LLM으로 리뷰합니다. 새 메뉴 구조에서는 `AI 분석 > AI Code Review`에서 사용할 수 있습니다.
 
@@ -257,7 +278,7 @@ LLM 출력 형식:
 
 리뷰 결과는 `code_review_results` 테이블에 저장됩니다. `LLM_PROVIDER=mock`이면 동작 확인용 mock 리뷰가 생성되고, `LLM_PROVIDER=local_openai`이면 LM Studio 같은 OpenAI-compatible 서버로 실제 리뷰를 요청합니다.
 
-### 8. 개발계획 대시보드
+### 9. 개발계획 대시보드
 
 `programs` 테이블 기준으로 개발계획 현황을 조회합니다.
 
@@ -268,7 +289,7 @@ LLM 출력 형식:
 - 전체 계획 대비 완료율
 - 평균 진행률
 
-### 9. Dashboard
+### 10. Dashboard
 
 Git author 기반 개발자 통계를 보여줍니다.
 
@@ -326,6 +347,7 @@ src/
     code_review_service.py
     llm_client.py
     mapping_service.py
+    program_analysis_service.py
   ui/
     dashboard_page.py
     code_review_page.py
@@ -336,6 +358,7 @@ src/
     home_page.py
     mapping_page.py
     planning_dashboard_page.py
+    program_detail_page.py
     project_page.py
     rag_page.py
     sample_data_page.py

@@ -10,6 +10,7 @@ from src.ui.git_page import render_git_page
 from src.ui.home_page import render_home_page
 from src.ui.mapping_page import render_mapping_page
 from src.ui.planning_dashboard_page import render_planning_dashboard_page
+from src.ui.program_detail_page import render_program_detail_page
 from src.ui.project_page import render_project_page
 from src.ui.rag_page import render_rag_page
 from src.ui.sample_data_page import render_sample_data_page
@@ -31,6 +32,7 @@ PAGE_GROUPS = {
     "프로젝트 관리": {
         "프로젝트": render_project_page,
         "개발자": render_developer_page,
+        "Program Detail": render_program_detail_page,
         "개발자 목록 업로드": render_developer_upload_page,
         "프로그램 목록 업로드": render_upload_page,
         "개발계획 업로드": render_development_plan_upload_page,
