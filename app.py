@@ -14,6 +14,7 @@ from src.ui.planning_dashboard_page import render_planning_dashboard_page
 from src.ui.program_detail_page import render_program_detail_page
 from src.ui.project_page import render_project_page
 from src.ui.rag_page import render_rag_page
+from src.ui.risk_page import render_risk_page
 from src.ui.sample_data_page import render_sample_data_page
 from src.ui.settings_page import render_settings_page
 from src.ui.upload_page import render_upload_page
@@ -44,6 +45,7 @@ PAGE_GROUPS = {
     },
     "AI 분석": {
         "Mapping": render_mapping_page,
+        "Risk Analysis": render_risk_page,
         "Commit Impact": render_commit_impact_page,
         "RAG 검색": render_rag_page,
         "AI Code Review": render_code_review_page,

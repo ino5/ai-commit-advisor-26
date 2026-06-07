@@ -6,6 +6,7 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import Project
 from src.services.progress_service import get_ai_progress_summary, get_program_commit_details
+from src.services.risk_service import get_unresolved_findings
 
 
 def _load_projects() -> list[Project]:
@@ -48,6 +49,35 @@ def _render_summary(summary) -> None:
 
     gap_ratio = min(max(summary.progress_gap_average / 100, 0), 1)
     st.progress(gap_ratio, text=f"계획 대비 AI 진척도 차이 {summary.progress_gap_average}%")
+
+
+def _render_saved_high_risks(project_id: int) -> None:
+    with SessionLocal() as db:
+        findings = get_unresolved_findings(db, project_id)
+
+    high_findings = [finding for finding in findings if finding.risk_level == "HIGH"]
+    cols = st.columns(2)
+    cols[0].metric("저장된 unresolved 리스크", len(findings))
+    cols[1].metric("HIGH 리스크", len(high_findings))
+
+    if not high_findings:
+        st.success("저장된 HIGH 리스크가 없습니다.")
+        return
+
+    rows = [
+        {
+            "program_id": (finding.evidence or {}).get("program_id"),
+            "program_name": (finding.evidence or {}).get("program_name"),
+            "developer": (finding.evidence or {}).get("developer"),
+            "risk_type": finding.risk_type,
+            "title": finding.title,
+            "description": finding.description,
+            "detected_at": finding.detected_at,
+        }
+        for finding in high_findings
+    ]
+    st.subheader("HIGH 리스크 목록")
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
 def _render_risk_top10(df: pd.DataFrame) -> None:
@@ -235,6 +265,7 @@ def render_ai_progress_page() -> None:
 
     df = _rows_to_dataframe(summary.rows)
     _render_summary(summary)
+    _render_saved_high_risks(project_id)
     st.divider()
     _render_risk_top10(df)
     st.divider()

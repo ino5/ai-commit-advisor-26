@@ -174,6 +174,21 @@ class CodeReviewResult(Base, TimestampMixin):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class RiskFinding(Base, TimestampMixin):
+    __tablename__ = "risk_findings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    program_id: Mapped[int] = mapped_column(ForeignKey("programs.id", ondelete="CASCADE"), nullable=False)
+    risk_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    risk_level: Mapped[str] = mapped_column(String(20), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    evidence: Mapped[dict | None] = mapped_column(JSONB)
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    resolved_yn: Mapped[str] = mapped_column(String(1), default="N", nullable=False)
+
+
 class DocumentChunk(Base, TimestampMixin):
     __tablename__ = "document_chunks"
 

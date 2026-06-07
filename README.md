@@ -14,6 +14,7 @@
 - 개발계획 Excel 업로드
 - 프로그램 상세 분석 화면: 특정 프로그램의 계획, AI 진척도, 관련 커밋, 개발자 기여, 리스크 확인
 - 커밋 영향도 분석 화면: 특정 커밋이 영향을 주는 프로그램, 개발자, 모듈, 파일 확인
+- 누락/위험 프로그램 자동 탐지: 계획, Git 커밋, LLM 매핑 결과 기반 규칙 분석
 - 커밋 기준 프로그램-커밋 매핑 분석
 - 기존 프로그램 기준 매핑 분석 유지
 - 실시간 AI 코드리뷰: 작업트리, staged 변경, 최신 커밋, 특정 커밋 분석
@@ -276,7 +277,40 @@ LLM 출력 형식:
 
 새로운 LLM 호출은 하지 않고, 기존 `program_commit_mappings`, `git_commits`, `commit_files`, `programs` 데이터를 재사용합니다.
 
-### 9. AI Code Review
+### 9. Risk Analysis
+
+프로그램 목록, 개발계획, Git 커밋, LLM 매핑 결과를 기반으로 누락 가능성이 있는 프로그램과 위험 프로그램을 자동 탐지합니다. 새 메뉴 구조에서는 `AI 분석 > Risk Analysis`에서 사용할 수 있습니다.
+
+탐지 규칙:
+
+- 프로그램은 등록되어 있지만 관련 커밋이 없음
+- 계획 종료일이 지났지만 AI 진척도 < 100
+- 계획 진척도와 AI 진척도 차이가 30 이상
+- LLM 매핑 결과가 모두 판단불가
+- 최근 14일 동안 관련 커밋이 없음
+- 담당자가 없거나 개발자 정보가 불명확함
+
+Risk Level:
+
+- `LOW`: 단순 주의 필요
+- `MEDIUM`: 일정 지연 가능성 또는 AI 진척도 낮음
+- `HIGH`: 계획 종료일 경과와 관련 커밋/AI 진척도/담당자 문제가 함께 나타나는 경우
+
+화면 기능:
+
+- 프로젝트 선택
+- 리스크 분석 실행
+- 탐지 결과 `risk_findings` 저장
+- unresolved 리스크 조회
+- 선택 리스크 resolved 처리
+- 전체/HIGH/MEDIUM/LOW 리스크 수
+- 리스크 유형별 차트
+- 개발자별 리스크 프로그램 수 차트
+- 리스크 프로그램 목록
+
+새로운 LLM 호출은 하지 않고 기존 DB 데이터와 `program_commit_mappings` 결과만 사용합니다. Program Detail 화면에는 해당 프로그램의 unresolved 리스크가 표시되고, AI Progress 화면에는 저장된 리스크 수와 HIGH 리스크 목록이 표시됩니다.
+
+### 10. AI Code Review
 
 로컬 Git 저장소의 변경 사항 또는 커밋을 LLM으로 리뷰합니다. 새 메뉴 구조에서는 `AI 분석 > AI Code Review`에서 사용할 수 있습니다.
 
@@ -297,7 +331,7 @@ LLM 출력 형식:
 
 리뷰 결과는 `code_review_results` 테이블에 저장됩니다. `LLM_PROVIDER=mock`이면 동작 확인용 mock 리뷰가 생성되고, `LLM_PROVIDER=local_openai`이면 LM Studio 같은 OpenAI-compatible 서버로 실제 리뷰를 요청합니다.
 
-### 10. 개발계획 대시보드
+### 11. 개발계획 대시보드
 
 `programs` 테이블 기준으로 개발계획 현황을 조회합니다.
 
@@ -308,7 +342,7 @@ LLM 출력 형식:
 - 전체 계획 대비 완료율
 - 평균 진행률
 
-### 11. Dashboard
+### 12. Dashboard
 
 Git author 기반 개발자 통계를 보여줍니다.
 
@@ -347,6 +381,7 @@ python scripts\generate_sample_development_data.py --repo-path C:\dev\green-mark
 - `program_commit_mappings`: 프로그램-커밋 매핑 분석 결과
 - `analysis_runs`: 분석 실행 이력, 상태, 처리/실패 카운터
 - `code_review_results`: AI 코드리뷰 결과, 버그 탐지, 리팩토링 제안, 원본 응답
+- `risk_findings`: 규칙 기반 리스크 탐지 결과, evidence, resolved 상태
 - `document_chunks`: RAG용 chunk 원문과 메타데이터
 - `vector_items`: 향후 embedding vector 저장
 
@@ -368,6 +403,7 @@ src/
     llm_client.py
     mapping_service.py
     program_analysis_service.py
+    risk_service.py
   ui/
     dashboard_page.py
     code_review_page.py
@@ -382,6 +418,7 @@ src/
     program_detail_page.py
     project_page.py
     rag_page.py
+    risk_page.py
     sample_data_page.py
     upload_page.py
   rag/

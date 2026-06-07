@@ -53,6 +53,16 @@ CODE_REVIEW_COLUMN_UPGRADES = [
     "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS finished_at TIMESTAMP WITH TIME ZONE",
 ]
 
+RISK_FINDING_COLUMN_UPGRADES = [
+    "ALTER TABLE risk_findings ADD COLUMN IF NOT EXISTS risk_type VARCHAR(100)",
+    "ALTER TABLE risk_findings ADD COLUMN IF NOT EXISTS risk_level VARCHAR(20)",
+    "ALTER TABLE risk_findings ADD COLUMN IF NOT EXISTS title VARCHAR(255)",
+    "ALTER TABLE risk_findings ADD COLUMN IF NOT EXISTS description TEXT",
+    "ALTER TABLE risk_findings ADD COLUMN IF NOT EXISTS evidence JSONB",
+    "ALTER TABLE risk_findings ADD COLUMN IF NOT EXISTS detected_at TIMESTAMP WITH TIME ZONE DEFAULT now()",
+    "ALTER TABLE risk_findings ADD COLUMN IF NOT EXISTS resolved_yn VARCHAR(1) NOT NULL DEFAULT 'N'",
+]
+
 ANALYSIS_RUN_COLUMN_UPGRADES = [
     "ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS analysis_type VARCHAR(100)",
     "ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS total_count INTEGER",
@@ -128,6 +138,28 @@ def upgrade_existing_schema() -> None:
             )
         )
         for statement in CODE_REVIEW_COLUMN_UPGRADES:
+            connection.execute(text(statement))
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS risk_findings (
+                    id SERIAL PRIMARY KEY,
+                    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    program_id INTEGER NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+                    risk_type VARCHAR(100) NOT NULL,
+                    risk_level VARCHAR(20) NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    evidence JSONB,
+                    detected_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+                    resolved_yn VARCHAR(1) NOT NULL DEFAULT 'N',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+                )
+                """
+            )
+        )
+        for statement in RISK_FINDING_COLUMN_UPGRADES:
             connection.execute(text(statement))
         for statement in ANALYSIS_RUN_COLUMN_UPGRADES:
             connection.execute(text(statement))

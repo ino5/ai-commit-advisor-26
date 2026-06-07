@@ -10,6 +10,7 @@ from src.services.program_analysis_service import (
     get_program_detail_analysis,
     list_program_options,
 )
+from src.services.risk_service import get_unresolved_findings
 
 
 def _load_projects() -> list[Project]:
@@ -126,6 +127,28 @@ def _render_kpis(analysis) -> None:
         st.warning(f"Risk Level: MEDIUM - {risk_message}")
     else:
         st.success(f"Risk Level: LOW - {risk_message}")
+
+
+def _render_saved_risks(project_id: int, program_db_id: int) -> None:
+    st.subheader("저장된 리스크")
+    with SessionLocal() as db:
+        findings = get_unresolved_findings(db, project_id, program_id=program_db_id)
+
+    if not findings:
+        st.success("저장된 unresolved 리스크가 없습니다.")
+        return
+
+    rows = [
+        {
+            "risk_level": finding.risk_level,
+            "risk_type": finding.risk_type,
+            "title": finding.title,
+            "description": finding.description,
+            "detected_at": finding.detected_at,
+        }
+        for finding in findings
+    ]
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
 def _commit_dataframe(analysis) -> pd.DataFrame:
@@ -270,6 +293,7 @@ def render_program_detail_page() -> None:
     with top_right:
         _render_kpis(analysis)
 
+    _render_saved_risks(project_id, program_db_id)
     st.divider()
     _render_ai_and_developer_analysis(analysis)
     st.divider()
