@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     embedding_provider: str = Field(default="mock", alias="EMBEDDING_PROVIDER")
     embedding_api_key: str | None = Field(default=None, alias="EMBEDDING_API_KEY")
     embedding_model: str | None = Field(default=None, alias="EMBEDDING_MODEL")
+    embedding_base_url: str | None = Field(default=None, alias="EMBEDDING_BASE_URL")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

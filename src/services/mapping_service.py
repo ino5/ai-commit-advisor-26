@@ -9,6 +9,7 @@ from typing import Callable
 from sqlalchemy.orm import Session, joinedload
 
 from src.db.models import AnalysisRun, GitCommit, Program, ProgramCommitMapping
+from src.rag.retriever import Retriever
 from src.services.llm_client import LLMClient
 
 
@@ -123,6 +124,45 @@ def _select_candidate_programs(commit: GitCommit, programs: list[Program], limit
     scored = [item for item in scored if item[0] > 0]
     scored.sort(key=lambda item: (item[0], item[1].program_id or "", item[1].program_name or ""), reverse=True)
     return [program for _, program in scored[:limit]]
+
+
+def _build_commit_query_text(commit: GitCommit) -> str:
+    return _commit_text(commit)
+
+
+def _select_candidate_programs_with_rag(
+    db: Session,
+    commit: GitCommit,
+    programs: list[Program],
+    limit: int,
+) -> list[Program]:
+    token_candidates = _select_candidate_programs(commit, programs, limit)
+    programs_by_id = {program.id: program for program in programs}
+    merged: list[Program] = []
+    seen = set()
+
+    try:
+        retriever = Retriever(db)
+        rag_program_ids = retriever.retrieve_program_ids(
+            _build_commit_query_text(commit),
+            project_id=commit.project_id,
+            limit=limit,
+        )
+    except Exception:
+        rag_program_ids = []
+
+    for program_id in rag_program_ids:
+        program = programs_by_id.get(program_id)
+        if program is not None and program.id not in seen:
+            merged.append(program)
+            seen.add(program.id)
+
+    for program in token_candidates:
+        if program.id not in seen:
+            merged.append(program)
+            seen.add(program.id)
+
+    return merged[:limit]
 
 
 def _build_commit_based_prompt(commit: GitCommit, programs: list[Program]) -> str:
@@ -271,7 +311,7 @@ class MappingService:
         candidates_per_commit: int = DEFAULT_CANDIDATES_PER_COMMIT,
     ) -> MappingRunResult:
         result = MappingRunResult()
-        candidate_programs = _select_candidate_programs(commit, programs, candidates_per_commit)
+        candidate_programs = _select_candidate_programs_with_rag(db, commit, programs, candidates_per_commit)
         now = datetime.now(timezone.utc)
 
         if not candidate_programs:

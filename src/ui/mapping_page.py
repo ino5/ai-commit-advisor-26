@@ -18,12 +18,15 @@ def _load_projects() -> list[Project]:
         return db.query(Project).order_by(Project.name).all()
 
 
+def _commit_status(commit: GitCommit) -> str:
+    return commit.mapping_analysis_status or "not_analyzed"
+
+
 def _commit_label(commit: GitCommit) -> str:
     short_hash = commit.commit_hash[:12]
     message = (commit.message or "").splitlines()[0]
-    status = commit.mapping_analysis_status or "not_analyzed"
     committed_at = commit.committed_at.strftime("%Y-%m-%d %H:%M") if commit.committed_at else "-"
-    return f"{short_hash} | {status} | {committed_at} | {message[:80]}"
+    return f"{short_hash} | {_commit_status(commit)} | {committed_at} | {message[:90]}"
 
 
 def _load_commits(project_id: int) -> list[GitCommit]:
@@ -58,42 +61,12 @@ def _render_result(result) -> None:
         st.info("저장된 관련 매핑 결과가 없습니다.")
 
 
-def _render_commit_based_mode(project_id: int) -> None:
-    st.subheader("커밋 기준 분석")
-
-    commits = _load_commits(project_id)
-    if not commits:
-        st.warning("분석할 Git 커밋이 없습니다.")
-        return
-
-    completed_count = sum(1 for commit in commits if commit.mapping_analysis_status == "completed")
-    failed_count = sum(1 for commit in commits if commit.mapping_analysis_status == "failed")
-    pending_count = len(commits) - completed_count - failed_count
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("미분석 커밋", pending_count)
-    col2.metric("완료 커밋", completed_count)
-    col3.metric("실패 커밋", failed_count)
-
-    candidates_per_commit = st.slider(
-        "커밋당 후보 프로그램 TOP N",
-        min_value=3,
-        max_value=30,
-        value=DEFAULT_CANDIDATES_PER_COMMIT,
-        help="커밋 1개마다 규칙/토큰 유사도로 후보 프로그램만 추린 뒤, 이 후보만 LLM에 전달합니다.",
-    )
-
-    commit_options = {_commit_label(commit): commit.id for commit in commits}
-    selected_commit_label = st.selectbox("분석할 커밋 선택", list(commit_options.keys()))
-    selected_commit_id = commit_options[selected_commit_label]
-
-    single_col, batch_col = st.columns(2)
-    run_single = single_col.button("선택한 커밋 1개 분석", type="primary")
-    run_batch = batch_col.button("아직 완료되지 않은 커밋 일괄 분석")
-
-    if not run_single and not run_batch:
-        return
-
+def _run_commit_analysis(
+    project_id: int,
+    commit_ids: list[int] | None,
+    candidates_per_commit: int,
+    skip_completed: bool,
+) -> None:
     progress_bar = st.progress(0)
     progress_text = st.empty()
 
@@ -112,15 +85,90 @@ def _render_commit_based_mode(project_id: int) -> None:
             result = service.analyze_commits(
                 db,
                 project_id=project_id,
-                commit_ids=[selected_commit_id] if run_single else None,
+                commit_ids=commit_ids,
                 candidates_per_commit=candidates_per_commit,
-                skip_completed=not run_single,
+                skip_completed=skip_completed,
                 progress_callback=update_progress,
             )
 
     progress_bar.progress(1.0)
     progress_text.write("분석이 끝났습니다.")
     _render_result(result)
+
+
+def _render_commit_based_mode(project_id: int) -> None:
+    st.subheader("커밋 기준 분석")
+
+    commits = _load_commits(project_id)
+    if not commits:
+        st.warning("분석할 Git 커밋이 없습니다.")
+        return
+
+    completed_count = sum(1 for commit in commits if _commit_status(commit) == "completed")
+    failed_count = sum(1 for commit in commits if _commit_status(commit) == "failed")
+    pending_commits = [commit for commit in commits if _commit_status(commit) != "completed"]
+    pending_count = len(pending_commits)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("미완료 커밋", pending_count)
+    col2.metric("완료 커밋", completed_count)
+    col3.metric("실패 커밋", failed_count)
+
+    candidates_per_commit = st.slider(
+        "커밋당 후보 프로그램 TOP N",
+        min_value=3,
+        max_value=30,
+        value=DEFAULT_CANDIDATES_PER_COMMIT,
+        help="커밋 1개마다 규칙/토큰 유사도로 후보 프로그램만 추린 뒤, 이 후보만 LLM에 전달합니다.",
+    )
+
+    st.markdown("**일괄 분석**")
+    batch_col1, batch_col2 = st.columns([1, 2])
+    run_pending = batch_col1.button("미완료 커밋 전체 분석", type="primary", disabled=pending_count == 0)
+    retry_failed = batch_col2.checkbox("실패 커밋도 다시 시도", value=True)
+
+    if run_pending:
+        retryable_statuses = {"not_analyzed", "failed"} if retry_failed else {"not_analyzed"}
+        target_ids = [commit.id for commit in commits if _commit_status(commit) in retryable_statuses]
+        _run_commit_analysis(
+            project_id=project_id,
+            commit_ids=target_ids,
+            candidates_per_commit=candidates_per_commit,
+            skip_completed=True,
+        )
+        return
+
+    st.markdown("**선택 분석**")
+    status_filter = st.multiselect(
+        "목록에 표시할 상태",
+        ["not_analyzed", "failed", "completed"],
+        default=["not_analyzed", "failed"],
+    )
+    filtered_commits = [commit for commit in commits if _commit_status(commit) in set(status_filter)]
+
+    default_selection_limit = min(20, len(filtered_commits))
+    default_labels = [_commit_label(commit) for commit in filtered_commits[:default_selection_limit]]
+    commit_options = {_commit_label(commit): commit.id for commit in filtered_commits}
+    selected_commit_labels = st.multiselect(
+        "분석할 커밋 여러 개 선택",
+        list(commit_options.keys()),
+        default=default_labels,
+        help="필요한 커밋을 여러 개 고른 뒤 한 번에 분석할 수 있습니다.",
+    )
+
+    selected_commit_ids = [commit_options[label] for label in selected_commit_labels]
+    selected_col1, selected_col2, selected_col3 = st.columns([1, 1, 2])
+    run_selected = selected_col1.button("선택한 커밋 분석", disabled=not selected_commit_ids)
+    force_reanalyze = selected_col2.checkbox("완료 커밋도 재분석", value=False)
+    selected_col3.caption(f"선택: {len(selected_commit_ids)}건 / 표시: {len(filtered_commits)}건")
+
+    if run_selected:
+        _run_commit_analysis(
+            project_id=project_id,
+            commit_ids=selected_commit_ids,
+            candidates_per_commit=candidates_per_commit,
+            skip_completed=not force_reanalyze,
+        )
 
 
 def _render_program_based_mode(project_id: int) -> None:
