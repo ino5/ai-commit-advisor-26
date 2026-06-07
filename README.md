@@ -13,6 +13,7 @@
 - 프로그램 목록 Excel 업로드
 - 개발계획 Excel 업로드
 - 프로그램 상세 분석 화면: 특정 프로그램의 계획, AI 진척도, 관련 커밋, 개발자 기여, 리스크 확인
+- 커밋 영향도 분석 화면: 특정 커밋이 영향을 주는 프로그램, 개발자, 모듈, 파일 확인
 - 커밋 기준 프로그램-커밋 매핑 분석
 - 기존 프로그램 기준 매핑 분석 유지
 - 실시간 AI 코드리뷰: 작업트리, staged 변경, 최신 커밋, 특정 커밋 분석
@@ -257,7 +258,25 @@ LLM 출력 형식:
 
 새로운 LLM 호출은 하지 않고, 기존 `program_commit_mappings`, `git_commits`, `commit_files` 데이터를 사용합니다.
 
-### 8. AI Code Review
+### 8. Commit Impact
+
+특정 Git 커밋이 어떤 프로그램, 개발자, 모듈, 파일에 영향을 주는지 분석합니다. 새 메뉴 구조에서는 `AI 분석 > Commit Impact`에서 사용할 수 있습니다.
+
+주요 기능:
+
+- commit message 검색
+- author 검색
+- 날짜 필터
+- 영향 프로그램 목록 조회
+- 관련도 점수, 구현 상태, LLM 판단 근거 표시
+- 변경 파일 목록과 diff snippet 확인
+- 관련 프로그램 담당자와 최근 같은 영역 작업자 분석
+- 영향 프로그램 수, 영향 개발자 수, 영향 파일 수 KPI
+- 영향도 점수 `LOW`, `MEDIUM`, `HIGH` 계산
+
+새로운 LLM 호출은 하지 않고, 기존 `program_commit_mappings`, `git_commits`, `commit_files`, `programs` 데이터를 재사용합니다.
+
+### 9. AI Code Review
 
 로컬 Git 저장소의 변경 사항 또는 커밋을 LLM으로 리뷰합니다. 새 메뉴 구조에서는 `AI 분석 > AI Code Review`에서 사용할 수 있습니다.
 
@@ -278,7 +297,7 @@ LLM 출력 형식:
 
 리뷰 결과는 `code_review_results` 테이블에 저장됩니다. `LLM_PROVIDER=mock`이면 동작 확인용 mock 리뷰가 생성되고, `LLM_PROVIDER=local_openai`이면 LM Studio 같은 OpenAI-compatible 서버로 실제 리뷰를 요청합니다.
 
-### 9. 개발계획 대시보드
+### 10. 개발계획 대시보드
 
 `programs` 테이블 기준으로 개발계획 현황을 조회합니다.
 
@@ -289,7 +308,7 @@ LLM 출력 형식:
 - 전체 계획 대비 완료율
 - 평균 진행률
 
-### 10. Dashboard
+### 11. Dashboard
 
 Git author 기반 개발자 통계를 보여줍니다.
 
@@ -345,12 +364,14 @@ src/
     excel_service.py
     git_service.py
     code_review_service.py
+    commit_impact_service.py
     llm_client.py
     mapping_service.py
     program_analysis_service.py
   ui/
     dashboard_page.py
     code_review_page.py
+    commit_impact_page.py
     developer_page.py
     developer_upload_page.py
     development_plan_upload_page.py
