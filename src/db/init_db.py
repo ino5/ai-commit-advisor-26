@@ -40,6 +40,19 @@ PROGRAM_COMMIT_MAPPING_COLUMN_UPGRADES = [
     "ALTER TABLE program_commit_mappings ADD COLUMN IF NOT EXISTS is_related BOOLEAN",
 ]
 
+CODE_REVIEW_COLUMN_UPGRADES = [
+    "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS target_type VARCHAR(50)",
+    "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS target_ref VARCHAR(255)",
+    "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'completed'",
+    "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS summary TEXT",
+    "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS commit_analysis JSONB",
+    "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS bug_findings JSONB",
+    "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS refactoring_suggestions JSONB",
+    "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS raw_response JSONB",
+    "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS started_at TIMESTAMP WITH TIME ZONE",
+    "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS finished_at TIMESTAMP WITH TIME ZONE",
+]
+
 ANALYSIS_RUN_COLUMN_UPGRADES = [
     "ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS analysis_type VARCHAR(100)",
     "ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS total_count INTEGER",
@@ -91,6 +104,30 @@ def upgrade_existing_schema() -> None:
         for statement in COMMIT_FILE_COLUMN_UPGRADES:
             connection.execute(text(statement))
         for statement in PROGRAM_COMMIT_MAPPING_COLUMN_UPGRADES:
+            connection.execute(text(statement))
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS code_review_results (
+                    id SERIAL PRIMARY KEY,
+                    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    target_type VARCHAR(50) NOT NULL,
+                    target_ref VARCHAR(255),
+                    status VARCHAR(50) NOT NULL DEFAULT 'completed',
+                    summary TEXT,
+                    commit_analysis JSONB,
+                    bug_findings JSONB,
+                    refactoring_suggestions JSONB,
+                    raw_response JSONB,
+                    started_at TIMESTAMP WITH TIME ZONE,
+                    finished_at TIMESTAMP WITH TIME ZONE,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+                )
+                """
+            )
+        )
+        for statement in CODE_REVIEW_COLUMN_UPGRADES:
             connection.execute(text(statement))
         for statement in ANALYSIS_RUN_COLUMN_UPGRADES:
             connection.execute(text(statement))

@@ -157,6 +157,23 @@ class AnalysisRun(Base, TimestampMixin):
     mappings: Mapped[list["ProgramCommitMapping"]] = relationship(back_populates="analysis_run")
 
 
+class CodeReviewResult(Base, TimestampMixin):
+    __tablename__ = "code_review_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    target_ref: Mapped[str | None] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(50), default="completed", nullable=False)
+    summary: Mapped[str | None] = mapped_column(Text)
+    commit_analysis: Mapped[dict | None] = mapped_column(JSONB)
+    bug_findings: Mapped[list | None] = mapped_column(JSONB)
+    refactoring_suggestions: Mapped[list | None] = mapped_column(JSONB)
+    raw_response: Mapped[dict | None] = mapped_column(JSONB)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class DocumentChunk(Base, TimestampMixin):
     __tablename__ = "document_chunks"
 

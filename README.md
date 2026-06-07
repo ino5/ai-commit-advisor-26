@@ -14,6 +14,8 @@
 - 개발계획 Excel 업로드
 - 커밋 기준 프로그램-커밋 매핑 분석
 - 기존 프로그램 기준 매핑 분석 유지
+- 실시간 AI 코드리뷰: 작업트리, staged 변경, 최신 커밋, 특정 커밋 분석
+- 코드리뷰 버그 탐지, 리팩토링 제안, 리뷰 기록 저장
 - 개발계획 대시보드 및 개발자 통계 대시보드
 - 테스트용 샘플 Excel 데이터 생성
 
@@ -234,7 +236,28 @@ LLM 출력 형식:
 
 기존 방식입니다. 프로그램별로 후보 커밋을 추리고 각 프로그램-커밋 조합을 LLM으로 분석합니다. 정확도를 더 세밀하게 보고 싶을 때 사용할 수 있지만, 커밋과 프로그램 수가 많으면 실행 시간이 길어질 수 있습니다.
 
-### 7. 개발계획 대시보드
+### 7. AI Code Review
+
+로컬 Git 저장소의 변경 사항 또는 커밋을 LLM으로 리뷰합니다. 새 메뉴 구조에서는 `AI 분석 > AI Code Review`에서 사용할 수 있습니다.
+
+지원 대상:
+
+- 작업트리 변경: 아직 stage하지 않은 `git diff`
+- Staged 변경: `git diff --cached`
+- 최신 커밋: `HEAD`
+- 특정 커밋: 커밋 해시 또는 rev 입력
+
+리뷰 결과:
+
+- 커밋/변경 의도 분석
+- 영향 범위와 위험도
+- 버그 후보 탐지
+- 리팩토링 제안
+- 최근 리뷰 기록 조회
+
+리뷰 결과는 `code_review_results` 테이블에 저장됩니다. `LLM_PROVIDER=mock`이면 동작 확인용 mock 리뷰가 생성되고, `LLM_PROVIDER=local_openai`이면 LM Studio 같은 OpenAI-compatible 서버로 실제 리뷰를 요청합니다.
+
+### 8. 개발계획 대시보드
 
 `programs` 테이블 기준으로 개발계획 현황을 조회합니다.
 
@@ -245,7 +268,7 @@ LLM 출력 형식:
 - 전체 계획 대비 완료율
 - 평균 진행률
 
-### 8. Dashboard
+### 9. Dashboard
 
 Git author 기반 개발자 통계를 보여줍니다.
 
@@ -283,6 +306,7 @@ python scripts\generate_sample_development_data.py --repo-path C:\dev\green-mark
 - `commit_files`: 커밋별 변경 파일과 diff
 - `program_commit_mappings`: 프로그램-커밋 매핑 분석 결과
 - `analysis_runs`: 분석 실행 이력, 상태, 처리/실패 카운터
+- `code_review_results`: AI 코드리뷰 결과, 버그 탐지, 리팩토링 제안, 원본 응답
 - `document_chunks`: RAG용 chunk 원문과 메타데이터
 - `vector_items`: 향후 embedding vector 저장
 
@@ -299,10 +323,12 @@ src/
     developer_service.py
     excel_service.py
     git_service.py
+    code_review_service.py
     llm_client.py
     mapping_service.py
   ui/
     dashboard_page.py
+    code_review_page.py
     developer_page.py
     developer_upload_page.py
     development_plan_upload_page.py
@@ -331,5 +357,5 @@ requirements.txt
 ## 참고
 
 - 현재 RAG/embedding 기능은 골격 중심이며 실제 검색/임베딩 분석은 확장 예정입니다.
-- LLM 매핑 분석은 `.env`의 `LLM_PROVIDER` 설정에 따라 mock 또는 로컬 LLM을 사용합니다.
+- LLM 매핑 분석과 AI 코드리뷰는 `.env`의 `LLM_PROVIDER` 설정에 따라 mock 또는 로컬 LLM을 사용합니다.
 - Streamlit 실행 중 `.env`를 바꾸면 앱을 재시작해야 반영됩니다.

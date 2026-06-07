@@ -22,11 +22,13 @@ class LLMClient:
         provider: str | None = None,
         model: str | None = None,
         base_url: str | None = None,
+        max_tokens: int = 350,
     ) -> None:
         self.provider = provider or settings.llm_provider
         self.model = model or settings.llm_model or "local-model"
         self.base_url = (base_url or settings.llm_base_url or "http://127.0.0.1:1234/v1").rstrip("/")
         self.api_key = settings.llm_api_key
+        self.max_tokens = max_tokens
 
     def generate(self, prompt: str) -> LLMResponse:
         if self.provider == "mock":
@@ -49,7 +51,7 @@ class LLMClient:
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.1,
-            "max_tokens": 350,
+            "max_tokens": self.max_tokens,
             "stream": False,
         }
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")

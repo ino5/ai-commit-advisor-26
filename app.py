@@ -1,6 +1,7 @@
 import streamlit as st
 
 from src.ui.ai_progress_page import render_ai_progress_page
+from src.ui.code_review_page import render_code_review_page
 from src.ui.dashboard_page import render_dashboard_page
 from src.ui.development_plan_upload_page import render_development_plan_upload_page
 from src.ui.developer_page import render_developer_page
@@ -41,6 +42,7 @@ PAGE_GROUPS = {
     "AI 분석": {
         "Mapping": render_mapping_page,
         "RAG 검색": render_rag_page,
+        "AI Code Review": render_code_review_page,
     },
     "분석 결과": {
         "Dashboard": render_dashboard_page,
