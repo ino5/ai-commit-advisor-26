@@ -4,6 +4,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Callable
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -16,6 +17,9 @@ MAX_CHANGED_FILES = 20
 MAX_DIFF_FILES = 3
 MAX_DIFF_CHARS_PER_FILE = 400
 DEFAULT_CANDIDATES_PER_PROGRAM = 10
+DEFAULT_CANDIDATES_PER_COMMIT = 10
+
+IMPLEMENTATION_STATUS_VALUES = {"구현완료", "일부구현", "판단불가"}
 
 
 @dataclass
@@ -24,8 +28,17 @@ class MappingRunResult:
     created_count: int = 0
     updated_count: int = 0
     skipped_count: int = 0
+    failed_count: int = 0
     recent_results: list[dict] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+
+
+@dataclass
+class CommitMappingProgress:
+    total_count: int
+    processed_count: int
+    failed_count: int
+    current_commit_hash: str | None = None
 
 
 def _tokens(text: str | None) -> set[str]:
@@ -46,6 +59,10 @@ def _program_text(program: Program) -> str:
             f"description: {program.description or ''}",
         ]
     )
+
+
+def _program_identifier(program: Program) -> str:
+    return program.program_id or f"internal-{program.id}"
 
 
 def _commit_text(commit: GitCommit) -> str:
@@ -101,6 +118,59 @@ def _select_candidate_commits(program: Program, commits: list[GitCommit], limit:
     return [commit for _, commit in scored[:limit]]
 
 
+def _select_candidate_programs(commit: GitCommit, programs: list[Program], limit: int) -> list[Program]:
+    scored = [(_candidate_score(program, commit), program) for program in programs]
+    scored = [item for item in scored if item[0] > 0]
+    scored.sort(key=lambda item: (item[0], item[1].program_id or "", item[1].program_name or ""), reverse=True)
+    return [program for _, program in scored[:limit]]
+
+
+def _build_commit_based_prompt(commit: GitCommit, programs: list[Program]) -> str:
+    program_blocks = []
+    for index, program in enumerate(programs, start=1):
+        program_blocks.append(
+            "\n".join(
+                [
+                    f"## Candidate {index}",
+                    f"program_id: {_program_identifier(program)}",
+                    f"program_name: {program.program_name or ''}",
+                    f"module: {program.module or ''}",
+                    f"screen_name: {program.screen_name or ''}",
+                    f"description: {program.description or ''}",
+                ]
+            )
+        )
+
+    return f"""
+You are a precise software analysis assistant.
+Analyze one Git commit and choose zero or more related programs from the candidate list.
+Return only valid JSON in this exact shape:
+{{
+  "related_programs": [
+    {{
+      "program_id": "P001",
+      "relevance_score": 85,
+      "implementation_status": "일부구현",
+      "reason": "커밋 메시지와 변경 파일이 해당 프로그램의 서비스/화면과 관련됨"
+    }}
+  ]
+}}
+
+Rules:
+- Choose only programs from the candidate list.
+- If no candidate is related, return {{"related_programs": []}}.
+- relevance_score must be 0-100.
+- implementation_status must be one of: 구현완료, 일부구현, 판단불가.
+- Keep each reason short.
+
+[Git commit]
+{_commit_text(commit)}
+
+[Candidate programs]
+{chr(10).join(program_blocks)}
+""".strip()
+
+
 def _build_prompt(program: Program, commit: GitCommit) -> str:
     return f"""
 너는 프로그램 목록과 Git 커밋 정보를 비교해 관련 커밋을 추천하는 분석가다.
@@ -132,6 +202,45 @@ def _parse_llm_result(text: str) -> dict | None:
     return None
 
 
+def _normalize_implementation_status(value: str | None) -> str:
+    if value in IMPLEMENTATION_STATUS_VALUES:
+        return value
+    return "판단불가"
+
+
+def _parse_commit_based_result(text: str, candidate_programs: list[Program]) -> list[dict] | None:
+    payload = _parse_llm_result(text)
+    if not isinstance(payload, dict):
+        return None
+
+    related_programs = payload.get("related_programs")
+    if not isinstance(related_programs, list):
+        return None
+
+    candidates_by_program_id = {_program_identifier(program): program for program in candidate_programs}
+    normalized: list[dict] = []
+    for item in related_programs:
+        if not isinstance(item, dict):
+            continue
+
+        program_id = item.get("program_id")
+        program = candidates_by_program_id.get(program_id)
+        if program is None:
+            continue
+
+        score = float(item.get("relevance_score") or 0)
+        normalized.append(
+            {
+                "program": program,
+                "program_id": program_id,
+                "relevance_score": min(max(score, 0), 100),
+                "implementation_status": _normalize_implementation_status(item.get("implementation_status")),
+                "reason": str(item.get("reason") or ""),
+            }
+        )
+    return normalized
+
+
 def _fallback_result(program: Program, commit: GitCommit) -> dict:
     score = _candidate_score(program, commit)
     is_related = score >= 30
@@ -152,6 +261,179 @@ def _fallback_result(program: Program, commit: GitCommit) -> dict:
 class MappingService:
     def __init__(self, llm_client: LLMClient | None = None) -> None:
         self.llm_client = llm_client or LLMClient()
+
+    def analyze_commit(
+        self,
+        db: Session,
+        commit: GitCommit,
+        programs: list[Program],
+        analysis_run: AnalysisRun,
+        candidates_per_commit: int = DEFAULT_CANDIDATES_PER_COMMIT,
+    ) -> MappingRunResult:
+        result = MappingRunResult()
+        candidate_programs = _select_candidate_programs(commit, programs, candidates_per_commit)
+        now = datetime.now(timezone.utc)
+
+        if not candidate_programs:
+            commit.mapping_analysis_status = "completed"
+            commit.mapping_analyzed_at = now
+            result.skipped_count = 1
+            return result
+
+        prompt = _build_commit_based_prompt(commit, candidate_programs)
+        try:
+            response = self.llm_client.generate(prompt)
+            related_programs = _parse_commit_based_result(response.text, candidate_programs)
+            if related_programs is None:
+                raise ValueError("LLM response did not match commit-based mapping JSON format.")
+        except Exception as exc:
+            commit.mapping_analysis_status = "failed"
+            commit.mapping_analyzed_at = now
+            result.failed_count = 1
+            result.errors.append(f"{commit.commit_hash[:12]}: {exc}")
+            return result
+
+        raw_response = {
+            "llm": response.raw,
+            "text": response.text,
+            "prompt_length": len(prompt),
+            "candidate_program_ids": [_program_identifier(program) for program in candidate_programs],
+        }
+
+        for related in related_programs:
+            program = related["program"]
+            mapping = (
+                db.query(ProgramCommitMapping)
+                .filter(
+                    ProgramCommitMapping.program_id == program.id,
+                    ProgramCommitMapping.commit_id == commit.id,
+                )
+                .one_or_none()
+            )
+            if mapping is None:
+                mapping = ProgramCommitMapping(program_id=program.id, commit_id=commit.id)
+                db.add(mapping)
+                result.created_count += 1
+            else:
+                result.updated_count += 1
+
+            mapping.analysis_run_id = analysis_run.id
+            mapping.relevance_score = related["relevance_score"]
+            mapping.is_related = True
+            mapping.implementation_status = related["implementation_status"]
+            mapping.reason = related["reason"]
+            mapping.raw_response = raw_response
+            result.analyzed_count += 1
+            result.recent_results.append(
+                {
+                    "program_id": _program_identifier(program),
+                    "program_name": program.program_name,
+                    "commit_hash": commit.commit_hash[:12],
+                    "message": (commit.message or "").splitlines()[0],
+                    "relevance_score": related["relevance_score"],
+                    "is_related": True,
+                    "implementation_status": related["implementation_status"],
+                    "reason": related["reason"],
+                }
+            )
+
+        commit.mapping_analysis_status = "completed"
+        commit.mapping_analyzed_at = now
+        return result
+
+    def analyze_commits(
+        self,
+        db: Session,
+        project_id: int,
+        commit_ids: list[int] | None = None,
+        candidates_per_commit: int = DEFAULT_CANDIDATES_PER_COMMIT,
+        skip_completed: bool = True,
+        progress_callback: Callable[[CommitMappingProgress], None] | None = None,
+    ) -> MappingRunResult:
+        result = MappingRunResult()
+        query = (
+            db.query(GitCommit)
+            .options(joinedload(GitCommit.files))
+            .filter(GitCommit.project_id == project_id)
+            .order_by(GitCommit.committed_at.desc())
+        )
+        if commit_ids is not None:
+            query = query.filter(GitCommit.id.in_(commit_ids))
+        if skip_completed:
+            query = query.filter(GitCommit.mapping_analysis_status.is_distinct_from("completed"))
+
+        commits = query.all()
+        programs = db.query(Program).filter(Program.project_id == project_id).all()
+        analysis_run = AnalysisRun(
+            project_id=project_id,
+            run_type="commit_based_mapping",
+            analysis_type="commit_based_mapping",
+            status="running",
+            total_count=len(commits),
+            processed_count=0,
+            failed_count=0,
+            started_at=datetime.now(timezone.utc),
+            parameters={
+                "candidates_per_commit": candidates_per_commit,
+                "skip_completed": skip_completed,
+                "llm_provider": self.llm_client.provider,
+                "llm_model": self.llm_client.model,
+            },
+        )
+        db.add(analysis_run)
+        db.flush()
+
+        try:
+            for commit in commits:
+                partial = self.analyze_commit(
+                    db,
+                    commit=commit,
+                    programs=programs,
+                    analysis_run=analysis_run,
+                    candidates_per_commit=candidates_per_commit,
+                )
+                result.analyzed_count += partial.analyzed_count
+                result.created_count += partial.created_count
+                result.updated_count += partial.updated_count
+                result.skipped_count += partial.skipped_count
+                result.failed_count += partial.failed_count
+                result.errors.extend(partial.errors)
+                result.recent_results.extend(partial.recent_results)
+
+                analysis_run.processed_count = (analysis_run.processed_count or 0) + 1
+                analysis_run.failed_count = result.failed_count
+                db.commit()
+
+                if progress_callback is not None:
+                    progress_callback(
+                        CommitMappingProgress(
+                            total_count=len(commits),
+                            processed_count=analysis_run.processed_count or 0,
+                            failed_count=result.failed_count,
+                            current_commit_hash=commit.commit_hash,
+                        )
+                    )
+
+            analysis_run.status = "completed" if result.failed_count == 0 else "completed_with_errors"
+            analysis_run.finished_at = datetime.now(timezone.utc)
+            analysis_run.summary = (
+                f"commits={len(commits)}, processed={analysis_run.processed_count or 0}, "
+                f"failed={result.failed_count}, created={result.created_count}, updated={result.updated_count}"
+            )
+            db.add(analysis_run)
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            result.errors.append(str(exc))
+            analysis_run.status = "failed"
+            analysis_run.finished_at = datetime.now(timezone.utc)
+            analysis_run.failed_count = (analysis_run.failed_count or 0) + 1
+            analysis_run.summary = str(exc)
+            db.add(analysis_run)
+            db.commit()
+
+        result.recent_results = result.recent_results[:100]
+        return result
 
     def analyze_pair(self, program: Program, commit: GitCommit) -> dict:
         prompt = _build_prompt(program, commit)

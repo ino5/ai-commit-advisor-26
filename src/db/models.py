@@ -93,6 +93,8 @@ class GitCommit(Base, TimestampMixin):
     author_email: Mapped[str | None] = mapped_column(String(255))
     committed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_merge_commit: Mapped[bool] = mapped_column(default=False, nullable=False)
+    mapping_analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    mapping_analysis_status: Mapped[str | None] = mapped_column(String(50))
 
     project: Mapped["Project"] = relationship(back_populates="git_commits")
     files: Mapped[list["CommitFile"]] = relationship(
@@ -142,6 +144,10 @@ class AnalysisRun(Base, TimestampMixin):
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     run_type: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
+    analysis_type: Mapped[str | None] = mapped_column(String(100))
+    total_count: Mapped[int | None] = mapped_column(Integer)
+    processed_count: Mapped[int | None] = mapped_column(Integer)
+    failed_count: Mapped[int | None] = mapped_column(Integer)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     summary: Mapped[str | None] = mapped_column(Text)

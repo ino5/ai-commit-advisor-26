@@ -1,19 +1,21 @@
 # AI Commit Advisor
 
-로컬 Git 저장소의 커밋/변경 파일/diff를 수집하고, 프로그램 목록과 비교해 프로그램별 관련 커밋을 추천하는 Streamlit 기반 PoC입니다.
+로컬 Git 저장소의 커밋, 변경 파일, diff를 수집하고 프로그램 목록과 비교해 프로그램-커밋 매핑 후보를 추천하는 Streamlit 기반 PoC입니다.
 
-현재 버전은 실제 LLM 연결 전 mock 분석도 가능하고, LM Studio 같은 OpenAI-compatible 로컬 LLM 서버와 연결해 프로그램-커밋 매핑 분석을 실행할 수 있습니다.
+현재 버전은 mock 분석과 OpenAI-compatible 로컬 LLM 서버를 지원합니다. LM Studio 같은 로컬 LLM 서버를 연결하면 Mapping 화면에서 실제 LLM 기반 분석을 실행할 수 있습니다.
 
 ## 주요 기능
 
 - 프로젝트 등록 및 로컬 Git 저장소 경로 관리
 - Git 저장소 전체 커밋 수집 및 증분 동기화
+- 커밋별 변경 파일과 diff 저장
 - Git author 기반 개발자 자동 추출 및 role/skills 관리
 - 프로그램 목록 Excel 업로드
 - 개발계획 Excel 업로드
-- Git 로그 기반 테스트용 샘플 Excel 데이터 생성
-- 프로그램 목록과 Git 커밋의 LLM 기반 매핑 분석
+- 커밋 기준 프로그램-커밋 매핑 분석
+- 기존 프로그램 기준 매핑 분석 유지
 - 개발계획 대시보드 및 개발자 통계 대시보드
+- 테스트용 샘플 Excel 데이터 생성
 
 ## 실행 환경
 
@@ -55,11 +57,13 @@ pip install -r requirements.txt
 
 이미 `.venv`가 만들어져 있으면 활성화만 하면 됩니다.
 
-### 4. DB 초기화/스키마 보강
+### 4. DB 초기화 및 스키마 보강
 
 ```powershell
 python -m src.db.init_db
 ```
+
+기존 DB가 있어도 필요한 컬럼은 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 방식으로 보강됩니다.
 
 ### 5. Streamlit 실행
 
@@ -67,7 +71,7 @@ python -m src.db.init_db
 streamlit run app.py
 ```
 
-가상환경 활성화 없이 바로 실행하려면:
+가상환경 활성화 없이 실행하려면:
 
 ```powershell
 .\.venv\Scripts\python.exe -m streamlit run app.py
@@ -75,7 +79,7 @@ streamlit run app.py
 
 ## LLM 설정
 
-기본값은 mock입니다. 외부 호출 없이 fallback 규칙으로 매핑 결과를 생성합니다.
+기본값은 mock입니다. 실제 LLM 호출 없이 규칙 기반 fallback 결과를 생성합니다.
 
 ```env
 LLM_PROVIDER=mock
@@ -84,7 +88,7 @@ LLM_API_KEY=
 LLM_MODEL=exaone-3.5-2.4b-instruct
 ```
 
-LM Studio를 사용하는 경우:
+LM Studio를 사용할 경우:
 
 1. LM Studio에서 모델을 로드합니다.
 2. Local Server를 켭니다.
@@ -98,7 +102,7 @@ LLM_API_KEY=
 LLM_MODEL=exaone-3.5-2.4b-instruct
 ```
 
-소형 로컬 모델은 context가 작을 수 있으므로 Mapping 화면의 `프로그램별 분석할 커밋 후보 수`는 3~5 정도를 권장합니다.
+일부 모델은 LM Studio의 prompt template 문제로 `prediction-error` 또는 Jinja template 오류가 날 수 있습니다. 이 경우 `lmstudio-community` 모델을 사용하거나 해당 모델의 Prompt Template을 수정하세요.
 
 ## 권장 사용 순서
 
@@ -106,14 +110,12 @@ LLM_MODEL=exaone-3.5-2.4b-instruct
 
 프로젝트를 등록하고 로컬 Git 저장소 경로를 입력합니다.
 
-예:
-
 ```text
 프로젝트명: Default Project
 로컬 Git 저장소 경로: C:\dev\green-market
 ```
 
-프로그램 목록, Git 커밋, 매핑 결과는 모두 프로젝트 단위로 묶입니다. 같은 프로젝트를 선택해야 대시보드와 Mapping 화면에서 데이터가 함께 보입니다.
+프로그램 목록, Git 커밋, 매핑 결과는 모두 프로젝트 단위로 묶입니다.
 
 ### 2. Git
 
@@ -127,19 +129,17 @@ LLM_MODEL=exaone-3.5-2.4b-instruct
 - `git_commits`: commit hash, message, author, committed_at, merge 여부
 - `commit_files`: 변경 파일, 변경 유형, diff_text
 
-diff는 5000자까지 저장하고, 바이너리 파일은 diff를 생략합니다.
+diff는 길이를 제한해 저장하고 바이너리 파일은 diff를 생략합니다.
 
 ### 3. Developer
 
-Git 수집 후 `개발자 자동 추출`을 실행합니다.
-
-기준:
+Git 수집 후 개발자 자동 추출을 실행합니다.
 
 - 같은 email은 같은 개발자로 처리
-- email이 없으면 author name 기준
+- email이 없으면 author name 기준으로 처리
 - 변경 파일 경로를 보고 role/skills를 추정
 
-화면에서 role, skills를 수정할 수 있습니다.
+화면에서 role, skills를 직접 수정할 수 있습니다.
 
 ### 4. 프로그램 목록 업로드
 
@@ -162,11 +162,11 @@ Git 수집 후 `개발자 자동 추출`을 실행합니다.
 - `status`
 - `progress_rate`
 
-엑셀 컬럼명이 달라도 화면에서 컬럼 매핑을 직접 선택할 수 있습니다. `program_id`가 이미 있으면 update 처리합니다.
+엑셀 컬럼명이 다르면 화면에서 컬럼 매핑을 직접 선택할 수 있습니다. `program_id`가 이미 있으면 update 처리합니다.
 
 ### 5. 개발계획 업로드
 
-개발계획 Excel을 업로드해 기존 프로그램에 담당자/일정/상태/진행률을 업데이트합니다.
+개발계획 Excel을 업로드해 기존 프로그램의 담당자, 일정, 상태, 진행률을 업데이트합니다.
 
 주요 컬럼:
 
@@ -181,23 +181,58 @@ Git 수집 후 `개발자 자동 추출`을 실행합니다.
 
 ### 6. Mapping
 
-프로그램 목록과 Git 커밋 정보를 LLM으로 분석해 관련 커밋을 추천합니다.
+프로그램 목록과 Git 커밋 정보를 LLM으로 분석해 관련 프로그램-커밋 매핑을 저장합니다.
 
-입력:
+#### 커밋 기준 분석
 
-- 프로그램: `program_id`, `program_name`, `description`, `module`, `screen_name`
-- 커밋: message, changed files, diff_text snippets
+기본 추천 방식입니다. 전체 실행 시간을 줄이기 위해 커밋 하나를 기준으로 후보 프로그램만 먼저 추립니다.
 
-출력/저장:
+흐름:
 
-- 관련도 점수 0~100
-- 관련 커밋 여부
-- 판단 근거
-- 구현 상태: `구현됨`, `일부구현`, `판단불가`
+1. Git 커밋 하나를 선택합니다.
+2. 커밋의 message, changed files, diff_text snippets를 가져옵니다.
+3. 프로그램 목록에서 규칙/토큰 유사도 기반으로 후보 프로그램 TOP N개를 추립니다.
+4. LLM에는 커밋 1개와 후보 프로그램 TOP N개만 한 번에 전달합니다.
+5. LLM은 관련 프로그램을 0개 이상 선택해 JSON으로 반환합니다.
+6. 결과를 `program_commit_mappings`에 저장합니다.
 
-결과는 `program_commit_mappings`에 저장됩니다.
+LLM 출력 형식:
 
-`프로그램별 분석할 커밋 후보 수`는 모든 커밋을 LLM에 보내지 않기 위한 제한값입니다. 예를 들어 프로그램 239개, 커밋 275개를 전부 비교하면 65,725건이므로, 먼저 파일 경로/토큰 유사도로 후보를 추리고 프로그램당 상위 N개만 분석합니다.
+```json
+{
+  "related_programs": [
+    {
+      "program_id": "P001",
+      "relevance_score": 85,
+      "implementation_status": "일부구현",
+      "reason": "커밋 메시지와 변경 파일이 해당 프로그램의 서비스/화면과 관련됨"
+    }
+  ]
+}
+```
+
+성능/재실행 정책:
+
+- 모든 프로그램 x 모든 커밋 조합을 LLM에 보내지 않습니다.
+- 기본값은 커밋 1개당 후보 프로그램 TOP 10입니다.
+- diff_text는 파일별 앞부분만 사용하고 입력 길이를 제한합니다.
+- 이미 같은 `program_id + commit_id` 매핑이 있으면 새로 만들지 않고 업데이트합니다.
+- 커밋 분석이 성공하면 `git_commits.mapping_analysis_status = completed`로 표시합니다.
+- LLM 실패 또는 JSON 파싱 실패 시 해당 커밋은 `failed`로 기록하고 다음 커밋으로 넘어갑니다.
+- 일괄 분석은 이미 `completed`인 커밋을 건너뛰므로 중단 후 재시작할 수 있습니다.
+
+화면 기능:
+
+- 분석 모드 선택: `커밋 기준 분석`, `프로그램 기준 분석`
+- 기본값: `커밋 기준 분석`
+- 커밋 목록에서 특정 커밋 선택
+- 선택한 커밋 1개 분석
+- 아직 완료되지 않은 커밋 일괄 분석
+- 진행률, 실패 수, 현재 커밋 표시
+
+#### 프로그램 기준 분석
+
+기존 방식입니다. 프로그램별로 후보 커밋을 추리고 각 프로그램-커밋 조합을 LLM으로 분석합니다. 정확도를 더 세밀하게 보고 싶을 때 사용할 수 있지만, 커밋과 프로그램 수가 많으면 실행 시간이 길어질 수 있습니다.
 
 ### 7. 개발계획 대시보드
 
@@ -227,8 +262,6 @@ Git author 기반 개발자 통계를 보여줍니다.
 - `sample_programs.xlsx`
 - `sample_development_plan.xlsx`
 
-이 데이터는 실제 업무 데이터가 아니라 Git 로그 기반 가상 샘플 데이터입니다. 랜덤성은 고정 seed로 재현 가능하게 작성되어 있습니다.
-
 CLI로 생성:
 
 ```powershell
@@ -238,7 +271,7 @@ python scripts\generate_sample_development_data.py --repo-path C:\dev\green-mark
 저장소 루트의 기존 프로그램 목록 CSV를 우선 사용하려면:
 
 ```powershell
-python scripts\generate_sample_development_data.py --repo-path C:\dev\green-market --output-dir sample_data --use-existing-program-csv --program-csv-path C:\dev\green-market\프로그램목록.csv
+python scripts\generate_sample_development_data.py --repo-path C:\dev\green-market --output-dir sample_data --use-existing-program-csv --program-csv-path C:\dev\green-market\programs.csv
 ```
 
 ## 주요 테이블
@@ -246,12 +279,12 @@ python scripts\generate_sample_development_data.py --repo-path C:\dev\green-mark
 - `projects`: 프로젝트 정보, Git 저장소 경로, 마지막 동기화 상태
 - `developers`: 개발자 목록, email, role, skills
 - `programs`: 프로그램 목록과 개발계획 정보
-- `git_commits`: Git 커밋 메타데이터
+- `git_commits`: Git 커밋 메타데이터, 매핑 분석 상태
 - `commit_files`: 커밋별 변경 파일과 diff
 - `program_commit_mappings`: 프로그램-커밋 매핑 분석 결과
-- `analysis_runs`: 분석 실행 이력
+- `analysis_runs`: 분석 실행 이력, 상태, 처리/실패 카운터
 - `document_chunks`: RAG용 chunk 원문과 메타데이터
-- `vector_items`: 향후 임베딩 벡터 저장
+- `vector_items`: 향후 embedding vector 저장
 
 ## 프로젝트 구조
 
@@ -297,6 +330,6 @@ requirements.txt
 
 ## 참고
 
-- 현재 RAG/embedding 기능은 골격만 있으며 실제 검색/임베딩 분석은 아직 확장 대상입니다.
+- 현재 RAG/embedding 기능은 골격 중심이며 실제 검색/임베딩 분석은 확장 예정입니다.
 - LLM 매핑 분석은 `.env`의 `LLM_PROVIDER` 설정에 따라 mock 또는 로컬 LLM을 사용합니다.
 - Streamlit 실행 중 `.env`를 바꾸면 앱을 재시작해야 반영됩니다.

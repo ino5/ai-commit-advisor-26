@@ -28,6 +28,8 @@ GIT_COMMIT_COLUMN_UPGRADES = [
     "ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS author_name VARCHAR(255)",
     "ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS author_email VARCHAR(255)",
     "ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS is_merge_commit BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS mapping_analyzed_at TIMESTAMP WITH TIME ZONE",
+    "ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS mapping_analysis_status VARCHAR(50)",
 ]
 
 COMMIT_FILE_COLUMN_UPGRADES = [
@@ -36,6 +38,13 @@ COMMIT_FILE_COLUMN_UPGRADES = [
 
 PROGRAM_COMMIT_MAPPING_COLUMN_UPGRADES = [
     "ALTER TABLE program_commit_mappings ADD COLUMN IF NOT EXISTS is_related BOOLEAN",
+]
+
+ANALYSIS_RUN_COLUMN_UPGRADES = [
+    "ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS analysis_type VARCHAR(100)",
+    "ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS total_count INTEGER",
+    "ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS processed_count INTEGER",
+    "ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS failed_count INTEGER",
 ]
 
 
@@ -82,6 +91,8 @@ def upgrade_existing_schema() -> None:
         for statement in COMMIT_FILE_COLUMN_UPGRADES:
             connection.execute(text(statement))
         for statement in PROGRAM_COMMIT_MAPPING_COLUMN_UPGRADES:
+            connection.execute(text(statement))
+        for statement in ANALYSIS_RUN_COLUMN_UPGRADES:
             connection.execute(text(statement))
         connection.execute(text("UPDATE commit_files SET git_commit_id = commit_id WHERE git_commit_id IS NULL"))
         add_constraint_if_missing(
