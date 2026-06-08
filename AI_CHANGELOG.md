@@ -1,5 +1,14 @@
 # AI Change Log
 
+## 2026-06-09
+
+### README 화면 캡처 갱신
+
+- `README.md`의 기능별 화면 캡처 안내 문구를 현재 그룹형 사이드바 메뉴 기준으로 정리했습니다.
+- Home 대표 이미지와 기능별 화면 캡처 전체를 현재 UI 기준으로 갱신했습니다.
+- 갱신한 이미지: `docs/images/ai-commit-advisor-home.png`, `docs/images/features/*.png`.
+- 검증: Streamlit 앱을 `http://localhost:8501`에서 실행해 응답 `200`을 확인하고, Playwright Chromium으로 README 참조 화면 전체를 캡처했습니다. 문서와 이미지 변경만 수행해 pytest는 생략했습니다.
+
 ## 2026-06-08
 
 ### Sidebar 메뉴 UX 개선
