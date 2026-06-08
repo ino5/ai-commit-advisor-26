@@ -28,7 +28,7 @@ def render_sample_data_page() -> None:
         f"실제 업무 데이터가 아니며 랜덤성은 고정 seed({SEED})로 재현 가능합니다."
     )
 
-    repo_path = st.text_input("로컬 Git 저장소 경로", value=r"C:\dev\green-market")
+    repo_path = st.text_input("로컬 Git 저장소 경로", value=r"C:\dev\ai-advisor-sample-shop")
     repo_path_obj = Path(repo_path).expanduser()
     use_existing_program_csv = st.checkbox(
         "저장소의 기존 프로그램목록 CSV를 우선 사용",

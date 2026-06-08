@@ -10,6 +10,12 @@ from src.db.models import Developer, GitCommit
 
 
 ROLE_OPTIONS = [
+    "PM",
+    "PL",
+    "Backend",
+    "Frontend",
+    "DBA",
+    "QA",
     "Backend Developer",
     "Frontend Developer",
     "Database Developer",
