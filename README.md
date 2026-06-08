@@ -433,11 +433,80 @@ python scripts\generate_sample_development_data.py --repo-path C:\dev\green-mark
 - `git_commits`: Git 커밋 메타데이터, 매핑 분석 상태
 - `commit_files`: 커밋별 변경 파일과 diff
 - `program_commit_mappings`: 프로그램-커밋 매핑 분석 결과
+- `program_implementation_status`: 프로그램 단위 구현상태 분석 결과, 요약, 완료/미완료 기능, 근거 커밋, 분석 시각
 - `analysis_runs`: 분석 실행 이력, 상태, 처리/실패 카운터
 - `code_review_results`: AI 코드리뷰 결과, 버그 탐지, 리팩토링 제안, 원본 응답
 - `risk_findings`: 규칙 기반 리스크 탐지 결과, evidence, resolved 상태
 - `document_chunks`: RAG용 chunk 원문과 메타데이터
 - `vector_items`: 향후 embedding vector 저장
+
+## 프로그램 단위 구현상태 분석
+
+### 기능 목적
+
+프로그램-커밋 매핑 결과 이후 단계에서 개발계획에 등록된 각 프로그램의 현재 구현상태를 판단합니다. 커밋 수만 보지 않고 프로그램 설명, 개발계획 정보, 관련 커밋 메시지, 변경 파일, 기존 커밋 매핑 분석 결과를 함께 사용합니다.
+
+분석 상태 값:
+
+- `NOT_STARTED`: 구현전
+- `IN_PROGRESS`: 진행중
+- `COMPLETED`: 구현완료
+- `UNKNOWN`: 판단불가
+
+### 분석 흐름
+
+1. `program_commit_mappings`에서 프로그램별 관련 커밋을 조회합니다.
+2. `ProgramImplementationAnalyzer`가 프로그램 정보와 관련 커밋 근거를 구성합니다.
+3. LLM 설정이 있으면 JSON 형식으로 구현상태, 요약, 완료 기능, 미완료 기능, 근거 커밋을 요청합니다.
+4. LLM 응답이 없거나 JSON 파싱에 실패하면 매핑 상태, 관련도 점수, 커밋 근거 기반 fallback 결과를 저장합니다.
+5. 관련 커밋 해시 목록을 정렬해 SHA-256 시그니처로 저장하고, 다음 분석 시 동일하면 재분석을 건너뜁니다.
+
+### 저장 구조
+
+분석 결과는 `program_implementation_status` 테이블에 프로그램당 1건으로 저장됩니다.
+
+- `program_id`: `programs.id` 외래키
+- `status`: `NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`, `UNKNOWN`
+- `summary`: 상태 판단 요약
+- `completed_features`: 완료된 것으로 보이는 기능 JSON 배열
+- `incomplete_features`: 미완료 또는 불확실한 기능 JSON 배열
+- `evidence_commits`: 주요 근거 커밋 JSON 배열
+- `commit_hash_signature`: 재분석 방지용 커밋 해시 목록 시그니처
+- `analyzed_at`: 분석 시각
+- `raw_response`: LLM 원문 응답 또는 fallback 메타데이터
+
+### 자동 분석 시점
+
+Mapping 화면에서 커밋 기준 또는 프로그램 기준 프로그램-커밋 매핑 작업이 완료되면 자동으로 프로젝트 전체 프로그램의 구현상태 분석을 실행합니다. 이미 저장된 분석의 `commit_hash_signature`가 현재 관련 커밋 목록과 같으면 해당 프로그램은 건너뜁니다.
+
+### 수동 재분석 방법
+
+`Program Detail` 화면에서 프로그램을 선택한 뒤 `구현상태 재분석` 버튼을 누르면 해당 프로그램만 분석합니다. 관련 커밋 목록이 이전 분석과 같으면 기존 결과를 재사용하고 재분석하지 않습니다.
+
+상세 화면에서 다음 정보를 조회할 수 있습니다.
+
+- 구현상태
+- 분석 일시
+- 상태 요약
+- 완료된 것으로 보이는 기능
+- 미완료 또는 불확실한 기능
+- 주요 근거 커밋
+
+### 테스트 방법
+
+```powershell
+.\.venv\Scripts\python.exe -m compileall src app.py
+.\.venv\Scripts\python.exe -c "from src.db.init_db import init_db; init_db(); print('init ok')"
+streamlit run app.py
+```
+
+화면 테스트 순서:
+
+1. Project, Git, 프로그램 목록 또는 개발계획 데이터를 준비합니다.
+2. Mapping 화면에서 커밋 기준 매핑 또는 프로그램 기준 매핑을 실행합니다.
+3. 매핑 완료 후 `program_implementation_status`에 결과가 생성되는지 확인합니다.
+4. Program Detail 화면에서 구현상태 분석 결과를 확인합니다.
+5. `구현상태 재분석` 버튼을 눌러 해당 프로그램만 재분석 또는 skip 처리되는지 확인합니다.
 
 ## 프로젝트 구조
 
@@ -457,6 +526,7 @@ src/
     llm_client.py
     mapping_service.py
     program_analysis_service.py
+    program_implementation_analyzer.py
     risk_service.py
   ui/
     dashboard_page.py

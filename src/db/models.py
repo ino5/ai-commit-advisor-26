@@ -75,6 +75,11 @@ class Program(Base, TimestampMixin):
     project: Mapped["Project"] = relationship(back_populates="programs")
     assigned_developer: Mapped["Developer | None"] = relationship(back_populates="programs")
     mappings: Mapped[list["ProgramCommitMapping"]] = relationship(back_populates="program", cascade="all, delete-orphan")
+    implementation_status_result: Mapped["ProgramImplementationStatus | None"] = relationship(
+        back_populates="program",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
 
 class GitCommit(Base, TimestampMixin):
@@ -135,6 +140,24 @@ class ProgramCommitMapping(Base, TimestampMixin):
     program: Mapped["Program"] = relationship(back_populates="mappings")
     commit: Mapped["GitCommit"] = relationship(back_populates="mappings")
     analysis_run: Mapped["AnalysisRun | None"] = relationship(back_populates="mappings")
+
+
+class ProgramImplementationStatus(Base, TimestampMixin):
+    __tablename__ = "program_implementation_status"
+    __table_args__ = (UniqueConstraint("program_id", name="uq_program_implementation_status_program_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    program_id: Mapped[int] = mapped_column(ForeignKey("programs.id", ondelete="CASCADE"), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False)
+    summary: Mapped[str | None] = mapped_column(Text)
+    completed_features: Mapped[list | None] = mapped_column(JSONB)
+    incomplete_features: Mapped[list | None] = mapped_column(JSONB)
+    evidence_commits: Mapped[list | None] = mapped_column(JSONB)
+    commit_hash_signature: Mapped[str | None] = mapped_column(String(64))
+    analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    raw_response: Mapped[dict | None] = mapped_column(JSONB)
+
+    program: Mapped["Program"] = relationship(back_populates="implementation_status_result")
 
 
 class AnalysisRun(Base, TimestampMixin):

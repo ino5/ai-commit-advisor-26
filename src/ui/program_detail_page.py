@@ -10,6 +10,10 @@ from src.services.program_analysis_service import (
     get_program_detail_analysis,
     list_program_options,
 )
+from src.services.program_implementation_analyzer import (
+    ProgramImplementationAnalyzer,
+    get_program_implementation_status,
+)
 from src.services.risk_service import get_unresolved_findings
 
 
@@ -149,6 +153,64 @@ def _render_saved_risks(project_id: int, program_db_id: int) -> None:
         for finding in findings
     ]
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def _format_json_list(value) -> str:
+    if not value:
+        return "-"
+    if isinstance(value, list):
+        return "\n".join(f"- {item}" for item in value)
+    return str(value)
+
+
+def _render_implementation_status(program_db_id: int) -> None:
+    st.subheader("구현상태 분석")
+
+    button_col, hint_col = st.columns([1, 2])
+    with button_col:
+        run_analysis = st.button("구현상태 재분석", type="secondary")
+    with hint_col:
+        st.caption("프로그램-커밋 매핑 해시 목록이 이전 분석과 같으면 재분석을 건너뜁니다.")
+
+    if run_analysis:
+        with SessionLocal() as db:
+            analyzer = ProgramImplementationAnalyzer()
+            with st.spinner("선택한 프로그램의 구현상태를 분석 중입니다."):
+                status_result, analyzed = analyzer.analyze_program(db, program_db_id, skip_unchanged=True)
+                db.commit()
+        if analyzed:
+            st.success("구현상태 분석을 저장했습니다.")
+        else:
+            st.info("매핑된 커밋 목록이 변경되지 않아 기존 분석 결과를 사용합니다.")
+
+    with SessionLocal() as db:
+        status_result = get_program_implementation_status(db, program_db_id)
+
+    if status_result is None:
+        st.info("저장된 구현상태 분석 결과가 없습니다. 매핑 분석을 실행하거나 재분석 버튼을 눌러 생성하세요.")
+        return
+
+    metric_col1, metric_col2 = st.columns(2)
+    metric_col1.metric("구현상태", status_result.status)
+    metric_col2.metric("분석 일시", _format_datetime(status_result.analyzed_at))
+
+    st.markdown("**상태 요약**")
+    st.write(status_result.summary or "-")
+
+    feature_col1, feature_col2 = st.columns(2)
+    with feature_col1:
+        st.markdown("**완료된 것으로 보이는 기능**")
+        st.markdown(_format_json_list(status_result.completed_features))
+    with feature_col2:
+        st.markdown("**미완료 또는 불확실한 기능**")
+        st.markdown(_format_json_list(status_result.incomplete_features))
+
+    evidence = status_result.evidence_commits or []
+    st.markdown("**주요 근거 커밋**")
+    if not evidence:
+        st.write("-")
+        return
+    st.dataframe(pd.DataFrame(evidence), use_container_width=True, hide_index=True)
 
 
 def _commit_dataframe(analysis) -> pd.DataFrame:
@@ -294,6 +356,8 @@ def render_program_detail_page() -> None:
         _render_kpis(analysis)
 
     _render_saved_risks(project_id, program_db_id)
+    st.divider()
+    _render_implementation_status(program_db_id)
     st.divider()
     _render_ai_and_developer_analysis(analysis)
     st.divider()

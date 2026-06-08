@@ -40,6 +40,17 @@ PROGRAM_COMMIT_MAPPING_COLUMN_UPGRADES = [
     "ALTER TABLE program_commit_mappings ADD COLUMN IF NOT EXISTS is_related BOOLEAN",
 ]
 
+PROGRAM_IMPLEMENTATION_STATUS_COLUMN_UPGRADES = [
+    "ALTER TABLE program_implementation_status ADD COLUMN IF NOT EXISTS status VARCHAR(50)",
+    "ALTER TABLE program_implementation_status ADD COLUMN IF NOT EXISTS summary TEXT",
+    "ALTER TABLE program_implementation_status ADD COLUMN IF NOT EXISTS completed_features JSONB",
+    "ALTER TABLE program_implementation_status ADD COLUMN IF NOT EXISTS incomplete_features JSONB",
+    "ALTER TABLE program_implementation_status ADD COLUMN IF NOT EXISTS evidence_commits JSONB",
+    "ALTER TABLE program_implementation_status ADD COLUMN IF NOT EXISTS commit_hash_signature VARCHAR(64)",
+    "ALTER TABLE program_implementation_status ADD COLUMN IF NOT EXISTS analyzed_at TIMESTAMP WITH TIME ZONE",
+    "ALTER TABLE program_implementation_status ADD COLUMN IF NOT EXISTS raw_response JSONB",
+]
+
 CODE_REVIEW_COLUMN_UPGRADES = [
     "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS target_type VARCHAR(50)",
     "ALTER TABLE code_review_results ADD COLUMN IF NOT EXISTS target_ref VARCHAR(255)",
@@ -115,6 +126,34 @@ def upgrade_existing_schema() -> None:
             connection.execute(text(statement))
         for statement in PROGRAM_COMMIT_MAPPING_COLUMN_UPGRADES:
             connection.execute(text(statement))
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS program_implementation_status (
+                    id SERIAL PRIMARY KEY,
+                    program_id INTEGER NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+                    status VARCHAR(50) NOT NULL,
+                    summary TEXT,
+                    completed_features JSONB,
+                    incomplete_features JSONB,
+                    evidence_commits JSONB,
+                    commit_hash_signature VARCHAR(64),
+                    analyzed_at TIMESTAMP WITH TIME ZONE,
+                    raw_response JSONB,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+                )
+                """
+            )
+        )
+        for statement in PROGRAM_IMPLEMENTATION_STATUS_COLUMN_UPGRADES:
+            connection.execute(text(statement))
+        add_constraint_if_missing(
+            connection,
+            "program_implementation_status",
+            "uq_program_implementation_status_program_id",
+            "ALTER TABLE program_implementation_status ADD CONSTRAINT uq_program_implementation_status_program_id UNIQUE (program_id)",
+        )
         connection.execute(
             text(
                 """

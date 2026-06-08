@@ -462,6 +462,27 @@ class MappingService:
             )
             db.add(analysis_run)
             db.commit()
+
+            try:
+                from src.services.program_implementation_analyzer import ProgramImplementationAnalyzer
+
+                implementation_result = ProgramImplementationAnalyzer(self.llm_client).analyze_project(
+                    db,
+                    project_id=project_id,
+                    skip_unchanged=True,
+                )
+                result.recent_results.append(
+                    {
+                        "stage": "program_implementation_status",
+                        "analyzed": implementation_result.analyzed_count,
+                        "skipped": implementation_result.skipped_count,
+                        "failed": implementation_result.failed_count,
+                    }
+                )
+                if implementation_result.errors:
+                    result.errors.extend(implementation_result.errors)
+            except Exception as exc:
+                result.errors.append(f"Program implementation status analysis failed: {exc}")
         except Exception as exc:
             db.rollback()
             result.errors.append(str(exc))
@@ -598,6 +619,27 @@ class MappingService:
                 f"updated={result.updated_count}, skipped={result.skipped_count}"
             )
             db.commit()
+
+            try:
+                from src.services.program_implementation_analyzer import ProgramImplementationAnalyzer
+
+                implementation_result = ProgramImplementationAnalyzer(self.llm_client).analyze_project(
+                    db,
+                    project_id=project_id,
+                    skip_unchanged=True,
+                )
+                result.recent_results.append(
+                    {
+                        "stage": "program_implementation_status",
+                        "analyzed": implementation_result.analyzed_count,
+                        "skipped": implementation_result.skipped_count,
+                        "failed": implementation_result.failed_count,
+                    }
+                )
+                if implementation_result.errors:
+                    result.errors.extend(implementation_result.errors)
+            except Exception as exc:
+                result.errors.append(f"Program implementation status analysis failed: {exc}")
         except Exception as exc:
             db.rollback()
             result.errors.append(str(exc))
