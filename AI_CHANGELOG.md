@@ -2,6 +2,14 @@
 
 ## 2026-06-08
 
+### source_file 재인덱싱 운영 기록 README 보강
+
+- `README.md`에 source_file 재인덱싱과 embedding 생성을 분리해서 운영해야 하는 이유를 정리했습니다.
+- LM Studio/local embedding 서버가 대량 chunk 처리 중 PC 자원을 오래 점유할 수 있으므로, embedding은 제한 수량으로 나눠 실행하도록 안내했습니다.
+- 재인덱싱 또는 embedding 중 강제 종료되었을 때 PostgreSQL transaction rollback, 부분 완료 상태(`pending`, `failed`)의 의미, `orphan_vectors` 확인 방법을 문서화했습니다.
+- 실제 점검에 사용한 `pg_isready`, source_file chunk/vector count, embedding_status 확인 SQL 예시를 README에 추가했습니다.
+- 검증: 문서 변경만 수행해 테스트는 생략했습니다.
+
 ### source_file 재인덱싱 안전장치 보완
 
 - `현재 소스 다시 인덱싱`이 기본으로 LM Studio/local embedding 서버를 대량 호출하지 않도록 변경했습니다.
@@ -15,7 +23,7 @@
 
 - RAG와 Project Chat 화면에 Current HEAD, Indexed HEAD, source_file chunk/vector 수, 현재 코드와 불일치/검증 불가 chunk 수를 표시했습니다.
 - `src/rag/source_index_service.py`를 추가해 source_file 인덱스 상태 계산과 현재 HEAD 기준 재인덱싱을 공통 서비스로 분리했습니다.
-- `현재 소스 다시 인덱싱` 버튼은 기존 source_file chunk/vector를 정리한 뒤 현재 Git HEAD 기준으로 chunk와 embedding을 다시 생성합니다.
+- `현재 소스 다시 인덱싱` 버튼은 현재 Git HEAD 기준 source_file chunk를 갱신하고 검증되지 않는 오래된 chunk/vector를 정리합니다. embedding 자동 생성은 이후 안전장치 보완에서 기본 비활성화했습니다.
 - 삭제된 파일이나 수정된 라인의 오래된 근거가 Project Chat 답변에 남지 않도록 재인덱싱 경로를 추가했습니다.
 - `README.md`, `README_ARCHITECTURE.md`, `docs/ai-technical-overview.md`에 소스 인덱스 상태 확인과 재인덱싱 흐름을 반영했습니다.
 - source_file 인덱스 refresh 필요 판단 테스트를 추가했습니다.
