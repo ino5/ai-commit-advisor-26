@@ -9,21 +9,28 @@ flowchart TB
     User["회사 관리자 / PL / 개발 리더"] --> Streamlit["Streamlit App<br/>app.py"]
 
     Streamlit --> Home["Home"]
-    Streamlit --> ProjectUI["Project / Developer / Upload"]
+    Streamlit --> ProjectUI["Project / Developer / Upload / Program Detail"]
     Streamlit --> GitUI["Git 동기화"]
-    Streamlit --> MappingUI["Mapping"]
+    Streamlit --> MappingUI["Mapping / Risk / Impact / Code Review"]
     Streamlit --> RagUI["RAG 검색"]
-    Streamlit --> DashboardUI["Dashboard / AI Progress"]
+    Streamlit --> DashboardUI["Dashboard / Planning / AI Progress"]
     Streamlit --> SettingsUI["Settings"]
 
     ProjectUI --> ExcelService["excel_service.py"]
     GitUI --> GitService["git_service.py"]
     MappingUI --> MappingService["mapping_service.py"]
+    MappingUI --> RiskService["risk_service.py"]
+    MappingUI --> ImpactService["commit_impact_service.py"]
+    MappingUI --> CodeReviewService["code_review_service.py"]
     RagUI --> RagLayer["RAG Layer"]
     DashboardUI --> ProgressService["progress_service.py"]
     DashboardUI --> DeveloperService["developer_service.py"]
+    DashboardUI --> ProgramAnalysisService["program_analysis_service.py"]
 
     MappingService --> LLMClient["llm_client.py"]
+    CodeReviewService --> LLMClient
+    ProgramAnalysisService --> ImplementationAnalyzer["program_implementation_analyzer.py"]
+    ImplementationAnalyzer --> LLMClient
     MappingService --> Retriever["retriever.py"]
     Retriever --> EmbeddingClient["embedding_client.py"]
     Retriever --> VectorStore["vector_store.py"]
@@ -39,11 +46,16 @@ flowchart TB
     ExcelService --> DB[(PostgreSQL + pgvector)]
     GitService --> DB
     MappingService --> DB
+    RiskService --> DB
+    ImpactService --> DB
+    CodeReviewService --> DB
     ProgressService --> DB
     DeveloperService --> DB
+    ProgramAnalysisService --> DB
+    ImplementationAnalyzer --> DB
     VectorStore --> DB
 
-    DB --> Tables["projects, developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>document_chunks, vector_items"]
+    DB --> Tables["projects, developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>program_implementation_status,<br/>code_review_results, risk_findings,<br/>document_chunks, vector_items"]
 ```
 
 ## 2. 화면 흐름도
@@ -52,15 +64,22 @@ flowchart TB
 flowchart LR
     Home["Home<br/>전체 현황 요약"] --> Project["Project<br/>프로젝트 등록/관리"]
     Project --> Program["Program Upload<br/>프로그램 목록 업로드"]
+    Project --> PlanUpload["Plan Upload<br/>개발계획 업로드"]
     Project --> Developer["Developer<br/>개발자 관리"]
     Project --> Git["Git<br/>커밋/파일/diff 수집"]
     Program --> Mapping["Mapping<br/>프로그램-커밋 매핑"]
+    PlanUpload --> PlanningDashboard["Planning Dashboard<br/>개발계획 현황"]
     Git --> Mapping
     Program --> RAG["RAG<br/>chunk / embedding / 검색"]
     Git --> RAG
     RAG --> Mapping
+    Mapping --> ProgramDetail["Program Detail<br/>프로그램 상세 분석"]
+    Mapping --> Risk["Risk Analysis<br/>리스크 탐지/저장"]
+    Mapping --> Impact["Commit Impact<br/>커밋 영향도 분석"]
+    Git --> CodeReview["AI Code Review<br/>staged/commit 리뷰"]
     Mapping --> Dashboard["Dashboard<br/>프로젝트 분석 요약"]
     Mapping --> AIProgress["AI Progress<br/>계획 vs AI 진척도"]
+    Risk --> AIProgress
     Dashboard --> AIProgress
 ```
 
@@ -69,9 +88,15 @@ flowchart LR
 - `Home`: 전체 프로젝트 현황, KPI, AI 진척도, 리스크 프로그램 요약.
 - `Project`: 프로젝트 이름, 설명, 로컬 Git 저장소 경로 관리.
 - `Program`: 프로그램 목록 Excel 업로드 및 컬럼 매핑.
+- `Plan Upload`: 개발계획 Excel 업로드 및 일정/진척도 갱신.
+- `Program Detail`: 특정 프로그램의 계획, AI 구현상태, 관련 커밋, 파일 diff, 리스크를 상세 조회.
 - `Git`: 로컬 Git 저장소에서 커밋, 변경 파일, diff 수집.
 - `Mapping`: 프로그램과 커밋의 관련성을 LLM으로 분석해 `program_commit_mappings`에 저장.
+- `Risk Analysis`: 계획, 매핑, 커밋 활동 기반 리스크를 탐지하고 `risk_findings`에 저장/해결 처리.
+- `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
+- `AI Code Review`: staged 변경, 최근 커밋, 특정 커밋을 LLM으로 리뷰하고 결과를 저장.
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약.
+- `Planning Dashboard`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 AI 판단 진척도 비교, 리스크 프로그램 추적.
 - `RAG`: chunk 생성, embedding 생성, pgvector 검색 테스트.
 
@@ -85,8 +110,12 @@ erDiagram
     DEVELOPERS ||--o{ PROGRAMS : assigned_to
     GIT_COMMITS ||--o{ COMMIT_FILES : contains
     PROGRAMS ||--o{ PROGRAM_COMMIT_MAPPINGS : mapped
+    PROGRAMS ||--o| PROGRAM_IMPLEMENTATION_STATUS : analyzed
+    PROGRAMS ||--o{ RISK_FINDINGS : has
     GIT_COMMITS ||--o{ PROGRAM_COMMIT_MAPPINGS : mapped
     ANALYSIS_RUNS ||--o{ PROGRAM_COMMIT_MAPPINGS : produced
+    PROJECTS ||--o{ CODE_REVIEW_RESULTS : has
+    PROJECTS ||--o{ RISK_FINDINGS : has
     DOCUMENT_CHUNKS ||--o{ VECTOR_ITEMS : embedded
 
     PROJECTS {
@@ -162,6 +191,19 @@ erDiagram
         jsonb raw_response
     }
 
+    PROGRAM_IMPLEMENTATION_STATUS {
+        int id PK
+        int program_id FK
+        string status
+        text summary
+        jsonb completed_features
+        jsonb incomplete_features
+        jsonb evidence_commits
+        string commit_hash_signature
+        datetime analyzed_at
+        jsonb raw_response
+    }
+
     ANALYSIS_RUNS {
         int id PK
         int project_id FK
@@ -175,6 +217,34 @@ erDiagram
         datetime finished_at
         text summary
         jsonb parameters
+    }
+
+    CODE_REVIEW_RESULTS {
+        int id PK
+        int project_id FK
+        string target_type
+        string target_ref
+        string status
+        text summary
+        jsonb commit_analysis
+        jsonb bug_findings
+        jsonb refactoring_suggestions
+        jsonb raw_response
+        datetime started_at
+        datetime finished_at
+    }
+
+    RISK_FINDINGS {
+        int id PK
+        int project_id FK
+        int program_id FK
+        string risk_type
+        string risk_level
+        string title
+        text description
+        jsonb evidence
+        datetime detected_at
+        string resolved_yn
     }
 
     DOCUMENT_CHUNKS {
@@ -206,7 +276,10 @@ erDiagram
 | `git_commits` | Git 커밋 메타데이터를 저장한다. 커밋 기준 매핑 분석 상태도 가진다. |
 | `commit_files` | 커밋별 변경 파일, 변경 유형, diff 일부를 저장한다. |
 | `program_commit_mappings` | 프로그램-커밋 관련성 분석 결과. LLM 판단 결과, 관련도 점수, 구현 상태, 판단 근거를 저장한다. |
+| `program_implementation_status` | 프로그램별 관련 커밋 묶음을 기반으로 LLM이 판단한 구현 상태, 완료/미완료 기능, 근거 커밋을 저장한다. |
 | `analysis_runs` | Mapping 분석 실행 이력. 실행 상태, 처리 수, 실패 수, 파라미터, 요약을 저장한다. |
+| `code_review_results` | AI Code Review 실행 결과. 리뷰 대상, 요약, 커밋 분석, 버그 발견, 리팩토링 제안을 저장한다. |
+| `risk_findings` | 리스크 분석 결과. 리스크 유형/등급, 설명, 근거, 해결 여부를 저장한다. |
 | `document_chunks` | RAG 검색용 chunk 저장소. program, commit, commit_file 원문을 검색 가능한 텍스트 단위로 저장한다. |
 | `vector_items` | `document_chunks`의 embedding vector를 저장한다. pgvector cosine 검색에 사용된다. |
 
@@ -220,6 +293,11 @@ erDiagram
 | `llm_client.py` | mock 또는 OpenAI-compatible local LLM 호출. `/chat/completions` 기반. |
 | `mapping_service.py` | 프로그램-커밋 매핑 분석의 핵심 서비스. 프로그램 기준 분석과 커밋 기준 분석을 모두 지원한다. |
 | `progress_service.py` | `programs.progress_rate`와 `program_commit_mappings.implementation_status`를 결합해 AI 진척도와 리스크를 계산한다. |
+| `program_analysis_service.py` | 프로그램 상세 화면용 분석 데이터 구성. 관련 커밋, 파일 diff, 개발자 기여, 리스크 요약을 제공한다. |
+| `program_implementation_analyzer.py` | 프로그램별 관련 커밋을 LLM으로 재분석해 구현 상태와 근거를 `program_implementation_status`에 저장한다. |
+| `risk_service.py` | 계획 일정, 담당자, 커밋/매핑 상태를 기반으로 리스크를 탐지하고 `risk_findings`에 저장/해결 처리한다. |
+| `commit_impact_service.py` | 특정 커밋이 영향을 줄 가능성이 있는 프로그램, 파일, 개발자 범위를 계산한다. |
+| `code_review_service.py` | staged 변경, 최근 커밋, 특정 커밋 diff를 LLM으로 리뷰하고 `code_review_results`에 저장한다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
 | `vector_store.py` | embedding 저장, 중복 방지, embedding 실패 기록, pgvector cosine 검색. |
@@ -350,17 +428,23 @@ LLM 출력 예시:
 - 프로젝트 등록 및 Git 저장소 경로 관리.
 - 프로그램 Excel 업로드, 컬럼 매핑, DB 저장/업데이트.
 - 개발자 Excel 업로드.
+- 개발계획 Excel 업로드 및 계획 대시보드.
 - Git 커밋 전체 수집 및 증분 동기화.
 - 커밋별 변경 파일과 diff 저장.
 - Git author 기반 개발자 자동 추출 및 개발자 통계.
+- 프로그램 상세 분석 화면.
 - 프로그램 기준 Mapping 분석.
 - 커밋 기준 Mapping 분석.
 - 커밋 기준 Mapping에서 RAG 후보 + 토큰 후보 병합.
+- 프로그램별 관련 커밋 기반 AI 구현상태 분석 및 저장.
 - LLM mock 및 OpenAI-compatible local chat 호출.
 - Mapping 실행 이력 저장.
 - 커밋별 mapping 분석 상태 저장.
 - AI Progress 계산 및 리스크 프로그램 표시.
-- Home/Dashboard/AI Progress 운영 대시보드.
+- Risk Analysis 실행, 리스크 저장, 미해결 리스크 조회 및 해결 처리.
+- Commit Impact 분석.
+- AI Code Review 실행 및 리뷰 이력 저장.
+- Home/Dashboard/Planning Dashboard/AI Progress 운영 대시보드.
 - RAG chunk 생성.
 - mock/openai/local embedding client 구조.
 - pgvector vector 저장 및 cosine 검색.
@@ -393,9 +477,9 @@ LLM 출력 예시:
 주요 메뉴 그룹:
 
 - `개요`: Home
-- `프로젝트 관리`: Project, Developer, Upload
+- `프로젝트 관리`: Project, Developer, Program Detail, Developer Upload, Program Upload, Development Plan Upload
 - `데이터 수집`: Git, Sample Data
-- `AI 분석`: Mapping, RAG
+- `AI 분석`: Mapping, Risk Analysis, Commit Impact, RAG, AI Code Review
 - `분석 결과`: Dashboard, 개발계획 대시보드, AI Progress
 - `관리`: Settings
 
@@ -405,11 +489,19 @@ LLM 출력 예시:
 |---|---|
 | `src/ui/home_page.py` | 전체 현황 KPI와 리스크 요약. |
 | `src/ui/project_page.py` | 프로젝트 등록/수정. |
+| `src/ui/developer_page.py` | 개발자 목록, Git author 기반 추출, 개발자 통계. |
+| `src/ui/developer_upload_page.py` | 개발자 목록 업로드. |
 | `src/ui/upload_page.py` | 프로그램 목록 업로드. |
+| `src/ui/development_plan_upload_page.py` | 개발계획 업로드. |
+| `src/ui/program_detail_page.py` | 프로그램별 계획, AI 구현상태, 관련 커밋, diff, 리스크 상세 조회. |
 | `src/ui/git_page.py` | Git 커밋 수집. |
 | `src/ui/mapping_page.py` | 프로그램-커밋 Mapping 분석 실행. |
+| `src/ui/risk_page.py` | 프로젝트 리스크 분석, 미해결 리스크 조회 및 해결 처리. |
+| `src/ui/commit_impact_page.py` | 특정 커밋의 영향도 분석. |
 | `src/ui/rag_page.py` | RAG chunk/embedding/search 관리. |
+| `src/ui/code_review_page.py` | AI 코드 리뷰 실행 및 이력 조회. |
 | `src/ui/dashboard_page.py` | 프로젝트 운영 요약. |
+| `src/ui/planning_dashboard_page.py` | 개발계획 기준 일정/진척 현황. |
 | `src/ui/ai_progress_page.py` | 계획 진척도와 AI 진척도 비교. |
 | `src/ui/settings_page.py` | DB/LLM/Embedding 설정 확인. |
 
@@ -423,6 +515,11 @@ LLM 출력 예시:
 | `src/services/llm_client.py` | `LLMClient.generate` |
 | `src/services/mapping_service.py` | `MappingService.analyze_commits`, `MappingService.analyze_project` |
 | `src/services/progress_service.py` | `get_ai_progress_summary`, `get_program_commit_details` |
+| `src/services/program_analysis_service.py` | `list_program_options`, `get_program_detail_analysis`, `get_commit_file_details` |
+| `src/services/program_implementation_analyzer.py` | `ProgramImplementationAnalyzer.analyze_program`, `ProgramImplementationAnalyzer.analyze_project` |
+| `src/services/risk_service.py` | `run_risk_analysis`, `get_unresolved_findings`, `resolve_findings` |
+| `src/services/commit_impact_service.py` | `list_commit_options`, `get_commit_impact_analysis` |
+| `src/services/code_review_service.py` | `get_review_target`, `CodeReviewService.review_project`, `get_recent_code_reviews` |
 | `src/rag/chunker.py` | `build_project_chunks` |
 | `src/rag/embedding_client.py` | `EmbeddingClient.embed_text` |
 | `src/rag/vector_store.py` | `embed_missing_chunks`, `search_similar` |
@@ -438,7 +535,10 @@ LLM 출력 예시:
 - `GitCommit`: Git 커밋 메타데이터.
 - `CommitFile`: 커밋별 변경 파일/diff.
 - `ProgramCommitMapping`: LLM 매핑 분석 결과.
+- `ProgramImplementationStatus`: 프로그램별 AI 구현상태 분석 결과.
 - `AnalysisRun`: 분석 실행 이력.
+- `CodeReviewResult`: AI 코드 리뷰 결과.
+- `RiskFinding`: 프로젝트/프로그램 리스크 탐지 결과.
 - `DocumentChunk`: RAG 원문 chunk.
 - `VectorItem`: RAG embedding vector.
 
@@ -447,11 +547,14 @@ LLM 출력 예시:
 ```mermaid
 flowchart LR
     A["Project 등록"] --> B["프로그램 목록 업로드"]
-    B --> C["Git 커밋 수집"]
-    C --> D["개발자 자동 추출"]
-    C --> E["RAG chunk 생성"]
-    E --> F["Embedding 생성"]
-    F --> G["Mapping 실행"]
-    G --> H["AI Progress 확인"]
-    H --> I["Dashboard로 운영 현황 확인"]
+    B --> C["개발계획 업로드"]
+    C --> D["Git 커밋 수집"]
+    D --> E["개발자 자동 추출"]
+    D --> F["RAG chunk 생성"]
+    F --> G["Embedding 생성"]
+    G --> H["Mapping 실행"]
+    H --> I["프로그램별 구현상태 분석"]
+    I --> J["Risk Analysis 실행"]
+    J --> K["AI Progress 확인"]
+    K --> L["Dashboard / Planning Dashboard로 운영 현황 확인"]
 ```
