@@ -92,7 +92,7 @@ flowchart LR
 
 - `Home`: 전체 프로젝트 현황, KPI, AI 진척도, 리스크 프로그램 요약.
 - `Project`: 프로젝트 이름, 설명, 로컬 Git 저장소 경로 관리.
-- `Program`: 프로그램 목록 Excel 업로드 및 컬럼 매핑.
+- `Program`: 프로그램 현재 데이터 조회, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, 저장.
 - `Plan Upload`: 개발계획 Excel 업로드 및 일정/진척도 갱신.
 - `Program Detail`: 특정 프로그램의 계획, AI 구현상태, 관련 커밋, 파일 diff, 리스크를 상세 조회.
 - `Git`: 로컬 Git 저장소에서 커밋, 변경 파일, diff 수집.
@@ -443,7 +443,7 @@ LLM 출력 예시:
 
 - Streamlit 기반 업무 흐름형 메뉴.
 - 프로젝트 등록 및 Git 저장소 경로 관리.
-- 프로그램 Excel 업로드, 컬럼 매핑, DB 저장/업데이트.
+- 프로그램 관리: 현재 데이터 조회, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, DB 저장/업데이트.
 - 개발자 Excel 업로드.
 - 개발계획 Excel 업로드 및 계획 대시보드.
 - Git 커밋 전체 수집 및 증분 동기화.
@@ -511,7 +511,7 @@ LLM 출력 예시:
 | `src/ui/project_page.py` | 프로젝트 등록/수정. |
 | `src/ui/developer_page.py` | 개발자 목록, Git author 기반 추출, 개발자 통계. |
 | `src/ui/developer_upload_page.py` | 개발자 목록 업로드. |
-| `src/ui/upload_page.py` | 프로그램 목록 업로드. |
+| `src/ui/upload_page.py` | 프로그램 현재 데이터 조회, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/development_plan_upload_page.py` | 개발계획 업로드. |
 | `src/ui/program_detail_page.py` | 프로그램별 계획, AI 구현상태, 관련 커밋, diff, 리스크 상세 조회. |
 | `src/ui/git_page.py` | Git 커밋 수집. |
@@ -531,6 +531,7 @@ LLM 출력 예시:
 | 파일 | 핵심 함수/클래스 |
 |---|---|
 | `src/services/excel_service.py` | `read_program_excel`, `normalize_program_rows`, `save_programs_with_result` |
+| `src/services/program_import_service.py` | `build_program_template_excel`, `validate_program_import` |
 | `src/services/git_service.py` | `sync_git_repository`, `collect_commits` |
 | `src/services/developer_service.py` | `extract_developers_from_git_commits`, `get_developer_stats` |
 | `src/services/llm_client.py` | `LLMClient.generate` |
