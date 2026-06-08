@@ -4,6 +4,8 @@
 
 현재 버전은 mock 분석과 OpenAI-compatible 로컬 LLM 서버를 지원합니다. LM Studio 같은 로컬 LLM 서버를 연결하면 Mapping 화면에서 실제 LLM 기반 분석을 실행할 수 있습니다.
 
+AI 지원 변경 이력은 `AI_CHANGELOG.md`에 기록합니다. 코딩 에이전트 작업 규칙은 `AGENTS.md`를 참고하세요.
+
 ## 화면 미리보기
 
 ![AI Commit Advisor dashboard](docs/images/ai-commit-advisor-home.png)

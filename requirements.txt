@@ -3,6 +3,7 @@ pandas==2.2.3
 openpyxl==3.1.5
 GitPython==3.1.43
 SQLAlchemy==2.0.36
+alembic==1.14.0
 psycopg2-binary==2.9.10
 python-dotenv==1.0.1
 pydantic-settings==2.7.1

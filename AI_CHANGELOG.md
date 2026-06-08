@@ -2,6 +2,21 @@
 
 ## 2026-06-08
 
+### Alembic DB 마이그레이션 도입
+
+- `alembic.ini`, `migrations/env.py`, migration template을 추가했습니다.
+- 현재 애플리케이션 스키마를 baseline migration으로 분리했습니다.
+- 매핑 피드백 컬럼 추가를 별도 migration으로 분리했습니다.
+- `src/db/init_db.py`의 누적 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 목록을 제거하고 Alembic 실행 흐름으로 바꿨습니다.
+- 기존 DB에 `alembic_version`이 없으면 현재 스키마를 baseline으로 stamp한 뒤 이후 migration을 적용하도록 했습니다.
+- DB migration 사용법을 `docs/db-migrations.md`에 정리했습니다.
+
+### 에이전트 작업 지침 추가
+
+- 루트에 `AGENTS.md`를 추가해 코딩 에이전트가 의미 있는 변경 후 `AI_CHANGELOG.md`를 업데이트하도록 명시했습니다.
+- DB 스키마 변경은 Alembic migration으로만 관리하고 `src/db/init_db.py`에 수동 `ALTER TABLE` 목록을 추가하지 않도록 명시했습니다.
+- `README.md` 초반에 `AI_CHANGELOG.md`와 `AGENTS.md` 안내를 추가했습니다.
+
 ### 매핑 피드백 기능 추가
 
 - `program_commit_mappings`에 사용자 피드백 컬럼을 추가했습니다.
