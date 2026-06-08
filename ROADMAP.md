@@ -1,0 +1,162 @@
+# Roadmap
+
+## Management Rules
+
+- Check this file before starting meaningful feature, UX, schema, test, or documentation work.
+- Move a task to `In Progress` when implementation starts.
+- Move a task to `Done` when implementation, verification, `AI_CHANGELOG.md`, and documentation updates are complete.
+- Record the related `AI_CHANGELOG.md` heading and commit hash after completion.
+- Keep tasks small enough to complete and verify in one focused change set when practical.
+
+## Priority Overview
+
+| Priority | Area | Task | Status | Related AI Change Log | Commit |
+|---|---|---|---|---|---|
+| P0 | Data UX | Program management UX improvement | Planned | - | - |
+| P0 | Data UX | Developer management UX improvement | Planned | - | - |
+| P0 | Data UX | Development plan management UX improvement | Planned | - | - |
+| P1 | RAG | Project Chat answer quality and history persistence | Planned | Project Chat 전용 메뉴 추가 | 330434b |
+| P1 | RAG | Source file re-index warning and one-click refresh | Planned | 현재 소스 검증형 RAG 검색 챗 추가 | 0be5930 |
+| P1 | Mapping | Mapping feedback analytics and review queue | Planned | 매핑 피드백 기능 추가 | 466d131 |
+| P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
+| P2 | Ops | CI test workflow | Planned | - | - |
+| P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
+
+## P0 - Program Management UX Improvement
+
+Status: Planned
+
+Goal:
+Make program data manageable without knowing the Excel schema in advance.
+
+Checklist:
+
+- [ ] Add program Excel template download.
+- [ ] Show required and optional column guide in the UI.
+- [ ] Add upload preview before save.
+- [ ] Add upload validation for required columns, duplicate program IDs, dates, and progress values.
+- [ ] Show import summary: new rows, updated rows, skipped/error rows.
+- [ ] Add existing program search and filters.
+- [ ] Add manual program creation form.
+- [ ] Add program edit flow.
+- [ ] Add program delete flow with impact warning.
+- [ ] Add focused tests.
+- [ ] Update `AI_CHANGELOG.md`.
+- [ ] Update related README sections.
+
+## P0 - Developer Management UX Improvement
+
+Status: Planned
+
+Goal:
+Make developer data easy to create, correct, and remove from the UI.
+
+Checklist:
+
+- [ ] Add developer Excel template download.
+- [ ] Show required and optional column guide in the UI.
+- [ ] Add upload preview and validation.
+- [ ] Add existing developer search and filters.
+- [ ] Add manual developer creation form.
+- [ ] Add developer edit flow.
+- [ ] Add delete flow with assigned program warning.
+- [ ] Add focused tests.
+- [ ] Update `AI_CHANGELOG.md`.
+- [ ] Update related README sections.
+
+## P0 - Development Plan Management UX Improvement
+
+Status: Planned
+
+Goal:
+Make plan progress, dates, status, and assignments editable without re-uploading Excel.
+
+Checklist:
+
+- [ ] Add development plan Excel template download.
+- [ ] Show required and optional column guide in the UI.
+- [ ] Add upload preview and validation.
+- [ ] Add current plan grid with filters.
+- [ ] Add manual plan update form.
+- [ ] Add bulk status/progress update where safe.
+- [ ] Add focused tests.
+- [ ] Update `AI_CHANGELOG.md`.
+- [ ] Update related README sections.
+
+## P1 - Project Chat Answer Quality And History Persistence
+
+Status: Planned
+
+Goal:
+Improve Project Chat from session-only Q&A into a more reliable project assistant.
+
+Checklist:
+
+- [ ] Persist chat sessions in the database.
+- [ ] Add project-level chat history list.
+- [ ] Add source citation export or copy-friendly format.
+- [ ] Add "insufficient evidence" answer classification.
+- [ ] Add focused tests.
+- [ ] Update `AI_CHANGELOG.md`.
+
+## P1 - Source File Re-Index Warning And One-Click Refresh
+
+Status: Planned
+
+Goal:
+Reduce stale RAG results when the repository HEAD changes after indexing.
+
+Checklist:
+
+- [ ] Show indexed HEAD vs current HEAD in RAG and Project Chat.
+- [ ] Add stale source_file chunk count.
+- [ ] Add one-click source_file re-index action.
+- [ ] Add focused tests.
+- [ ] Update `AI_CHANGELOG.md`.
+
+## P1 - Mapping Feedback Analytics And Review Queue
+
+Status: Planned
+
+Goal:
+Turn manual mapping feedback into an analysis quality workflow.
+
+Checklist:
+
+- [ ] Add feedback completed/pending summary.
+- [ ] Add low-confidence mapping review queue.
+- [ ] Add filters for stale, corrected, and disputed mappings.
+- [ ] Add feedback export.
+- [ ] Add focused tests.
+- [ ] Update `AI_CHANGELOG.md`.
+
+## P2 - CI Test Workflow
+
+Status: Planned
+
+Goal:
+Run tests consistently before merge or push.
+
+Checklist:
+
+- [ ] Add GitHub Actions workflow.
+- [ ] Run py_compile or import smoke check.
+- [ ] Run pytest.
+- [ ] Document local verification commands.
+- [ ] Update `AI_CHANGELOG.md`.
+
+## P2 - Application Dockerfile And Deployment Guide
+
+Status: Planned
+
+Goal:
+Make local and server deployment repeatable.
+
+Checklist:
+
+- [ ] Add application Dockerfile.
+- [ ] Add compose service for Streamlit app.
+- [ ] Document environment variables.
+- [ ] Document migration startup behavior.
+- [ ] Add deployment smoke check.
+- [ ] Update `AI_CHANGELOG.md`.
