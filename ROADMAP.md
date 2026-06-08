@@ -12,7 +12,7 @@
 
 | Priority | Area | Task | Status | Related AI Change Log | Commit |
 |---|---|---|---|---|---|
-| P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 | 39010d6 |
+| P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 | b1cf9ef |
 | P0 | Data UX | Developer management UX improvement | Planned | - | - |
 | P0 | Data UX | Development plan management UX improvement | Planned | - | - |
 | P1 | RAG | Project Chat answer quality and history persistence | Planned | Project Chat 전용 메뉴 추가 | 330434b |
