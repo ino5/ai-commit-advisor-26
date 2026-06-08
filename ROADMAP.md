@@ -23,6 +23,7 @@
 | P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 | fc87e29 |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | 562da8a |
+| P2 | UX | Home analysis command center | Done | Home 분석 관제 화면 개선 | - |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
@@ -204,6 +205,21 @@ Checklist:
 - [x] Run pytest.
 - [x] Document local verification commands.
 - [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Home Analysis Command Center
+
+Status: Done
+
+Goal:
+Make Home a practical analysis command center that shows pipeline status and next work items.
+
+Checklist:
+
+- [x] Rewrite Home guidance in a business workflow tone.
+- [x] Add analysis pipeline status for project, program, developer, Git, mapping, implementation status, and unresolved risk data.
+- [x] Add data-driven next recommended actions.
+- [x] Keep existing KPI and chart sections.
+- [x] Update README and `AI_CHANGELOG.md`.
 
 ## P2 - Application Dockerfile And Deployment Guide
 

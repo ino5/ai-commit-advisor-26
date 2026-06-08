@@ -2,6 +2,15 @@
 
 ## 2026-06-08
 
+### Home 분석 관제 화면 개선
+
+- Home 상단 설명을 개발계획, Git 변경 이력, AI 매핑 결과, 리스크를 통합해 보는 업무용 분석 콘솔 관점으로 정리했습니다.
+- 프로젝트 등록, 프로그램 수, 개발자 수, Git 커밋 수집, 매핑 분석 완료 커밋, 구현상태 분석 결과, 미해결 리스크를 보여주는 분석 파이프라인 상태 섹션을 추가했습니다.
+- 현재 데이터 상태에 따라 프로젝트 등록, 프로그램 등록, Git 동기화, Mapping 실행, 구현상태 분석, Risk Analysis 실행 같은 다음 권장 작업을 안내하도록 했습니다.
+- 기존 전체 KPI, 상태별 프로그램 수, 계획 vs AI 진척도, 상위 리스크 프로그램 차트는 유지했습니다.
+- `README.md`와 `ROADMAP.md`에 Home 분석 관제 화면 설명을 반영했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`50 passed`).
+
 ### CI 테스트 워크플로우 추가
 
 - GitHub Actions `CI` workflow를 추가해 push와 pull_request에서 Python 3.11 환경으로 기본 검증을 실행하도록 했습니다.
