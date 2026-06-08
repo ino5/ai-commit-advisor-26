@@ -8,6 +8,7 @@ from src.rag.chunker import DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE, build_pro
 from src.rag.chat_service import answer_source_question
 from src.rag.embedding_client import EmbeddingClient
 from src.rag.retriever import Retriever
+from src.rag.source_index_service import get_source_index_status, refresh_source_file_index
 from src.rag.source_verifier import annotate_retrieval_result
 from src.rag.vector_store import VectorStore
 from src.utils.config import settings
@@ -37,6 +38,10 @@ def _load_projects() -> list[Project]:
 
 def _source_label(source_type: str) -> str:
     return SOURCE_TYPE_LABELS.get(source_type, source_type)
+
+
+def _short_hash(value: str | None) -> str:
+    return value[:12] if value else "-"
 
 
 def _format_source(result: dict) -> str:
@@ -119,8 +124,59 @@ def _run_embedding(project_id: int, source_types: list[str], limit: int):
         )
 
 
+def _render_source_index_status(project: Project) -> None:
+    with SessionLocal() as db:
+        current_project = db.get(Project, project.id)
+        if current_project is None:
+            st.error("프로젝트를 찾을 수 없습니다.")
+            return
+        status = get_source_index_status(db, current_project)
+
+    st.markdown("#### 현재 소스 인덱스 상태")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Current HEAD", _short_hash(status.current_head_hash))
+    col2.metric("Indexed HEAD", _short_hash(status.latest_indexed_head_hash))
+    col3.metric("source_file chunks", status.source_chunk_count)
+    col4.metric("source_file vectors", status.source_vector_count)
+
+    col5, col6 = st.columns(2)
+    col5.metric("현재 코드와 불일치", status.stale_chunk_count)
+    col6.metric("검증 불가", status.invalid_chunk_count)
+
+    for error in status.errors:
+        st.warning(error)
+    if status.needs_reindex:
+        st.warning("현재 Git HEAD 또는 파일 내용이 인덱싱 시점과 다릅니다. Project Chat 답변 품질을 위해 현재 소스를 다시 인덱싱하세요.")
+    elif status.source_chunk_count:
+        st.success("현재 소스 인덱스가 등록된 Git 저장소 기준으로 검증되었습니다.")
+    else:
+        st.info("현재 소스 파일 인덱스가 아직 없습니다.")
+
+    if st.button("현재 소스 다시 인덱싱", type="secondary", disabled=not bool(project.git_repo_path)):
+        with SessionLocal() as db:
+            current_project = db.get(Project, project.id)
+            if current_project is None:
+                st.error("프로젝트를 찾을 수 없습니다.")
+                return
+            with st.spinner("기존 source_file chunk/vector를 정리하고 현재 HEAD 기준으로 다시 생성합니다."):
+                result = refresh_source_file_index(db, current_project)
+        st.success(
+            "source_file 재인덱싱 완료: "
+            f"chunk {result.chunk_result.created_count}건, "
+            f"vector {result.embedding_result.created_count}건 생성, "
+            f"embedding 실패 {result.embedding_result.failed_count}건"
+        )
+        if result.embedding_result.errors:
+            with st.expander("Embedding 실패 상세", expanded=False):
+                for error in result.embedding_result.errors[:30]:
+                    st.error(error)
+        st.rerun()
+
+
 def _render_index_controls(project: Project) -> None:
     st.subheader("RAG 인덱싱")
+    _render_source_index_status(project)
+    st.divider()
     col1, col2, col3 = st.columns(3)
     chunk_size = col1.number_input("Chunk size", min_value=300, max_value=4000, value=DEFAULT_CHUNK_SIZE, step=100)
     overlap = col2.number_input("Overlap", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50)

@@ -38,6 +38,8 @@ flowchart TB
     ChatService --> Retriever
     ChatService --> LLMClient
     ChatService --> SourceVerifier["source_verifier.py"]
+    RagUI --> SourceIndexService["source_index_service.py"]
+    SourceIndexService --> SourceVerifier
     RagLayer --> Chunker["chunker.py"]
     RagLayer --> EmbeddingClient
     RagLayer --> VectorStore
@@ -105,8 +107,8 @@ flowchart LR
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약.
 - `Planning Dashboard`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 AI 판단 진척도 비교, 리스크 프로그램 추적.
-- `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트.
-- `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답.
+- `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
+- `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답하고, 답변 전 현재 소스 인덱스 상태를 확인.
 
 ## 3. DB ERD
 
@@ -389,6 +391,8 @@ flowchart TD
     L --> M["pgvector cosine TOP K"]
     M --> N["source_file 현재 파일 검증<br/>verified/stale/invalid"]
     N --> O["검증된 source chunk만 답변 근거로 사용"]
+    C --> P["소스 인덱스 상태 확인<br/>Current HEAD vs Indexed HEAD"]
+    P --> Q["현재 소스 다시 인덱싱<br/>기존 source_file chunk/vector 정리 후 재생성"]
 ```
 
 ### RAG 안전장치
@@ -399,6 +403,8 @@ flowchart TD
 - `source_file` chunk에는 `file_path`, `line_start`, `line_end`, `content_hash`, `chunk_content_hash`, `indexed_head_hash`를 저장한다.
 - Project Chat은 기본적으로 현재 파일 검증을 통과한 `source_file` chunk만 답변 근거로 사용한다.
 - Git HEAD가 바뀌었거나 line range hash가 달라진 chunk는 stale/invalid로 분류하고 현재 코드 근거에서 제외한다.
+- RAG와 Project Chat 화면은 현재 HEAD와 인덱싱 HEAD, 불일치/검증 불가 chunk 수를 표시한다.
+- `현재 소스 다시 인덱싱`은 기존 `source_file` chunk/vector를 정리한 뒤 현재 HEAD 기준으로 다시 생성해 삭제된 파일의 근거도 제거한다.
 - embedding 실패 시 chunk metadata에 실패 상태와 오류 메시지를 남기고 다음 chunk로 진행한다.
 
 ## 8. LLM 처리 흐름
@@ -470,6 +476,7 @@ LLM 출력 예시:
 - RAG 검색 테스트 화면.
 - Project Chat 대화형 프로젝트 질의응답.
 - source_file 검색 결과 현재 파일 검증.
+- source_file 인덱스 상태 표시와 원클릭 재인덱싱.
 - Alembic 기반 DB migration.
 - pytest 기반 핵심 서비스 테스트.
 - 설정 화면에서 DB/LLM/Embedding 설정 확인.
@@ -552,6 +559,7 @@ LLM 출력 예시:
 | `src/rag/vector_store.py` | `embed_missing_chunks`, `search_similar` |
 | `src/rag/retriever.py` | `retrieve`, `retrieve_program_ids` |
 | `src/rag/source_verifier.py` | `verify_source_file_chunk`, `annotate_retrieval_result` |
+| `src/rag/source_index_service.py` | `get_source_index_status`, `refresh_source_file_index` |
 | `src/rag/chat_service.py` | `answer_source_question` |
 
 ### 주요 DB 모델

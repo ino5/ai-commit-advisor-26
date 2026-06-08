@@ -2,6 +2,16 @@
 
 ## 2026-06-08
 
+### source_file 인덱스 상태 확인과 원클릭 재인덱싱
+
+- RAG와 Project Chat 화면에 Current HEAD, Indexed HEAD, source_file chunk/vector 수, 현재 코드와 불일치/검증 불가 chunk 수를 표시했습니다.
+- `src/rag/source_index_service.py`를 추가해 source_file 인덱스 상태 계산과 현재 HEAD 기준 재인덱싱을 공통 서비스로 분리했습니다.
+- `현재 소스 다시 인덱싱` 버튼은 기존 source_file chunk/vector를 정리한 뒤 현재 Git HEAD 기준으로 chunk와 embedding을 다시 생성합니다.
+- 삭제된 파일이나 수정된 라인의 오래된 근거가 Project Chat 답변에 남지 않도록 재인덱싱 경로를 추가했습니다.
+- `README.md`, `README_ARCHITECTURE.md`, `docs/ai-technical-overview.md`에 소스 인덱스 상태 확인과 재인덱싱 흐름을 반영했습니다.
+- source_file 인덱스 refresh 필요 판단 테스트를 추가했습니다.
+- 검증: `.venv\Scripts\python.exe -m pytest -q` 통과(`31 passed`), `.venv\Scripts\python.exe -m compileall app.py src` 통과.
+
 ### AI 기술 개요 문서 추가
 
 - `docs/ai-technical-overview.md`를 추가해 대외 소개용 AI 활용 흐름, 기능별 AI 사용 방식, RAG/Project Chat 안전장치, traceability, 현재 한계를 정리했습니다.

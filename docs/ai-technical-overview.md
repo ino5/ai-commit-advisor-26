@@ -44,8 +44,10 @@ flowchart TD
     PS --> RA
     RA --> RF["risk_findings"]
     SF --> PC["Project Chat retrieval"]
+    SF --> SI["Source index status"]
     PC --> SV["Source verification"]
     SV --> LLM3["LLM answer with verified sources"]
+    SI --> RI["One-click source re-index"]
 ```
 
 ## RAG And Project Chat Safety
@@ -86,6 +88,16 @@ Each `source_file` chunk stores metadata such as:
 
 Before Project Chat uses a retrieved `source_file` chunk, the application checks the current file and line range. If the hash no longer matches, the chunk is marked `stale` and excluded from the answer context.
 
+RAG and Project Chat also show source index status at the project level:
+
+- current Git HEAD
+- latest indexed HEAD
+- `source_file` chunk/vector counts
+- chunks that no longer match the current repository state
+- chunks that cannot be verified because the file or metadata is missing
+
+The one-click source refresh clears existing `source_file` chunks and vectors before rebuilding them from the current HEAD. This removes evidence for files that were deleted after a previous indexing run.
+
 ## LLM Provider Strategy
 
 The project supports a mock provider and OpenAI-compatible local HTTP APIs.
@@ -113,7 +125,7 @@ Manual feedback is also captured in `program_commit_mappings` feedback columns s
 - LLM JSON validation is pragmatic parsing, not strict schema validation.
 - Project Chat currently keeps chat history in Streamlit session state, not the database.
 - RAG quality depends heavily on the embedding model and configured vector dimension.
-- Source verification prevents stale source chunks from being used as current code evidence, but it does not prove semantic correctness of the LLM answer.
+- Source verification and re-index warnings prevent outdated source chunks from being used as current code evidence, but they do not prove semantic correctness of the LLM answer.
 - Commit diffs are historical evidence and may contain deleted lines.
 
 ## Suggested Public Summary

@@ -5,8 +5,9 @@ import streamlit as st
 
 from src.db.database import SessionLocal
 from src.db.init_db import init_db
-from src.db.models import DocumentChunk, Project, VectorItem
+from src.db.models import Project
 from src.rag.chat_service import answer_source_question
+from src.rag.source_index_service import get_source_index_status, refresh_source_file_index
 
 
 VERIFICATION_LABELS = {
@@ -43,20 +44,52 @@ def _format_source(source: dict) -> str:
     return f"{source_type} / {source.get('source_id')}"
 
 
-def _index_counts(project_id: int) -> tuple[int, int]:
+def _short_hash(value: str | None) -> str:
+    return value[:12] if value else "-"
+
+
+def _render_source_index_status(project: Project) -> None:
     with SessionLocal() as db:
-        source_chunk_count = (
-            db.query(DocumentChunk)
-            .filter(DocumentChunk.project_id == project_id, DocumentChunk.source_type == "source_file")
-            .count()
+        current_project = db.get(Project, project.id)
+        if current_project is None:
+            st.error("프로젝트를 찾을 수 없습니다.")
+            return
+        status = get_source_index_status(db, current_project)
+
+    metric1, metric2, metric3, metric4 = st.columns(4)
+    metric1.metric("source_file chunks", status.source_chunk_count)
+    metric2.metric("source_file vectors", status.source_vector_count)
+    metric3.metric("Current HEAD", _short_hash(status.current_head_hash))
+    metric4.metric("Indexed HEAD", _short_hash(status.latest_indexed_head_hash))
+
+    if status.source_vector_count == 0:
+        st.warning("현재 소스 파일 vector가 없습니다. `RAG 검색 > Index`에서 `현재 소스 파일` 인덱싱을 먼저 실행하세요.")
+    elif status.needs_reindex:
+        st.warning(
+            "현재 코드와 맞지 않는 source_file 인덱스가 있습니다. "
+            f"불일치 {status.stale_chunk_count}건, 검증 불가 {status.invalid_chunk_count}건"
         )
-        source_vector_count = (
-            db.query(VectorItem)
-            .join(DocumentChunk, VectorItem.chunk_id == DocumentChunk.id)
-            .filter(DocumentChunk.project_id == project_id, DocumentChunk.source_type == "source_file")
-            .count()
+    else:
+        st.caption("현재 소스 인덱스가 Git 저장소 기준으로 검증되었습니다.")
+
+    for error in status.errors:
+        st.warning(error)
+
+    if st.button("현재 소스 다시 인덱싱", disabled=not bool(project.git_repo_path)):
+        with SessionLocal() as db:
+            current_project = db.get(Project, project.id)
+            if current_project is None:
+                st.error("프로젝트를 찾을 수 없습니다.")
+                return
+            with st.spinner("현재 HEAD 기준으로 source_file chunk와 vector를 다시 생성합니다."):
+                result = refresh_source_file_index(db, current_project)
+        st.success(
+            "source_file 재인덱싱 완료: "
+            f"chunk {result.chunk_result.created_count}건, "
+            f"vector {result.embedding_result.created_count}건 생성, "
+            f"embedding 실패 {result.embedding_result.failed_count}건"
         )
-    return source_chunk_count, source_vector_count
+        st.rerun()
 
 
 def _render_sources(sources: list[dict], message_index: int) -> None:
@@ -116,14 +149,7 @@ def render_project_chat_page() -> None:
     messages_key = _chat_key(project_id)
     st.session_state.setdefault(messages_key, [])
 
-    source_chunk_count, source_vector_count = _index_counts(project_id)
-    metric1, metric2, metric3 = st.columns(3)
-    metric1.metric("source_file chunks", source_chunk_count)
-    metric2.metric("source_file vectors", source_vector_count)
-    metric3.metric("Git repo", "등록됨" if project.git_repo_path else "미등록")
-
-    if source_vector_count == 0:
-        st.warning("현재 소스 파일 vector가 없습니다. `RAG 검색 > Index`에서 `현재 소스 파일` 인덱싱을 먼저 실행하세요.")
+    _render_source_index_status(project)
 
     control1, control2, control3 = st.columns([1, 1, 2])
     top_k = control1.slider("TOP K", min_value=3, max_value=30, value=8)

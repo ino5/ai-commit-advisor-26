@@ -16,7 +16,7 @@
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 | d00b868 |
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
 | P1 | RAG | Project Chat answer quality and history persistence | Planned | Project Chat 전용 메뉴 추가 | 330434b |
-| P1 | RAG | Source file re-index warning and one-click refresh | Planned | 현재 소스 검증형 RAG 검색 챗 추가 | 0be5930 |
+| P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 확인과 원클릭 재인덱싱 | - |
 | P1 | Mapping | Mapping feedback analytics and review queue | Planned | 매핑 피드백 기능 추가 | 466d131 |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P2 | Ops | CI test workflow | Planned | - | - |
@@ -101,18 +101,18 @@ Checklist:
 
 ## P1 - Source File Re-Index Warning And One-Click Refresh
 
-Status: Planned
+Status: Done
 
 Goal:
 Reduce stale RAG results when the repository HEAD changes after indexing.
 
 Checklist:
 
-- [ ] Show indexed HEAD vs current HEAD in RAG and Project Chat.
-- [ ] Add stale source_file chunk count.
-- [ ] Add one-click source_file re-index action.
-- [ ] Add focused tests.
-- [ ] Update `AI_CHANGELOG.md`.
+- [x] Show indexed HEAD vs current HEAD in RAG and Project Chat.
+- [x] Add stale source_file chunk count.
+- [x] Add one-click source_file re-index action.
+- [x] Add focused tests.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P1 - Mapping Feedback Analytics And Review Queue
 
