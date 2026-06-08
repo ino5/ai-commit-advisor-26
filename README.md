@@ -4,6 +4,10 @@
 
 현재 버전은 mock 분석과 OpenAI-compatible 로컬 LLM 서버를 지원합니다. LM Studio 같은 로컬 LLM 서버를 연결하면 Mapping 화면에서 실제 LLM 기반 분석을 실행할 수 있습니다.
 
+## 화면 미리보기
+
+![AI Commit Advisor dashboard](docs/images/ai-commit-advisor-home.png)
+
 ## 주요 기능
 
 - 프로젝트 등록 및 로컬 Git 저장소 경로 관리
