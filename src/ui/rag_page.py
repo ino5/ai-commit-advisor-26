@@ -5,17 +5,27 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import DocumentChunk, Project, VectorItem
 from src.rag.chunker import DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE, build_project_chunks
+from src.rag.chat_service import answer_source_question
 from src.rag.embedding_client import EmbeddingClient
 from src.rag.retriever import Retriever
+from src.rag.source_verifier import annotate_retrieval_result
 from src.rag.vector_store import VectorStore
 from src.utils.config import settings
 
 
-SOURCE_TYPE_OPTIONS = ["program", "commit", "commit_file"]
+SOURCE_TYPE_OPTIONS = ["source_file", "program", "commit", "commit_file"]
 SOURCE_TYPE_LABELS = {
+    "source_file": "현재 소스 파일",
     "program": "프로그램 정보",
     "commit": "커밋 메시지",
     "commit_file": "변경 파일/diff",
+}
+VERIFICATION_LABELS = {
+    "verified": "현재 코드 검증됨",
+    "stale": "인덱스 오래됨",
+    "invalid": "검증 실패",
+    "historical": "변경 이력",
+    "not_applicable": "검증 대상 아님",
 }
 
 
@@ -32,6 +42,11 @@ def _source_label(source_type: str) -> str:
 def _format_source(result: dict) -> str:
     metadata = result.get("metadata") or {}
     source_type = result.get("source_type")
+    if source_type == "source_file":
+        file_path = metadata.get("file_path") or result.get("source_id")
+        line_start = metadata.get("line_start")
+        line_end = metadata.get("line_end")
+        return f"{_source_label(source_type)} / {file_path}:{line_start}-{line_end}".strip(" /")
     if source_type == "program":
         program_id = metadata.get("program_id") or result.get("source_id")
         program_name = metadata.get("program_name") or ""
@@ -73,7 +88,7 @@ def _selected_source_types(label: str, default: list[str] | None = None) -> list
 
 
 def _run_chunking(
-    project_id: int,
+    project: Project,
     source_types: list[str],
     chunk_size: int,
     overlap: int,
@@ -81,10 +96,12 @@ def _run_chunking(
     with SessionLocal() as db:
         return build_project_chunks(
             db,
-            project_id=project_id,
+            project_id=project.id,
             include_programs="program" in source_types,
             include_commits="commit" in source_types,
             include_commit_files="commit_file" in source_types,
+            include_source_files="source_file" in source_types,
+            repo_path=project.git_repo_path,
             chunk_size=chunk_size,
             overlap=overlap,
         )
@@ -102,18 +119,20 @@ def _run_embedding(project_id: int, source_types: list[str], limit: int):
         )
 
 
-def _render_index_controls(project_id: int) -> None:
+def _render_index_controls(project: Project) -> None:
     st.subheader("RAG 인덱싱")
     col1, col2, col3 = st.columns(3)
     chunk_size = col1.number_input("Chunk size", min_value=300, max_value=4000, value=DEFAULT_CHUNK_SIZE, step=100)
     overlap = col2.number_input("Overlap", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50)
     limit = col3.number_input("Embedding 최대 처리 수", min_value=1, max_value=10000, value=500, step=100)
     source_types = _selected_source_types("인덱싱 대상", SOURCE_TYPE_OPTIONS)
+    if "source_file" in source_types and not project.git_repo_path:
+        st.warning("현재 소스 파일을 인덱싱하려면 프로젝트에 Git 저장소 경로가 필요합니다.")
 
     if st.button("RAG 인덱싱 실행", type="primary"):
-        with st.spinner("프로그램, 커밋, 변경 파일/diff를 chunk로 만들고 누락 embedding을 저장합니다."):
-            chunk_result = _run_chunking(project_id, source_types, int(chunk_size), int(overlap))
-            client, embedding_result = _run_embedding(project_id, source_types, int(limit))
+        with st.spinner("현재 소스, 프로그램, 커밋, 변경 파일/diff를 chunk로 만들고 누락 embedding을 저장합니다."):
+            chunk_result = _run_chunking(project, source_types, int(chunk_size), int(overlap))
+            client, embedding_result = _run_embedding(project.id, source_types, int(limit))
         st.success(
             "인덱싱 완료: "
             f"chunk 신규 {chunk_result.created_count}건, chunk 중복 건너뜀 {chunk_result.skipped_count}건, "
@@ -127,17 +146,19 @@ def _render_index_controls(project_id: int) -> None:
                     st.error(error)
 
 
-def _render_chunk_controls(project_id: int) -> None:
+def _render_chunk_controls(project: Project) -> None:
     st.subheader("Chunk 생성")
     col1, col2 = st.columns(2)
     chunk_size = col1.number_input("Chunk size", min_value=300, max_value=4000, value=DEFAULT_CHUNK_SIZE, step=100, key="chunk_size_only")
     overlap = col2.number_input("Overlap", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50, key="overlap_only")
     source_types = _selected_source_types("Chunk 대상", SOURCE_TYPE_OPTIONS)
+    if "source_file" in source_types and not project.git_repo_path:
+        st.warning("현재 소스 파일을 chunk로 만들려면 프로젝트에 Git 저장소 경로가 필요합니다.")
 
     if not st.button("Chunk 생성", type="primary"):
         return
 
-    result = _run_chunking(project_id, source_types, int(chunk_size), int(overlap))
+    result = _run_chunking(project, source_types, int(chunk_size), int(overlap))
     st.success(f"Chunk 생성 완료: 신규 {result.created_count}건, 중복 건너뜀 {result.skipped_count}건")
 
 
@@ -176,7 +197,7 @@ def _render_embedding_controls(project_id: int) -> None:
                 st.error(error)
 
 
-def _render_search(project_id: int) -> None:
+def _render_search(project: Project) -> None:
     st.subheader("검색 품질 확인")
     if "rag_search_query" not in st.session_state:
         st.session_state["rag_search_query"] = ""
@@ -187,7 +208,7 @@ def _render_search(project_id: int) -> None:
     )
     col1, col2 = st.columns(2)
     top_k = col1.slider("TOP K", min_value=1, max_value=50, value=10)
-    source_types = _selected_source_types("source_type 필터", ["program", "commit", "commit_file"])
+    source_types = _selected_source_types("source_type 필터", ["source_file"])
 
     if not st.button("검색", type="primary"):
         return
@@ -199,7 +220,8 @@ def _render_search(project_id: int) -> None:
     with SessionLocal() as db:
         retriever = Retriever(db)
         try:
-            results = retriever.retrieve(query_text, limit=top_k, project_id=project_id, source_types=source_types)
+            results = retriever.retrieve(query_text, limit=top_k, project_id=project.id, source_types=source_types)
+            results = [annotate_retrieval_result(result, project.git_repo_path) for result in results]
             model_name = retriever.embedding_client.embedding_model_name
         except Exception as exc:
             st.error(f"검색 실패: {exc}")
@@ -221,11 +243,14 @@ def _render_search(project_id: int) -> None:
                 "distance": round(result["distance"], 4),
                 "source": _format_source(result),
                 "source_type": result["source_type"],
+                "verification": VERIFICATION_LABELS.get(result.get("verification_status"), result.get("verification_status")),
                 "source_id": result["source_id"],
                 "chunk_index": result["chunk_index"],
                 "program_id": metadata.get("program_id"),
                 "commit_hash": metadata.get("commit_hash"),
                 "file_path": metadata.get("file_path"),
+                "line_start": metadata.get("line_start"),
+                "line_end": metadata.get("line_end"),
                 "preview": result["text"][:300],
             }
         )
@@ -245,10 +270,73 @@ def _render_search(project_id: int) -> None:
                     "chunk_index": result["chunk_index"],
                     "similarity": round(result["similarity"], 6),
                     "distance": round(result["distance"], 6),
+                    "verification_status": result.get("verification_status"),
+                    "verification_reason": result.get("verification_reason"),
                     "metadata": result["metadata"],
                 }
             )
             st.text_area("원문 일부", value=result["text"][:2000], height=220, disabled=True, key=f"chunk_text_{result['id']}")
+
+
+def _render_chat(project: Project) -> None:
+    st.subheader("소스 검색 챗")
+    st.caption("기본적으로 현재 파일에서 검증된 `source_file` chunk만 근거로 사용합니다.")
+    question = st.text_area(
+        "질문",
+        placeholder="예: 매핑 피드백 저장 흐름이 어디에서 처리되는지 알려줘.",
+        key="rag_chat_question",
+    )
+    col1, col2 = st.columns([1, 1])
+    top_k = col1.slider("검색 TOP K", min_value=3, max_value=30, value=8, key="rag_chat_top_k")
+    include_history = col2.checkbox("커밋 이력도 검색 후보에 포함", value=False)
+
+    if not st.button("질문하기", type="primary"):
+        return
+    if not question.strip():
+        st.warning("질문을 입력하세요.")
+        return
+
+    with SessionLocal() as db:
+        current_project = db.get(Project, project.id)
+        if current_project is None:
+            st.error("프로젝트를 찾을 수 없습니다.")
+            return
+        with st.spinner("검증된 현재 소스 근거를 검색하고 답변을 생성합니다."):
+            answer = answer_source_question(
+                db,
+                current_project,
+                question.strip(),
+                top_k=int(top_k),
+                include_history=include_history,
+            )
+
+    if answer.errors:
+        for error in answer.errors:
+            st.error(error)
+        return
+
+    st.markdown("#### 답변")
+    st.write(answer.answer)
+    if answer.excluded_count:
+        st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 chunk {answer.excluded_count}건은 답변 근거에서 제외했습니다.")
+
+    if not answer.sources:
+        return
+    st.markdown("#### 검색 근거")
+    rows = []
+    for rank, source in enumerate(answer.sources, start=1):
+        metadata = source.get("metadata") or {}
+        rows.append(
+            {
+                "rank": rank,
+                "similarity": round(source.get("similarity") or 0, 4),
+                "source": _format_source(source),
+                "verification": VERIFICATION_LABELS.get(source.get("verification_status"), source.get("verification_status")),
+                "reason": source.get("verification_reason"),
+                "preview": (source.get("text") or "")[:240],
+            }
+        )
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
 def render_rag_page() -> None:
@@ -263,15 +351,18 @@ def render_rag_page() -> None:
     project_options = {f"{project.name} ({project.id})": project.id for project in projects}
     selected_label = st.selectbox("프로젝트 선택", list(project_options.keys()))
     project_id = project_options[selected_label]
+    project = next(project for project in projects if project.id == project_id)
 
     _render_index_stats(project_id)
 
-    tab1, tab2, tab3, tab4 = st.tabs(["Index", "Chunk", "Embedding", "Search"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Index", "Chunk", "Embedding", "Search", "Chat"])
     with tab1:
-        _render_index_controls(project_id)
+        _render_index_controls(project)
     with tab2:
-        _render_chunk_controls(project_id)
+        _render_chunk_controls(project)
     with tab3:
         _render_embedding_controls(project_id)
     with tab4:
-        _render_search(project_id)
+        _render_search(project)
+    with tab5:
+        _render_chat(project)
