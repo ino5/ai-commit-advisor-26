@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### Sidebar 메뉴 위치 흔들림 보정
+
+- Sidebar 메뉴에서 선택 항목과 일반 버튼의 높이, margin, box sizing, 왼쪽 border 폭을 동일하게 맞춰 페이지 전환 시 메뉴 위치가 흔들리지 않도록 했습니다.
+- 일반 메뉴 버튼에도 투명한 왼쪽 border를 적용해 선택 상태의 파란 border와 같은 공간을 항상 확보하도록 했습니다.
+- `scripts/verify_home_ui.py`에 메뉴 클릭 전후 `Mapping` 항목의 위치와 폭이 안정적인지 확인하는 Playwright 검증을 추가했습니다.
+- 검증: `.venv\Scripts\python.exe scripts\verify_home_ui.py` 통과, `.venv\Scripts\python.exe -m compileall src app.py scripts\verify_home_ui.py` 통과.
+
 ### Home UI 검증 스크립트 추가
 
 - Node Playwright가 없는 환경에서도 Home 화면을 검증할 수 있도록 Python Playwright 기반 `scripts/verify_home_ui.py`를 추가했습니다.

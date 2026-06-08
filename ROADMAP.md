@@ -28,6 +28,7 @@
 | P2 | UX | Home analysis command center | Done | Home 분석 관제 화면 개선 | c3a30a1 |
 | P2 | UX | Home copy tone cleanup | Done | Home 문구 톤 정리 | c8c421e |
 | P2 | Ops | Home UI visual verification script | Done | Home UI 검증 스크립트 추가 | c8c421e |
+| P2 | UX | Sidebar menu layout stabilization | Done | Sidebar 메뉴 위치 흔들림 보정 | - |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
@@ -285,6 +286,20 @@ Checklist:
 - [x] Record Playwright as a local dependency.
 - [x] Document the verification command.
 - [x] Run the script against the local Streamlit server.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Sidebar Menu Layout Stabilization
+
+Status: Done
+
+Goal:
+Keep sidebar menu item positions stable when switching pages.
+
+Checklist:
+
+- [x] Normalize active and inactive menu item box sizing.
+- [x] Keep active and inactive menu item spacing consistent.
+- [x] Run compileall and focused UI verification.
 - [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Application Dockerfile And Deployment Guide

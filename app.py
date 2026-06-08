@@ -73,11 +73,20 @@ def _inject_sidebar_styles() -> None:
     st.markdown(
         """
         <style>
+        section[data-testid="stSidebar"] .stButton {
+            margin: 0.1rem 0 0.35rem 0;
+        }
         section[data-testid="stSidebar"] .stButton > button {
+            align-items: center;
             border: 0;
+            border-left: 3px solid transparent;
             border-radius: 6px;
+            box-sizing: border-box;
+            display: flex;
             justify-content: flex-start;
+            min-height: 2.35rem;
             padding: 0.42rem 0.62rem;
+            text-align: left;
             width: 100%;
             background: transparent;
             color: inherit;
@@ -89,9 +98,14 @@ def _inject_sidebar_styles() -> None:
             border-left: 3px solid #2563eb;
             background: rgba(37, 99, 235, 0.10);
             border-radius: 6px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
             font-weight: 600;
+            min-height: 2.35rem;
             padding: 0.42rem 0.62rem;
             margin: 0.1rem 0 0.35rem 0;
+            width: 100%;
         }
         section[data-testid="stSidebar"] .nav-group {
             color: #64748b;

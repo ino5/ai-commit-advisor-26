@@ -48,6 +48,37 @@ def _verify_text(text: str) -> None:
         raise AssertionError(f"Stale explanatory text still visible: {', '.join(stale)}")
 
 
+def _sidebar_item_box(page: Page, label: str) -> dict[str, float]:
+    sidebar = page.locator('section[data-testid="stSidebar"]')
+    locator = sidebar.get_by_text(label, exact=True).last
+    box = locator.bounding_box(timeout=10_000)
+    if box is None:
+        raise AssertionError(f"Sidebar item has no bounding box: {label}")
+    return box
+
+
+def _verify_sidebar_layout_stability(page: Page) -> None:
+    before = _sidebar_item_box(page, "Mapping")
+    page.locator('section[data-testid="stSidebar"]').get_by_text("프로젝트", exact=True).last.click()
+    page.get_by_text("프로젝트 저장").wait_for(timeout=15_000)
+    after = _sidebar_item_box(page, "Mapping")
+
+    max_delta = 1.0
+    deltas = {
+        "x": abs(after["x"] - before["x"]),
+        "y": abs(after["y"] - before["y"]),
+        "width": abs(after["width"] - before["width"]),
+    }
+    unstable = {name: delta for name, delta in deltas.items() if delta > max_delta}
+    if unstable:
+        raise AssertionError(f"Sidebar menu moved after navigation: {unstable}")
+
+
+def _return_home(page: Page) -> None:
+    page.locator('section[data-testid="stSidebar"]').get_by_text("Home", exact=True).last.click()
+    page.get_by_text("분석 상태").first.wait_for(timeout=15_000)
+
+
 def main() -> None:
     screenshot_path = Path(args.screenshot)
     screenshot_path.parent.mkdir(parents=True, exist_ok=True)
@@ -58,6 +89,8 @@ def main() -> None:
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
             text = _page_text(page, args.url)
             _verify_text(text)
+            _verify_sidebar_layout_stability(page)
+            _return_home(page)
             page.screenshot(path=str(screenshot_path), full_page=True)
             browser.close()
     except Error as exc:
