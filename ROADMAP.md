@@ -30,7 +30,7 @@
 | P2 | Ops | Home UI visual verification script | Done | Home UI 검증 스크립트 추가 | c8c421e |
 | P2 | UX | Sidebar menu layout stabilization | Done | Sidebar 메뉴 위치 흔들림 보정 | 5ee2065 |
 | P2 | Sample Data | Synthetic target project repository | Done | 가상 샘플 대상 프로젝트 생성 스크립트 추가 | fa7fcbb |
-| P2 | Sample Data | Rich demo target repository scenario design | Done | 샘플 대상 repo 데모 시나리오 설계 문서 추가 | fb3f2a0 |
+| P2 | Sample Data | Rich demo target repository scenario design | Done | 샘플 대상 repo 데모 시나리오 설계 문서 추가 | 7038ac5 |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
