@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 | b1cf9ef |
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 | d00b868 |
-| P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | - |
+| P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
 | P1 | RAG | Project Chat answer quality and history persistence | Planned | Project Chat 전용 메뉴 추가 | 330434b |
 | P1 | RAG | Source file re-index warning and one-click refresh | Planned | 현재 소스 검증형 RAG 검색 챗 추가 | 0be5930 |
 | P1 | Mapping | Mapping feedback analytics and review queue | Planned | 매핑 피드백 기능 추가 | 466d131 |
