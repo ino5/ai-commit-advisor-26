@@ -99,34 +99,46 @@ def _build_prompt(program: Program, mappings: list[ProgramCommitMapping]) -> str
         "raw_metadata": program.raw_metadata,
     }
     return f"""
-Analyze the implementation status of one development-plan program from its related Git commits.
-Use the program plan, description, commit messages, changed files, and existing commit mapping analysis.
-Do not decide from commit count alone.
+개발계획에 등록된 단일 프로그램의 구현상태를 보수적으로 분석하세요.
 
-Return only valid JSON in this shape:
+입력 데이터는 프로그램 계획/설명, 관련 커밋 메시지, 변경 파일, 기존 프로그램-커밋 매핑 근거입니다.
+커밋 수만으로 구현상태를 판단하지 마세요.
+커밋만으로 실제 배포 완료, 테스트 완료, 운영 검증 완료를 확정할 수 없습니다.
+완료 신호가 있어도 근거가 약하거나 범위가 불명확하면 IN_PROGRESS 또는 UNKNOWN을 선택하세요.
+테스트, 예외처리, 화면 연결, 배포 여부가 확인되지 않으면 incomplete_features에 불확실성으로 남기세요.
+
+반드시 valid JSON만 반환하세요. JSON 밖의 설명 문장을 쓰지 마세요.
+summary, completed_features, incomplete_features, evidence_commits.reason은 모두 한국어로 작성하세요.
+
+JSON 형식:
 {{
   "status": "NOT_STARTED | IN_PROGRESS | COMPLETED | UNKNOWN",
-  "summary": "short Korean summary explaining the judgment",
-  "completed_features": ["feature that appears implemented"],
-  "incomplete_features": ["feature that appears incomplete or uncertain"],
+  "summary": "판단 근거를 짧게 설명하는 한국어 요약",
+  "completed_features": ["완료된 것으로 보이는 기능"],
+  "incomplete_features": ["미완료 또는 확인이 필요한 기능/불확실성"],
   "evidence_commits": [
     {{
-      "commit_hash": "full hash from input",
-      "reason": "why this commit supports the judgment"
+      "commit_hash": "입력에 있는 full commit hash",
+      "reason": "이 커밋이 판단 근거가 되는 이유"
     }}
   ]
 }}
 
-Status rules:
-- NOT_STARTED: no related implementation evidence exists.
-- IN_PROGRESS: implementation evidence exists but completion is partial or still uncertain.
-- COMPLETED: commits and analysis strongly indicate the described program is implemented.
-- UNKNOWN: evidence is insufficient or contradictory.
+상태 판단 기준:
+- NOT_STARTED: 관련 구현 근거가 없음.
+- IN_PROGRESS: 구현 근거는 있으나 전체 범위 완료를 확정할 수 없음.
+- COMPLETED: 프로그램 설명/계획 범위와 관련된 핵심 구현 근거가 충분하고, 미완료 신호가 뚜렷하지 않은 경우에만 선택.
+- UNKNOWN: 근거가 부족하거나 충돌하거나 의미가 불명확함.
 
-[Program]
+COMPLETED 선택 주의:
+- 단순히 관련 커밋이 많거나 관련도 점수가 높다는 이유만으로 COMPLETED를 선택하지 마세요.
+- 테스트 완료, 예외처리, 화면 연결, 배포/운영 검증 여부가 입력에서 확인되지 않으면 해당 내용을 incomplete_features에 남기세요.
+- 완료로 보이는 커밋이 있어도 프로그램 전체 범위를 덮는지 불명확하면 IN_PROGRESS 또는 UNKNOWN을 선택하세요.
+
+[프로그램 정보]
 {json.dumps(program_info, ensure_ascii=False, default=str)}
 
-[Related commits]
+[관련 커밋 및 기존 매핑 근거]
 {json.dumps(commits, ensure_ascii=False, default=str)}
 """.strip()
 
@@ -163,7 +175,7 @@ def _normalize_payload(payload: dict | None, mappings: list[ProgramCommitMapping
 
     return {
         "status": status,
-        "summary": str(payload.get("summary") or "").strip() or "No summary was returned by the analyzer.",
+        "summary": str(payload.get("summary") or "").strip() or "분석 요약이 반환되지 않았습니다.",
         "completed_features": _as_string_list(payload.get("completed_features")),
         "incomplete_features": _as_string_list(payload.get("incomplete_features")),
         "evidence_commits": normalized_evidence[:MAX_EVIDENCE_COMMITS],
@@ -176,7 +188,7 @@ def _fallback_evidence(mappings: list[ProgramCommitMapping]) -> list[dict]:
         {
             "commit_hash": mapping.commit.commit_hash,
             "short_hash": mapping.commit.commit_hash[:12],
-            "reason": mapping.reason or "Related commit mapping evidence.",
+            "reason": mapping.reason or "관련 커밋 매핑 근거입니다.",
         }
         for mapping in sorted_mappings[:MAX_EVIDENCE_COMMITS]
         if mapping.commit
@@ -187,9 +199,9 @@ def _fallback_payload(mappings: list[ProgramCommitMapping]) -> dict:
     if not mappings:
         return {
             "status": STATUS_NOT_STARTED,
-            "summary": "No related commits are mapped to this program.",
+            "summary": "관련 커밋이 없어 구현 근거를 찾지 못했습니다.",
             "completed_features": [],
-            "incomplete_features": ["Implementation evidence has not been found."],
+            "incomplete_features": ["관련 구현 근거가 없어 실제 구현 여부는 담당자 확인이 필요합니다."],
             "evidence_commits": [],
         }
 
@@ -203,20 +215,29 @@ def _fallback_payload(mappings: list[ProgramCommitMapping]) -> dict:
     has_partial_hint = any(keyword in status for status in mapping_statuses for keyword in ("partial", "progress", "일부"))
 
     if has_completion_hint and high_score_count > 0:
-        status = STATUS_COMPLETED
-        summary = "Mapped commit analysis contains completion signals for this program."
-        completed_features = ["Implementation appears complete based on mapped commit analysis."]
-        incomplete_features = []
+        status = STATUS_IN_PROGRESS
+        summary = "매핑 결과에 완료 신호가 있으나 실제 완료 여부는 담당자 검증이 필요합니다."
+        completed_features = ["관련 커밋과 매핑 근거에서 구현 완료 신호가 일부 확인됩니다."]
+        incomplete_features = [
+            "프로그램 전체 범위 완료 여부는 추가 확인이 필요합니다.",
+            "변경 파일과 커밋 메시지만으로 테스트/배포 여부는 확인할 수 없습니다.",
+        ]
     elif has_partial_hint or high_score_count > 0 or len(mappings) > 1:
         status = STATUS_IN_PROGRESS
-        summary = "Related commits exist, but the available evidence does not prove full completion."
-        completed_features = ["Some implementation work is visible in related commits."]
-        incomplete_features = ["Completion of the full program scope is still uncertain."]
+        summary = "관련 커밋은 있으나 전체 범위 완료 여부는 확인이 필요합니다."
+        completed_features = ["관련 커밋에서 일부 구현 작업이 확인됩니다."]
+        incomplete_features = [
+            "전체 프로그램 범위의 완료 여부는 아직 불확실합니다.",
+            "변경 파일과 커밋 메시지만으로 테스트/배포 여부는 확인할 수 없습니다.",
+        ]
     else:
         status = STATUS_UNKNOWN
-        summary = "Related commits exist, but their implementation meaning is unclear."
+        summary = "관련 커밋은 있으나 구현 의미가 불명확해 판단할 수 없습니다."
         completed_features = []
-        incomplete_features = ["The mapped commits are not enough to judge implementation status."]
+        incomplete_features = [
+            "매핑된 커밋만으로 구현상태를 판단하기 어렵습니다.",
+            "변경 파일과 커밋 메시지만으로 테스트/배포 여부는 확인할 수 없습니다.",
+        ]
 
     return {
         "status": status,

@@ -2,6 +2,15 @@
 
 ## 2026-06-08
 
+### 구현상태 분석 프롬프트와 fallback 보수화
+
+- `ProgramImplementationAnalyzer`의 LLM 프롬프트를 한국어 중심으로 정리하고, 프로그램 계획/설명/관련 커밋/변경 파일/기존 매핑 근거를 사용하되 커밋 수만으로 판단하지 않도록 명시했습니다.
+- 커밋만으로 테스트 완료, 예외처리, 화면 연결, 배포/운영 검증 완료를 확정할 수 없으며 불확실성은 `incomplete_features`에 남기도록 프롬프트를 보강했습니다.
+- fallback 결과 문구를 한국어로 바꾸고, 완료 신호가 있어도 fallback에서는 담당자 검증이 필요한 `IN_PROGRESS`로 보수적으로 처리하도록 조정했습니다.
+- 잘못된 status 값, 입력에 없는 evidence commit hash, mapping 없는 경우, 한국어 fallback 문구를 확인하는 focused tests를 추가했습니다.
+- `docs/ai-technical-overview.md`에 구현상태 분석이 보수적 추정이며 업무 검증이 필요하다는 설명을 추가했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`36 passed`).
+
 ### README Program Detail 설명 정리
 
 - `README.md`의 Program Detail 설명에서 저장된 분석 결과 조회와 `구현상태 재분석` 버튼의 동작을 구분해 정리했습니다.

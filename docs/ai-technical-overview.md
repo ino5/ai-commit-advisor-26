@@ -13,7 +13,7 @@ The project uses AI as an assistant for analysis and retrieval, not as an uncont
 | Area | AI Usage | Evidence Used | Output |
 |---|---|---|---|
 | Program-Commit Mapping | LLM compares one commit with candidate programs | Program metadata, commit message, changed files, diff snippets, RAG candidates | Related programs, relevance score, implementation status, reason |
-| Program Implementation Status | LLM summarizes implementation state per program | Program plan, related commits, changed files, prior mapping analysis | NOT_STARTED, IN_PROGRESS, COMPLETED, UNKNOWN with evidence commits |
+| Program Implementation Status | LLM conservatively estimates implementation state per program | Program plan, related commits, changed files, prior mapping analysis | NOT_STARTED, IN_PROGRESS, COMPLETED, UNKNOWN with evidence commits and Korean verification guidance |
 | Project Chat | RAG retrieves current source chunks and LLM answers user questions | Verified `source_file` chunks by default | Chat answer with source citations |
 | AI Code Review | LLM reviews working tree, staged changes, latest commit, or selected commit | Git diff and commit message | Summary, risk level, bug findings, refactoring suggestions |
 | RAG Search | Embeddings retrieve relevant chunks | Current source, programs, commits, commit_file diffs | Similar chunks with metadata and verification status |
@@ -119,6 +119,12 @@ AI outputs are stored with raw or structured evidence where practical.
 - `risk_findings.evidence`: rule evidence used to create risk findings
 
 Manual feedback is also captured in `program_commit_mappings` feedback columns so human corrections can override AI mapping results.
+
+## Implementation Status Guardrails
+
+Program implementation status is treated as an estimate for business verification. The prompt tells the LLM to use the program plan, description, related commits, changed files, and existing mapping evidence, but not to decide from commit count alone.
+
+`COMPLETED` should be selected only when the core implementation evidence sufficiently covers the program scope and no clear incomplete signal exists. Commit evidence alone cannot prove deployment, testing, exception handling, screen integration, or production verification. When those items are not visible, they remain in `incomplete_features` as verification items.
 
 ## Current Limits
 
