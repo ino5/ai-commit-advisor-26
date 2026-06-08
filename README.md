@@ -718,6 +718,15 @@ C:\dev\ai-advisor-sample-shop
 - `advisor_uploads\sample_programs.xlsx`
 - `advisor_uploads\sample_development_plan.xlsx`
 
+현재 샘플 repo는 기본 기능 확인용 최소 데이터셋입니다. AI Commit Advisor의 전체 기능을 소개하는 풍부한 데모 repo로 확장할 때는 `docs/sample-target-repo-demo-design.md`의 설계를 기준으로 합니다.
+
+설계 기준 요약:
+
+- 권장 커밋 수: 25~40개
+- 우선 목표: 약 30개 커밋
+- 포함할 시나리오: 기능 추가, 버그 유발/수정, 테스트 보강, 리팩터링, 문서 변경, 교차 모듈 영향, 미완료 기능, 리스크 분석용 계획 데이터
+- 확인할 기능: Git Sync, Mapping, Program Detail, Commit Impact, Risk Analysis, RAG, Project Chat, AI Code Review, AI Progress
+
 같은 경로를 다시 만들려면:
 
 ```powershell

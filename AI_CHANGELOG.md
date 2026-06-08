@@ -2,6 +2,17 @@
 
 ## 2026-06-09
 
+### 샘플 대상 repo 데모 시나리오 설계 문서 추가
+
+- AI Commit Advisor의 전체 기능을 소개할 수 있도록 샘플 대상 repo의 목표 규모, 커밋 시나리오, 기능별 데모 신호를 정리한 `docs/sample-target-repo-demo-design.md`를 추가했습니다.
+- 현재 샘플 repo의 장점과 한계를 정리하고, 권장 커밋 수를 25~40개, 우선 목표를 약 30개로 정의했습니다.
+- Git Sync, Mapping, Program Detail, Commit Impact, Risk Analysis, RAG, Project Chat, AI Code Review, AI Progress별로 샘플 데이터가 보여줘야 할 조건을 문서화했습니다.
+- `AGENTS.md`에 샘플 대상 repo, 샘플 커밋 히스토리, 샘플 데이터 생성, 데모 시나리오를 바꿀 때 설계 문서를 먼저 확인하라는 규칙을 추가했습니다.
+- `AGENTS.md`에 커밋/푸시 전 변경 성격별로 관련 Markdown 문서 갱신 필요성을 확인하는 pre-commit documentation check를 추가했습니다.
+- `ROADMAP.md`에 `Rich demo target repository scenario design` 작업을 등록했습니다.
+- `README.md`의 샘플 데이터 생성 섹션에 현재 샘플 repo가 기본 기능 확인용 최소 데이터셋이며, 확장 시 설계 문서를 기준으로 한다는 안내를 추가했습니다.
+- 검증: 문서 변경 범위 확인 및 `git diff --check` 통과.
+
 ### 가상 샘플 대상 프로젝트 생성 스크립트 추가
 
 - AI Commit Advisor 앱 repo와 분리된 sibling Git repo `C:\dev\ai-advisor-sample-shop`를 생성하는 `scripts/create_sample_target_repo.py`를 추가했습니다.
