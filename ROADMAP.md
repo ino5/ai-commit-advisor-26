@@ -17,6 +17,7 @@
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
 | P1 | RAG | Project Chat answer quality and history persistence | Planned | Project Chat 전용 메뉴 추가 | 330434b |
 | P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 확인과 원클릭 재인덱싱 | de4a16e |
+| P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | - |
 | P1 | Mapping | Mapping feedback analytics and review queue | Planned | 매핑 피드백 기능 추가 | 466d131 |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P2 | Ops | CI test workflow | Planned | - | - |
@@ -112,6 +113,23 @@ Checklist:
 - [x] Add stale source_file chunk count.
 - [x] Add one-click source_file re-index action.
 - [x] Add focused tests.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P1 - Implementation Status Result Display Improvement
+
+Status: Done
+
+Goal:
+Make saved program implementation status analysis easier for business owners to understand and verify.
+
+Checklist:
+
+- [x] Show AI status values as business-friendly Korean labels.
+- [x] Add explanatory guidance that the result is an AI estimate requiring owner confirmation.
+- [x] Improve saved result layout for status, analyzed time, evidence count, summary, features, and evidence commits.
+- [x] Make evidence commit rendering defensive for malformed payloads.
+- [x] Keep reanalysis failures from breaking the whole Program Detail page.
+- [x] Run compileall and pytest.
 - [x] Update `AI_CHANGELOG.md`.
 
 ## P1 - Mapping Feedback Analytics And Review Queue

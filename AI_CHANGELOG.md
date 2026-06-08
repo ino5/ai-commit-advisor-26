@@ -2,6 +2,16 @@
 
 ## 2026-06-08
 
+### Program Detail 구현상태 분석 결과 표시 개선
+
+- Program Detail의 저장된 프로그램 단위 구현상태 분석 결과를 업무 담당자가 이해하기 쉬운 한글 추정 라벨로 표시했습니다.
+- 분석 결과 영역에 AI 분석 근거와 담당자 확인 필요성을 안내하는 문구를 추가했습니다.
+- 구현상태, 분석 일시, 근거 커밋 수, 상태 요약, 완료/미완료 추정 기능, 주요 근거 커밋을 카드 형태로 정리했습니다.
+- evidence_commits가 없거나 예상하지 못한 형태여도 화면이 깨지지 않도록 표시 전용 정규화 helper를 추가했습니다.
+- 구현상태 재분석 실패 시 Program Detail 전체 화면이 죽지 않고 오류를 표시한 뒤 기존 저장 결과를 계속 보여주도록 예외 처리를 보강했습니다.
+- `README.md`의 Program Detail/구현상태 분석 설명을 실제 화면 표현에 맞게 최소 수정했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`31 passed`).
+
 ### source_file 재인덱싱 운영 기록 README 보강
 
 - `README.md`에 source_file 재인덱싱과 embedding 생성을 분리해서 운영해야 하는 이유를 정리했습니다.

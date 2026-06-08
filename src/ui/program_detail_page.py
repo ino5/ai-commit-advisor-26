@@ -31,6 +31,21 @@ def _format_datetime(value) -> str:
     return value.strftime("%Y-%m-%d %H:%M") if value else "-"
 
 
+def _format_implementation_status_label(status: str | None) -> str:
+    labels = {
+        "NOT_STARTED": "구현전 추정",
+        "IN_PROGRESS": "진행중 추정",
+        "COMPLETED": "구현완료 추정",
+        "UNKNOWN": "판단불가",
+    }
+    return labels.get(str(status or "").strip().upper(), "판단불가")
+
+
+def _short_commit_hash(value: str | None) -> str:
+    text = str(value or "").strip()
+    return text[:12] if text else "-"
+
+
 def _option_dataframe(options) -> pd.DataFrame:
     return pd.DataFrame([option.__dict__ for option in options])
 
@@ -156,11 +171,48 @@ def _render_saved_risks(project_id: int, program_db_id: int) -> None:
 
 
 def _format_json_list(value) -> str:
-    if not value:
-        return "-"
-    if isinstance(value, list):
-        return "\n".join(f"- {item}" for item in value)
-    return str(value)
+    items = _normalize_text_list(value)
+    if not items:
+        return "- 없음"
+    return "\n".join(f"- {item}" for item in items)
+
+
+def _normalize_text_list(value) -> list[str]:
+    if not isinstance(value, list):
+        text = str(value or "").strip()
+        return [text] if text else []
+
+    items: list[str] = []
+    for item in value:
+        if isinstance(item, dict):
+            text = item.get("summary") or item.get("name") or item.get("description") or item.get("reason")
+        else:
+            text = item
+        text = str(text or "").strip()
+        if text:
+            items.append(text)
+    return items
+
+
+def _normalize_evidence_commits(value) -> list[dict]:
+    if not isinstance(value, list):
+        return []
+
+    rows: list[dict] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        commit_hash = str(item.get("commit_hash") or item.get("hash") or "").strip()
+        short_hash = str(item.get("short_hash") or "").strip() or _short_commit_hash(commit_hash)
+        reason = str(item.get("reason") or item.get("mapping_reason") or "").strip()
+        rows.append(
+            {
+                "short_hash": short_hash,
+                "commit_hash": commit_hash or "-",
+                "reason": reason or "근거 설명이 없습니다.",
+            }
+        )
+    return rows
 
 
 def _render_implementation_status(program_db_id: int) -> None:
@@ -173,15 +225,19 @@ def _render_implementation_status(program_db_id: int) -> None:
         st.caption("프로그램-커밋 매핑 해시 목록이 이전 분석과 같으면 재분석을 건너뜁니다.")
 
     if run_analysis:
-        with SessionLocal() as db:
-            analyzer = ProgramImplementationAnalyzer()
-            with st.spinner("선택한 프로그램의 구현상태를 분석 중입니다."):
-                status_result, analyzed = analyzer.analyze_program(db, program_db_id, skip_unchanged=True)
-                db.commit()
-        if analyzed:
-            st.success("구현상태 분석을 저장했습니다.")
-        else:
-            st.info("매핑된 커밋 목록이 변경되지 않아 기존 분석 결과를 사용합니다.")
+        try:
+            with SessionLocal() as db:
+                analyzer = ProgramImplementationAnalyzer()
+                with st.spinner("선택한 프로그램의 구현상태를 분석 중입니다."):
+                    status_result, analyzed = analyzer.analyze_program(db, program_db_id, skip_unchanged=True)
+                    db.commit()
+            if analyzed:
+                st.success("구현상태 분석을 저장했습니다.")
+            else:
+                st.info("매핑된 커밋 목록이 변경되지 않아 기존 분석 결과를 사용합니다.")
+        except Exception as exc:
+            st.error(f"구현상태 재분석에 실패했습니다: {exc}")
+            st.warning("기존에 저장된 분석 결과가 있으면 아래에 계속 표시합니다.")
 
     with SessionLocal() as db:
         status_result = get_program_implementation_status(db, program_db_id)
@@ -190,27 +246,36 @@ def _render_implementation_status(program_db_id: int) -> None:
         st.info("저장된 구현상태 분석 결과가 없습니다. 매핑 분석을 실행하거나 재분석 버튼을 눌러 생성하세요.")
         return
 
-    metric_col1, metric_col2 = st.columns(2)
-    metric_col1.metric("구현상태", status_result.status)
-    metric_col2.metric("분석 일시", _format_datetime(status_result.analyzed_at))
+    evidence_rows = _normalize_evidence_commits(status_result.evidence_commits)
+    status_label = _format_implementation_status_label(status_result.status)
 
-    st.markdown("**상태 요약**")
-    st.write(status_result.summary or "-")
+    st.info(
+        "이 결과는 프로그램 정보, 관련 커밋, 매핑 근거를 기반으로 한 AI 분석 결과입니다. "
+        "실제 완료 여부는 담당자 확인이 필요하며, 단정이 아닌 추정 관점으로 해석하세요."
+    )
 
-    feature_col1, feature_col2 = st.columns(2)
-    with feature_col1:
-        st.markdown("**완료된 것으로 보이는 기능**")
-        st.markdown(_format_json_list(status_result.completed_features))
-    with feature_col2:
-        st.markdown("**미완료 또는 불확실한 기능**")
-        st.markdown(_format_json_list(status_result.incomplete_features))
+    with st.container(border=True):
+        metric_col1, metric_col2, metric_col3 = st.columns(3)
+        metric_col1.metric("구현상태", status_label)
+        metric_col2.metric("분석 일시", _format_datetime(status_result.analyzed_at))
+        metric_col3.metric("근거 커밋 수", len(evidence_rows))
 
-    evidence = status_result.evidence_commits or []
-    st.markdown("**주요 근거 커밋**")
-    if not evidence:
-        st.write("-")
-        return
-    st.dataframe(pd.DataFrame(evidence), use_container_width=True, hide_index=True)
+        st.markdown("**상태 요약**")
+        st.write(status_result.summary or "-")
+
+        feature_col1, feature_col2 = st.columns(2)
+        with feature_col1:
+            st.markdown("**완료된 것으로 보이는 기능**")
+            st.markdown(_format_json_list(status_result.completed_features))
+        with feature_col2:
+            st.markdown("**미완료 또는 불확실한 기능**")
+            st.markdown(_format_json_list(status_result.incomplete_features))
+
+        st.markdown("**주요 근거 커밋**")
+        if not evidence_rows:
+            st.info("근거 커밋 없음")
+            return
+        st.dataframe(pd.DataFrame(evidence_rows), use_container_width=True, hide_index=True)
 
 
 def _commit_dataframe(analysis) -> pd.DataFrame:
