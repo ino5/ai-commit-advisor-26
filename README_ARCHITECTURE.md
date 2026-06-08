@@ -106,7 +106,7 @@ flowchart LR
 - `AI Code Review`: staged 변경, 최근 커밋, 특정 커밋을 LLM으로 리뷰하고 결과를 저장.
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약.
 - `Planning Dashboard`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
-- `AI Progress`: 계획 진척도와 AI 판단 진척도 비교, 리스크 프로그램 추적.
+- `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
 - `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
 - `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답하고, 답변 전 현재 소스 인덱스 상태를 확인.
 
@@ -351,7 +351,7 @@ sequenceDiagram
     User->>AIPage: AI Progress 조회
     AIPage->>Progress: get_ai_progress_summary
     Progress->>DB: programs + mappings 조회
-    Progress-->>AIPage: 계획 진척도, AI 진척도, 리스크 계산 결과
+    Progress-->>AIPage: 계획 진척도, AI 진척도, 저장된 구현상태 분석 요약, 리스크 계산 결과
 ```
 
 ### AI 진척도 계산 규칙
@@ -362,6 +362,8 @@ sequenceDiagram
 - 매핑 결과 없음: 0
 
 프로그램별 AI 진척도는 해당 프로그램의 mapping 중 가장 높은 구현 상태를 사용한다.
+
+AI Progress 화면은 이 수치 계산과 별도로 `program_implementation_status`에 저장된 프로그램 단위 구현상태 분석 결과를 함께 표시한다. 저장된 분석 결과는 업무 검토용 요약 근거이며, AI 진척도/진척도 차이/리스크 조건 계산을 대체하지 않는다.
 
 리스크 조건:
 
@@ -466,7 +468,7 @@ LLM 출력 예시:
 - LLM mock 및 OpenAI-compatible local chat 호출.
 - Mapping 실행 이력 저장.
 - 커밋별 mapping 분석 상태 저장.
-- AI Progress 계산 및 리스크 프로그램 표시.
+- AI Progress 계산, 저장된 구현상태 분석 요약, 리스크 프로그램 표시.
 - Risk Analysis 실행, 리스크 저장, 미해결 리스크 조회 및 해결 처리.
 - Commit Impact 분석.
 - AI Code Review 실행 및 리뷰 이력 저장.
@@ -533,7 +535,7 @@ LLM 출력 예시:
 | `src/ui/code_review_page.py` | AI 코드 리뷰 실행 및 이력 조회. |
 | `src/ui/dashboard_page.py` | 프로젝트 운영 요약. |
 | `src/ui/planning_dashboard_page.py` | 개발계획 기준 일정/진척 현황. |
-| `src/ui/ai_progress_page.py` | 계획 진척도와 AI 진척도 비교. |
+| `src/ui/ai_progress_page.py` | 계획 진척도와 AI 진척도 비교, 저장된 구현상태 분석 요약 표시. |
 | `src/ui/settings_page.py` | DB/LLM/Embedding 설정 확인. |
 
 ### 주요 서비스
@@ -549,7 +551,7 @@ LLM 출력 예시:
 | `src/services/developer_management_service.py` | `save_manual_developer`, `update_developer`, `delete_developer`, `validate_developer_import` |
 | `src/services/llm_client.py` | `LLMClient.generate` |
 | `src/services/mapping_service.py` | `MappingService.analyze_commits`, `MappingService.analyze_project` |
-| `src/services/progress_service.py` | `get_ai_progress_summary`, `get_program_commit_details` |
+| `src/services/progress_service.py` | `get_ai_progress_summary`, `get_program_commit_details`, `implementation_analysis_status_label` |
 | `src/services/program_analysis_service.py` | `list_program_options`, `get_program_detail_analysis`, `get_commit_file_details` |
 | `src/services/program_implementation_analyzer.py` | `ProgramImplementationAnalyzer.analyze_program`, `ProgramImplementationAnalyzer.analyze_project` |
 | `src/services/risk_service.py` | `run_risk_analysis`, `get_unresolved_findings`, `resolve_findings` |
