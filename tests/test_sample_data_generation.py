@@ -1,7 +1,13 @@
 from scripts.generate_sample_development_data import classify_file, infer_role_and_skills, module_from_path
 import pandas as pd
 
-from scripts.create_sample_target_repo import DEVELOPERS, PROGRAM_ROWS, _apply_developer_profiles, _commit_steps
+from scripts.create_sample_target_repo import (
+    DEVELOPERS,
+    PROGRAM_ROWS,
+    _apply_demo_plan_overrides,
+    _apply_developer_profiles,
+    _commit_steps,
+)
 
 
 def test_python_controller_and_service_paths_are_backend() -> None:
@@ -55,6 +61,30 @@ def test_sample_target_repo_is_spring_mybatis_shaped() -> None:
     assert all(".py" not in row["Controller"] for row in PROGRAM_ROWS)
 
 
+def test_sample_target_repo_has_rich_demo_commit_history() -> None:
+    steps = _commit_steps()
+    messages = {step.message for step in steps}
+    all_paths = {path for step in steps for path in step.files}
+
+    assert len(steps) == 30
+    assert "Relax partner payment validation for pilot channel" in messages
+    assert "Reject zero and negative payment amounts" in messages
+    assert "Change dashboard summary query across operations modules" in messages
+    assert "Fix dashboard summary over-counting" in messages
+    assert "Add coupon discount service skeleton" in messages
+    assert "Add release verification checklist" in messages
+    assert "docs/review-targets/payment-zero-amount-risk.md" in all_paths
+    assert "docs/business-rules/payment-inventory-rules.md" in all_paths
+    assert "docs/demo-guide.md" in all_paths
+
+
+def test_sample_program_rows_include_risk_demo_programs() -> None:
+    program_ids = {row["프로그램ID"] for row in PROGRAM_ROWS}
+
+    assert len(PROGRAM_ROWS) == 8
+    assert {"SMP-CPN-001", "SMP-SET-001"}.issubset(program_ids)
+
+
 def test_sample_target_repo_uses_korean_developer_names() -> None:
     names = {developer.name for developer in DEVELOPERS.values()}
 
@@ -76,3 +106,41 @@ def test_sample_target_repo_uses_public_si_roles() -> None:
     profiled = _apply_developer_profiles(developers)
 
     assert set(profiled["role"]) == {"PM", "PL", "개발자", "QA"}
+
+
+def test_sample_plan_overrides_create_risk_demo_rows() -> None:
+    plan = pd.DataFrame(
+        [
+            {
+                "program_id": "SMP-CPN-001",
+                "developer_id": "",
+                "planned_start_date": "",
+                "planned_end_date": "",
+                "actual_start_date": "",
+                "actual_end_date": "",
+                "status": "",
+                "progress_rate": 0,
+            },
+            {
+                "program_id": "SMP-SET-001",
+                "developer_id": "DEV_JIEUN_LEE",
+                "planned_start_date": "",
+                "planned_end_date": "",
+                "actual_start_date": "",
+                "actual_end_date": "",
+                "status": "",
+                "progress_rate": 0,
+            },
+        ]
+    )
+
+    overridden = _apply_demo_plan_overrides(plan)
+    coupon = overridden[overridden["program_id"] == "SMP-CPN-001"].iloc[0]
+    settlement = overridden[overridden["program_id"] == "SMP-SET-001"].iloc[0]
+
+    assert coupon["developer_id"] == "DEV_JIEUN_LEE"
+    assert coupon["status"] == "지연"
+    assert coupon["progress_rate"] == 80
+    assert settlement["developer_id"] == ""
+    assert settlement["status"] == "지연"
+    assert settlement["progress_rate"] == 45

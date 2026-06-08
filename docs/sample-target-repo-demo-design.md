@@ -15,27 +15,26 @@ The sample target repository is intentionally separate from this application rep
 
 The current sample target is a synthetic Spring MVC + MyBatis retail operations project.
 
-- Programs: 6
+- Programs: 8
 - Developers: 6
-- Git commits: 9
+- Git commits: 30
 - Main stack: Java, Spring MVC, JSP, MyBatis XML
-- Current domains: orders, inventory, payments, reports, dashboard
+- Current domains: orders, inventory, payments, reports, dashboard, coupon, settlement planning
 - Generated files: program CSV and upload Excel files for developers, programs, and development plans
 
 Strengths:
 
 - The target repository is already isolated as a sibling Git repository.
-- It has enough structure for basic Git sync, developer extraction, program upload, development plan upload, Mapping, RAG, and Project Chat checks.
+- It has enough structure for Git sync, developer extraction, program upload, development plan upload, Mapping, RAG, Project Chat, Risk Analysis, AI Code Review, Commit Impact, and AI Progress checks.
 - Package paths and program modules are clear, which helps candidate selection for program-commit mapping.
 - The generated Excel files are aligned with the fake repository history.
+- The history includes feature additions, bug-introducing changes, bug fixes, tests, refactoring, documentation, cross-module changes, and incomplete work.
 
-Gaps:
+Known limits:
 
-- The 9-commit history is a minimum verification dataset, not a full product demo dataset.
-- Most commits are clean feature-addition commits, so AI Code Review has few concrete bug or refactoring findings to surface.
-- Risk Analysis has limited variety because most generated plan rows are complete and assigned.
-- Cross-program impact is limited, so Commit Impact and Program Detail contribution views do not show enough complex cases.
-- There are few intentionally ambiguous, incomplete, risky, or corrective commits for Mapping review queues and AI Progress comparisons.
+- The sample is optimized for analysis value rather than successful Maven build execution.
+- The code is synthetic and should not be treated as production implementation guidance.
+- Some risk scenarios are created through generated development-plan overrides so Risk Analysis can demonstrate delayed, unassigned, and no-related-commit cases.
 
 ## Target Demo Scale
 

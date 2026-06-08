@@ -31,6 +31,7 @@
 | P2 | UX | Sidebar menu layout stabilization | Done | Sidebar 메뉴 위치 흔들림 보정 | 5ee2065 |
 | P2 | Sample Data | Synthetic target project repository | Done | 가상 샘플 대상 프로젝트 생성 스크립트 추가 | fa7fcbb |
 | P2 | Sample Data | Rich demo target repository scenario design | Done | 샘플 대상 repo 데모 시나리오 설계 문서 추가 | 7038ac5 |
+| P2 | Sample Data | Rich demo target repository implementation | Done | 풍부한 샘플 대상 repo 구현 | - |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
@@ -336,6 +337,25 @@ Checklist:
 - [x] Add agent guidance for checking the demo design before changing sample target repo behavior.
 - [x] Add pre-commit documentation check guidance for related Markdown files.
 - [x] Update README sample data guidance.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Rich Demo Target Repository Implementation
+
+Status: Done
+
+Goal:
+Expand the synthetic sample target repository from a minimal verification dataset into a richer demo dataset that exercises the full AI Commit Advisor workflow.
+
+Checklist:
+
+- [x] Expand generated program rows for additional demo-risk scenarios.
+- [x] Expand sample commit history to about 30 commits.
+- [x] Add source and documentation scenarios for code review, RAG, Project Chat, commit impact, and AI Progress.
+- [x] Add development-plan overrides for delayed, unassigned, and no-related-commit risk scenarios.
+- [x] Update focused tests for the richer sample shape.
+- [x] Regenerate the sibling sample target repository.
+- [x] Update README and sample design documentation if needed.
+- [x] Run compileall, pytest, and sample generation verification.
 - [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Application Dockerfile And Deployment Guide

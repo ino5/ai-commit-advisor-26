@@ -711,19 +711,19 @@ C:\dev\ai-advisor-sample-shop
 
 생성되는 내용:
 
-- 9개 Git commit과 6명의 한국인 author
-- Spring MVC + MyBatis 기반 주문, 재고, 결제, 매출, 대시보드 예제 소스
+- 30개 Git commit과 6명의 한국인 author
+- Spring MVC + MyBatis 기반 주문, 재고, 결제, 매출, 대시보드, 쿠폰 예제 소스
 - `샘플_프로그램목록.csv`
 - `advisor_uploads\sample_developers.xlsx`
 - `advisor_uploads\sample_programs.xlsx`
 - `advisor_uploads\sample_development_plan.xlsx`
 
-현재 샘플 repo는 기본 기능 확인용 최소 데이터셋입니다. AI Commit Advisor의 전체 기능을 소개하는 풍부한 데모 repo로 확장할 때는 `docs/sample-target-repo-demo-design.md`의 설계를 기준으로 합니다.
+현재 샘플 repo는 AI Commit Advisor의 전체 기능을 소개하기 위한 풍부한 데모 데이터셋입니다. 샘플 repo의 목표, 커밋 시나리오, 기능별 데모 포인트는 `docs/sample-target-repo-demo-design.md`를 기준으로 관리합니다.
 
-설계 기준 요약:
+구성 요약:
 
-- 권장 커밋 수: 25~40개
-- 우선 목표: 약 30개 커밋
+- 프로그램 수: 8개
+- 커밋 수: 30개
 - 포함할 시나리오: 기능 추가, 버그 유발/수정, 테스트 보강, 리팩터링, 문서 변경, 교차 모듈 영향, 미완료 기능, 리스크 분석용 계획 데이터
 - 확인할 기능: Git Sync, Mapping, Program Detail, Commit Impact, Risk Analysis, RAG, Project Chat, AI Code Review, AI Progress
 
@@ -735,7 +735,10 @@ C:\dev\ai-advisor-sample-shop
 
 앱에서는 `Project` 화면에 `C:\dev\ai-advisor-sample-shop`를 등록한 뒤 Git 동기화, 개발자 자동 추출, 프로그램/개발계획 업로드, Mapping 순서로 확인합니다.
 
+전체 데모 시나리오를 확인하려면 `scripts\create_sample_target_repo.py`가 함께 생성한 `C:\dev\ai-advisor-sample-shop\advisor_uploads`의 Excel 3종을 업로드합니다. 이 파일에는 쿠폰 지연, 정산 담당자 없음, 정산 관련 커밋 없음 같은 Risk Analysis용 계획 데이터가 포함됩니다.
+
 `샘플 데이터 생성` 메뉴에서 로컬 Git 저장소 경로를 입력하면 테스트용 Excel 파일을 생성하고 다운로드할 수도 있습니다.
+이 메뉴와 `generate_sample_development_data.py` CLI는 범용 Git 로그 추정용이므로, 데모 전용 계획 override는 적용하지 않습니다.
 
 생성 파일:
 

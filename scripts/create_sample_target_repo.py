@@ -112,6 +112,26 @@ PROGRAM_ROWS = [
         "Service": "DashboardService.java",
         "Mapper/Repository": "DashboardMapper.java, DashboardMapper.xml",
     },
+    {
+        "프로그램ID": "SMP-CPN-001",
+        "프로그램명": "쿠폰 할인",
+        "주요기능": "coupon",
+        "주요URL/화면": "/coupons/apply",
+        "기능설명": "주문 금액에 적용할 쿠폰 할인 가능 여부와 할인 금액을 계산합니다.",
+        "Controller": "CouponController.java",
+        "Service": "CouponDiscountService.java",
+        "Mapper/Repository": "CouponMapper.java, CouponMapper.xml",
+    },
+    {
+        "프로그램ID": "SMP-SET-001",
+        "프로그램명": "정산 내보내기",
+        "주요기능": "settlement",
+        "주요URL/화면": "/settlements/export",
+        "기능설명": "결제 승인 내역을 정산 파일로 생성하고 운영자가 다운로드할 수 있게 합니다.",
+        "Controller": "SettlementController.java",
+        "Service": "SettlementExportService.java",
+        "Mapper/Repository": "SettlementMapper.java, SettlementMapper.xml",
+    },
 ]
 
 
@@ -170,8 +190,37 @@ def _apply_developer_profiles(developers: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def _apply_demo_plan_overrides(plan: pd.DataFrame) -> pd.DataFrame:
+    result = plan.copy()
+    overrides = {
+        "SMP-CPN-001": {
+            "developer_id": "DEV_JIEUN_LEE",
+            "planned_start_date": datetime(2026, 5, 18).date(),
+            "planned_end_date": datetime(2026, 5, 28).date(),
+            "actual_start_date": datetime(2026, 5, 23).date(),
+            "actual_end_date": None,
+            "status": "지연",
+            "progress_rate": 80,
+        },
+        "SMP-SET-001": {
+            "developer_id": "",
+            "planned_start_date": datetime(2026, 5, 12).date(),
+            "planned_end_date": datetime(2026, 5, 24).date(),
+            "actual_start_date": None,
+            "actual_end_date": None,
+            "status": "지연",
+            "progress_rate": 45,
+        },
+    }
+    for program_id, values in overrides.items():
+        mask = result["program_id"] == program_id
+        for column, value in values.items():
+            result.loc[mask, column] = value
+    return result
+
+
 def _commit_steps() -> list[CommitStep]:
-    return [
+    base_steps = [
         CommitStep(
             "Initialize Spring MyBatis market operations project",
             DEVELOPERS["pm"],
@@ -810,6 +859,789 @@ def _commit_steps() -> list[CommitStep]:
         ),
     ]
 
+    base_steps.extend(
+        [
+            CommitStep(
+                "Validate customer and cart input for order creation",
+                DEVELOPERS["order"],
+                12,
+                {
+                    f"{BASE_PACKAGE_PATH}/order/service/OrderService.java": """
+                    package com.example.market.order.service;
+
+                    import com.example.market.order.mapper.OrderMapper;
+                    import java.util.Map;
+                    import org.springframework.stereotype.Service;
+                    import org.springframework.transaction.annotation.Transactional;
+                    import org.springframework.util.StringUtils;
+
+                    @Service
+                    public class OrderService {
+                        private final OrderMapper orderMapper;
+
+                        public OrderService(OrderMapper orderMapper) {
+                            this.orderMapper = orderMapper;
+                        }
+
+                        @Transactional
+                        public Map<String, Object> createOrder(String customerId) {
+                            if (!StringUtils.hasText(customerId)) {
+                                throw new IllegalArgumentException("customerId is required");
+                            }
+                            orderMapper.insertOrder(customerId.trim(), OrderStatus.PAYMENT_WAITING.code());
+                            return orderMapper.selectLatestOrder(customerId.trim());
+                        }
+                    }
+                    """,
+                    f"{BASE_PACKAGE_PATH}/order/service/OrderStatus.java": """
+                    package com.example.market.order.service;
+
+                    public enum OrderStatus {
+                        PAYMENT_WAITING,
+                        PAID,
+                        PACKING,
+                        SHIPPED,
+                        DONE,
+                        CANCELED;
+
+                        public String code() {
+                            return name();
+                        }
+                    }
+                    """,
+                },
+            ),
+            CommitStep(
+                "Expose inventory shortage message for operations dashboard",
+                DEVELOPERS["inventory"],
+                13,
+                {
+                    f"{BASE_PACKAGE_PATH}/inventory/service/InventoryService.java": """
+                    package com.example.market.inventory.service;
+
+                    import com.example.market.inventory.mapper.InventoryMapper;
+                    import org.springframework.stereotype.Service;
+                    import org.springframework.transaction.annotation.Transactional;
+
+                    @Service
+                    public class InventoryService {
+                        private final InventoryMapper inventoryMapper;
+
+                        public InventoryService(InventoryMapper inventoryMapper) {
+                            this.inventoryMapper = inventoryMapper;
+                        }
+
+                        @Transactional
+                        public String reserve(String sku, int quantity) {
+                            if (sku == null || sku.isBlank() || quantity <= 0) {
+                                return "INVALID_REQUEST";
+                            }
+                            int available = inventoryMapper.selectAvailableQuantity(sku);
+                            if (available < quantity) {
+                                inventoryMapper.insertShortageSignal(sku, quantity, available);
+                                return "SHORTAGE";
+                            }
+                            inventoryMapper.insertReservation(sku, quantity);
+                            return "RESERVED";
+                        }
+                    }
+                    """,
+                    f"{BASE_PACKAGE_PATH}/inventory/mapper/InventoryMapper.java": """
+                    package com.example.market.inventory.mapper;
+
+                    import org.apache.ibatis.annotations.Mapper;
+                    import org.apache.ibatis.annotations.Param;
+
+                    @Mapper
+                    public interface InventoryMapper {
+                        int selectAvailableQuantity(@Param("sku") String sku);
+                        void insertReservation(@Param("sku") String sku, @Param("quantity") int quantity);
+                        void insertShortageSignal(@Param("sku") String sku, @Param("requested") int requested, @Param("available") int available);
+                    }
+                    """,
+                    f"{RESOURCE_MAPPER_PATH}/InventoryMapper.xml": """
+                    <?xml version="1.0" encoding="UTF-8" ?>
+                    <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                      "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+                    <mapper namespace="com.example.market.inventory.mapper.InventoryMapper">
+                        <select id="selectAvailableQuantity" resultType="int">
+                            select available_quantity from inventory where sku = #{sku}
+                        </select>
+                        <insert id="insertReservation">
+                            insert into inventory_reservations(sku, quantity, reserved_at)
+                            values (#{sku}, #{quantity}, current_timestamp)
+                        </insert>
+                        <insert id="insertShortageSignal">
+                            insert into inventory_shortage_signals(sku, requested_quantity, available_quantity, detected_at)
+                            values (#{sku}, #{requested}, #{available}, current_timestamp)
+                        </insert>
+                    </mapper>
+                    """,
+                },
+            ),
+            CommitStep(
+                "Relax partner payment validation for pilot channel",
+                DEVELOPERS["payment"],
+                14,
+                {
+                    f"{BASE_PACKAGE_PATH}/payment/service/PaymentService.java": """
+                    package com.example.market.payment.service;
+
+                    import com.example.market.order.mapper.OrderMapper;
+                    import com.example.market.payment.mapper.PaymentMapper;
+                    import org.springframework.stereotype.Service;
+                    import org.springframework.transaction.annotation.Transactional;
+
+                    @Service
+                    public class PaymentService {
+                        private final PaymentMapper paymentMapper;
+                        private final OrderMapper orderMapper;
+
+                        public PaymentService(PaymentMapper paymentMapper, OrderMapper orderMapper) {
+                            this.paymentMapper = paymentMapper;
+                            this.orderMapper = orderMapper;
+                        }
+
+                        @Transactional
+                        public String authorize(long orderId, int amount) {
+                            // Pilot partner payments can arrive before final amount settlement.
+                            if (amount < 0) {
+                                return "REJECTED";
+                            }
+                            paymentMapper.insertPayment(orderId, amount, "AUTHORIZED");
+                            orderMapper.updateOrderStatus(orderId, "PAID");
+                            return "AUTHORIZED";
+                        }
+                    }
+                    """,
+                    "docs/review-targets/payment-zero-amount-risk.md": """
+                    # Review target: zero amount payment
+
+                    This commit intentionally allows zero amount payment authorization for pilot partner traffic.
+                    It is useful for AI Code Review because a reviewer should ask whether zero amount authorization can incorrectly mark an order as PAID.
+                    """,
+                },
+            ),
+            CommitStep(
+                "Reject zero and negative payment amounts",
+                DEVELOPERS["payment"],
+                15,
+                {
+                    f"{BASE_PACKAGE_PATH}/payment/service/PaymentService.java": """
+                    package com.example.market.payment.service;
+
+                    import com.example.market.order.mapper.OrderMapper;
+                    import com.example.market.payment.mapper.PaymentMapper;
+                    import org.springframework.stereotype.Service;
+                    import org.springframework.transaction.annotation.Transactional;
+
+                    @Service
+                    public class PaymentService {
+                        private final PaymentMapper paymentMapper;
+                        private final OrderMapper orderMapper;
+
+                        public PaymentService(PaymentMapper paymentMapper, OrderMapper orderMapper) {
+                            this.paymentMapper = paymentMapper;
+                            this.orderMapper = orderMapper;
+                        }
+
+                        @Transactional
+                        public String authorize(long orderId, int amount) {
+                            if (amount <= 0) {
+                                return "REJECTED";
+                            }
+                            paymentMapper.insertPayment(orderId, amount, "AUTHORIZED");
+                            orderMapper.updateOrderStatus(orderId, "PAID");
+                            return "AUTHORIZED";
+                        }
+                    }
+                    """,
+                    "src/test/java/com/example/market/payment/PaymentServiceTest.java": """
+                    package com.example.market.payment;
+
+                    import static org.junit.jupiter.api.Assertions.assertEquals;
+                    import org.junit.jupiter.api.Test;
+
+                    class PaymentServiceTest {
+                        @Test
+                        void zeroAmountPaymentMustBeRejected() {
+                            assertEquals("REJECTED", "REJECTED");
+                        }
+                    }
+                    """,
+                },
+            ),
+            CommitStep(
+                "Block invalid order status transitions",
+                DEVELOPERS["order"],
+                16,
+                {
+                    f"{BASE_PACKAGE_PATH}/order/service/OrderStatusService.java": """
+                    package com.example.market.order.service;
+
+                    import com.example.market.order.mapper.OrderStatusMapper;
+                    import java.util.Map;
+                    import java.util.Set;
+                    import org.springframework.stereotype.Service;
+                    import org.springframework.transaction.annotation.Transactional;
+
+                    @Service
+                    public class OrderStatusService {
+                        private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
+                            "PAYMENT_WAITING", Set.of("PAID", "CANCELED"),
+                            "PAID", Set.of("PACKING", "CANCELED"),
+                            "PACKING", Set.of("SHIPPED"),
+                            "SHIPPED", Set.of("DONE")
+                        );
+                        private final OrderStatusMapper orderStatusMapper;
+
+                        public OrderStatusService(OrderStatusMapper orderStatusMapper) {
+                            this.orderStatusMapper = orderStatusMapper;
+                        }
+
+                        @Transactional
+                        public void changeStatus(long orderId, String currentStatus, String nextStatus) {
+                            if (!ALLOWED_TRANSITIONS.getOrDefault(currentStatus, Set.of()).contains(nextStatus)) {
+                                throw new IllegalArgumentException("invalid order status transition");
+                            }
+                            orderStatusMapper.updateStatus(orderId, nextStatus);
+                            orderStatusMapper.insertStatusHistory(orderId, nextStatus);
+                        }
+                    }
+                    """,
+                    "docs/requirements/order-status-policy.md": """
+                    # Order status transition policy
+
+                    Orders move from PAYMENT_WAITING to PAID after payment authorization.
+                    PAID orders can move to PACKING or CANCELED.
+                    PACKING orders move to SHIPPED, and SHIPPED orders move to DONE.
+                    Direct transitions from PAYMENT_WAITING to SHIPPED are blocked.
+                    """,
+                },
+            ),
+            CommitStep(
+                "Exclude canceled payments from sales totals",
+                DEVELOPERS["inventory"],
+                17,
+                {
+                    f"{RESOURCE_MAPPER_PATH}/ReportMapper.xml": """
+                    <?xml version="1.0" encoding="UTF-8" ?>
+                    <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                      "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+                    <mapper namespace="com.example.market.report.mapper.ReportMapper">
+                        <select id="selectDailySalesSummary" resultType="map">
+                            select current_date as sales_date,
+                                   count(*) as order_count,
+                                   coalesce(sum(case when status = 'AUTHORIZED' then amount else 0 end), 0) as authorized_amount,
+                                   coalesce(sum(case when status = 'CANCELED' then amount else 0 end), 0) as canceled_amount
+                            from payments
+                            where status in ('AUTHORIZED', 'CANCELED')
+                        </select>
+                    </mapper>
+                    """,
+                    "docs/requirements/sales-report-policy.md": """
+                    # Sales report policy
+
+                    Daily sales report totals must exclude canceled payments from authorized amount.
+                    Canceled amount is shown separately so operations users can reconcile payment changes.
+                    """,
+                },
+            ),
+            CommitStep(
+                "Add dashboard refresh summary endpoint",
+                DEVELOPERS["payment"],
+                18,
+                {
+                    f"{BASE_PACKAGE_PATH}/dashboard/controller/DashboardApiController.java": """
+                    package com.example.market.dashboard.controller;
+
+                    import com.example.market.dashboard.service.DashboardService;
+                    import java.util.Map;
+                    import org.springframework.web.bind.annotation.GetMapping;
+                    import org.springframework.web.bind.annotation.RequestMapping;
+                    import org.springframework.web.bind.annotation.RestController;
+
+                    @RestController
+                    @RequestMapping("/dashboard/api")
+                    public class DashboardApiController {
+                        private final DashboardService dashboardService;
+
+                        public DashboardApiController(DashboardService dashboardService) {
+                            this.dashboardService = dashboardService;
+                        }
+
+                        @GetMapping("/summary")
+                        public Map<String, Object> summary() {
+                            return dashboardService.summary();
+                        }
+                    }
+                    """,
+                    "src/main/webapp/resources/js/dashboard.js": """
+                    async function refreshDashboard() {
+                        const response = await fetch("/dashboard/api/summary");
+                        return response.json();
+                    }
+                    """,
+                },
+            ),
+            CommitStep(
+                "Show payment waiting and inventory shortage indicators",
+                DEVELOPERS["inventory"],
+                19,
+                {
+                    f"{RESOURCE_MAPPER_PATH}/DashboardMapper.xml": """
+                    <?xml version="1.0" encoding="UTF-8" ?>
+                    <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                      "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+                    <mapper namespace="com.example.market.dashboard.mapper.DashboardMapper">
+                        <select id="selectOperationSummary" resultType="map">
+                            select
+                                (select count(*) from orders where status in ('PAYMENT_WAITING', 'PAID', 'PACKING')) as open_orders,
+                                (select count(*) from inventory_shortage_signals where resolved_yn = 'N') as inventory_shortage,
+                                (select count(*) from orders where status = 'PAYMENT_WAITING') as payment_waiting
+                        </select>
+                    </mapper>
+                    """,
+                    f"{WEBAPP_PATH}/dashboard/index.jsp": """
+                    <%@ page contentType="text/html;charset=UTF-8" %>
+                    <main class="dashboard">
+                        <h1>운영 대시보드</h1>
+                        <section data-metric="open-orders">Open orders: ${summary.openOrders}</section>
+                        <section data-metric="inventory-shortage">Inventory shortage: ${summary.inventoryShortage}</section>
+                        <section data-metric="payment-waiting">Payment waiting: ${summary.paymentWaiting}</section>
+                    </main>
+                    """,
+                },
+            ),
+            CommitStep(
+                "Add service tests for order and inventory validation",
+                DEVELOPERS["qa"],
+                20,
+                {
+                    "src/test/java/com/example/market/order/OrderServiceTest.java": """
+                    package com.example.market.order;
+
+                    import static org.junit.jupiter.api.Assertions.assertThrows;
+                    import org.junit.jupiter.api.Test;
+
+                    class OrderServiceTest {
+                        @Test
+                        void blankCustomerIdIsRejected() {
+                            assertThrows(IllegalArgumentException.class, () -> {
+                                throw new IllegalArgumentException("customerId is required");
+                            });
+                        }
+                    }
+                    """,
+                    "src/test/java/com/example/market/inventory/InventoryServiceTest.java": """
+                    package com.example.market.inventory;
+
+                    import static org.junit.jupiter.api.Assertions.assertEquals;
+                    import org.junit.jupiter.api.Test;
+
+                    class InventoryServiceTest {
+                        @Test
+                        void invalidQuantityIsRejected() {
+                            assertEquals("INVALID_REQUEST", "INVALID_REQUEST");
+                        }
+                    }
+                    """,
+                },
+            ),
+            CommitStep(
+                "Extract shared order status constants",
+                DEVELOPERS["order"],
+                21,
+                {
+                    f"{BASE_PACKAGE_PATH}/common/OrderStatuses.java": """
+                    package com.example.market.common;
+
+                    public final class OrderStatuses {
+                        public static final String PAYMENT_WAITING = "PAYMENT_WAITING";
+                        public static final String PAID = "PAID";
+                        public static final String PACKING = "PACKING";
+                        public static final String SHIPPED = "SHIPPED";
+                        public static final String DONE = "DONE";
+                        public static final String CANCELED = "CANCELED";
+
+                        private OrderStatuses() {
+                        }
+                    }
+                    """,
+                    f"{BASE_PACKAGE_PATH}/order/service/OrderStatusService.java": """
+                    package com.example.market.order.service;
+
+                    import static com.example.market.common.OrderStatuses.CANCELED;
+                    import static com.example.market.common.OrderStatuses.DONE;
+                    import static com.example.market.common.OrderStatuses.PACKING;
+                    import static com.example.market.common.OrderStatuses.PAID;
+                    import static com.example.market.common.OrderStatuses.PAYMENT_WAITING;
+                    import static com.example.market.common.OrderStatuses.SHIPPED;
+
+                    import com.example.market.order.mapper.OrderStatusMapper;
+                    import java.util.Map;
+                    import java.util.Set;
+                    import org.springframework.stereotype.Service;
+                    import org.springframework.transaction.annotation.Transactional;
+
+                    @Service
+                    public class OrderStatusService {
+                        private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
+                            PAYMENT_WAITING, Set.of(PAID, CANCELED),
+                            PAID, Set.of(PACKING, CANCELED),
+                            PACKING, Set.of(SHIPPED),
+                            SHIPPED, Set.of(DONE)
+                        );
+                        private final OrderStatusMapper orderStatusMapper;
+
+                        public OrderStatusService(OrderStatusMapper orderStatusMapper) {
+                            this.orderStatusMapper = orderStatusMapper;
+                        }
+
+                        @Transactional
+                        public void changeStatus(long orderId, String currentStatus, String nextStatus) {
+                            if (!ALLOWED_TRANSITIONS.getOrDefault(currentStatus, Set.of()).contains(nextStatus)) {
+                                throw new IllegalArgumentException("invalid order status transition");
+                            }
+                            orderStatusMapper.updateStatus(orderId, nextStatus);
+                            orderStatusMapper.insertStatusHistory(orderId, nextStatus);
+                        }
+                    }
+                    """,
+                },
+            ),
+            CommitStep(
+                "Normalize MyBatis result mappings for reports",
+                DEVELOPERS["inventory"],
+                22,
+                {
+                    f"{RESOURCE_MAPPER_PATH}/ReportMapper.xml": """
+                    <?xml version="1.0" encoding="UTF-8" ?>
+                    <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                      "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+                    <mapper namespace="com.example.market.report.mapper.ReportMapper">
+                        <resultMap id="dailySalesSummaryMap" type="map">
+                            <result column="sales_date" property="salesDate"/>
+                            <result column="order_count" property="orderCount"/>
+                            <result column="authorized_amount" property="authorizedAmount"/>
+                            <result column="canceled_amount" property="canceledAmount"/>
+                        </resultMap>
+                        <select id="selectDailySalesSummary" resultMap="dailySalesSummaryMap">
+                            select current_date as sales_date,
+                                   count(*) as order_count,
+                                   coalesce(sum(case when status = 'AUTHORIZED' then amount else 0 end), 0) as authorized_amount,
+                                   coalesce(sum(case when status = 'CANCELED' then amount else 0 end), 0) as canceled_amount
+                            from payments
+                            where status in ('AUTHORIZED', 'CANCELED')
+                        </select>
+                    </mapper>
+                    """,
+                },
+            ),
+            CommitStep(
+                "Add basic operator role check for dashboard and reports",
+                DEVELOPERS["pl"],
+                23,
+                {
+                    f"{BASE_PACKAGE_PATH}/security/OperatorRoleGuard.java": """
+                    package com.example.market.security;
+
+                    import org.springframework.stereotype.Component;
+                    import org.springframework.util.StringUtils;
+
+                    @Component
+                    public class OperatorRoleGuard {
+                        public void requireOperator(String role) {
+                            if (!StringUtils.hasText(role) || !"OPERATOR".equals(role)) {
+                                throw new SecurityException("operator role is required");
+                            }
+                        }
+                    }
+                    """,
+                    f"{BASE_PACKAGE_PATH}/dashboard/controller/DashboardController.java": """
+                    package com.example.market.dashboard.controller;
+
+                    import com.example.market.dashboard.service.DashboardService;
+                    import com.example.market.security.OperatorRoleGuard;
+                    import org.springframework.stereotype.Controller;
+                    import org.springframework.ui.Model;
+                    import org.springframework.web.bind.annotation.GetMapping;
+                    import org.springframework.web.bind.annotation.RequestHeader;
+
+                    @Controller
+                    public class DashboardController {
+                        private final DashboardService dashboardService;
+                        private final OperatorRoleGuard operatorRoleGuard;
+
+                        public DashboardController(DashboardService dashboardService, OperatorRoleGuard operatorRoleGuard) {
+                            this.dashboardService = dashboardService;
+                            this.operatorRoleGuard = operatorRoleGuard;
+                        }
+
+                        @GetMapping("/dashboard")
+                        public String dashboard(@RequestHeader(name = "X-Operator-Role", required = false) String role, Model model) {
+                            operatorRoleGuard.requireOperator(role);
+                            model.addAttribute("summary", dashboardService.summary());
+                            return "dashboard/index";
+                        }
+                    }
+                    """,
+                },
+            ),
+            CommitStep(
+                "Add coupon discount service skeleton",
+                DEVELOPERS["payment"],
+                24,
+                {
+                    f"{BASE_PACKAGE_PATH}/coupon/controller/CouponController.java": """
+                    package com.example.market.coupon.controller;
+
+                    import com.example.market.coupon.service.CouponDiscountService;
+                    import org.springframework.web.bind.annotation.PostMapping;
+                    import org.springframework.web.bind.annotation.RequestMapping;
+                    import org.springframework.web.bind.annotation.RequestParam;
+                    import org.springframework.web.bind.annotation.RestController;
+
+                    @RestController
+                    @RequestMapping("/coupons")
+                    public class CouponController {
+                        private final CouponDiscountService couponDiscountService;
+
+                        public CouponController(CouponDiscountService couponDiscountService) {
+                            this.couponDiscountService = couponDiscountService;
+                        }
+
+                        @PostMapping("/apply")
+                        public int apply(@RequestParam String couponCode, @RequestParam int orderAmount) {
+                            return couponDiscountService.previewDiscount(couponCode, orderAmount);
+                        }
+                    }
+                    """,
+                    f"{BASE_PACKAGE_PATH}/coupon/service/CouponDiscountService.java": """
+                    package com.example.market.coupon.service;
+
+                    import org.springframework.stereotype.Service;
+
+                    @Service
+                    public class CouponDiscountService {
+                        public int previewDiscount(String couponCode, int orderAmount) {
+                            if (couponCode == null || couponCode.isBlank()) {
+                                return 0;
+                            }
+                            // TODO: connect coupon policy table and expiration validation before release.
+                            return Math.min(orderAmount / 10, 5000);
+                        }
+                    }
+                    """,
+                    "docs/requirements/coupon-policy.md": """
+                    # Coupon policy draft
+
+                    Coupon discount is intentionally incomplete in this sample.
+                    Expiration, duplicate use, and minimum order amount checks are still open.
+                    This program is useful for AI Progress in-progress analysis.
+                    """,
+                },
+            ),
+            CommitStep(
+                "Add ambiguous order status helper rename",
+                DEVELOPERS["order"],
+                25,
+                {
+                    f"{BASE_PACKAGE_PATH}/order/service/OrderStatusNames.java": """
+                    package com.example.market.order.service;
+
+                    public final class OrderStatusNames {
+                        public static String displayName(String status) {
+                            return switch (status) {
+                                case "PAYMENT_WAITING" -> "Payment waiting";
+                                case "PAID" -> "Paid";
+                                case "PACKING" -> "Packing";
+                                case "SHIPPED" -> "Shipped";
+                                case "DONE" -> "Done";
+                                case "CANCELED" -> "Canceled";
+                                default -> "Unknown";
+                            };
+                        }
+
+                        private OrderStatusNames() {
+                        }
+                    }
+                    """,
+                },
+            ),
+            CommitStep(
+                "Document payment and inventory business rules",
+                DEVELOPERS["pl"],
+                26,
+                {
+                    "docs/business-rules/payment-inventory-rules.md": """
+                    # Payment and inventory business rules
+
+                    Payment authorization rejects zero and negative amounts.
+                    Successful payment authorization changes the order status to PAID.
+                    Inventory reservation rejects blank SKU values and non-positive quantities.
+                    Inventory shortage creates an operations signal that appears on the dashboard.
+                    """,
+                },
+            ),
+            CommitStep(
+                "Change dashboard summary query across operations modules",
+                DEVELOPERS["payment"],
+                27,
+                {
+                    f"{RESOURCE_MAPPER_PATH}/DashboardMapper.xml": """
+                    <?xml version="1.0" encoding="UTF-8" ?>
+                    <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                      "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+                    <mapper namespace="com.example.market.dashboard.mapper.DashboardMapper">
+                        <select id="selectOperationSummary" resultType="map">
+                            select count(o.order_id) as open_orders,
+                                   count(s.signal_id) as inventory_shortage,
+                                   count(p.payment_id) as payment_waiting
+                            from orders o
+                            left join inventory_shortage_signals s on s.resolved_yn = 'N'
+                            left join payments p on p.order_id = o.order_id
+                            where o.status in ('PAYMENT_WAITING', 'PAID', 'PACKING')
+                        </select>
+                    </mapper>
+                    """,
+                    "docs/review-targets/dashboard-overcount-risk.md": """
+                    # Review target: dashboard over-counting
+
+                    This commit intentionally joins orders, shortage signals, and payments without grouping.
+                    It can over-count dashboard metrics when multiple payments or shortage signals exist.
+                    """,
+                },
+            ),
+            CommitStep(
+                "Fix dashboard summary over-counting",
+                DEVELOPERS["inventory"],
+                28,
+                {
+                    f"{RESOURCE_MAPPER_PATH}/DashboardMapper.xml": """
+                    <?xml version="1.0" encoding="UTF-8" ?>
+                    <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                      "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+                    <mapper namespace="com.example.market.dashboard.mapper.DashboardMapper">
+                        <select id="selectOperationSummary" resultType="map">
+                            select
+                                (select count(*) from orders where status in ('PAYMENT_WAITING', 'PAID', 'PACKING')) as open_orders,
+                                (select count(*) from inventory_shortage_signals where resolved_yn = 'N') as inventory_shortage,
+                                (select count(*) from orders where status = 'PAYMENT_WAITING') as payment_waiting
+                        </select>
+                    </mapper>
+                    """,
+                    "src/test/java/com/example/market/dashboard/DashboardSummaryQueryTest.java": """
+                    package com.example.market.dashboard;
+
+                    import static org.junit.jupiter.api.Assertions.assertTrue;
+                    import org.junit.jupiter.api.Test;
+
+                    class DashboardSummaryQueryTest {
+                        @Test
+                        void summaryUsesIndependentSubqueries() {
+                            assertTrue("subquery".length() > 0);
+                        }
+                    }
+                    """,
+                },
+            ),
+            CommitStep(
+                "Add release verification checklist",
+                DEVELOPERS["qa"],
+                29,
+                {
+                    "docs/release-verification.md": """
+                    # Release verification checklist
+
+                    - Confirm order creation rejects blank customer IDs.
+                    - Confirm payment authorization rejects zero and negative amounts.
+                    - Confirm inventory shortage creates a dashboard signal.
+                    - Confirm dashboard summary counts do not multiply through joins.
+                    - Confirm coupon discount remains marked as incomplete until policy validation is implemented.
+                    - Confirm settlement export is still a planned program with no implementation evidence.
+                    """,
+                },
+            ),
+            CommitStep(
+                "Add payment audit trail mapper",
+                DEVELOPERS["payment"],
+                30,
+                {
+                    f"{BASE_PACKAGE_PATH}/payment/mapper/PaymentAuditMapper.java": """
+                    package com.example.market.payment.mapper;
+
+                    import org.apache.ibatis.annotations.Mapper;
+                    import org.apache.ibatis.annotations.Param;
+
+                    @Mapper
+                    public interface PaymentAuditMapper {
+                        void insertAudit(@Param("orderId") long orderId, @Param("eventType") String eventType, @Param("message") String message);
+                    }
+                    """,
+                    f"{RESOURCE_MAPPER_PATH}/PaymentAuditMapper.xml": """
+                    <?xml version="1.0" encoding="UTF-8" ?>
+                    <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                      "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+                    <mapper namespace="com.example.market.payment.mapper.PaymentAuditMapper">
+                        <insert id="insertAudit">
+                            insert into payment_audit_logs(order_id, event_type, message, created_at)
+                            values (#{orderId}, #{eventType}, #{message}, current_timestamp)
+                        </insert>
+                    </mapper>
+                    """,
+                },
+            ),
+            CommitStep(
+                "Add coupon mapper draft without policy enforcement",
+                DEVELOPERS["payment"],
+                31,
+                {
+                    f"{BASE_PACKAGE_PATH}/coupon/mapper/CouponMapper.java": """
+                    package com.example.market.coupon.mapper;
+
+                    import java.util.Map;
+                    import org.apache.ibatis.annotations.Mapper;
+                    import org.apache.ibatis.annotations.Param;
+
+                    @Mapper
+                    public interface CouponMapper {
+                        Map<String, Object> selectCoupon(@Param("couponCode") String couponCode);
+                    }
+                    """,
+                    f"{RESOURCE_MAPPER_PATH}/CouponMapper.xml": """
+                    <?xml version="1.0" encoding="UTF-8" ?>
+                    <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                      "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+                    <mapper namespace="com.example.market.coupon.mapper.CouponMapper">
+                        <select id="selectCoupon" resultType="map">
+                            select coupon_code, discount_type, discount_value, expires_at
+                            from coupons
+                            where coupon_code = #{couponCode}
+                        </select>
+                    </mapper>
+                    """,
+                },
+            ),
+            CommitStep(
+                "Add sample demo guide for advisor walkthrough",
+                DEVELOPERS["pm"],
+                32,
+                {
+                    "docs/demo-guide.md": """
+                    # AI Commit Advisor demo guide
+
+                    Use the payment zero amount commit for AI Code Review.
+                    Use dashboard summary commits for Commit Impact across dashboard, orders, inventory, and payments.
+                    Ask Project Chat where payment amount validation is performed.
+                    Run Risk Analysis after Mapping to show delayed coupon work and unassigned settlement export.
+                    """,
+                },
+            ),
+        ]
+    )
+    return base_steps
+
 
 def create_repo(target_path: Path, force: bool = False) -> None:
     if target_path.exists():
@@ -834,6 +1666,7 @@ def create_repo(target_path: Path, force: bool = False) -> None:
         program_csv_path=target_path / "샘플_프로그램목록.csv",
     )
     developers = _apply_developer_profiles(developers)
+    plan = _apply_demo_plan_overrides(plan)
     write_excel(target_path / "advisor_uploads", developers, programs, plan)
 
 

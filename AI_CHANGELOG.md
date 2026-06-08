@@ -2,6 +2,17 @@
 
 ## 2026-06-09
 
+### 풍부한 샘플 대상 repo 구현
+
+- `scripts/create_sample_target_repo.py`의 샘플 대상 repo 생성 흐름을 확장해 8개 프로그램, 30개 Git commit, 6명의 가상 개발자 author를 생성하도록 했습니다.
+- 주문, 재고, 결제, 매출, 대시보드, 쿠폰, 정산 계획 프로그램을 포함하고, 기능 추가/버그 유발/버그 수정/테스트 보강/리팩터링/문서 변경/교차 모듈 영향/미완료 기능 시나리오를 커밋 히스토리에 반영했습니다.
+- Risk Analysis 데모를 위해 쿠폰 프로그램은 지연 80% 진행, 정산 내보내기 프로그램은 담당자 없음/지연/관련 커밋 없음 상태가 되도록 개발계획 override를 추가했습니다.
+- AI Code Review 데모용 결제 0원 승인 위험 커밋과 대시보드 집계 over-count 위험 커밋, RAG/Project Chat용 업무 규칙 문서와 데모 가이드를 추가했습니다.
+- `sample_data` Excel 3종을 새 샘플 repo 출력 기준으로 갱신했습니다.
+- `README.md`와 `docs/sample-target-repo-demo-design.md`를 8개 프로그램/30개 커밋 기준으로 업데이트하고, 전체 데모에는 `advisor_uploads` Excel을 사용해야 리스크 계획 override가 포함된다는 안내를 추가했습니다.
+- focused tests를 추가해 샘플 커밋 수, 리스크 데모 프로그램, 계획 override를 검증하도록 했습니다.
+- 검증: `.venv\Scripts\python.exe scripts\create_sample_target_repo.py --force` 통과, `.venv\Scripts\python.exe -m compileall src app.py scripts\generate_sample_development_data.py scripts\create_sample_target_repo.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`64 passed`), `git diff --check` 통과.
+
 ### 샘플 대상 repo 데모 시나리오 설계 문서 추가
 
 - AI Commit Advisor의 전체 기능을 소개할 수 있도록 샘플 대상 repo의 목표 규모, 커밋 시나리오, 기능별 데모 신호를 정리한 `docs/sample-target-repo-demo-design.md`를 추가했습니다.
