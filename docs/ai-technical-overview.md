@@ -93,7 +93,9 @@ RAG and Project Chat also show source index status at the project level:
 
 - current Git HEAD
 - latest indexed HEAD
+- indexed HEAD hash variants
 - `source_file` chunk/vector counts
+- chunks whose indexed HEAD differs from the current HEAD
 - chunks that no longer match the current repository state
 - chunks that cannot be verified because the file or metadata is missing
 

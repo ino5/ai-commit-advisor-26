@@ -1,4 +1,5 @@
-from src.rag.source_index_service import source_index_needs_refresh
+from src.rag.source_index_service import count_head_mismatch_chunks, source_index_needs_refresh
+from src.rag.source_verifier import verify_source_file_chunk
 
 
 def test_source_index_needs_refresh_when_index_is_empty_for_repo():
@@ -69,3 +70,35 @@ def test_source_index_without_repo_does_not_request_refresh():
         )
         is False
     )
+
+
+def test_count_head_mismatch_chunks_when_indexed_head_differs():
+    count = count_head_mismatch_chunks(
+        "current-head",
+        [
+            {"indexed_head_hash": "current-head"},
+            {"indexed_head_hash": "old-head"},
+            {"indexed_head_hash": "old-head"},
+            {},
+        ],
+    )
+
+    assert count == 2
+
+
+def test_count_head_mismatch_chunks_is_zero_when_heads_match():
+    count = count_head_mismatch_chunks(
+        "same-head",
+        [
+            {"indexed_head_hash": "same-head"},
+            {"indexed_head_hash": "same-head"},
+        ],
+    )
+
+    assert count == 0
+
+
+def test_source_file_chunk_with_incomplete_metadata_is_invalid(tmp_path):
+    verification = verify_source_file_chunk(str(tmp_path), {"file_path": "src/app.py"})
+
+    assert verification.status == "invalid"

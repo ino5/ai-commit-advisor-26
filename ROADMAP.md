@@ -16,7 +16,7 @@
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 | d00b868 |
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
 | P1 | RAG | Project Chat answer quality and history persistence | Planned | Project Chat 전용 메뉴 추가 | 330434b |
-| P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 확인과 원클릭 재인덱싱 | de4a16e |
+| P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 표시 세부 보완 | - |
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | fa625d2 |
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 | 704c7cf |
 | P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 | c42d847 |
@@ -112,6 +112,7 @@ Reduce stale RAG results when the repository HEAD changes after indexing.
 Checklist:
 
 - [x] Show indexed HEAD vs current HEAD in RAG and Project Chat.
+- [x] Show indexed HEAD variants and current HEAD mismatch chunk count.
 - [x] Add stale source_file chunk count.
 - [x] Add one-click source_file re-index action.
 - [x] Add focused tests.

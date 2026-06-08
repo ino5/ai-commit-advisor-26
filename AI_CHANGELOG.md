@@ -2,6 +2,15 @@
 
 ## 2026-06-08
 
+### source_file 인덱스 상태 표시 세부 보완
+
+- RAG와 Project Chat의 source_file 인덱스 상태에 현재 HEAD와 다른 indexed HEAD chunk 수를 별도 표시했습니다.
+- RAG 화면에서 source_file chunk에 저장된 indexed HEAD 종류를 확인할 수 있게 했습니다.
+- 경고 문구를 "현재 Git HEAD와 인덱싱 시점이 다를 수 있습니다", "최신 코드 기준 답변을 위해 source_file 재인덱싱을 권장합니다"처럼 업무 사용자가 이해하기 쉬운 문장으로 정리했습니다.
+- indexed HEAD mismatch count와 metadata 부족 invalid 처리 focused tests를 추가했습니다.
+- `docs/ai-technical-overview.md`에 source index status 표시 항목을 최신 UI 기준으로 보강했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`46 passed`).
+
 ### Mapping 피드백 리뷰 큐 문서 정리
 
 - `README_ARCHITECTURE.md`에 `mapping_feedback_service.py` 역할, Mapping 피드백 리뷰 큐 흐름, 주요 서비스 목록을 최신 구현에 맞게 추가했습니다.

@@ -28,6 +28,7 @@ class SourceIndexStatus:
     indexed_head_hashes: list[str]
     source_chunk_count: int
     source_vector_count: int
+    head_mismatch_chunk_count: int
     stale_chunk_count: int
     invalid_chunk_count: int
     needs_reindex: bool
@@ -58,6 +59,16 @@ def source_index_needs_refresh(
     if current_head_hash and current_head_hash not in indexed_head_hashes:
         return True
     return stale_chunk_count > 0 or invalid_chunk_count > 0
+
+
+def count_head_mismatch_chunks(current_head_hash: str | None, metadata_rows: list[dict]) -> int:
+    if not current_head_hash:
+        return 0
+    return sum(
+        1
+        for metadata in metadata_rows
+        if metadata.get("indexed_head_hash") and metadata.get("indexed_head_hash") != current_head_hash
+    )
 
 
 def _verify_source_file_chunk_at_head(
@@ -135,6 +146,8 @@ def get_source_index_status(db: Session, project: Project) -> SourceIndexStatus:
         }
     )
     latest_indexed_head_hash = indexed_head_hashes[-1] if indexed_head_hashes else None
+    metadata_rows = [chunk.raw_metadata or {} for chunk in chunks]
+    head_mismatch_chunk_count = count_head_mismatch_chunks(current_head_hash, metadata_rows)
 
     stale_chunk_count = 0
     invalid_chunk_count = 0
@@ -164,6 +177,7 @@ def get_source_index_status(db: Session, project: Project) -> SourceIndexStatus:
         indexed_head_hashes=indexed_head_hashes,
         source_chunk_count=source_chunk_count,
         source_vector_count=source_vector_count,
+        head_mismatch_chunk_count=head_mismatch_chunk_count,
         stale_chunk_count=stale_chunk_count,
         invalid_chunk_count=invalid_chunk_count,
         needs_reindex=needs_reindex,

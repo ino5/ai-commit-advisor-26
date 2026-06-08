@@ -61,13 +61,17 @@ def _render_source_index_status(project: Project) -> None:
     metric2.metric("source_file vectors", status.source_vector_count)
     metric3.metric("Current HEAD", _short_hash(status.current_head_hash))
     metric4.metric("Indexed HEAD", _short_hash(status.latest_indexed_head_hash))
+    st.caption(
+        f"HEAD 불일치 chunk {status.head_mismatch_chunk_count}건, "
+        f"stale chunk {status.stale_chunk_count}건, 검증 불가 {status.invalid_chunk_count}건"
+    )
 
     if status.source_vector_count == 0:
         st.warning("현재 소스 파일 vector가 없습니다. `RAG 검색 > Index`에서 `현재 소스 파일` 인덱싱을 먼저 실행하세요.")
     elif status.needs_reindex:
         st.warning(
-            "현재 코드와 맞지 않는 source_file 인덱스가 있습니다. "
-            f"불일치 {status.stale_chunk_count}건, 검증 불가 {status.invalid_chunk_count}건"
+            "현재 Git HEAD와 인덱싱 시점이 다를 수 있습니다. "
+            "최신 코드 기준 답변을 위해 source_file 재인덱싱을 권장합니다."
         )
     else:
         st.caption("현재 소스 인덱스가 Git 저장소 기준으로 검증되었습니다.")

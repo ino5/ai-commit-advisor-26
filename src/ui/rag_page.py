@@ -139,14 +139,21 @@ def _render_source_index_status(project: Project) -> None:
     col3.metric("source_file chunks", status.source_chunk_count)
     col4.metric("source_file vectors", status.source_vector_count)
 
-    col5, col6 = st.columns(2)
-    col5.metric("현재 코드와 불일치", status.stale_chunk_count)
-    col6.metric("검증 불가", status.invalid_chunk_count)
+    col5, col6, col7 = st.columns(3)
+    col5.metric("HEAD 불일치 chunk", status.head_mismatch_chunk_count)
+    col6.metric("stale chunk", status.stale_chunk_count)
+    col7.metric("검증 불가", status.invalid_chunk_count)
+    if status.indexed_head_hashes:
+        with st.expander("인덱싱된 HEAD 종류", expanded=False):
+            st.write([_short_hash(value) for value in status.indexed_head_hashes])
 
     for error in status.errors:
         st.warning(error)
     if status.needs_reindex:
-        st.warning("현재 Git HEAD 또는 파일 내용이 인덱싱 시점과 다릅니다. Project Chat 답변 품질을 위해 현재 소스를 다시 인덱싱하세요.")
+        st.warning(
+            "현재 Git HEAD와 인덱싱 시점이 다를 수 있습니다. "
+            "최신 코드 기준 답변을 위해 source_file 재인덱싱을 권장합니다."
+        )
     elif status.source_chunk_count:
         st.success("현재 소스 인덱스가 등록된 Git 저장소 기준으로 검증되었습니다.")
     else:
