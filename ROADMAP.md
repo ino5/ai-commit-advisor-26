@@ -12,7 +12,7 @@
 
 | Priority | Area | Task | Status | Related AI Change Log | Commit |
 |---|---|---|---|---|---|
-| P0 | Data UX | Program management UX improvement | In Progress | 프로그램 관리 UX 1차 개선 | - |
+| P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 | 39010d6 |
 | P0 | Data UX | Developer management UX improvement | Planned | - | - |
 | P0 | Data UX | Development plan management UX improvement | Planned | - | - |
 | P1 | RAG | Project Chat answer quality and history persistence | Planned | Project Chat 전용 메뉴 추가 | 330434b |
@@ -24,7 +24,7 @@
 
 ## P0 - Program Management UX Improvement
 
-Status: In Progress
+Status: Done
 
 Goal:
 Make program data manageable without knowing the Excel schema in advance.
@@ -37,9 +37,9 @@ Checklist:
 - [x] Add upload validation for required columns, duplicate program IDs, dates, and progress values.
 - [x] Show import summary: new rows, updated rows, skipped/error rows.
 - [x] Add existing program search and filters.
-- [ ] Add manual program creation form.
-- [ ] Add program edit flow.
-- [ ] Add program delete flow with impact warning.
+- [x] Add manual program creation form.
+- [x] Add program edit flow.
+- [x] Add program delete flow with impact warning.
 - [x] Add focused tests.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Update related README sections.
