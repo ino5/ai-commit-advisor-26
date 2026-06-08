@@ -22,6 +22,7 @@
 | P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 | c42d847 |
 | P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 | fc87e29 |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
+| P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | - |
 | P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | 562da8a |
 | P2 | UX | Home analysis command center | Done | Home 분석 관제 화면 개선 | c3a30a1 |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
@@ -89,7 +90,7 @@ Checklist:
 
 ## P1 - Project Chat Answer Quality And History Persistence
 
-Status: In Progress
+Status: Done
 
 Goal:
 Improve Project Chat from session-only Q&A into a more reliable project assistant.
@@ -190,6 +191,22 @@ Checklist:
 - [x] Reuse the existing mapping feedback correction form for selected queue rows.
 - [x] Add focused tests.
 - [x] Update `AI_CHANGELOG.md`.
+
+## P1 - LLM/Embedding Batch Safety And Estimated Runtime
+
+Status: Done
+
+Goal:
+Reduce local LLM and embedding overload by showing estimated runtime and keeping batch execution bounded.
+
+Checklist:
+
+- [x] Add a reusable estimated runtime helper.
+- [x] Show estimated runtime before RAG embedding execution.
+- [x] Show estimated runtime before source_file refresh with embedding.
+- [x] Use safer default embedding batch sizes for local runs.
+- [x] Add focused tests.
+- [x] Update README and `AI_CHANGELOG.md`.
 
 ## P2 - CI Test Workflow
 

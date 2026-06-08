@@ -103,6 +103,8 @@ RAG and Project Chat also show source index status at the project level:
 
 The one-click source refresh rebuilds `source_file` chunks from the current HEAD and then removes chunks/vectors that can no longer be verified. This removes evidence for files that were deleted after a previous indexing run without clearing the old index before a successful rebuild. To avoid overloading local embedding servers, Project Chat does not automatically create embeddings during refresh, and the RAG screen only creates a limited number of embeddings when explicitly selected.
 
+For local LLM/embedding operation, batch execution is intentionally bounded. The RAG screen shows remaining embedding work, the current batch limit, and an estimated runtime before execution so users can split long local runs instead of overloading LM Studio or the workstation.
+
 ## LLM Provider Strategy
 
 The project supports a mock provider and OpenAI-compatible local HTTP APIs.

@@ -12,6 +12,7 @@ from src.rag.source_index_service import get_source_index_status, refresh_source
 from src.rag.source_verifier import annotate_retrieval_result
 from src.rag.vector_store import VectorStore
 from src.utils.config import settings
+from src.utils.runtime_estimator import estimate_runtime
 
 
 SOURCE_TYPE_OPTIONS = ["source_file", "program", "commit", "commit_file"]
@@ -124,6 +125,27 @@ def _run_embedding(project_id: int, source_types: list[str], limit: int):
         )
 
 
+def _embedding_workload(project_id: int, source_types: list[str]) -> tuple[EmbeddingClient, int]:
+    with SessionLocal() as db:
+        client = EmbeddingClient()
+        pending_count = VectorStore(db).count_missing_chunks(
+            client.embedding_model_name,
+            project_id=project_id,
+            source_types=source_types,
+        )
+        return client, pending_count
+
+
+def _render_runtime_notice(work_type: str, pending_count: int, limit: int) -> None:
+    run_count = min(max(0, int(pending_count or 0)), max(0, int(limit or 0)))
+    estimate = estimate_runtime(run_count, work_type)
+    st.info(
+        f"남은 작업 {pending_count}건 중 이번 실행은 최대 {run_count}건을 처리합니다. "
+        f"예상 소요 시간은 {estimate.label}입니다."
+    )
+    st.caption("실제 시간은 PC 성능, LM Studio 모델 상태, 현재 CPU/GPU 사용량에 따라 달라질 수 있습니다.")
+
+
 def _render_source_index_status(project: Project) -> None:
     with SessionLocal() as db:
         current_project = db.get(Project, project.id)
@@ -170,10 +192,11 @@ def _render_source_index_status(project: Project) -> None:
             "재인덱싱 후 embedding 최대 처리 수",
             min_value=1,
             max_value=500,
-            value=100,
-            step=50,
+            value=50,
+            step=25,
             help="큰 저장소에서 PC가 느려지는 것을 막기 위해 한 번에 처리할 수를 제한합니다.",
         )
+        _render_runtime_notice("embedding", status.source_chunk_count, int(refresh_embedding_limit))
 
     if st.button("현재 소스 다시 인덱싱", type="secondary", disabled=not bool(project.git_repo_path)):
         with SessionLocal() as db:
@@ -209,8 +232,10 @@ def _render_index_controls(project: Project) -> None:
     col1, col2, col3 = st.columns(3)
     chunk_size = col1.number_input("Chunk size", min_value=300, max_value=4000, value=DEFAULT_CHUNK_SIZE, step=100)
     overlap = col2.number_input("Overlap", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50)
-    limit = col3.number_input("Embedding 최대 처리 수", min_value=1, max_value=10000, value=500, step=100)
+    limit = col3.number_input("Embedding 최대 처리 수", min_value=1, max_value=10000, value=50, step=25)
     source_types = _selected_source_types("인덱싱 대상", SOURCE_TYPE_OPTIONS)
+    _, pending_count = _embedding_workload(project.id, source_types)
+    _render_runtime_notice("embedding", pending_count, int(limit))
     if "source_file" in source_types and not project.git_repo_path:
         st.warning("현재 소스 파일을 인덱싱하려면 프로젝트에 Git 저장소 경로가 필요합니다.")
 
@@ -255,7 +280,10 @@ def _render_embedding_controls(project_id: int) -> None:
         f"model={settings.embedding_model or '미설정'}, dimension={settings.pgvector_dimension}"
     )
     source_types = _selected_source_types("Embedding 대상 source_type", SOURCE_TYPE_OPTIONS)
-    limit = st.number_input("이번 실행에서 처리할 최대 chunk 수", min_value=1, max_value=10000, value=500, step=100)
+    limit = st.number_input("이번 실행에서 처리할 최대 chunk 수", min_value=1, max_value=10000, value=50, step=25)
+    client_preview, pending_count = _embedding_workload(project_id, source_types)
+    _render_runtime_notice("embedding", pending_count, int(limit))
+    st.caption(f"대상 embedding model: {client_preview.embedding_model_name}")
 
     col1, col2 = st.columns([1, 2])
     if col1.button("Embedding 연결 테스트"):

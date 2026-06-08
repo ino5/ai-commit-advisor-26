@@ -116,6 +116,24 @@ class VectorStore:
             self.db.commit()
         return result
 
+    def count_missing_chunks(
+        self,
+        embedding_model: str | None,
+        project_id: int | None = None,
+        source_types: list[str] | None = None,
+    ) -> int:
+        vector_exists = (
+            select(VectorItem.id)
+            .where(VectorItem.chunk_id == DocumentChunk.id, VectorItem.embedding_model == embedding_model)
+            .exists()
+        )
+        query = self.db.query(DocumentChunk.id).filter(~vector_exists)
+        if project_id is not None:
+            query = query.filter(DocumentChunk.project_id == project_id)
+        if source_types:
+            query = query.filter(DocumentChunk.source_type.in_(source_types))
+        return int(query.count())
+
     def search_similar(
         self,
         query_embedding: list[float],

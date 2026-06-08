@@ -2,6 +2,15 @@
 
 ## 2026-06-08
 
+### LLM/Embedding 배치 안전장치와 예상시간 표시
+
+- RAG embedding 실행 전에 남은 chunk 수, 이번 실행 최대 처리 수, 예상 소요 시간을 표시하도록 했습니다.
+- source_file 재인덱싱 후 embedding을 함께 생성하는 경우에도 예상 소요 시간을 표시하도록 했습니다.
+- 로컬 LM Studio/embedding 서버 과부하를 줄이기 위해 RAG embedding 기본 배치 수를 500건에서 50건으로 낮췄습니다.
+- 예상시간 계산 helper와 focused tests를 추가했습니다.
+- `README.md`, `docs/ai-technical-overview.md`, `ROADMAP.md`에 로컬 LLM/embedding 제한 실행 운영 방식을 반영했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`53 passed`).
+
 ### Home 분석 관제 화면 개선
 
 - Home 상단 설명을 개발계획, Git 변경 이력, AI 매핑 결과, 리스크를 통합해 보는 업무용 분석 콘솔 관점으로 정리했습니다.

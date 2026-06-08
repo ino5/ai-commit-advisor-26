@@ -368,7 +368,9 @@ LM Studio 같은 로컬 embedding 서버는 한 번에 많은 chunk를 처리하
 
 - `Project Chat > 현재 소스 다시 인덱싱`: 현재 HEAD 기준으로 source_file chunk만 갱신합니다. embedding은 자동 실행하지 않습니다.
 - `RAG 검색 > 현재 소스 다시 인덱싱`: 기본값은 chunk 갱신만 수행합니다. `재인덱싱 후 embedding도 바로 생성`을 직접 체크한 경우에만 제한 수량으로 embedding을 생성합니다.
-- `RAG 검색 > Embedding`: 남은 pending chunk를 별도로 처리할 때 사용합니다. 큰 저장소에서는 `Embedding 최대 처리 수`를 작게 두고 여러 번 나눠 실행하세요.
+- `RAG 검색 > Embedding`: 남은 pending chunk를 별도로 처리할 때 사용합니다. 기본 실행 단위는 로컬 LLM/embedding 서버 부하를 줄이기 위해 작게 잡고, 화면에서 남은 작업 수와 예상 소요 시간을 확인한 뒤 여러 번 나눠 실행하세요.
+
+RAG 화면은 embedding 실행 전에 남은 chunk 수, 이번 실행 최대 처리 수, 예상 소요 시간을 표시합니다. 예상 시간은 PC 성능, LM Studio 모델 상태, CPU/GPU 사용량에 따라 달라질 수 있으므로 보수적인 운영 참고값으로 사용하세요.
 
 재인덱싱이나 embedding 중 앱/LM Studio를 강제 종료하면 DB가 바로 깨지는 것은 아닙니다. PostgreSQL은 열린 transaction을 롤백합니다. 다만 이미 commit된 chunk/vector와 아직 처리되지 않은 chunk가 섞여 `pending` 또는 `failed` 상태가 남을 수 있습니다. 이 상태는 부분 완료 상태이며, RAG 화면에서 인덱스 상태를 확인한 뒤 embedding을 제한 수량으로 이어서 실행하면 됩니다.
 
