@@ -2,6 +2,22 @@
 
 ## 2026-06-09
 
+### Home UI 검증 스크립트 추가
+
+- Node Playwright가 없는 환경에서도 Home 화면을 검증할 수 있도록 Python Playwright 기반 `scripts/verify_home_ui.py`를 추가했습니다.
+- 검증 스크립트는 Home의 짧아진 핵심 문구가 표시되는지, 제거한 설명투 문구가 남아 있지 않은지 확인하고 `.tmp/home-ui-check.png` 캡처를 생성합니다.
+- `requirements.txt`에 `playwright==1.60.0`을 명시하고, `.tmp/`를 git 추적에서 제외했습니다.
+- `README.md`의 로컬 검증 명령에 Home UI 검증 절차를 추가했습니다.
+- 검증: `.venv\Scripts\python.exe scripts\verify_home_ui.py` 통과, `.venv\Scripts\python.exe -m compileall src app.py scripts\verify_home_ui.py` 통과.
+
+### Home 문구 톤 정리
+
+- Home 상단 설명을 짧은 상태 요약 문구로 줄였습니다.
+- 분석 파이프라인 표의 긴 설명 컬럼을 간결한 `메모` 컬럼으로 바꾸고, 항목명을 짧게 정리했습니다.
+- 다음 권장 작업 문장을 실행 항목 중심의 짧은 문구로 바꿨습니다.
+- `src/ui/home_page.py`, `ROADMAP.md`를 수정했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과.
+
 ### README 화면 캡처 갱신
 
 - `README.md`의 기능별 화면 캡처 안내 문구를 현재 그룹형 사이드바 메뉴 기준으로 정리했습니다.

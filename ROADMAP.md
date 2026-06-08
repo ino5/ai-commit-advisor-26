@@ -26,6 +26,8 @@
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
 | P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | 562da8a |
 | P2 | UX | Home analysis command center | Done | Home 분석 관제 화면 개선 | c3a30a1 |
+| P2 | UX | Home copy tone cleanup | Done | Home 문구 톤 정리 | d0e6c76 |
+| P2 | Ops | Home UI visual verification script | Done | Home UI 검증 스크립트 추가 | d0e6c76 |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
@@ -253,6 +255,37 @@ Checklist:
 - [x] Add data-driven next recommended actions.
 - [x] Keep existing KPI and chart sections.
 - [x] Update README and `AI_CHANGELOG.md`.
+
+## P2 - Home Copy Tone Cleanup
+
+Status: Done
+
+Goal:
+Make Home feel less like an explanatory AI demo and more like a compact work status screen.
+
+Checklist:
+
+- [x] Shorten Home header copy.
+- [x] Replace long pipeline explanations with compact status notes.
+- [x] Shorten next action messages.
+- [x] Keep existing Home data collection and charts unchanged.
+- [x] Run compileall.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Home UI Visual Verification Script
+
+Status: Done
+
+Goal:
+Make Home copy and layout verification repeatable without relying on Node Playwright.
+
+Checklist:
+
+- [x] Add a Python Playwright verification script for Home.
+- [x] Record Playwright as a local dependency.
+- [x] Document the verification command.
+- [x] Run the script against the local Streamlit server.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Application Dockerfile And Deployment Guide
 

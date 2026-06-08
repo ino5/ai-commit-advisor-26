@@ -809,6 +809,14 @@ streamlit run app.py
 
 GitHub Actions의 `CI` workflow도 기본 검증으로 `python -m compileall src app.py`와 `python -m pytest -q`를 실행합니다.
 
+Home 화면 문구와 기본 렌더링을 확인하려면 Streamlit 실행 후 아래 명령을 사용합니다. Chromium 브라우저가 없으면 먼저 `.\.venv\Scripts\python.exe -m playwright install chromium`을 실행합니다.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\verify_home_ui.py
+```
+
+검증이 끝나면 `.tmp/home-ui-check.png`에 캡처가 생성됩니다.
+
 화면 테스트 순서:
 
 1. Project, Git, 프로그램 목록 또는 개발계획 데이터를 준비합니다.
