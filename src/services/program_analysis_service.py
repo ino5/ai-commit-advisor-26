@@ -169,7 +169,7 @@ def get_program_detail_analysis(db: Session, program_db_id: int) -> ProgramDetai
     )
 
     mappings = sorted(
-        list(program.mappings or []),
+        [mapping for mapping in (program.mappings or []) if mapping.is_related is True],
         key=lambda mapping: float(mapping.relevance_score or 0),
         reverse=True,
     )

@@ -165,6 +165,7 @@ def get_commit_impact_analysis(db: Session, commit_db_id: int) -> ImpactAnalysis
         db.query(ProgramCommitMapping)
         .options(joinedload(ProgramCommitMapping.program).joinedload(Program.assigned_developer))
         .filter(ProgramCommitMapping.commit_id == commit_db_id)
+        .filter(ProgramCommitMapping.is_related.is_(True))
         .order_by(ProgramCommitMapping.relevance_score.desc().nullslast())
         .all()
     )

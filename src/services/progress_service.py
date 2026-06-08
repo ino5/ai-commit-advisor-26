@@ -128,11 +128,12 @@ def get_ai_progress_summary(db: Session, project_id: int) -> AiProgressSummary:
     rows: list[ProgramProgressRow] = []
     for program in programs:
         mappings = list(program.mappings or [])
-        ai_progress_rate, best_status = _ai_progress_for_mappings(mappings)
+        related_mappings = [mapping for mapping in mappings if mapping.is_related is True]
+        ai_progress_rate, best_status = _ai_progress_for_mappings(related_mappings)
         plan_progress_rate = float(program.progress_rate or 0)
         progress_gap = plan_progress_rate - ai_progress_rate
-        related_commit_count = sum(1 for mapping in mappings if mapping.is_related is True)
-        reasons = _risk_reasons(program, mappings, ai_progress_rate, progress_gap)
+        related_commit_count = len(related_mappings)
+        reasons = _risk_reasons(program, related_mappings, ai_progress_rate, progress_gap)
 
         rows.append(
             ProgramProgressRow(
@@ -147,7 +148,7 @@ def get_ai_progress_summary(db: Session, project_id: int) -> AiProgressSummary:
                 ai_progress_rate=ai_progress_rate,
                 progress_gap=progress_gap,
                 best_implementation_status=best_status,
-                mapping_count=len(mappings),
+                mapping_count=len(related_mappings),
                 related_commit_count=related_commit_count,
                 risk_reasons=reasons,
             )

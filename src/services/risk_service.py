@@ -141,7 +141,7 @@ def detect_project_risks(db: Session, project_id: int) -> list[DetectedRisk]:
     risks: list[DetectedRisk] = []
 
     for program in programs:
-        mappings = list(program.mappings or [])
+        mappings = [mapping for mapping in (program.mappings or []) if mapping.is_related is True]
         statuses = [normalize_implementation_status(mapping.implementation_status) for mapping in mappings]
         related_commits = _mapping_commits(mappings)
         evidence = _base_evidence(program, mappings)

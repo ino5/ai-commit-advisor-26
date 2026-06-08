@@ -136,6 +136,11 @@ class ProgramCommitMapping(Base, TimestampMixin):
     implementation_status: Mapped[str | None] = mapped_column(String(100))
     reason: Mapped[str | None] = mapped_column(Text)
     raw_response: Mapped[dict | None] = mapped_column(JSONB)
+    feedback_is_related: Mapped[bool | None] = mapped_column(Boolean)
+    feedback_relevance_score: Mapped[float | None] = mapped_column(Float)
+    feedback_implementation_status: Mapped[str | None] = mapped_column(String(100))
+    feedback_reason: Mapped[str | None] = mapped_column(Text)
+    feedback_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     program: Mapped["Program"] = relationship(back_populates="mappings")
     commit: Mapped["GitCommit"] = relationship(back_populates="mappings")

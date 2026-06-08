@@ -38,6 +38,11 @@ COMMIT_FILE_COLUMN_UPGRADES = [
 
 PROGRAM_COMMIT_MAPPING_COLUMN_UPGRADES = [
     "ALTER TABLE program_commit_mappings ADD COLUMN IF NOT EXISTS is_related BOOLEAN",
+    "ALTER TABLE program_commit_mappings ADD COLUMN IF NOT EXISTS feedback_is_related BOOLEAN",
+    "ALTER TABLE program_commit_mappings ADD COLUMN IF NOT EXISTS feedback_relevance_score DOUBLE PRECISION",
+    "ALTER TABLE program_commit_mappings ADD COLUMN IF NOT EXISTS feedback_implementation_status VARCHAR(100)",
+    "ALTER TABLE program_commit_mappings ADD COLUMN IF NOT EXISTS feedback_reason TEXT",
+    "ALTER TABLE program_commit_mappings ADD COLUMN IF NOT EXISTS feedback_updated_at TIMESTAMP WITH TIME ZONE",
 ]
 
 PROGRAM_IMPLEMENTATION_STATUS_COLUMN_UPGRADES = [

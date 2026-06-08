@@ -10,6 +10,11 @@ from src.services.mapping_service import (
     CommitMappingProgress,
     MappingService,
 )
+from src.services.mapping_feedback_service import (
+    IMPLEMENTATION_STATUS_OPTIONS,
+    apply_mapping_feedback,
+    list_mapping_feedback_rows,
+)
 
 
 def _load_projects() -> list[Project]:
@@ -198,6 +203,99 @@ def _render_program_based_mode(project_id: int) -> None:
     _render_result(result)
 
 
+def _format_feedback_datetime(value) -> str:
+    return value.strftime("%Y-%m-%d %H:%M") if value else "-"
+
+
+def _render_mapping_feedback(project_id: int) -> None:
+    st.subheader("매핑 피드백")
+    st.caption("AI 매핑 결과를 사람이 보정하면 영향도, 진척도, 리스크 분석에서 보정된 값이 사용됩니다.")
+
+    filter_col1, filter_col2, filter_col3 = st.columns([2, 1, 1])
+    keyword = filter_col1.text_input("프로그램/커밋 검색", key="mapping_feedback_keyword")
+    only_feedback = filter_col2.checkbox("피드백 완료만", value=False)
+    relation_filter_label = filter_col3.selectbox("관련 여부", ["전체", "관련", "비관련"])
+    related_filter = {"관련": True, "비관련": False}.get(relation_filter_label)
+
+    with SessionLocal() as db:
+        rows = list_mapping_feedback_rows(
+            db,
+            project_id,
+            only_feedback=only_feedback,
+            related_filter=related_filter,
+            keyword=keyword or None,
+        )
+
+    if not rows:
+        st.info("조건에 맞는 매핑 결과가 없습니다. 먼저 매핑 분석을 실행하세요.")
+        return
+
+    df = pd.DataFrame([row.__dict__ for row in rows])
+    df["commit_hash_short"] = df["commit_hash"].str.slice(0, 12)
+    df["feedback_updated_at"] = df["feedback_updated_at"].apply(_format_feedback_datetime)
+    st.dataframe(
+        df[
+            [
+                "mapping_id",
+                "program_id",
+                "program_name",
+                "commit_hash_short",
+                "commit_message",
+                "relevance_score",
+                "is_related",
+                "implementation_status",
+                "has_feedback",
+                "feedback_updated_at",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    labels = {
+        (
+            f"{row.mapping_id} | {row.program_id or '-'} | {row.program_name} | "
+            f"{row.commit_hash[:12]} | {row.commit_message[:80]}"
+        ): row
+        for row in rows
+    }
+    selected_label = st.selectbox("보정할 매핑 선택", list(labels.keys()), key="mapping_feedback_select")
+    selected = labels[selected_label]
+
+    status_index = IMPLEMENTATION_STATUS_OPTIONS.index(selected.implementation_status)
+    relation_index = 0 if selected.is_related is not False else 1
+    with st.form("mapping_feedback_form"):
+        form_col1, form_col2, form_col3 = st.columns([1, 1, 1])
+        relation_label = form_col1.radio("관련 여부", ["관련", "비관련"], index=relation_index, horizontal=True)
+        relevance_score = form_col2.slider(
+            "관련도 점수",
+            min_value=0.0,
+            max_value=100.0,
+            value=float(selected.relevance_score),
+            step=1.0,
+        )
+        implementation_status = form_col3.selectbox(
+            "구현상태",
+            IMPLEMENTATION_STATUS_OPTIONS,
+            index=status_index,
+        )
+        reason = st.text_area("보정 근거", value=selected.reason, height=120)
+        submitted = st.form_submit_button("피드백 저장", type="primary")
+
+    if submitted:
+        with SessionLocal() as db:
+            apply_mapping_feedback(
+                db,
+                selected.mapping_id,
+                is_related=relation_label == "관련",
+                relevance_score=relevance_score,
+                implementation_status=implementation_status,
+                reason=reason,
+            )
+        st.success("매핑 피드백을 저장했습니다.")
+        st.rerun()
+
+
 def render_mapping_page() -> None:
     st.title("프로그램-커밋 매핑 분석")
     st.caption("커밋 기준 분석을 기본 추천 방식으로 사용합니다. 기존 프로그램 기준 분석도 유지됩니다.")
@@ -225,12 +323,14 @@ def render_mapping_page() -> None:
 
     mode = st.radio(
         "분석 모드",
-        ["커밋 기준 분석", "프로그램 기준 분석"],
+        ["커밋 기준 분석", "프로그램 기준 분석", "매핑 피드백"],
         index=0,
         horizontal=True,
     )
 
     if mode == "커밋 기준 분석":
         _render_commit_based_mode(project_id)
-    else:
+    elif mode == "프로그램 기준 분석":
         _render_program_based_mode(project_id)
+    else:
+        _render_mapping_feedback(project_id)
