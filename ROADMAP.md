@@ -23,7 +23,7 @@
 | P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 | fc87e29 |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | a151133 |
-| P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | - |
+| P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
 | P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | 562da8a |
 | P2 | UX | Home analysis command center | Done | Home 분석 관제 화면 개선 | c3a30a1 |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
