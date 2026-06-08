@@ -152,17 +152,39 @@ def _render_source_index_status(project: Project) -> None:
     else:
         st.info("현재 소스 파일 인덱스가 아직 없습니다.")
 
+    embed_after_refresh = st.checkbox(
+        "재인덱싱 후 embedding도 바로 생성",
+        value=False,
+        help="LM Studio/local embedding 서버를 많이 사용할 수 있습니다. 기본값은 chunk만 갱신합니다.",
+    )
+    refresh_embedding_limit = 0
+    if embed_after_refresh:
+        refresh_embedding_limit = st.number_input(
+            "재인덱싱 후 embedding 최대 처리 수",
+            min_value=1,
+            max_value=500,
+            value=100,
+            step=50,
+            help="큰 저장소에서 PC가 느려지는 것을 막기 위해 한 번에 처리할 수를 제한합니다.",
+        )
+
     if st.button("현재 소스 다시 인덱싱", type="secondary", disabled=not bool(project.git_repo_path)):
         with SessionLocal() as db:
             current_project = db.get(Project, project.id)
             if current_project is None:
                 st.error("프로젝트를 찾을 수 없습니다.")
                 return
-            with st.spinner("기존 source_file chunk/vector를 정리하고 현재 HEAD 기준으로 다시 생성합니다."):
-                result = refresh_source_file_index(db, current_project)
+            with st.spinner("현재 HEAD 기준으로 source_file chunk를 갱신합니다. embedding은 선택한 경우에만 제한 수량만 생성합니다."):
+                result = refresh_source_file_index(
+                    db,
+                    current_project,
+                    embed_after_refresh=embed_after_refresh,
+                    embedding_limit=int(refresh_embedding_limit or 0),
+                )
         st.success(
             "source_file 재인덱싱 완료: "
             f"chunk {result.chunk_result.created_count}건, "
+            f"오래된 chunk 정리 {result.deleted_unverified_count}건, "
             f"vector {result.embedding_result.created_count}건 생성, "
             f"embedding 실패 {result.embedding_result.failed_count}건"
         )

@@ -96,7 +96,7 @@ RAG and Project Chat also show source index status at the project level:
 - chunks that no longer match the current repository state
 - chunks that cannot be verified because the file or metadata is missing
 
-The one-click source refresh clears existing `source_file` chunks and vectors before rebuilding them from the current HEAD. This removes evidence for files that were deleted after a previous indexing run.
+The one-click source refresh rebuilds `source_file` chunks from the current HEAD and then removes chunks/vectors that can no longer be verified. This removes evidence for files that were deleted after a previous indexing run without clearing the old index before a successful rebuild. To avoid overloading local embedding servers, Project Chat does not automatically create embeddings during refresh, and the RAG screen only creates a limited number of embeddings when explicitly selected.
 
 ## LLM Provider Strategy
 

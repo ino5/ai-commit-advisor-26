@@ -75,19 +75,19 @@ def _render_source_index_status(project: Project) -> None:
     for error in status.errors:
         st.warning(error)
 
+    st.caption("Project Chat의 재인덱싱은 PC 부하를 줄이기 위해 chunk만 갱신합니다. embedding 생성은 `RAG 검색 > Embedding`에서 제한 수량으로 실행하세요.")
     if st.button("현재 소스 다시 인덱싱", disabled=not bool(project.git_repo_path)):
         with SessionLocal() as db:
             current_project = db.get(Project, project.id)
             if current_project is None:
                 st.error("프로젝트를 찾을 수 없습니다.")
                 return
-            with st.spinner("현재 HEAD 기준으로 source_file chunk와 vector를 다시 생성합니다."):
+            with st.spinner("현재 HEAD 기준으로 source_file chunk를 갱신합니다. embedding은 여기서 자동 실행하지 않습니다."):
                 result = refresh_source_file_index(db, current_project)
         st.success(
             "source_file 재인덱싱 완료: "
             f"chunk {result.chunk_result.created_count}건, "
-            f"vector {result.embedding_result.created_count}건 생성, "
-            f"embedding 실패 {result.embedding_result.failed_count}건"
+            f"오래된 chunk 정리 {result.deleted_unverified_count}건"
         )
         st.rerun()
 

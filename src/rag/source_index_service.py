@@ -39,6 +39,7 @@ class SourceIndexRefreshResult:
     chunk_result: ChunkBuildResult
     embedding_result: EmbeddingBuildResult
     status: SourceIndexStatus
+    deleted_unverified_count: int = 0
 
 
 def source_index_needs_refresh(
@@ -185,18 +186,48 @@ def clear_source_file_index(db: Session, project_id: int) -> int:
     return int(deleted_chunks or 0)
 
 
+def remove_unverified_source_file_chunks(
+    db: Session,
+    project: Project,
+    current_head_hash: str | None = None,
+) -> int:
+    if not project.git_repo_path:
+        return 0
+    if current_head_hash is None:
+        current_head_hash = get_head_commit_hash(Path(project.git_repo_path).expanduser().resolve())
+
+    chunks = (
+        db.query(DocumentChunk)
+        .filter(DocumentChunk.project_id == project.id, DocumentChunk.source_type == SOURCE_FILE_TYPE)
+        .all()
+    )
+    delete_ids = [
+        chunk.id
+        for chunk in chunks
+        if not _verify_source_file_chunk_at_head(project.git_repo_path, chunk.raw_metadata or {}, current_head_hash).is_verified
+    ]
+    if not delete_ids:
+        return 0
+
+    db.query(VectorItem).filter(VectorItem.chunk_id.in_(delete_ids)).delete(synchronize_session=False)
+    deleted_count = db.query(DocumentChunk).filter(DocumentChunk.id.in_(delete_ids)).delete(synchronize_session=False)
+    db.commit()
+    return int(deleted_count or 0)
+
+
 def refresh_source_file_index(
     db: Session,
     project: Project,
     *,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     overlap: int = DEFAULT_CHUNK_OVERLAP,
-    embedding_limit: int = 10000,
+    embed_after_refresh: bool = False,
+    embedding_limit: int = 100,
 ) -> SourceIndexRefreshResult:
     if not project.git_repo_path:
         raise ValueError("Git 저장소 경로가 등록된 프로젝트만 source_file 인덱스를 갱신할 수 있습니다.")
 
-    clear_source_file_index(db, project.id)
+    current_head_hash = get_head_commit_hash(Path(project.git_repo_path).expanduser().resolve())
     chunk_result = build_source_file_chunks(
         db=db,
         project_id=project.id,
@@ -204,16 +235,20 @@ def refresh_source_file_index(
         chunk_size=chunk_size,
         overlap=overlap,
     )
-    client = EmbeddingClient()
-    embedding_result = VectorStore(db).embed_missing_chunks(
-        client,
-        project_id=project.id,
-        source_types=[SOURCE_FILE_TYPE],
-        limit=embedding_limit,
-    )
+    deleted_unverified_count = remove_unverified_source_file_chunks(db, project, current_head_hash)
+    embedding_result = EmbeddingBuildResult()
+    if embed_after_refresh:
+        client = EmbeddingClient()
+        embedding_result = VectorStore(db).embed_missing_chunks(
+            client,
+            project_id=project.id,
+            source_types=[SOURCE_FILE_TYPE],
+            limit=embedding_limit,
+        )
     status = get_source_index_status(db, project)
     return SourceIndexRefreshResult(
         chunk_result=chunk_result,
         embedding_result=embedding_result,
         status=status,
+        deleted_unverified_count=deleted_unverified_count,
     )

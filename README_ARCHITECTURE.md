@@ -392,7 +392,7 @@ flowchart TD
     M --> N["source_file 현재 파일 검증<br/>verified/stale/invalid"]
     N --> O["검증된 source chunk만 답변 근거로 사용"]
     C --> P["소스 인덱스 상태 확인<br/>Current HEAD vs Indexed HEAD"]
-    P --> Q["현재 소스 다시 인덱싱<br/>기존 source_file chunk/vector 정리 후 재생성"]
+    P --> Q["현재 소스 다시 인덱싱<br/>chunk 갱신 후 검증 불가 chunk/vector 정리"]
 ```
 
 ### RAG 안전장치
@@ -404,7 +404,8 @@ flowchart TD
 - Project Chat은 기본적으로 현재 파일 검증을 통과한 `source_file` chunk만 답변 근거로 사용한다.
 - Git HEAD가 바뀌었거나 line range hash가 달라진 chunk는 stale/invalid로 분류하고 현재 코드 근거에서 제외한다.
 - RAG와 Project Chat 화면은 현재 HEAD와 인덱싱 HEAD, 불일치/검증 불가 chunk 수를 표시한다.
-- `현재 소스 다시 인덱싱`은 기존 `source_file` chunk/vector를 정리한 뒤 현재 HEAD 기준으로 다시 생성해 삭제된 파일의 근거도 제거한다.
+- `현재 소스 다시 인덱싱`은 현재 HEAD 기준 chunk를 먼저 갱신한 뒤 검증 불가 chunk/vector만 정리해 삭제된 파일의 근거도 제거한다.
+- Project Chat의 재인덱싱은 embedding을 자동 실행하지 않고, RAG 화면에서도 명시 선택한 경우에만 제한 수량으로 embedding을 생성한다.
 - embedding 실패 시 chunk metadata에 실패 상태와 오류 메시지를 남기고 다음 chunk로 진행한다.
 
 ## 8. LLM 처리 흐름
