@@ -64,15 +64,15 @@ def test_sample_target_repo_uses_korean_developer_names() -> None:
 def test_sample_target_repo_uses_public_si_roles() -> None:
     developers = pd.DataFrame(
         [
-            {"developer_name": "최현우", "email": "hyunwoo.choi@sample-si.local", "role": "", "skills": ""},
-            {"developer_name": "오세훈", "email": "sehun.oh@sample-si.local", "role": "", "skills": ""},
-            {"developer_name": "김민수", "email": "minsu.kim@sample-si.local", "role": "", "skills": ""},
-            {"developer_name": "이지은", "email": "jieun.lee@sample-si.local", "role": "", "skills": ""},
-            {"developer_name": "박지훈", "email": "jihoon.park@sample-si.local", "role": "", "skills": ""},
-            {"developer_name": "정서연", "email": "seoyeon.jung@sample-si.local", "role": "", "skills": ""},
+            {"developer_name": "최현우", "email": "hyunwoo.choi@sample.local", "role": "", "skills": ""},
+            {"developer_name": "오세훈", "email": "sehun.oh@sample.local", "role": "", "skills": ""},
+            {"developer_name": "김민수", "email": "minsu.kim@sample.local", "role": "", "skills": ""},
+            {"developer_name": "이지은", "email": "jieun.lee@sample.local", "role": "", "skills": ""},
+            {"developer_name": "박지훈", "email": "jihoon.park@sample.local", "role": "", "skills": ""},
+            {"developer_name": "정서연", "email": "seoyeon.jung@sample.local", "role": "", "skills": ""},
         ]
     )
 
     profiled = _apply_developer_profiles(developers)
 
-    assert set(profiled["role"]) == {"PM", "PL", "Backend", "Frontend", "DBA", "QA"}
+    assert set(profiled["role"]) == {"PM", "PL", "개발자", "QA"}

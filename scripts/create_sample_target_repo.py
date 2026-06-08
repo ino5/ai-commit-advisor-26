@@ -42,12 +42,12 @@ class CommitStep:
 
 
 DEVELOPERS = {
-    "pm": Developer("최현우", "hyunwoo.choi@sample-si.local", "PM", "사업관리, 일정관리, 고객 협의"),
-    "pl": Developer("오세훈", "sehun.oh@sample-si.local", "PL", "요구사항 분석, 설계 검토, 개발 리딩"),
-    "backend": Developer("김민수", "minsu.kim@sample-si.local", "Backend", "Spring MVC, Service, Transaction"),
-    "frontend": Developer("이지은", "jieun.lee@sample-si.local", "Frontend", "JSP, JavaScript, CSS"),
-    "data": Developer("박지훈", "jihoon.park@sample-si.local", "DBA", "MyBatis, SQL, Mapper XML"),
-    "qa": Developer("정서연", "seoyeon.jung@sample-si.local", "QA", "테스트 케이스, 결함 관리, 검수 지원"),
+    "pm": Developer("최현우", "hyunwoo.choi@sample.local", "PM", "사업관리, 일정관리, 고객 협의"),
+    "pl": Developer("오세훈", "sehun.oh@sample.local", "PL", "요구사항 분석, 설계 검토, 개발 리딩"),
+    "order": Developer("김민수", "minsu.kim@sample.local", "개발자", "주문 업무, Spring MVC, JSP, MyBatis"),
+    "inventory": Developer("박지훈", "jihoon.park@sample.local", "개발자", "재고/매출 업무, Spring MVC, JSP, MyBatis"),
+    "payment": Developer("이지은", "jieun.lee@sample.local", "개발자", "결제/대시보드 업무, Spring MVC, JSP, MyBatis"),
+    "qa": Developer("정서연", "seoyeon.jung@sample.local", "QA", "테스트 케이스, 결함 관리, 검수 지원"),
 }
 
 
@@ -263,7 +263,7 @@ def _commit_steps() -> list[CommitStep]:
         ),
         CommitStep(
             "Add order creation controller service and mapper",
-            DEVELOPERS["backend"],
+            DEVELOPERS["order"],
             2,
             {
                 f"{BASE_PACKAGE_PATH}/order/controller/OrderController.java": """
@@ -369,7 +369,7 @@ def _commit_steps() -> list[CommitStep]:
         ),
         CommitStep(
             "Reserve inventory with MyBatis mapper",
-            DEVELOPERS["data"],
+            DEVELOPERS["inventory"],
             3,
             {
                 f"{BASE_PACKAGE_PATH}/inventory/controller/InventoryController.java": """
@@ -452,7 +452,7 @@ def _commit_steps() -> list[CommitStep]:
         ),
         CommitStep(
             "Add payment authorization flow",
-            DEVELOPERS["backend"],
+            DEVELOPERS["payment"],
             5,
             {
                 f"{BASE_PACKAGE_PATH}/payment/controller/PaymentController.java": """
@@ -534,7 +534,7 @@ def _commit_steps() -> list[CommitStep]:
         ),
         CommitStep(
             "Track order status transition history",
-            DEVELOPERS["backend"],
+            DEVELOPERS["order"],
             6,
             {
                 f"{BASE_PACKAGE_PATH}/order/service/OrderStatusService.java": """
@@ -609,7 +609,7 @@ def _commit_steps() -> list[CommitStep]:
         ),
         CommitStep(
             "Add sales report aggregation query",
-            DEVELOPERS["data"],
+            DEVELOPERS["inventory"],
             8,
             {
                 f"{BASE_PACKAGE_PATH}/report/controller/ReportController.java": """
@@ -691,7 +691,7 @@ def _commit_steps() -> list[CommitStep]:
         ),
         CommitStep(
             "Build operations dashboard JSP",
-            DEVELOPERS["frontend"],
+            DEVELOPERS["payment"],
             10,
             {
                 f"{BASE_PACKAGE_PATH}/dashboard/controller/DashboardController.java": """

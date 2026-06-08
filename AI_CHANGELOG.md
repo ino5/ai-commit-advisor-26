@@ -6,7 +6,7 @@
 
 - AI Commit Advisor 앱 repo와 분리된 sibling Git repo `C:\dev\ai-advisor-sample-shop`를 생성하는 `scripts/create_sample_target_repo.py`를 추가했습니다.
 - 생성 repo에는 Spring MVC Controller, Service, MyBatis Mapper interface/XML, JSP 화면으로 구성한 주문, 재고, 결제, 매출, 대시보드 예제 소스와 9개 Git commit, 6명의 한국인 가상 개발자 author, `샘플_프로그램목록.csv`, 업로드용 Excel 3종이 포함됩니다.
-- 개발자 산출물의 role/skills는 공공 SI 샘플에 맞게 `PM`, `PL`, `Backend`, `Frontend`, `DBA`, `QA`로 고정 프로필을 적용합니다.
+- 개발자 산출물의 role/skills는 업무 단위 개발 방식에 맞게 `PM`, `PL`, `개발자`, `QA`로 고정 프로필을 적용합니다.
 - 샘플 데이터 생성기가 Spring/MyBatis 경로와 Python식 `controllers/services/repositories` 경로를 모두 더 자연스럽게 분류하도록 보완하고 focused tests를 추가했습니다.
 - `샘플 데이터 생성` 화면의 기본 Git 경로를 `C:\dev\ai-advisor-sample-shop`로 바꾸고, README에 샘플 repo 생성/재생성/업로드 사용법을 추가했습니다.
 - 검증: `.venv\Scripts\python.exe scripts\create_sample_target_repo.py --force` 통과, `.venv\Scripts\python.exe -m compileall src app.py scripts\generate_sample_development_data.py scripts\create_sample_target_repo.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`61 passed`).
