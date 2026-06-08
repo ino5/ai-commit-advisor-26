@@ -26,6 +26,10 @@ When working on a roadmap task:
 
 For work that is not already in `ROADMAP.md`, add or update a task entry before implementing when the work affects product direction.
 
+## AI Documentation
+
+When changing AI-facing behavior such as Mapping, RAG, Project Chat, Code Review, AI Progress, Risk Analysis, embedding, or LLM behavior, update `docs/ai-technical-overview.md` if the public explanation or safety model changes.
+
 ## Database Migrations
 
 Schema changes must be handled through Alembic migrations in `migrations/versions/`.
