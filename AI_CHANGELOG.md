@@ -2,6 +2,14 @@
 
 ## 2026-06-08
 
+### CI 테스트 워크플로우 추가
+
+- GitHub Actions `CI` workflow를 추가해 push와 pull_request에서 Python 3.11 환경으로 기본 검증을 실행하도록 했습니다.
+- CI 단계는 checkout, setup-python, `pip install -r requirements.txt`, `python -m compileall src app.py`, `python -m pytest -q` 순서로 구성했습니다.
+- `README.md`에 CI와 동일한 로컬 검증 명령을 정리했습니다.
+- `ROADMAP.md`의 P2 CI Test Workflow 상태와 체크리스트를 갱신했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`50 passed`).
+
 ### Project Chat 답변 품질과 근거 부족 처리 개선
 
 - Project Chat에서 검증된 `source_file` 근거가 없으면 "현재 검증된 소스 근거만으로는 답변하기 어렵습니다", "추가 인덱싱 또는 검색어 조정이 필요합니다"를 반환하고 추측성 LLM 답변을 생성하지 않도록 했습니다.

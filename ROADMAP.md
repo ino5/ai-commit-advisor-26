@@ -22,7 +22,7 @@
 | P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 | c42d847 |
 | P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 | fc87e29 |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
-| P2 | Ops | CI test workflow | Planned | - | - |
+| P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | - |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
@@ -192,18 +192,18 @@ Checklist:
 
 ## P2 - CI Test Workflow
 
-Status: Planned
+Status: Done
 
 Goal:
 Run tests consistently before merge or push.
 
 Checklist:
 
-- [ ] Add GitHub Actions workflow.
-- [ ] Run py_compile or import smoke check.
-- [ ] Run pytest.
-- [ ] Document local verification commands.
-- [ ] Update `AI_CHANGELOG.md`.
+- [x] Add GitHub Actions workflow.
+- [x] Run py_compile or import smoke check.
+- [x] Run pytest.
+- [x] Document local verification commands.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Application Dockerfile And Deployment Guide
 
