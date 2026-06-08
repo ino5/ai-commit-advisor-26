@@ -35,10 +35,11 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 100) -> list[st
     return chunks
 
 
-def _chunk_exists(db: Session, source_type: str, source_id: str, chunk_index: int) -> bool:
+def _chunk_exists(db: Session, project_id: int, source_type: str, source_id: str, chunk_index: int) -> bool:
     return (
         db.query(DocumentChunk.id)
         .filter(
+            DocumentChunk.project_id == project_id,
             DocumentChunk.source_type == source_type,
             DocumentChunk.source_id == source_id,
             DocumentChunk.chunk_index == chunk_index,
@@ -60,7 +61,7 @@ def _save_source_chunks(
 ) -> ChunkBuildResult:
     result = ChunkBuildResult()
     for index, chunk in enumerate(chunk_text(text, chunk_size=chunk_size, overlap=overlap)):
-        if _chunk_exists(db, source_type, source_id, index):
+        if _chunk_exists(db, project_id, source_type, source_id, index):
             result.skipped_count += 1
             continue
 

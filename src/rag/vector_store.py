@@ -79,7 +79,13 @@ class VectorStore:
         limit: int | None = None,
     ) -> EmbeddingBuildResult:
         result = EmbeddingBuildResult()
-        query = self.db.query(DocumentChunk).order_by(DocumentChunk.id)
+        model_name = embedding_client.embedding_model_name
+        vector_exists = (
+            select(VectorItem.id)
+            .where(VectorItem.chunk_id == DocumentChunk.id, VectorItem.embedding_model == model_name)
+            .exists()
+        )
+        query = self.db.query(DocumentChunk).filter(~vector_exists).order_by(DocumentChunk.id)
         if project_id is not None:
             query = query.filter(DocumentChunk.project_id == project_id)
         if source_types:
@@ -88,16 +94,16 @@ class VectorStore:
             query = query.limit(limit)
 
         for chunk in query.all():
-            if self.has_vector(chunk.id, embedding_client.embedding_model_name):
+            if self.has_vector(chunk.id, model_name):
                 result.skipped_count += 1
                 continue
 
             try:
                 embedding = embedding_client.embed_text(chunk.chunk_text)
-                self.save_vector(chunk.id, embedding, embedding_client.embedding_model_name)
+                self.save_vector(chunk.id, embedding, model_name)
                 metadata = dict(chunk.raw_metadata or {})
                 metadata["embedding_status"] = "completed"
-                metadata["embedding_model"] = embedding_client.embedding_model_name
+                metadata["embedding_model"] = model_name
                 chunk.raw_metadata = metadata
                 result.created_count += 1
             except Exception as exc:

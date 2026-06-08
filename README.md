@@ -190,16 +190,17 @@
 - 사용 중: mock LLM provider (`LLM_PROVIDER=mock`)
 - 사용 중: OpenAI-compatible 로컬 LLM HTTP API (`local_openai`, `/chat/completions`) (`src/services/llm_client.py`)
 - 사용 중: mock embedding provider (`EMBEDDING_PROVIDER=mock`)
-- 사용 중: OpenAI-compatible embedding HTTP API (`openai`, `local`, `/embeddings`) (`src/rag/embedding_client.py`)
+- 사용 중: OpenAI-compatible embedding HTTP API (`openai`, `local`, `local_openai`, `/embeddings`) (`src/rag/embedding_client.py`)
 - 사용 중: 별도 LLM SDK 없이 Python 표준 라이브러리 `urllib`로 HTTP 호출
-- 예정/선택: LM Studio 같은 로컬 OpenAI-compatible 서버 연동 (`.env.example`)
+- 사용 중/선택: LM Studio 같은 로컬 OpenAI-compatible embedding 서버 연동 (`.env.example`, RAG 화면의 연결 테스트)
 
 ### Vector Store / Search
 
 - 사용 중: PostgreSQL pgvector 확장 (`docker-compose.yml`, `src/db/init_db.py`)
 - 사용 중: `pgvector.sqlalchemy.Vector` 임베딩 컬럼 (`src/db/models.py`)
 - 사용 중: cosine distance 기반 유사도 검색 (`src/rag/vector_store.py`)
-- 사용 중: 프로그램, 커밋, 변경 파일 데이터를 chunk로 구성하는 RAG 구조 (`src/rag/chunker.py`, `src/ui/rag_page.py`)
+- 사용 중: 프로그램 정보, 커밋 메시지, 변경 파일/diff를 chunk로 구성하고 embedding 저장 (`src/rag/chunker.py`, `src/ui/rag_page.py`)
+- 사용 중: RAG Search 화면에서 검색어, 조회 chunk 목록, 유사도 점수, 출처, 원문 일부 표시
 
 ### Infrastructure / Deployment
 
@@ -294,6 +295,28 @@ LLM_MODEL=exaone-3.5-2.4b-instruct
 ```
 
 일부 모델은 LM Studio의 prompt template 문제로 `prediction-error` 또는 Jinja template 오류가 날 수 있습니다. 이 경우 `lmstudio-community` 모델을 사용하거나 해당 모델의 Prompt Template을 수정하세요.
+
+## Embedding / RAG 설정
+
+기본값은 mock embedding입니다. 실제 검색 품질을 보려면 OpenAI-compatible embedding 서버를 사용하세요.
+
+```env
+EMBEDDING_PROVIDER=local_openai
+EMBEDDING_BASE_URL=http://127.0.0.1:1234/v1
+EMBEDDING_API_KEY=
+EMBEDDING_MODEL=text-embedding-nomic-embed-text-v1
+PGVECTOR_DIMENSION=768
+```
+
+LM Studio를 사용할 경우 embedding 모델을 로드하고 Local Server를 켠 뒤, RAG 화면의 `Embedding 연결 테스트`로 `/v1/embeddings` 응답과 vector dimension을 확인합니다. `PGVECTOR_DIMENSION`은 사용하는 embedding 모델의 출력 차원과 같아야 하며, 이미 다른 차원으로 생성된 `vector_items.embedding` 컬럼은 DB를 새로 만들거나 마이그레이션해야 합니다.
+
+RAG 화면의 `RAG 인덱싱 실행`은 다음 데이터를 chunk로 만들고, 아직 저장되지 않은 chunk/vector만 생성합니다.
+
+- 프로그램 정보: `programs`
+- 커밋 메시지: `git_commits`
+- 변경 파일/diff: `commit_files`
+
+Search 탭은 검색어, 조회된 chunk 목록, cosine 유사도 점수, chunk 출처(program/commit/commit_file), 원문 일부를 함께 표시합니다.
 
 ## 권장 사용 순서
 
@@ -569,8 +592,8 @@ python scripts\generate_sample_development_data.py --repo-path C:\dev\green-mark
 - `analysis_runs`: 분석 실행 이력, 상태, 처리/실패 카운터
 - `code_review_results`: AI 코드리뷰 결과, 버그 탐지, 리팩토링 제안, 원본 응답
 - `risk_findings`: 규칙 기반 리스크 탐지 결과, evidence, resolved 상태
-- `document_chunks`: RAG용 chunk 원문과 메타데이터
-- `vector_items`: 향후 embedding vector 저장
+- `document_chunks`: RAG용 chunk 원문과 출처/상태 메타데이터
+- `vector_items`: chunk별 embedding vector 저장. 같은 `chunk_id + embedding_model`은 앱에서 중복 저장하지 않습니다.
 
 ## 프로그램 단위 구현상태 분석
 
@@ -693,6 +716,6 @@ requirements.txt
 
 ## 참고
 
-- 현재 RAG/embedding 기능은 골격 중심이며 실제 검색/임베딩 분석은 확장 예정입니다.
+- RAG/embedding은 mock과 OpenAI-compatible 서버를 모두 지원합니다. 실제 검색 품질 평가는 LM Studio 등 로컬 embedding 서버와 모델 차원 설정이 맞아야 합니다.
 - LLM 매핑 분석과 AI 코드리뷰는 `.env`의 `LLM_PROVIDER` 설정에 따라 mock 또는 로컬 LLM을 사용합니다.
 - Streamlit 실행 중 `.env`를 바꾸면 앱을 재시작해야 반영됩니다.
