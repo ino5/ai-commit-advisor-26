@@ -2,6 +2,16 @@
 
 ## 2026-06-08
 
+### AI Progress 구현상태 분석 결과 표시
+
+- AI Progress summary row에 저장된 프로그램 단위 구현상태 분석 상태, 업무용 라벨, 요약, 분석 일시, 근거 커밋 수를 포함했습니다.
+- 프로그램별 비교 테이블에 `구현상태 분석`, `구현상태 요약`, `분석 일시`, `근거 커밋 수` 컬럼을 추가했습니다.
+- 선택한 프로그램 상세 영역에 구현상태 분석 요약을 표시하고, 저장 결과가 없으면 `구현상태 분석 결과 없음`으로 안내하도록 했습니다.
+- AI 진척도는 매핑 결과의 구현상태를 수치화한 값이고, 구현상태 분석은 프로그램 단위 요약 결과라는 안내 문구를 추가했습니다.
+- 기존 AI 진척도, progress gap, risk reason 계산 방식은 변경하지 않았습니다.
+- `README.md`, `docs/ai-technical-overview.md`에 AI Progress의 두 지표 구분 설명을 최소 반영했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`39 passed`).
+
 ### README 구현상태 분석 보수화 설명 정리
 
 - `README.md`의 프로그램 단위 구현상태 분석 섹션에 커밋 수만으로 완료 판단을 하지 않는다는 원칙을 추가했습니다.

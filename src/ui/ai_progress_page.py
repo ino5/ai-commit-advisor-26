@@ -15,6 +15,10 @@ def _load_projects() -> list[Project]:
         return db.query(Project).order_by(Project.name).all()
 
 
+def _format_datetime(value) -> str:
+    return value.strftime("%Y-%m-%d %H:%M") if value else "-"
+
+
 def _rows_to_dataframe(rows) -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -32,6 +36,12 @@ def _rows_to_dataframe(rows) -> pd.DataFrame:
                 "implementation_status": row.best_implementation_status,
                 "mapping_count": row.mapping_count,
                 "related_commit_count": row.related_commit_count,
+                "implementation_analysis_status": row.implementation_analysis_status,
+                "implementation_analysis_status_label": row.implementation_analysis_status_label,
+                "implementation_analysis_summary": row.implementation_analysis_summary,
+                "implementation_analyzed_at": row.implementation_analyzed_at,
+                "implementation_analyzed_at_label": _format_datetime(row.implementation_analyzed_at),
+                "implementation_evidence_count": row.implementation_evidence_count,
                 "is_risk": row.is_risk,
                 "risk_reasons": ", ".join(row.risk_reasons),
             }
@@ -49,6 +59,10 @@ def _render_summary(summary) -> None:
 
     gap_ratio = min(max(summary.progress_gap_average / 100, 0), 1)
     st.progress(gap_ratio, text=f"계획 대비 AI 진척도 차이 {summary.progress_gap_average}%")
+    st.info(
+        "AI 진척도는 프로그램-커밋 매핑 결과의 구현상태를 수치화한 값입니다. "
+        "구현상태 분석은 프로그램 단위로 관련 커밋과 계획 정보를 요약한 저장된 AI 분석 결과입니다."
+    )
 
 
 def _render_saved_high_risks(project_id: int) -> None:
@@ -165,27 +179,35 @@ def _render_program_table(df: pd.DataFrame) -> None:
     if risk_only:
         filtered = filtered[filtered["is_risk"]]
 
-    st.dataframe(
-        filtered[
-            [
-                "program_id",
-                "program_name",
-                "developer",
-                "planned_start_date",
-                "planned_end_date",
-                "status",
-                "plan_progress_rate",
-                "ai_progress_rate",
-                "progress_gap",
-                "implementation_status",
-                "mapping_count",
-                "related_commit_count",
-                "risk_reasons",
-            ]
-        ],
-        use_container_width=True,
-        hide_index=True,
+    display_df = filtered[
+        [
+            "program_id",
+            "program_name",
+            "developer",
+            "planned_start_date",
+            "planned_end_date",
+            "status",
+            "plan_progress_rate",
+            "ai_progress_rate",
+            "progress_gap",
+            "implementation_status",
+            "implementation_analysis_status_label",
+            "implementation_analysis_summary",
+            "implementation_analyzed_at_label",
+            "implementation_evidence_count",
+            "mapping_count",
+            "related_commit_count",
+            "risk_reasons",
+        ]
+    ].rename(
+        columns={
+            "implementation_analysis_status_label": "구현상태 분석",
+            "implementation_analysis_summary": "구현상태 요약",
+            "implementation_analyzed_at_label": "분석 일시",
+            "implementation_evidence_count": "근거 커밋 수",
+        }
     )
+    st.dataframe(display_df, use_container_width=True, hide_index=True)
 
 
 def _render_program_detail(df: pd.DataFrame) -> None:
@@ -204,6 +226,16 @@ def _render_program_detail(df: pd.DataFrame) -> None:
     cols[2].metric("차이", f"{selected.progress_gap}%")
     cols[3].metric("관련 커밋", int(selected.related_commit_count))
 
+    st.markdown("#### 프로그램 단위 구현상태 분석")
+    analysis_cols = st.columns(3)
+    analysis_cols[0].metric("상태", selected.implementation_analysis_status_label)
+    analysis_cols[1].metric("분석 일시", selected.implementation_analyzed_at_label)
+    analysis_cols[2].metric("근거 커밋 수", int(selected.implementation_evidence_count))
+    if selected.implementation_analysis_status_label == "분석없음":
+        st.info("구현상태 분석 결과 없음")
+    else:
+        st.write(selected.implementation_analysis_summary or "-")
+
     st.write(
         {
             "program_id": selected.program_id,
@@ -213,6 +245,7 @@ def _render_program_detail(df: pd.DataFrame) -> None:
             "planned_end_date": selected.planned_end_date,
             "status": selected.status,
             "implementation_status": selected.implementation_status,
+            "implementation_analysis": selected.implementation_analysis_status_label,
             "risk_reasons": selected.risk_reasons,
         }
     )

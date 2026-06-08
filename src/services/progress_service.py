@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -30,6 +30,11 @@ class ProgramProgressRow:
     best_implementation_status: str
     mapping_count: int
     related_commit_count: int
+    implementation_analysis_status: str | None = None
+    implementation_analysis_status_label: str = "분석없음"
+    implementation_analysis_summary: str = ""
+    implementation_analyzed_at: datetime | None = None
+    implementation_evidence_count: int = 0
     risk_reasons: list[str] = field(default_factory=list)
 
     @property
@@ -69,6 +74,23 @@ def normalize_implementation_status(status: str | None) -> str:
     if value in {"판단불가", "unknown", "unclear", "not_applicable"}:
         return "판단불가"
     return status.strip()
+
+
+def implementation_analysis_status_label(status: str | None) -> str:
+    value = str(status or "").strip().upper()
+    labels = {
+        "NOT_STARTED": "구현전 추정",
+        "IN_PROGRESS": "진행중 추정",
+        "COMPLETED": "구현완료 추정",
+        "UNKNOWN": "판단불가",
+    }
+    if not value:
+        return "분석없음"
+    return labels.get(value, "판단불가")
+
+
+def implementation_evidence_count(evidence_commits: object) -> int:
+    return len(evidence_commits) if isinstance(evidence_commits, list) else 0
 
 
 def _status_rank(status: str) -> int:
@@ -119,6 +141,7 @@ def get_ai_progress_summary(db: Session, project_id: int) -> AiProgressSummary:
         .options(
             joinedload(Program.assigned_developer),
             joinedload(Program.mappings).joinedload(ProgramCommitMapping.commit),
+            joinedload(Program.implementation_status_result),
         )
         .filter(Program.project_id == project_id)
         .order_by(Program.program_id, Program.program_name)
@@ -134,6 +157,7 @@ def get_ai_progress_summary(db: Session, project_id: int) -> AiProgressSummary:
         progress_gap = plan_progress_rate - ai_progress_rate
         related_commit_count = len(related_mappings)
         reasons = _risk_reasons(program, related_mappings, ai_progress_rate, progress_gap)
+        implementation_status = program.implementation_status_result
 
         rows.append(
             ProgramProgressRow(
@@ -150,6 +174,15 @@ def get_ai_progress_summary(db: Session, project_id: int) -> AiProgressSummary:
                 best_implementation_status=best_status,
                 mapping_count=len(related_mappings),
                 related_commit_count=related_commit_count,
+                implementation_analysis_status=implementation_status.status if implementation_status else None,
+                implementation_analysis_status_label=implementation_analysis_status_label(
+                    implementation_status.status if implementation_status else None
+                ),
+                implementation_analysis_summary=(implementation_status.summary or "") if implementation_status else "",
+                implementation_analyzed_at=implementation_status.analyzed_at if implementation_status else None,
+                implementation_evidence_count=implementation_evidence_count(
+                    implementation_status.evidence_commits if implementation_status else None
+                ),
                 risk_reasons=reasons,
             )
         )

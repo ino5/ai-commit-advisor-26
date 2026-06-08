@@ -19,6 +19,7 @@
 | P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 확인과 원클릭 재인덱싱 | de4a16e |
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | fa625d2 |
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 | 704c7cf |
+| P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 | - |
 | P1 | Mapping | Mapping feedback analytics and review queue | Planned | 매핑 피드백 기능 추가 | 466d131 |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P2 | Ops | CI test workflow | Planned | - | - |
@@ -148,6 +149,26 @@ Checklist:
 - [x] Avoid easy COMPLETED fallback results.
 - [x] Add focused tests for fallback and payload normalization.
 - [x] Update AI technical overview.
+- [x] Run compileall and pytest.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P1 - Show Implementation Status Analysis Results In AI Progress
+
+Status: Done
+
+Goal:
+Show saved program-level implementation analysis beside existing AI progress metrics without changing progress calculations.
+
+Checklist:
+
+- [x] Add implementation analysis fields to progress summary rows.
+- [x] Map saved implementation analysis statuses to business-friendly labels.
+- [x] Add implementation analysis columns to the AI Progress program table.
+- [x] Show selected program implementation analysis summary in the detail area.
+- [x] Add guidance explaining AI progress rate versus implementation analysis.
+- [x] Keep AI progress, progress gap, and risk calculations unchanged.
+- [x] Add focused tests.
+- [x] Update README and AI technical overview where needed.
 - [x] Run compileall and pytest.
 - [x] Update `AI_CHANGELOG.md`.
 

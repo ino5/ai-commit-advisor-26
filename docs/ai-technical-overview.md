@@ -17,6 +17,7 @@ The project uses AI as an assistant for analysis and retrieval, not as an uncont
 | Project Chat | RAG retrieves current source chunks and LLM answers user questions | Verified `source_file` chunks by default | Chat answer with source citations |
 | AI Code Review | LLM reviews working tree, staged changes, latest commit, or selected commit | Git diff and commit message | Summary, risk level, bug findings, refactoring suggestions |
 | RAG Search | Embeddings retrieve relevant chunks | Current source, programs, commits, commit_file diffs | Similar chunks with metadata and verification status |
+| AI Progress | Compares planned progress with mapping-derived AI progress and saved implementation analysis | Program plan, program_commit_mappings, program_implementation_status | Progress gap, risk flags, implementation analysis summary |
 | Risk Analysis | Rule-based analysis using AI-derived mapping/progress evidence | Program plan, related mappings, commits, AI progress | Risk findings and evidence |
 
 ## End-to-End AI Flow
@@ -125,6 +126,8 @@ Manual feedback is also captured in `program_commit_mappings` feedback columns s
 Program implementation status is treated as an estimate for business verification. The prompt tells the LLM to use the program plan, description, related commits, changed files, and existing mapping evidence, but not to decide from commit count alone.
 
 `COMPLETED` should be selected only when the core implementation evidence sufficiently covers the program scope and no clear incomplete signal exists. Commit evidence alone cannot prove deployment, testing, exception handling, screen integration, or production verification. When those items are not visible, they remain in `incomplete_features` as verification items.
+
+AI Progress keeps two concepts separate: AI progress rate is still calculated from `program_commit_mappings`, while saved `program_implementation_status` records are displayed as program-level analysis summaries for review. The saved implementation status does not replace the existing progress-gap or risk calculations.
 
 ## Current Limits
 
