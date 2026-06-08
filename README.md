@@ -29,6 +29,60 @@
 - PostgreSQL + pgvector
 - 선택: LM Studio 또는 OpenAI-compatible 로컬 LLM 서버
 
+## 기술 스택
+
+아래 내용은 현재 저장소의 `requirements.txt`, `docker-compose.yml`, `.env.example`, `app.py`, `src` 코드 구조를 기준으로 정리했습니다.
+
+### Backend
+
+- 사용 중: Python 기반 애플리케이션
+- 사용 중: SQLAlchemy ORM (`src/db/database.py`, `src/db/models.py`)
+- 사용 중: `python-dotenv`, `pydantic-settings` 기반 환경 설정 (`src/utils/config.py`)
+- 사용 중: Git 데이터 수집 및 코드리뷰 대상 추출은 Python `subprocess`로 Git CLI를 호출 (`src/services/git_service.py`, `src/services/code_review_service.py`)
+- 설치됨/예정: `GitPython`은 `requirements.txt`에 설치되어 있으나 현재 코드에서는 직접 import되지 않습니다.
+
+### Frontend / UI
+
+- 사용 중: Streamlit 단일 앱 (`app.py`, `src/ui`)
+- 사용 중: pandas 기반 테이블/데이터 가공 (`src/ui`, `src/services/excel_service.py`)
+- 사용 중: Plotly Express 기반 대시보드 차트 (`src/ui/dashboard_page.py`, `src/ui/risk_page.py` 등)
+
+### Database
+
+- 사용 중: PostgreSQL (`DATABASE_URL=postgresql+psycopg2://...`)
+- 사용 중: SQLAlchemy + `psycopg2-binary`
+- 사용 중: JSONB, 관계형 테이블, pgvector Vector 컬럼 (`src/db/models.py`)
+
+### AI / LLM / Embedding
+
+- 사용 중: mock LLM provider (`LLM_PROVIDER=mock`)
+- 사용 중: OpenAI-compatible 로컬 LLM HTTP API (`local_openai`, `/chat/completions`) (`src/services/llm_client.py`)
+- 사용 중: mock embedding provider (`EMBEDDING_PROVIDER=mock`)
+- 사용 중: OpenAI-compatible embedding HTTP API (`openai`, `local`, `/embeddings`) (`src/rag/embedding_client.py`)
+- 사용 중: 별도 LLM SDK 없이 Python 표준 라이브러리 `urllib`로 HTTP 호출
+- 예정/선택: LM Studio 같은 로컬 OpenAI-compatible 서버 연동 (`.env.example`)
+
+### Vector Store / Search
+
+- 사용 중: PostgreSQL pgvector 확장 (`docker-compose.yml`, `src/db/init_db.py`)
+- 사용 중: `pgvector.sqlalchemy.Vector` 임베딩 컬럼 (`src/db/models.py`)
+- 사용 중: cosine distance 기반 유사도 검색 (`src/rag/vector_store.py`)
+- 사용 중: 프로그램, 커밋, 변경 파일 데이터를 chunk로 구성하는 RAG 구조 (`src/rag/chunker.py`, `src/ui/rag_page.py`)
+
+### Infrastructure / Deployment
+
+- 사용 중: Docker Compose로 PostgreSQL + pgvector 실행 (`docker-compose.yml`)
+- 사용 중: `pgvector/pgvector:pg16` Docker 이미지
+- 사용 중: 로컬 Streamlit 실행 (`streamlit run app.py`)
+- 현재 없음: 애플리케이션용 `Dockerfile`, `package.json`, 프론트엔드 빌드 설정은 저장소에 없습니다.
+
+### Development Tools
+
+- 사용 중: `requirements.txt` 기반 Python 의존성 관리
+- 사용 중: `.env.example` 기반 로컬 환경 변수 템플릿
+- 사용 중: `openpyxl` 기반 Excel 업로드/샘플 파일 생성 (`src/services/excel_service.py`, `src/ui/sample_data_page.py`)
+- 사용 중: 샘플 데이터 생성 스크립트 (`scripts/generate_sample_development_data.py`)
+
 ## 설치 및 실행
 
 ### 1. 환경 파일 생성
