@@ -92,6 +92,8 @@ flowchart LR
 
 - `Home`: 전체 프로젝트 현황, KPI, AI 진척도, 리스크 프로그램 요약.
 - `Project`: 프로젝트 이름, 설명, 로컬 Git 저장소 경로 관리.
+- `Developer`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리.
+- `Developer Upload`: 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - `Program`: 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, 저장.
 - `Plan Upload`: 개발계획 Excel 업로드 및 일정/진척도 갱신.
 - `Program Detail`: 특정 프로그램의 계획, AI 구현상태, 관련 커밋, 파일 diff, 리스크를 상세 조회.
@@ -444,7 +446,7 @@ LLM 출력 예시:
 - Streamlit 기반 업무 흐름형 메뉴.
 - 프로젝트 등록 및 Git 저장소 경로 관리.
 - 프로그램 관리: 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, DB 저장/업데이트.
-- 개발자 Excel 업로드.
+- 개발자 관리: 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, DB 저장/업데이트.
 - 개발계획 Excel 업로드 및 계획 대시보드.
 - Git 커밋 전체 수집 및 증분 동기화.
 - 커밋별 변경 파일과 diff 저장.
@@ -510,7 +512,7 @@ LLM 출력 예시:
 | `src/ui/home_page.py` | 전체 현황 KPI와 리스크 요약. |
 | `src/ui/project_page.py` | 프로젝트 등록/수정. |
 | `src/ui/developer_page.py` | 개발자 목록, Git author 기반 추출, 개발자 통계. |
-| `src/ui/developer_upload_page.py` | 개발자 목록 업로드. |
+| `src/ui/developer_upload_page.py` | 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/upload_page.py` | 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/development_plan_upload_page.py` | 개발계획 업로드. |
 | `src/ui/program_detail_page.py` | 프로그램별 계획, AI 구현상태, 관련 커밋, diff, 리스크 상세 조회. |
@@ -535,6 +537,7 @@ LLM 출력 예시:
 | `src/services/program_management_service.py` | `save_manual_program`, `update_program`, `delete_program`, `get_program_delete_impact` |
 | `src/services/git_service.py` | `sync_git_repository`, `collect_commits` |
 | `src/services/developer_service.py` | `extract_developers_from_git_commits`, `get_developer_stats` |
+| `src/services/developer_management_service.py` | `save_manual_developer`, `update_developer`, `delete_developer`, `validate_developer_import` |
 | `src/services/llm_client.py` | `LLMClient.generate` |
 | `src/services/mapping_service.py` | `MappingService.analyze_commits`, `MappingService.analyze_project` |
 | `src/services/progress_service.py` | `get_ai_progress_summary`, `get_program_commit_details` |
