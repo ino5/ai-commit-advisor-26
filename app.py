@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import streamlit as st
 
 from src.ui.ai_progress_page import render_ai_progress_page
@@ -62,18 +64,98 @@ PAGE_GROUPS = {
     },
 }
 
+DEFAULT_GROUP = "개요"
+DEFAULT_PAGE = "Home"
+NAV_STATE_KEY = "sidebar_navigation"
+
+
+def _inject_sidebar_styles() -> None:
+    st.markdown(
+        """
+        <style>
+        section[data-testid="stSidebar"] .stButton > button {
+            border: 0;
+            border-radius: 6px;
+            justify-content: flex-start;
+            padding: 0.42rem 0.62rem;
+            width: 100%;
+            background: transparent;
+            color: inherit;
+        }
+        section[data-testid="stSidebar"] .stButton > button:hover {
+            background: rgba(49, 51, 63, 0.08);
+        }
+        section[data-testid="stSidebar"] .nav-active {
+            border-left: 3px solid #2563eb;
+            background: rgba(37, 99, 235, 0.10);
+            border-radius: 6px;
+            font-weight: 600;
+            padding: 0.42rem 0.62rem;
+            margin: 0.1rem 0 0.35rem 0;
+        }
+        section[data-testid="stSidebar"] .nav-group {
+            color: #64748b;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0;
+            margin: 0.7rem 0 0.15rem 0;
+        }
+        section[data-testid="stSidebar"] .nav-current {
+            border-top: 1px solid rgba(49, 51, 63, 0.14);
+            color: #475569;
+            font-size: 0.82rem;
+            margin-top: 0.85rem;
+            padding-top: 0.7rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _ensure_navigation_state() -> dict:
+    state = st.session_state.get(NAV_STATE_KEY)
+    if not isinstance(state, dict):
+        state = {"group": DEFAULT_GROUP, "page": DEFAULT_PAGE}
+    group = state.get("group") if state.get("group") in PAGE_GROUPS else DEFAULT_GROUP
+    page = state.get("page") if state.get("page") in PAGE_GROUPS[group] else next(iter(PAGE_GROUPS[group]))
+    state = {"group": group, "page": page}
+    st.session_state[NAV_STATE_KEY] = state
+    return state
+
+
+def _select_page(group: str, page: str) -> None:
+    st.session_state[NAV_STATE_KEY] = {"group": group, "page": page}
+
+
+def _render_sidebar_navigation() -> tuple[str, str, Callable[[], None]]:
+    _inject_sidebar_styles()
+    state = _ensure_navigation_state()
+
+    st.sidebar.title("AI Commit Advisor")
+    st.sidebar.caption("업무 흐름 기반 프로젝트 분석 콘솔")
+    st.sidebar.markdown('<div class="nav-current">현재 위치</div>', unsafe_allow_html=True)
+    st.sidebar.caption(f"{state['group']} / {state['page']}")
+
+    for group, pages in PAGE_GROUPS.items():
+        st.sidebar.markdown(f'<div class="nav-group">{group}</div>', unsafe_allow_html=True)
+        for page_name in pages:
+            is_active = group == state["group"] and page_name == state["page"]
+            if is_active:
+                st.sidebar.markdown(f'<div class="nav-active">{page_name}</div>', unsafe_allow_html=True)
+                continue
+            if st.sidebar.button(page_name, key=f"nav_{group}_{page_name}", use_container_width=True):
+                _select_page(group, page_name)
+                st.rerun()
+
+    selected_group = st.session_state[NAV_STATE_KEY]["group"]
+    selected_page = st.session_state[NAV_STATE_KEY]["page"]
+    return selected_group, selected_page, PAGE_GROUPS[selected_group][selected_page]
+
 
 def main() -> None:
-    st.sidebar.title("AI Commit Advisor")
-    st.sidebar.caption("AI 프로젝트 분석 콘솔")
-
-    group = st.sidebar.radio("업무 영역", list(PAGE_GROUPS.keys()))
-    pages = PAGE_GROUPS[group]
-    page_name = st.sidebar.radio("화면", list(pages.keys()))
-
-    st.sidebar.divider()
-    st.sidebar.caption(f"{group} / {page_name}")
-    pages[page_name]()
+    _, _, render_page = _render_sidebar_navigation()
+    render_page()
 
 
 if __name__ == "__main__":

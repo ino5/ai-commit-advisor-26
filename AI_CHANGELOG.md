@@ -2,6 +2,14 @@
 
 ## 2026-06-08
 
+### Sidebar 메뉴 UX 개선
+
+- 사이드바의 2단 `radio` 메뉴를 제거하고, 업무 영역별 그룹 제목과 메뉴 버튼을 사용하는 내비게이션으로 변경했습니다.
+- 현재 선택된 화면은 좌측 강조선과 배경으로 표시하고, 현재 위치를 사이드바 상단에 별도로 노출했습니다.
+- 기존 페이지 그룹과 화면 렌더러는 유지해 메뉴 구조와 분석 기능 동작은 바꾸지 않았습니다.
+- `README.md`와 `ROADMAP.md`에 사이드바 메뉴 UX 개선 내용을 반영했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`53 passed`).
+
 ### LLM/Embedding 배치 안전장치와 예상시간 표시
 
 - RAG embedding 실행 전에 남은 chunk 수, 이번 실행 최대 처리 수, 예상 소요 시간을 표시하도록 했습니다.
