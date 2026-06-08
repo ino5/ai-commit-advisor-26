@@ -14,6 +14,8 @@ from src.services.mapping_feedback_service import (
     IMPLEMENTATION_STATUS_OPTIONS,
     apply_mapping_feedback,
     list_mapping_feedback_rows,
+    list_mapping_review_queue_rows,
+    summarize_mapping_feedback_quality,
 )
 
 
@@ -207,10 +209,97 @@ def _format_feedback_datetime(value) -> str:
     return value.strftime("%Y-%m-%d %H:%M") if value else "-"
 
 
+def _feedback_rows_dataframe(rows) -> pd.DataFrame:
+    df = pd.DataFrame([row.__dict__ for row in rows])
+    if df.empty:
+        return df
+    df["commit_hash_short"] = df["commit_hash"].str.slice(0, 12)
+    df["feedback_updated_at"] = df["feedback_updated_at"].apply(_format_feedback_datetime)
+    df["review_reasons"] = df["review_reasons"].apply(lambda reasons: ", ".join(reasons or []))
+    return df
+
+
+def _row_labels(rows) -> dict[str, object]:
+    return {
+        (
+            f"{row.mapping_id} | {row.program_id or '-'} | {row.program_name} | "
+            f"{row.commit_hash[:12]} | {row.commit_message[:80]}"
+        ): row
+        for row in rows
+    }
+
+
 def _render_mapping_feedback(project_id: int) -> None:
     st.subheader("매핑 피드백")
     st.caption("AI 매핑 결과를 사람이 보정하면 영향도, 진척도, 리스크 분석에서 보정된 값이 사용됩니다.")
 
+    with SessionLocal() as db:
+        summary = summarize_mapping_feedback_quality(db, project_id)
+
+    metric_cols = st.columns(6)
+    metric_cols[0].metric("전체 매핑", summary.total_count)
+    metric_cols[1].metric("피드백 완료", summary.feedback_completed_count)
+    metric_cols[2].metric("피드백 미완료", summary.feedback_pending_count)
+    metric_cols[3].metric("리뷰 필요", summary.review_needed_count)
+    metric_cols[4].metric("판단불가", summary.unknown_status_count)
+    metric_cols[5].metric("낮은 관련도", summary.low_relevance_count)
+
+    st.markdown("#### 리뷰 큐")
+    queue_col1, queue_col2 = st.columns([1, 2])
+    queue_filter = queue_col1.selectbox(
+        "리뷰 큐 필터",
+        ["전체", "리뷰 필요만", "피드백 미완료", "판단불가", "낮은 관련도", "비관련 판정"],
+        index=1,
+    )
+    queue_keyword = queue_col2.text_input(
+        "리뷰 큐 검색어",
+        placeholder="프로그램명, program_id, commit message, commit hash",
+        key="mapping_review_queue_keyword",
+    )
+
+    with SessionLocal() as db:
+        queue_rows = list_mapping_review_queue_rows(
+            db,
+            project_id,
+            queue_filter=queue_filter,
+            keyword=queue_keyword or None,
+        )
+
+    selected_queue_row = None
+    if queue_rows:
+        queue_df = _feedback_rows_dataframe(queue_rows)
+        st.dataframe(
+            queue_df[
+                [
+                    "mapping_id",
+                    "program_id",
+                    "program_name",
+                    "commit_hash_short",
+                    "commit_message",
+                    "relevance_score",
+                    "is_related",
+                    "implementation_status",
+                    "has_feedback",
+                    "review_needed",
+                    "review_reasons",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+        queue_labels = _row_labels(queue_rows)
+        selected_queue_label = st.selectbox(
+            "리뷰 큐에서 보정할 매핑 선택",
+            ["선택 안 함", *list(queue_labels.keys())],
+            key="mapping_review_queue_select",
+        )
+        if selected_queue_label != "선택 안 함":
+            selected_queue_row = queue_labels[selected_queue_label]
+    else:
+        st.info("리뷰 큐 조건에 맞는 매핑 결과가 없습니다.")
+
+    st.divider()
+    st.markdown("#### 매핑 목록 / 보정")
     filter_col1, filter_col2, filter_col3 = st.columns([2, 1, 1])
     keyword = filter_col1.text_input("프로그램/커밋 검색", key="mapping_feedback_keyword")
     only_feedback = filter_col2.checkbox("피드백 완료만", value=False)
@@ -230,9 +319,7 @@ def _render_mapping_feedback(project_id: int) -> None:
         st.info("조건에 맞는 매핑 결과가 없습니다. 먼저 매핑 분석을 실행하세요.")
         return
 
-    df = pd.DataFrame([row.__dict__ for row in rows])
-    df["commit_hash_short"] = df["commit_hash"].str.slice(0, 12)
-    df["feedback_updated_at"] = df["feedback_updated_at"].apply(_format_feedback_datetime)
+    df = _feedback_rows_dataframe(rows)
     st.dataframe(
         df[
             [
@@ -246,20 +333,23 @@ def _render_mapping_feedback(project_id: int) -> None:
                 "implementation_status",
                 "has_feedback",
                 "feedback_updated_at",
+                "review_needed",
+                "review_reasons",
             ]
         ],
         use_container_width=True,
         hide_index=True,
     )
 
-    labels = {
-        (
-            f"{row.mapping_id} | {row.program_id or '-'} | {row.program_name} | "
-            f"{row.commit_hash[:12]} | {row.commit_message[:80]}"
-        ): row
-        for row in rows
-    }
-    selected_label = st.selectbox("보정할 매핑 선택", list(labels.keys()), key="mapping_feedback_select")
+    labels = _row_labels(rows)
+    default_index = 0
+    label_keys = list(labels.keys())
+    if selected_queue_row is not None:
+        for index, label in enumerate(label_keys):
+            if labels[label].mapping_id == selected_queue_row.mapping_id:
+                default_index = index
+                break
+    selected_label = st.selectbox("보정할 매핑 선택", label_keys, index=default_index, key="mapping_feedback_select")
     selected = labels[selected_label]
 
     status_index = IMPLEMENTATION_STATUS_OPTIONS.index(selected.implementation_status)

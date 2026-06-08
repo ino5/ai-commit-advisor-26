@@ -2,6 +2,16 @@
 
 ## 2026-06-08
 
+### Mapping 피드백 리뷰 큐와 품질 지표 추가
+
+- Mapping 화면의 `매핑 피드백` 모드에 전체/피드백 완료/미완료/리뷰 필요/판단불가/낮은 관련도 KPI를 추가했습니다.
+- 피드백 미완료, 판단불가, 낮은 관련도, 비관련 판정, 근거 부족 등 검토가 필요한 매핑을 찾는 리뷰 큐를 추가했습니다.
+- 리뷰 큐 필터와 프로그램명, program_id, commit message, commit hash 기반 검색을 추가했습니다.
+- 리뷰 큐에서 선택한 매핑을 기존 피드백 보정 form으로 바로 수정할 수 있게 했습니다.
+- `mapping_feedback_service.py`에 리뷰 큐 조회와 품질 집계 helper를 추가하고 focused tests를 보강했습니다.
+- `README.md`의 Mapping 설명에 매핑 피드백 리뷰 큐를 추가했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`43 passed`).
+
 ### AI Progress 문서 설명 정리
 
 - `README.md` 주요 기능 목록에 AI Progress가 계획 진척도, 매핑 기반 AI 진척도, 저장된 프로그램 단위 구현상태 분석 요약을 함께 비교한다는 설명을 추가했습니다.

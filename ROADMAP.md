@@ -20,7 +20,7 @@
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | fa625d2 |
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 | 704c7cf |
 | P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 | c42d847 |
-| P1 | Mapping | Mapping feedback analytics and review queue | Planned | 매핑 피드백 기능 추가 | 466d131 |
+| P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 | - |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P2 | Ops | CI test workflow | Planned | - | - |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
@@ -174,19 +174,19 @@ Checklist:
 
 ## P1 - Mapping Feedback Analytics And Review Queue
 
-Status: Planned
+Status: Done
 
 Goal:
 Turn manual mapping feedback into an analysis quality workflow.
 
 Checklist:
 
-- [ ] Add feedback completed/pending summary.
-- [ ] Add low-confidence mapping review queue.
-- [ ] Add filters for stale, corrected, and disputed mappings.
-- [ ] Add feedback export.
-- [ ] Add focused tests.
-- [ ] Update `AI_CHANGELOG.md`.
+- [x] Add feedback completed/pending/review-needed quality summary.
+- [x] Add review queue candidates for no feedback, unknown status, low relevance, short reason, and unrelated mappings.
+- [x] Add review queue filters and keyword search.
+- [x] Reuse the existing mapping feedback correction form for selected queue rows.
+- [x] Add focused tests.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - CI Test Workflow
 
