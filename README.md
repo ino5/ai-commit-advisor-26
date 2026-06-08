@@ -8,6 +8,134 @@
 
 ![AI Commit Advisor dashboard](docs/images/ai-commit-advisor-home.png)
 
+## 기능별 화면 캡처
+
+<details>
+<summary>Home</summary>
+
+![Home](docs/images/features/home.png)
+
+</details>
+
+<details>
+<summary>Project</summary>
+
+![Project](docs/images/features/project.png)
+
+</details>
+
+<details>
+<summary>Developer</summary>
+
+![Developer](docs/images/features/developer.png)
+
+</details>
+
+<details>
+<summary>Program Detail</summary>
+
+![Program Detail](docs/images/features/program-detail.png)
+
+</details>
+
+<details>
+<summary>개발자 목록 업로드</summary>
+
+![Developer Upload](docs/images/features/developer-upload.png)
+
+</details>
+
+<details>
+<summary>프로그램 목록 업로드</summary>
+
+![Program Upload](docs/images/features/program-upload.png)
+
+</details>
+
+<details>
+<summary>개발계획 업로드</summary>
+
+![Development Plan Upload](docs/images/features/development-plan-upload.png)
+
+</details>
+
+<details>
+<summary>Git 동기화</summary>
+
+![Git Sync](docs/images/features/git-sync.png)
+
+</details>
+
+<details>
+<summary>샘플 데이터 생성</summary>
+
+![Sample Data](docs/images/features/sample-data.png)
+
+</details>
+
+<details>
+<summary>Mapping</summary>
+
+![Mapping](docs/images/features/mapping.png)
+
+</details>
+
+<details>
+<summary>Risk Analysis</summary>
+
+![Risk Analysis](docs/images/features/risk-analysis.png)
+
+</details>
+
+<details>
+<summary>Commit Impact</summary>
+
+![Commit Impact](docs/images/features/commit-impact.png)
+
+</details>
+
+<details>
+<summary>RAG 검색</summary>
+
+![RAG Search](docs/images/features/rag-search.png)
+
+</details>
+
+<details>
+<summary>AI Code Review</summary>
+
+![AI Code Review](docs/images/features/ai-code-review.png)
+
+</details>
+
+<details>
+<summary>Dashboard</summary>
+
+![Dashboard](docs/images/features/dashboard.png)
+
+</details>
+
+<details>
+<summary>개발계획 대시보드</summary>
+
+![Planning Dashboard](docs/images/features/planning-dashboard.png)
+
+</details>
+
+<details>
+<summary>AI Progress</summary>
+
+![AI Progress](docs/images/features/ai-progress.png)
+
+</details>
+
+<details>
+<summary>설정</summary>
+
+![Settings](docs/images/features/settings.png)
+
+</details>
+
 ## 주요 기능
 
 - 프로젝트 등록 및 로컬 Git 저장소 경로 관리
