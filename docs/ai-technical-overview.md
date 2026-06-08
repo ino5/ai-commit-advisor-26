@@ -119,7 +119,7 @@ AI outputs are stored with raw or structured evidence where practical.
 - `document_chunks.raw_metadata`: RAG source metadata and embedding status
 - `risk_findings.evidence`: rule evidence used to create risk findings
 
-Manual feedback is also captured in `program_commit_mappings` feedback columns so human corrections can override AI mapping results.
+Manual feedback is also captured in `program_commit_mappings` feedback columns so human corrections can override AI mapping results. The Mapping screen includes a review queue that highlights mappings with missing feedback, unknown status, low relevance, unrelated decisions, or weak reasons so reviewers can prioritize human correction.
 
 ## Implementation Status Guardrails
 

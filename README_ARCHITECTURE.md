@@ -19,6 +19,7 @@ flowchart TB
     ProjectUI --> ExcelService["excel_service.py"]
     GitUI --> GitService["git_service.py"]
     MappingUI --> MappingService["mapping_service.py"]
+    MappingUI --> MappingFeedbackService["mapping_feedback_service.py"]
     MappingUI --> RiskService["risk_service.py"]
     MappingUI --> ImpactService["commit_impact_service.py"]
     MappingUI --> CodeReviewService["code_review_service.py"]
@@ -29,6 +30,7 @@ flowchart TB
     DashboardUI --> ProgramAnalysisService["program_analysis_service.py"]
 
     MappingService --> LLMClient["llm_client.py"]
+    MappingFeedbackService --> DB
     CodeReviewService --> LLMClient
     ProgramAnalysisService --> ImplementationAnalyzer["program_implementation_analyzer.py"]
     ImplementationAnalyzer --> LLMClient
@@ -100,7 +102,7 @@ flowchart LR
 - `Plan Upload`: 개발계획 현재 데이터 조회, 직접 수정, 일괄 업데이트, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - `Program Detail`: 특정 프로그램의 계획, AI 구현상태, 관련 커밋, 파일 diff, 리스크를 상세 조회.
 - `Git`: 로컬 Git 저장소에서 커밋, 변경 파일, diff 수집.
-- `Mapping`: 프로그램과 커밋의 관련성을 LLM으로 분석해 `program_commit_mappings`에 저장.
+- `Mapping`: 프로그램과 커밋의 관련성을 LLM으로 분석해 `program_commit_mappings`에 저장하고, 피드백 리뷰 큐로 검토가 필요한 매핑을 보정.
 - `Risk Analysis`: 계획, 매핑, 커밋 활동 기반 리스크를 탐지하고 `risk_findings`에 저장/해결 처리.
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
 - `AI Code Review`: staged 변경, 최근 커밋, 특정 커밋을 LLM으로 리뷰하고 결과를 저장.
@@ -307,6 +309,7 @@ erDiagram
 | `developer_service.py` | Git author 기반 개발자 자동 추출, role/skills 추정, 개발자 통계 생성. |
 | `llm_client.py` | mock 또는 OpenAI-compatible local LLM 호출. `/chat/completions` 기반. |
 | `mapping_service.py` | 프로그램-커밋 매핑 분석의 핵심 서비스. 프로그램 기준 분석과 커밋 기준 분석을 모두 지원한다. |
+| `mapping_feedback_service.py` | 매핑 피드백 목록, 리뷰 큐 후보, 품질 KPI, 사용자 보정 저장을 처리한다. |
 | `progress_service.py` | `programs.progress_rate`와 `program_commit_mappings.implementation_status`를 결합해 AI 진척도와 리스크를 계산한다. |
 | `program_analysis_service.py` | 프로그램 상세 화면용 분석 데이터 구성. 관련 커밋, 파일 diff, 개발자 기여, 리스크 요약을 제공한다. |
 | `program_implementation_analyzer.py` | 프로그램별 관련 커밋을 LLM으로 재분석해 구현 상태와 근거를 `program_implementation_status`에 저장한다. |
@@ -347,6 +350,9 @@ sequenceDiagram
     Mapping->>DB: program_commit_mappings 저장
     Mapping->>DB: git_commits.mapping_analysis_status 업데이트
     Mapping->>DB: analysis_runs 기록
+    User->>Mapping: 매핑 피드백 리뷰 큐 확인
+    Mapping->>DB: 피드백 미완료/판단불가/낮은 관련도 후보 조회
+    Mapping->>DB: 사용자 보정값 저장
 
     User->>AIPage: AI Progress 조회
     AIPage->>Progress: get_ai_progress_summary
@@ -464,6 +470,7 @@ LLM 출력 예시:
 - 프로그램 기준 Mapping 분석.
 - 커밋 기준 Mapping 분석.
 - 커밋 기준 Mapping에서 RAG 후보 + 토큰 후보 병합.
+- Mapping 피드백 리뷰 큐와 품질 KPI.
 - 프로그램별 관련 커밋 기반 AI 구현상태 분석 및 저장.
 - LLM mock 및 OpenAI-compatible local chat 호출.
 - Mapping 실행 이력 저장.
@@ -551,6 +558,7 @@ LLM 출력 예시:
 | `src/services/developer_management_service.py` | `save_manual_developer`, `update_developer`, `delete_developer`, `validate_developer_import` |
 | `src/services/llm_client.py` | `LLMClient.generate` |
 | `src/services/mapping_service.py` | `MappingService.analyze_commits`, `MappingService.analyze_project` |
+| `src/services/mapping_feedback_service.py` | `summarize_mapping_feedback_quality`, `list_mapping_review_queue_rows`, `apply_mapping_feedback` |
 | `src/services/progress_service.py` | `get_ai_progress_summary`, `get_program_commit_details`, `implementation_analysis_status_label` |
 | `src/services/program_analysis_service.py` | `list_program_options`, `get_program_detail_analysis`, `get_commit_file_details` |
 | `src/services/program_implementation_analyzer.py` | `ProgramImplementationAnalyzer.analyze_program`, `ProgramImplementationAnalyzer.analyze_project` |

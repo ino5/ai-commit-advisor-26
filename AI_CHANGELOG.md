@@ -2,6 +2,12 @@
 
 ## 2026-06-08
 
+### Mapping 피드백 리뷰 큐 문서 정리
+
+- `README_ARCHITECTURE.md`에 `mapping_feedback_service.py` 역할, Mapping 피드백 리뷰 큐 흐름, 주요 서비스 목록을 최신 구현에 맞게 추가했습니다.
+- `docs/ai-technical-overview.md`의 traceability 설명에 매핑 리뷰 큐가 피드백 미완료, 판단불가, 낮은 관련도, 비관련 판정, 근거 부족 후보를 우선 검토하도록 돕는다는 내용을 추가했습니다.
+- 검증: 문서 변경만 수행해 테스트는 생략했습니다.
+
 ### Mapping 피드백 리뷰 큐와 품질 지표 추가
 
 - Mapping 화면의 `매핑 피드백` 모드에 전체/피드백 완료/미완료/리뷰 필요/판단불가/낮은 관련도 KPI를 추가했습니다.
