@@ -26,8 +26,8 @@
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
 | P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | 562da8a |
 | P2 | UX | Home analysis command center | Done | Home 분석 관제 화면 개선 | c3a30a1 |
-| P2 | UX | Home copy tone cleanup | Done | Home 문구 톤 정리 | d0e6c76 |
-| P2 | Ops | Home UI visual verification script | Done | Home UI 검증 스크립트 추가 | d0e6c76 |
+| P2 | UX | Home copy tone cleanup | Done | Home 문구 톤 정리 | c8c421e |
+| P2 | Ops | Home UI visual verification script | Done | Home UI 검증 스크립트 추가 | c8c421e |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
