@@ -89,6 +89,8 @@ Each `source_file` chunk stores metadata such as:
 
 Before Project Chat uses a retrieved `source_file` chunk, the application checks the current file and line range. If the hash no longer matches, the chunk is marked `stale` and excluded from the answer context.
 
+When no verified current source evidence is available, Project Chat returns an insufficient-evidence answer instead of asking the LLM to guess. The UI separates verified `source_file` evidence from historical/reference evidence such as commits or commit diffs, so deleted or outdated lines are not presented as current code facts.
+
 RAG and Project Chat also show source index status at the project level:
 
 - current Git HEAD

@@ -12,10 +12,17 @@ from src.rag.source_index_service import get_source_index_status, refresh_source
 
 VERIFICATION_LABELS = {
     "verified": "현재 코드 검증됨",
-    "stale": "인덱스 오래됨",
+    "stale": "인덱싱 이후 변경됨",
     "invalid": "검증 실패",
     "historical": "변경 이력",
     "not_applicable": "검증 대상 아님",
+}
+
+SOURCE_TYPE_LABELS = {
+    "source_file": "현재 소스 파일",
+    "program": "프로그램 정보",
+    "commit": "커밋 이력",
+    "commit_file": "커밋 파일 변경",
 }
 
 
@@ -29,6 +36,10 @@ def _chat_key(project_id: int) -> str:
     return f"project_chat_messages_{project_id}"
 
 
+def _short_hash(value: str | None) -> str:
+    return value[:12] if value else "-"
+
+
 def _format_source(source: dict) -> str:
     metadata = source.get("metadata") or {}
     source_type = source.get("source_type")
@@ -38,14 +49,31 @@ def _format_source(source: dict) -> str:
             f"{metadata.get('line_start')}-{metadata.get('line_end')}"
         )
     if source_type == "commit_file":
-        return f"{metadata.get('commit_hash') or ''} / {metadata.get('file_path') or source.get('source_id')}"
+        return f"{_short_hash(metadata.get('commit_hash'))} / {metadata.get('file_path') or source.get('source_id')}"
     if source_type == "commit":
-        return metadata.get("commit_hash") or str(source.get("source_id"))
+        return _short_hash(metadata.get("commit_hash") or str(source.get("source_id") or ""))
     return f"{source_type} / {source.get('source_id')}"
 
 
-def _short_hash(value: str | None) -> str:
-    return value[:12] if value else "-"
+def _source_row(source: dict, rank: int) -> dict:
+    metadata = source.get("metadata") or {}
+    return {
+        "rank": rank,
+        "source_type": SOURCE_TYPE_LABELS.get(source.get("source_type"), source.get("source_type")),
+        "source": _format_source(source),
+        "file_path": metadata.get("file_path") or source.get("source_id"),
+        "line_range": (
+            f"{metadata.get('line_start')}-{metadata.get('line_end')}"
+            if metadata.get("line_start") and metadata.get("line_end")
+            else "-"
+        ),
+        "verification_status": VERIFICATION_LABELS.get(
+            source.get("verification_status"),
+            source.get("verification_status"),
+        ),
+        "score": round(float(source.get("similarity") or 0), 4),
+        "reason": source.get("verification_reason"),
+    }
 
 
 def _render_source_index_status(project: Project) -> None:
@@ -67,7 +95,7 @@ def _render_source_index_status(project: Project) -> None:
     )
 
     if status.source_vector_count == 0:
-        st.warning("현재 소스 파일 vector가 없습니다. `RAG 검색 > Index`에서 `현재 소스 파일` 인덱싱을 먼저 실행하세요.")
+        st.warning("현재 소스 파일 vector가 없습니다. `RAG 검색 > Index`에서 현재 소스 파일 인덱싱을 먼저 실행하세요.")
     elif status.needs_reindex:
         st.warning(
             "현재 Git HEAD와 인덱싱 시점이 다를 수 있습니다. "
@@ -79,7 +107,10 @@ def _render_source_index_status(project: Project) -> None:
     for error in status.errors:
         st.warning(error)
 
-    st.caption("Project Chat의 재인덱싱은 PC 부하를 줄이기 위해 chunk만 갱신합니다. embedding 생성은 `RAG 검색 > Embedding`에서 제한 수량으로 실행하세요.")
+    st.caption(
+        "Project Chat의 재인덱싱은 PC 부하를 줄이기 위해 chunk만 갱신합니다. "
+        "embedding 생성은 `RAG 검색 > Embedding`에서 제한 수량으로 실행하세요."
+    )
     if st.button("현재 소스 다시 인덱싱", disabled=not bool(project.git_repo_path)):
         with SessionLocal() as db:
             current_project = db.get(Project, project.id)
@@ -96,34 +127,59 @@ def _render_source_index_status(project: Project) -> None:
         st.rerun()
 
 
-def _render_sources(sources: list[dict], message_index: int) -> None:
+def _split_sources(sources: list[dict]) -> tuple[list[dict], list[dict]]:
+    current_sources = [
+        source
+        for source in sources
+        if source.get("source_type") == "source_file" and source.get("verification_status") == "verified"
+    ]
+    reference_sources = [
+        source
+        for source in sources
+        if not (source.get("source_type") == "source_file" and source.get("verification_status") == "verified")
+    ]
+    return current_sources, reference_sources
+
+
+def _render_source_group(title: str, sources: list[dict], message_index: int, key_prefix: str) -> None:
+    if not sources:
+        st.caption(f"{title}: 없음")
+        return
+
+    rows = [_source_row(source, rank) for rank, source in enumerate(sources, start=1)]
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    for rank, source in enumerate(sources, start=1):
+        row = rows[rank - 1]
+        detail_title = f"#{rank} {row['verification_status']} / {row['source']}"
+        with st.expander(detail_title, expanded=False):
+            st.caption(
+                f"source_type: {source.get('source_type')} | "
+                f"verification_status: {source.get('verification_status')} | "
+                f"line_range: {row['line_range']}"
+            )
+            st.text_area(
+                "chunk",
+                value=(source.get("text") or "")[:2000],
+                height=220,
+                disabled=True,
+                key=f"project_chat_source_{key_prefix}_{message_index}_{rank}_{source.get('id')}",
+            )
+
+
+def _render_sources(sources: list[dict], message_index: int, used_source_count: int = 0) -> None:
     if not sources:
         return
 
-    rows = []
-    for rank, source in enumerate(sources, start=1):
-        rows.append(
-            {
-                "rank": rank,
-                "score": round(float(source.get("similarity") or 0), 4),
-                "source": _format_source(source),
-                "status": VERIFICATION_LABELS.get(source.get("verification_status"), source.get("verification_status")),
-                "reason": source.get("verification_reason"),
-            }
+    current_sources, reference_sources = _split_sources(sources)
+    with st.expander("답변 근거 보기", expanded=False):
+        st.caption(
+            f"답변에 사용된 현재 소스 근거 {used_source_count or len(current_sources)}건, "
+            f"참고/제외 근거 {len(reference_sources)}건"
         )
-
-    with st.expander("근거 보기", expanded=False):
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-        for rank, source in enumerate(sources, start=1):
-            title = f"#{rank} {rows[rank - 1]['status']} / {_format_source(source)}"
-            with st.expander(title, expanded=False):
-                st.text_area(
-                    "chunk",
-                    value=(source.get("text") or "")[:2000],
-                    height=220,
-                    disabled=True,
-                    key=f"project_chat_source_{message_index}_{rank}_{source.get('id')}",
-                )
+        st.subheader("현재 소스 근거")
+        _render_source_group("현재 소스 근거", current_sources, message_index, "current")
+        st.subheader("이력/참고 근거")
+        _render_source_group("이력/참고 근거", reference_sources, message_index, "reference")
 
 
 def _render_chat_history(messages: list[dict]) -> None:
@@ -131,10 +187,17 @@ def _render_chat_history(messages: list[dict]) -> None:
         with st.chat_message(message["role"]):
             st.write(message["content"])
             if message["role"] == "assistant":
+                used_source_count = int(message.get("used_source_count") or 0)
+                insufficient = bool(message.get("insufficient_evidence"))
+                if insufficient:
+                    st.warning("근거 부족으로 추측성 답변을 생성하지 않았습니다.")
+                elif used_source_count:
+                    st.caption(f"답변에 사용된 현재 소스 근거 {used_source_count}건")
+
                 excluded_count = int(message.get("excluded_count") or 0)
                 if excluded_count:
-                    st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 chunk {excluded_count}건은 제외했습니다.")
-                _render_sources(message.get("sources") or [], index)
+                    st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 chunk {excluded_count}건은 현재 코드 답변 근거에서 제외했습니다.")
+                _render_sources(message.get("sources") or [], index, used_source_count)
 
 
 def render_project_chat_page() -> None:
@@ -157,7 +220,7 @@ def render_project_chat_page() -> None:
 
     control1, control2, control3 = st.columns([1, 1, 2])
     top_k = control1.slider("TOP K", min_value=3, max_value=30, value=8)
-    include_history = control2.checkbox("커밋 이력도 후보에 포함", value=False)
+    include_history = control2.checkbox("커밋 이력도 참고에 포함", value=False)
     if control3.button("대화 초기화"):
         st.session_state[messages_key] = []
         st.rerun()
@@ -192,12 +255,15 @@ def render_project_chat_page() -> None:
                 st.error(content)
             else:
                 content = answer.answer
-                st.write(content)
+                if answer.insufficient_evidence:
+                    st.warning(content)
+                else:
+                    st.write(content)
+                    if answer.used_source_count:
+                        st.caption(f"답변에 사용된 현재 소스 근거 {answer.used_source_count}건")
                 if answer.excluded_count:
-                    st.caption(
-                        f"검증되지 않았거나 현재 코드 근거가 아닌 chunk {answer.excluded_count}건은 제외했습니다."
-                    )
-                _render_sources(answer.sources, len(st.session_state[messages_key]))
+                    st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 chunk {answer.excluded_count}건은 현재 코드 답변 근거에서 제외했습니다.")
+                _render_sources(answer.sources, len(st.session_state[messages_key]), answer.used_source_count)
 
     st.session_state[messages_key].append(
         {
@@ -205,5 +271,7 @@ def render_project_chat_page() -> None:
             "content": content,
             "sources": [] if answer.errors else answer.sources,
             "excluded_count": 0 if answer.errors else answer.excluded_count,
+            "used_source_count": 0 if answer.errors else answer.used_source_count,
+            "insufficient_evidence": False if answer.errors else answer.insufficient_evidence,
         }
     )

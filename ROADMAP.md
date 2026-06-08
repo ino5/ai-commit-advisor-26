@@ -15,7 +15,7 @@
 | P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 | b1cf9ef |
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 | d00b868 |
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
-| P1 | RAG | Project Chat answer quality and history persistence | Planned | Project Chat 전용 메뉴 추가 | 330434b |
+| P1 | RAG | Project Chat answer quality and history persistence | In Progress | Project Chat 답변 품질과 근거 부족 처리 개선 | - |
 | P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 표시 세부 보완 | 7895831 |
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | fa625d2 |
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 | 704c7cf |
@@ -88,7 +88,7 @@ Checklist:
 
 ## P1 - Project Chat Answer Quality And History Persistence
 
-Status: Planned
+Status: In Progress
 
 Goal:
 Improve Project Chat from session-only Q&A into a more reliable project assistant.
@@ -98,9 +98,10 @@ Checklist:
 - [ ] Persist chat sessions in the database.
 - [ ] Add project-level chat history list.
 - [ ] Add source citation export or copy-friendly format.
-- [ ] Add "insufficient evidence" answer classification.
-- [ ] Add focused tests.
-- [ ] Update `AI_CHANGELOG.md`.
+- [x] Add "insufficient evidence" answer classification.
+- [x] Separate current source evidence from historical/reference evidence in the UI.
+- [x] Add focused tests for insufficient, stale/invalid, and verified source evidence.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P1 - Source File Re-Index Warning And One-Click Refresh
 

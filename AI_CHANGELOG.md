@@ -2,6 +2,17 @@
 
 ## 2026-06-08
 
+### Project Chat 답변 품질과 근거 부족 처리 개선
+
+- Project Chat에서 검증된 `source_file` 근거가 없으면 "현재 검증된 소스 근거만으로는 답변하기 어렵습니다", "추가 인덱싱 또는 검색어 조정이 필요합니다"를 반환하고 추측성 LLM 답변을 생성하지 않도록 했습니다.
+- LLM 프롬프트를 보수적으로 정리해 검증된 현재 소스 근거에 없는 내용을 현재 코드 사실처럼 말하지 않고, commit/commit_file 근거는 과거 변경 이력으로만 다루도록 했습니다.
+- 답변별 근거 표시를 현재 소스 근거와 이력/참고 근거로 분리하고, 파일 경로, line range, verification status, source type, 사용 근거 수를 확인할 수 있게 했습니다.
+- stale/invalid `source_file` 제외, 근거 부족 응답, verified citation metadata 유지 focused tests를 추가했습니다.
+- `ROADMAP.md`에서 Project Chat 품질 개선 완료 항목만 체크하고 chat history persistence는 미완료로 유지했습니다.
+- `README.md`에 Project Chat의 근거 부족 안내 동작을 반영했습니다.
+- `docs/ai-technical-overview.md`에 근거 부족 처리와 현재 소스/이력 근거 분리 설명을 추가했습니다.
+- 검증: `.venv\Scripts\python.exe -m compileall src app.py` 통과, `.venv\Scripts\python.exe -m pytest -q` 통과(`50 passed`).
+
 ### source_file 인덱스 상태 표시 세부 보완
 
 - RAG와 Project Chat의 source_file 인덱스 상태에 현재 HEAD와 다른 indexed HEAD chunk 수를 별도 표시했습니다.

@@ -356,7 +356,7 @@ RAG 화면의 `RAG 인덱싱 실행`은 다음 데이터를 chunk로 만들고, 
 
 현재 소스 파일 chunk에는 `file_path`, `line_start`, `line_end`, `content_hash`, `chunk_content_hash`, `indexed_head_hash` 메타데이터가 저장됩니다. Search 탭은 검색어, 조회된 chunk 목록, cosine 유사도 점수, chunk 출처(source_file/program/commit/commit_file), 현재 파일 일치 여부, 원문 일부를 함께 표시합니다.
 
-Project Chat은 현재 파일과 일치한다고 검증된 `source_file` chunk만 기본 답변 근거로 사용합니다. 인덱싱 후 파일이 수정되었거나 삭제된 근거는 답변에서 제외합니다. 커밋 이력은 옵션으로 검색 후보에 포함할 수 있지만, 현재 코드 근거로는 사용하지 않습니다.
+Project Chat은 현재 파일과 일치한다고 검증된 `source_file` chunk만 기본 답변 근거로 사용합니다. 인덱싱 후 파일이 수정되었거나 삭제된 근거는 답변에서 제외합니다. 검증된 현재 소스 근거가 없으면 추측성 답변을 만들지 않고 추가 인덱싱 또는 검색어 조정이 필요하다고 안내합니다. 커밋 이력은 옵션으로 검색 후보에 포함할 수 있지만, 현재 코드 근거로는 사용하지 않습니다.
 
 RAG와 Project Chat 화면의 `현재 소스 다시 인덱싱` 버튼은 현재 Git HEAD 기준으로 `source_file` chunk를 갱신하고, 검증되지 않는 오래된 chunk/vector만 정리합니다. 파일 삭제처럼 기존 증분 인덱싱으로 남을 수 있는 오래된 근거도 이 경로에서 제거됩니다. LM Studio 같은 local embedding 서버 부하를 줄이기 위해 Project Chat의 재인덱싱은 embedding을 자동 생성하지 않으며, RAG 화면에서도 명시적으로 선택한 경우에만 제한 수량으로 embedding을 생성합니다.
 
