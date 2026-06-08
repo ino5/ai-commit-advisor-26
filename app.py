@@ -12,6 +12,7 @@ from src.ui.home_page import render_home_page
 from src.ui.mapping_page import render_mapping_page
 from src.ui.planning_dashboard_page import render_planning_dashboard_page
 from src.ui.program_detail_page import render_program_detail_page
+from src.ui.project_chat_page import render_project_chat_page
 from src.ui.project_page import render_project_page
 from src.ui.rag_page import render_rag_page
 from src.ui.risk_page import render_risk_page
@@ -48,6 +49,7 @@ PAGE_GROUPS = {
         "Risk Analysis": render_risk_page,
         "Commit Impact": render_commit_impact_page,
         "RAG 검색": render_rag_page,
+        "Project Chat": render_project_chat_page,
         "AI Code Review": render_code_review_page,
     },
     "분석 결과": {

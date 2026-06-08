@@ -12,7 +12,7 @@ flowchart TB
     Streamlit --> ProjectUI["Project / Developer / Upload / Program Detail"]
     Streamlit --> GitUI["Git 동기화"]
     Streamlit --> MappingUI["Mapping / Risk / Impact / Code Review"]
-    Streamlit --> RagUI["RAG 검색"]
+    Streamlit --> RagUI["RAG 검색 / Project Chat"]
     Streamlit --> DashboardUI["Dashboard / Planning / AI Progress"]
     Streamlit --> SettingsUI["Settings"]
 
@@ -23,6 +23,7 @@ flowchart TB
     MappingUI --> ImpactService["commit_impact_service.py"]
     MappingUI --> CodeReviewService["code_review_service.py"]
     RagUI --> RagLayer["RAG Layer"]
+    RagUI --> ChatService["chat_service.py"]
     DashboardUI --> ProgressService["progress_service.py"]
     DashboardUI --> DeveloperService["developer_service.py"]
     DashboardUI --> ProgramAnalysisService["program_analysis_service.py"]
@@ -34,6 +35,9 @@ flowchart TB
     MappingService --> Retriever["retriever.py"]
     Retriever --> EmbeddingClient["embedding_client.py"]
     Retriever --> VectorStore["vector_store.py"]
+    ChatService --> Retriever
+    ChatService --> LLMClient
+    ChatService --> SourceVerifier["source_verifier.py"]
     RagLayer --> Chunker["chunker.py"]
     RagLayer --> EmbeddingClient
     RagLayer --> VectorStore
@@ -73,6 +77,7 @@ flowchart LR
     Program --> RAG["RAG<br/>chunk / embedding / 검색"]
     Git --> RAG
     RAG --> Mapping
+    RAG --> ProjectChat["Project Chat<br/>검증형 소스 Q&A"]
     Mapping --> ProgramDetail["Program Detail<br/>프로그램 상세 분석"]
     Mapping --> Risk["Risk Analysis<br/>리스크 탐지/저장"]
     Mapping --> Impact["Commit Impact<br/>커밋 영향도 분석"]
@@ -98,7 +103,8 @@ flowchart LR
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약.
 - `Planning Dashboard`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 AI 판단 진척도 비교, 리스크 프로그램 추적.
-- `RAG`: chunk 생성, embedding 생성, pgvector 검색 테스트.
+- `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트.
+- `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답.
 
 ## 3. DB ERD
 
@@ -189,6 +195,11 @@ erDiagram
         string implementation_status
         text reason
         jsonb raw_response
+        boolean feedback_is_related
+        float feedback_relevance_score
+        string feedback_implementation_status
+        text feedback_reason
+        datetime feedback_updated_at
     }
 
     PROGRAM_IMPLEMENTATION_STATUS {
@@ -280,7 +291,7 @@ erDiagram
 | `analysis_runs` | Mapping 분석 실행 이력. 실행 상태, 처리 수, 실패 수, 파라미터, 요약을 저장한다. |
 | `code_review_results` | AI Code Review 실행 결과. 리뷰 대상, 요약, 커밋 분석, 버그 발견, 리팩토링 제안을 저장한다. |
 | `risk_findings` | 리스크 분석 결과. 리스크 유형/등급, 설명, 근거, 해결 여부를 저장한다. |
-| `document_chunks` | RAG 검색용 chunk 저장소. program, commit, commit_file 원문을 검색 가능한 텍스트 단위로 저장한다. |
+| `document_chunks` | RAG 검색용 chunk 저장소. source_file, program, commit, commit_file 원문을 검색 가능한 텍스트 단위로 저장한다. |
 | `vector_items` | `document_chunks`의 embedding vector를 저장한다. pgvector cosine 검색에 사용된다. |
 
 ## 5. 서비스별 역할 설명
@@ -360,19 +371,22 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A["RAG 화면"] --> B["Chunk 생성"]
-    B --> C["programs<br/>program_name, screen_name, module, description"]
-    B --> D["git_commits<br/>message"]
-    B --> E["commit_files<br/>file_path, diff_text 앞부분"]
-    C --> F["document_chunks 저장"]
-    D --> F
-    E --> F
-    F --> G["Embedding 생성"]
-    G --> H["EmbeddingClient<br/>mock / openai / local"]
-    H --> I["vector_items 저장"]
-    I --> J["검색 테스트"]
-    J --> K["query embedding"]
-    K --> L["pgvector cosine TOP K"]
-    L --> M["document_chunks + similarity 표시"]
+    B --> C["source_file<br/>현재 HEAD 파일 내용 + line range/hash"]
+    B --> D["programs<br/>program_name, screen_name, module, description"]
+    B --> E["git_commits<br/>message"]
+    B --> F["commit_files<br/>file_path, diff_text 앞부분"]
+    C --> G["document_chunks 저장"]
+    D --> G
+    E --> G
+    F --> G
+    G --> H["Embedding 생성"]
+    H --> I["EmbeddingClient<br/>mock / openai / local"]
+    I --> J["vector_items 저장"]
+    J --> K["검색 / Project Chat"]
+    K --> L["query embedding"]
+    L --> M["pgvector cosine TOP K"]
+    M --> N["source_file 현재 파일 검증<br/>verified/stale/invalid"]
+    N --> O["검증된 source chunk만 답변 근거로 사용"]
 ```
 
 ### RAG 안전장치
@@ -380,6 +394,9 @@ flowchart TD
 - 이미 같은 `source_type + source_id + chunk_index` chunk가 있으면 생성하지 않는다.
 - 같은 `chunk_id + embedding_model` vector가 있으면 중복 저장하지 않는다.
 - `commit_files.diff_text`는 길이를 잘라 chunk로 만든다.
+- `source_file` chunk에는 `file_path`, `line_start`, `line_end`, `content_hash`, `chunk_content_hash`, `indexed_head_hash`를 저장한다.
+- Project Chat은 기본적으로 현재 파일 검증을 통과한 `source_file` chunk만 답변 근거로 사용한다.
+- Git HEAD가 바뀌었거나 line range hash가 달라진 chunk는 stale/invalid로 분류하고 현재 코드 근거에서 제외한다.
 - embedding 실패 시 chunk metadata에 실패 상태와 오류 메시지를 남기고 다음 chunk로 진행한다.
 
 ## 8. LLM 처리 흐름
@@ -445,10 +462,14 @@ LLM 출력 예시:
 - Commit Impact 분석.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/Planning Dashboard/AI Progress 운영 대시보드.
-- RAG chunk 생성.
+- RAG chunk 생성: source_file, program, commit, commit_file.
 - mock/openai/local embedding client 구조.
 - pgvector vector 저장 및 cosine 검색.
 - RAG 검색 테스트 화면.
+- Project Chat 대화형 프로젝트 질의응답.
+- source_file 검색 결과 현재 파일 검증.
+- Alembic 기반 DB migration.
+- pytest 기반 핵심 서비스 테스트.
 - 설정 화면에서 DB/LLM/Embedding 설정 확인.
 
 ## 10. 아직 미구현 기능
@@ -456,13 +477,12 @@ LLM 출력 예시:
 현재 코드 기준으로 아직 PoC 또는 제한적인 부분은 다음과 같다.
 
 - 인증/권한 관리가 없다.
-- 운영용 마이그레이션 도구는 없고 `init_db.py`의 보강 SQL 중심이다.
 - RAG 검색 품질은 embedding 모델에 크게 의존하며, mock embedding은 테스트용이다.
 - local/openai embedding은 OpenAI-compatible `/embeddings` 형식을 가정하지만 실제 모델별 검증은 별도 필요하다.
 - LLM 응답 JSON 스키마 검증은 엄격한 validator가 아니라 기본 파싱 중심이다.
 - Mapping 실패 재처리 정책은 기본 상태 기록 수준이며 상세 재시도 큐는 없다.
 - Dashboard 일부 기존 보조 페이지에는 아직 오래된 한글 깨짐 문자열이 남아 있을 수 있다.
-- 테스트 코드가 체계적으로 구성되어 있지 않고 현재는 `py_compile` 및 수동 smoke test 중심이다.
+- 테스트는 핵심 순수 로직 중심이며, Streamlit UI/DB 통합 테스트는 아직 부족하다.
 - 배포 설정, CI, 환경별 설정 분리, 로그 수집/모니터링이 없다.
 - vector index 생성 튜닝(HNSW/IVFFlat 등)은 아직 없다.
 
@@ -479,7 +499,7 @@ LLM 출력 예시:
 - `개요`: Home
 - `프로젝트 관리`: Project, Developer, Program Detail, Developer Upload, Program Upload, Development Plan Upload
 - `데이터 수집`: Git, Sample Data
-- `AI 분석`: Mapping, Risk Analysis, Commit Impact, RAG, AI Code Review
+- `AI 분석`: Mapping, Risk Analysis, Commit Impact, RAG, Project Chat, AI Code Review
 - `분석 결과`: Dashboard, 개발계획 대시보드, AI Progress
 - `관리`: Settings
 
@@ -499,6 +519,7 @@ LLM 출력 예시:
 | `src/ui/risk_page.py` | 프로젝트 리스크 분석, 미해결 리스크 조회 및 해결 처리. |
 | `src/ui/commit_impact_page.py` | 특정 커밋의 영향도 분석. |
 | `src/ui/rag_page.py` | RAG chunk/embedding/search 관리. |
+| `src/ui/project_chat_page.py` | 검증된 현재 소스 RAG 기반 프로젝트 채팅. |
 | `src/ui/code_review_page.py` | AI 코드 리뷰 실행 및 이력 조회. |
 | `src/ui/dashboard_page.py` | 프로젝트 운영 요약. |
 | `src/ui/planning_dashboard_page.py` | 개발계획 기준 일정/진척 현황. |
@@ -524,6 +545,8 @@ LLM 출력 예시:
 | `src/rag/embedding_client.py` | `EmbeddingClient.embed_text` |
 | `src/rag/vector_store.py` | `embed_missing_chunks`, `search_similar` |
 | `src/rag/retriever.py` | `retrieve`, `retrieve_program_ids` |
+| `src/rag/source_verifier.py` | `verify_source_file_chunk`, `annotate_retrieval_result` |
+| `src/rag/chat_service.py` | `answer_source_question` |
 
 ### 주요 DB 모델
 

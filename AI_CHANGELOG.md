@@ -2,6 +2,18 @@
 
 ## 2026-06-08
 
+### Project Chat 전용 메뉴 추가
+
+- `Project Chat` 화면을 추가해 ChatGPT처럼 프로젝트에 대해 대화형으로 질문할 수 있게 했습니다.
+- 기존 검증형 RAG chat 서비스를 재사용해 기본 답변 근거를 현재 파일 검증을 통과한 `source_file` chunk로 제한했습니다.
+- 프로젝트별 대화 히스토리를 Streamlit session state에 유지하고, 답변별 검색 근거와 검증 상태를 확인할 수 있게 했습니다.
+- 사이드바 `AI 분석` 그룹에 `Project Chat` 메뉴를 추가했습니다.
+
+### README 문서 업데이트
+
+- `README.md`에 Project Chat, 검증형 source_file RAG, Alembic migration, RAG metadata 설명을 반영했습니다.
+- `README_ARCHITECTURE.md`의 아키텍처 다이어그램, RAG 흐름, 기능 목록, 제한사항, 주요 UI/서비스 목록을 최신 구현에 맞게 수정했습니다.
+
 ### 현재 소스 검증형 RAG 검색 챗 추가
 
 - RAG 인덱싱 대상에 `source_file`을 추가해 현재 Git HEAD 기준 실제 소스 파일 내용을 chunk로 저장하도록 했습니다.
