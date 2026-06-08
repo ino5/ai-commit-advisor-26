@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 | b1cf9ef |
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 | d00b868 |
-| P0 | Data UX | Development plan management UX improvement | Planned | - | - |
+| P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | - |
 | P1 | RAG | Project Chat answer quality and history persistence | Planned | Project Chat 전용 메뉴 추가 | 330434b |
 | P1 | RAG | Source file re-index warning and one-click refresh | Planned | 현재 소스 검증형 RAG 검색 챗 추가 | 0be5930 |
 | P1 | Mapping | Mapping feedback analytics and review queue | Planned | 매핑 피드백 기능 추가 | 466d131 |
@@ -66,22 +66,22 @@ Checklist:
 
 ## P0 - Development Plan Management UX Improvement
 
-Status: Planned
+Status: Done
 
 Goal:
 Make plan progress, dates, status, and assignments editable without re-uploading Excel.
 
 Checklist:
 
-- [ ] Add development plan Excel template download.
-- [ ] Show required and optional column guide in the UI.
-- [ ] Add upload preview and validation.
-- [ ] Add current plan grid with filters.
-- [ ] Add manual plan update form.
-- [ ] Add bulk status/progress update where safe.
-- [ ] Add focused tests.
-- [ ] Update `AI_CHANGELOG.md`.
-- [ ] Update related README sections.
+- [x] Add development plan Excel template download.
+- [x] Show required and optional column guide in the UI.
+- [x] Add upload preview and validation.
+- [x] Add current plan grid with filters.
+- [x] Add manual plan update form.
+- [x] Add bulk status/progress update where safe.
+- [x] Add focused tests.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Update related README sections.
 
 ## P1 - Project Chat Answer Quality And History Persistence
 

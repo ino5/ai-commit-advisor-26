@@ -95,7 +95,7 @@ flowchart LR
 - `Developer`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리.
 - `Developer Upload`: 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - `Program`: 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, 저장.
-- `Plan Upload`: 개발계획 Excel 업로드 및 일정/진척도 갱신.
+- `Plan Upload`: 개발계획 현재 데이터 조회, 직접 수정, 일괄 업데이트, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - `Program Detail`: 특정 프로그램의 계획, AI 구현상태, 관련 커밋, 파일 diff, 리스크를 상세 조회.
 - `Git`: 로컬 Git 저장소에서 커밋, 변경 파일, diff 수집.
 - `Mapping`: 프로그램과 커밋의 관련성을 LLM으로 분석해 `program_commit_mappings`에 저장.
@@ -447,7 +447,7 @@ LLM 출력 예시:
 - 프로젝트 등록 및 Git 저장소 경로 관리.
 - 프로그램 관리: 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, DB 저장/업데이트.
 - 개발자 관리: 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, DB 저장/업데이트.
-- 개발계획 Excel 업로드 및 계획 대시보드.
+- 개발계획 관리: 현재 계획 조회, 직접 수정, 일괄 업데이트, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - Git 커밋 전체 수집 및 증분 동기화.
 - 커밋별 변경 파일과 diff 저장.
 - Git author 기반 개발자 자동 추출 및 개발자 통계.
@@ -514,7 +514,7 @@ LLM 출력 예시:
 | `src/ui/developer_page.py` | 개발자 목록, Git author 기반 추출, 개발자 통계. |
 | `src/ui/developer_upload_page.py` | 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/upload_page.py` | 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
-| `src/ui/development_plan_upload_page.py` | 개발계획 업로드. |
+| `src/ui/development_plan_upload_page.py` | 개발계획 조회, 직접 수정, 일괄 업데이트, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/program_detail_page.py` | 프로그램별 계획, AI 구현상태, 관련 커밋, diff, 리스크 상세 조회. |
 | `src/ui/git_page.py` | Git 커밋 수집. |
 | `src/ui/mapping_page.py` | 프로그램-커밋 Mapping 분석 실행. |
@@ -535,6 +535,7 @@ LLM 출력 예시:
 | `src/services/excel_service.py` | `read_program_excel`, `normalize_program_rows`, `save_programs_with_result` |
 | `src/services/program_import_service.py` | `build_program_template_excel`, `validate_program_import` |
 | `src/services/program_management_service.py` | `save_manual_program`, `update_program`, `delete_program`, `get_program_delete_impact` |
+| `src/services/development_plan_management_service.py` | `update_program_plan`, `save_plan_rows`, `bulk_update_plan`, `validate_plan_import` |
 | `src/services/git_service.py` | `sync_git_repository`, `collect_commits` |
 | `src/services/developer_service.py` | `extract_developers_from_git_commits`, `get_developer_stats` |
 | `src/services/developer_management_service.py` | `save_manual_developer`, `update_developer`, `delete_developer`, `validate_developer_import` |
