@@ -29,6 +29,7 @@
 | P2 | UX | Home copy tone cleanup | Done | Home 문구 톤 정리 | c8c421e |
 | P2 | Ops | Home UI visual verification script | Done | Home UI 검증 스크립트 추가 | c8c421e |
 | P2 | UX | Sidebar menu layout stabilization | Done | Sidebar 메뉴 위치 흔들림 보정 | 5ee2065 |
+| P2 | Sample Data | Synthetic target project repository | Done | 가상 샘플 대상 프로젝트 생성 스크립트 추가 | fa7fcbb |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
@@ -300,6 +301,22 @@ Checklist:
 - [x] Normalize active and inactive menu item box sizing.
 - [x] Keep active and inactive menu item spacing consistent.
 - [x] Run compileall and focused UI verification.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Synthetic Target Project Repository
+
+Status: Done
+
+Goal:
+Create a separate fake Git project that can be used as a clean AI Commit Advisor analysis target.
+
+Checklist:
+
+- [x] Add a script that creates a sibling sample Git repository.
+- [x] Include realistic developers, program list, source files, and commit history.
+- [x] Generate sample Excel upload files from the fake repository.
+- [x] Document how to create and use the sample target.
+- [x] Run compileall and sample generation.
 - [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Application Dockerfile And Deployment Guide
