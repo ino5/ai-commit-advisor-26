@@ -111,12 +111,15 @@ def parse_commits(repo_path: Path) -> list[Commit]:
 def classify_file(path: str) -> str:
     lower = path.lower()
     suffix = Path(path).suffix.lower()
-    if any(token in lower for token in ["/mapper/", "mapper", "/repository/", "repository"]) or suffix in {
+    if any(token in lower for token in ["/mapper/", "mapper", "/repository/", "/repositories/", "repository"]) or suffix in {
         ".sql",
         ".xml",
     }:
         return "database"
-    if any(token in lower for token in ["/controller/", "/service/", "/config/"]) or suffix == ".java":
+    if any(token in lower for token in ["/controller/", "/controllers/", "/service/", "/services/", "/config/"]) or suffix in {
+        ".java",
+        ".py",
+    }:
         return "backend"
     if "/templates/" in lower or suffix in {".html", ".js", ".css", ".scss"}:
         return "frontend"
@@ -138,8 +141,12 @@ def infer_role_and_skills(paths: list[str]) -> tuple[str, str]:
 
     skill_flags: list[tuple[str, str]] = [
         ("controller", "Spring MVC Controller"),
+        ("controllers", "Controller/API"),
+        (".py", "Python"),
         ("service", "Service Layer"),
+        ("services", "Service Layer"),
         ("repository", "Repository/JPA"),
+        ("repositories", "Repository/JPA"),
         ("mapper", "Mapper/SQL"),
         ("templates", "Thymeleaf/HTML"),
         (".js", "JavaScript"),
@@ -149,7 +156,10 @@ def infer_role_and_skills(paths: list[str]) -> tuple[str, str]:
         ("readme", "Documentation"),
     ]
     lower_paths = "\n".join(paths).lower()
-    skills = [skill for marker, skill in skill_flags if marker in lower_paths]
+    skills = []
+    for marker, skill in skill_flags:
+        if marker in lower_paths and skill not in skills:
+            skills.append(skill)
     if not skills:
         skills = ["Application Maintenance"]
     return role_by_category[main_category], ", ".join(skills[:5])
@@ -223,10 +233,10 @@ def module_from_path(path: str) -> str:
     if "/templates/" in lower:
         parts = lower.split("/templates/", 1)[1].split("/")
         return parts[0] if len(parts) > 1 else "common"
-    if "/controller/" in lower or "/service/" in lower or "/repository/" in lower:
+    if any(token in lower for token in ["/controller/", "/controllers/", "/service/", "/services/", "/repository/", "/repositories/"]):
         name = Path(path).stem
-        name = re.sub(r"(controller|service|repository|mapper|entity|dto)$", "", name, flags=re.IGNORECASE)
-        return name or "common"
+        name = re.sub(r"[_-]?(controller|service|repository|mapper|entity|dto)$", "", name, flags=re.IGNORECASE)
+        return name.strip("_-") or "common"
     if "/static/" in lower:
         return "static"
     return "common"
@@ -234,7 +244,7 @@ def module_from_path(path: str) -> str:
 
 def program_name_from_path(path: str) -> str:
     stem = Path(path).stem
-    stem = re.sub(r"(Controller|Service|Repository|Mapper|Entity|Dto)$", "", stem)
+    stem = re.sub(r"[_-]?(Controller|Service|Repository|Mapper|Entity|Dto)$", "", stem, flags=re.IGNORECASE)
     if stem and stem.lower() not in {"index", "main"}:
         return stem
     return module_from_path(path).title()
