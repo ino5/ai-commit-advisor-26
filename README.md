@@ -14,6 +14,7 @@ AI Commit Advisor는 로컬 Git 저장소의 커밋, 변경 파일, diff, 개발
 - Commit Impact, Program Detail, AI Progress 기반 구현 현황 추적
 - 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
 - 현재 소스 검증형 RAG Search와 Project Chat
+- 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
 - 작업트리, staged 변경, 최신/특정 커밋 대상 AI Code Review
 - 샘플 Git 저장소와 Excel 데이터 생성으로 전체 기능 데모 가능
 

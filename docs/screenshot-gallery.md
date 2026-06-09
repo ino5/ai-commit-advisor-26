@@ -88,6 +88,13 @@
 </details>
 
 <details>
+<summary>표준용어/표준단어</summary>
+
+![Standard Terms](images/features/standard-terms.png)
+
+</details>
+
+<details>
 <summary>Mapping</summary>
 
 ![Mapping](images/features/mapping.png)

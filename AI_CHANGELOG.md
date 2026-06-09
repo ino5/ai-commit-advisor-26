@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### Standard terminology documentation and screenshots
+
+- Updated README, Feature Guide, and AI technical overview to explain standard terminology upload and deterministic Korean query expansion.
+- Added the standard terminology page to the screenshot gallery.
+- Important files: `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/screenshot-gallery.md`, `docs/images/features/standard-terms.png`, `docs/images/features/project-chat.png`, `AI_CHANGELOG.md`.
+- Verification: refreshed screenshots through the local Streamlit app; `git diff --check` passed.
+
 ### Project Chat answer formatting and evidence context
 
 - Strengthened the Project Chat prompt so normal answers should be Korean Markdown, not JSON/code-block wrappers, and line ranges must be copied from retrieved metadata.

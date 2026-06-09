@@ -93,6 +93,10 @@ Before Project Chat uses a retrieved `source_file` chunk, the application checks
 
 When no verified current source evidence is available, Project Chat returns an insufficient-evidence answer instead of asking the LLM to guess. The UI separates verified `source_file` evidence from historical/reference evidence such as commits or commit diffs, so deleted or outdated lines are not presented as current code facts.
 
+If project standard terms are registered, Project Chat expands Korean business questions before retrieval. The expansion is deterministic and does not add an extra LLM call. Uploaded Korean terms are matched against the question, then the English term, abbreviation, and derived identifier forms such as camelCase, PascalCase, snake_case, upper snake case, compact lowercase, and token words are used as additional retrieval queries. This lets SI terminology deliverables connect Korean questions such as `결제 금액` with code identifiers such as `paymentAmount`, `payment_amount`, `amount`, and `PaymentService`.
+
+Local LLM responses are normalized after generation. Common JSON wrappers such as fenced `{"response": "..."}` payloads are unwrapped, and answers that omit direct source citations append verified `source_file` metadata citations using the retrieved file path and line range.
+
 RAG and Project Chat also show source index status at the project level:
 
 - current Git HEAD
