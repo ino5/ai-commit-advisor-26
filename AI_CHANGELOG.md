@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### Agent commit boundary guidance
+
+- Added `AGENTS.md` guidance to keep materially different work types in separate commits when practical.
+- Clarified that real code bugs found during verification or documentation work should be committed separately from screenshots, docs, or bookkeeping refreshes when practical.
+- Important files: `AGENTS.md`, `AI_CHANGELOG.md`.
+- Verification: `git diff --check` passed.
+
 ### 풍부한 샘플 데모 검증과 화면 캡처 갱신
 
 - 앱 DB에 검증 전용 프로젝트 `AAA Sample Shop Rich Demo`를 구성하고 `C:\dev\ai-advisor-sample-shop`의 8개 프로그램/30개 커밋 샘플 repo와 `advisor_uploads` Excel 3종을 반영했습니다.

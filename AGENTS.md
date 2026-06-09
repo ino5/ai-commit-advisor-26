@@ -57,6 +57,20 @@ Use this checklist:
 
 If no documentation update is needed, mention that in the final response or commit notes.
 
+## Commit Boundaries
+
+When committing changes, keep materially different concerns in separate commits when practical.
+
+Separate commits are expected when a change mixes distinct work types, such as:
+
+- source code behavior fixes
+- tests for the behavior fix
+- product documentation or screenshots
+- roadmap or changelog bookkeeping
+- generated sample data
+
+If a verification or documentation task reveals a real code bug, commit the bug fix separately from the documentation, screenshot, or bookkeeping refresh when practical.
+
 ## Database Migrations
 
 Schema changes must be handled through Alembic migrations in `migrations/versions/`.
