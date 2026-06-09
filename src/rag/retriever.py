@@ -40,6 +40,32 @@ class Retriever:
             for result in results
         ]
 
+    def retrieve_multi_query(
+        self,
+        queries: list[str],
+        limit: int = 5,
+        project_id: int | None = None,
+        source_types: list[str] | None = None,
+    ) -> list[dict]:
+        merged: dict[int, dict] = {}
+        for query in queries:
+            for result in self.retrieve(query, limit=limit, project_id=project_id, source_types=source_types):
+                chunk_id = int(result["id"])
+                current = merged.get(chunk_id)
+                if current is None or float(result.get("similarity") or 0) > float(current.get("similarity") or 0):
+                    result = dict(result)
+                    result["matched_query"] = query
+                    merged[chunk_id] = result
+
+        def sort_key(item: dict) -> tuple[int, int, float]:
+            metadata = item.get("metadata") or {}
+            file_path = str(metadata.get("file_path") or item.get("source_id") or "")
+            source_priority = 0 if item.get("source_type") == "source_file" else 1
+            path_priority = 0 if file_path.startswith(("src/main/", "src/test/")) else 1
+            return (source_priority, path_priority, -float(item.get("similarity") or 0))
+
+        return sorted(merged.values(), key=sort_key)[:limit]
+
     def retrieve_program_ids(self, query: str, project_id: int, limit: int = 10) -> list[int]:
         results = self.retrieve(query, limit=limit, project_id=project_id, source_types=["program"])
         program_ids: list[int] = []

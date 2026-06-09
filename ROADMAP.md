@@ -159,9 +159,9 @@ Checklist:
 - [x] Add Excel template generation for standard terminology upload.
 - [x] Add Excel upload validation for required columns, duplicate Korean/English terms, and empty values.
 - [x] Add current glossary list/search UI.
-- [ ] Add glossary query expansion for Project Chat and RAG retrieval.
-- [ ] Merge multi-query retrieval results by chunk id and prefer verified `source_file` evidence for Project Chat.
-- [ ] Add focused tests for Korean payment amount questions expanding to `payment`, `amount`, `PaymentService`, `payment_amount`, and abbreviation variants.
+- [x] Add glossary query expansion for Project Chat and RAG retrieval.
+- [x] Merge multi-query retrieval results by chunk id and prefer verified `source_file` evidence for Project Chat.
+- [x] Add focused tests for Korean payment amount questions expanding to `payment`, `amount`, `PaymentService`, `payment_amount`, and abbreviation variants.
 - [ ] Update README, Feature Guide, and AI technical overview.
 - [ ] Update `AI_CHANGELOG.md`.
 

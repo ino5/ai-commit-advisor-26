@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from src.db.models import Project
+from src.rag.query_expander import expand_query_with_standard_terms
 from src.rag.retriever import Retriever
 from src.rag.source_verifier import annotate_retrieval_result
 from src.services.llm_client import LLMClient
@@ -20,6 +21,8 @@ INSUFFICIENT_EVIDENCE_ANSWER = (
 class RagChatAnswer:
     answer: str
     sources: list[dict] = field(default_factory=list)
+    expanded_queries: list[str] = field(default_factory=list)
+    matched_terms: list[dict] = field(default_factory=list)
     excluded_count: int = 0
     used_source_count: int = 0
     insufficient_evidence: bool = False
@@ -88,6 +91,32 @@ def _summarize_source(source: dict) -> str:
     return f"- {file_path}:{line_range} ({source_type}, {status})"
 
 
+def _expand_question(db: Session | None, project: Project, question: str):
+    if db is None or project.id is None:
+        return type(
+            "QueryExpansionFallback",
+            (),
+            {"expanded_queries": [question], "matched_terms": [], "original_query": question},
+        )()
+    return expand_query_with_standard_terms(db, project.id, question)
+
+
+def _retrieve_with_expansion(retriever: Retriever, expansion, *, top_k: int, project_id: int, source_types: list[str]) -> list[dict]:
+    if hasattr(retriever, "retrieve_multi_query"):
+        return retriever.retrieve_multi_query(
+            expansion.expanded_queries,
+            limit=top_k,
+            project_id=project_id,
+            source_types=source_types,
+        )
+    return retriever.retrieve(
+        expansion.original_query,
+        limit=top_k,
+        project_id=project_id,
+        source_types=source_types,
+    )
+
+
 def answer_source_question(
     db: Session,
     project: Project,
@@ -105,7 +134,14 @@ def answer_source_question(
         source_types.extend(["commit", "commit_file"])
 
     try:
-        results = retriever.retrieve(question, limit=top_k, project_id=project.id, source_types=source_types)
+        expansion = _expand_question(db, project, question)
+        results = _retrieve_with_expansion(
+            retriever,
+            expansion,
+            top_k=top_k,
+            project_id=project.id,
+            source_types=source_types,
+        )
     except Exception as exc:
         return RagChatAnswer(answer="", errors=[f"retrieval failed: {exc}"])
 
@@ -127,6 +163,8 @@ def answer_source_question(
         return RagChatAnswer(
             answer=INSUFFICIENT_EVIDENCE_ANSWER,
             sources=annotated,
+            expanded_queries=expansion.expanded_queries,
+            matched_terms=expansion.matched_terms,
             excluded_count=excluded_count,
             used_source_count=0,
             insufficient_evidence=True,
@@ -138,6 +176,8 @@ def answer_source_question(
             answer="Mock answer. 검증된 현재 소스 근거:\n"
             + "\n".join(_summarize_source(source) for source in verified_sources[:3]),
             sources=annotated,
+            expanded_queries=expansion.expanded_queries,
+            matched_terms=expansion.matched_terms,
             excluded_count=excluded_count,
             used_source_count=len(verified_sources),
         )
@@ -148,6 +188,8 @@ def answer_source_question(
         return RagChatAnswer(
             answer="",
             sources=annotated,
+            expanded_queries=expansion.expanded_queries,
+            matched_terms=expansion.matched_terms,
             excluded_count=excluded_count,
             used_source_count=len(verified_sources),
             errors=[f"LLM generation failed: {exc}"],
@@ -156,6 +198,8 @@ def answer_source_question(
     return RagChatAnswer(
         answer=response.text.strip(),
         sources=annotated,
+        expanded_queries=expansion.expanded_queries,
+        matched_terms=expansion.matched_terms,
         excluded_count=excluded_count,
         used_source_count=len(verified_sources),
     )

@@ -2,6 +2,14 @@
 
 ## 2026-06-09
 
+### Glossary-based Korean query expansion
+
+- Added deterministic Project Chat query expansion using uploaded project standard terms and standard words.
+- Added multi-query retrieval that merges results by chunk id and prefers verified source files under `src/main` or `src/test` for Project Chat evidence.
+- Added focused query expansion tests for Korean payment amount questions expanding toward payment/code identifiers and `amount <= 0` search hints.
+- Important files: `src/rag/query_expander.py`, `src/rag/retriever.py`, `src/rag/chat_service.py`, `tests/test_query_expander.py`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `pytest tests/test_query_expander.py tests/test_project_chat_service.py -q` and `git diff --check` passed.
+
 ### Standard terminology upload UI
 
 - Added a Streamlit `표준용어/표준단어` page under data collection for project-level glossary upload and lookup.
