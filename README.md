@@ -6,7 +6,7 @@ AI Commit Advisor는 로컬 Git 저장소의 커밋, 변경 파일, diff, 개발
 
 ![AI Commit Advisor dashboard](docs/images/ai-commit-advisor-home.png)
 
-## Key Features
+## 주요 기능
 
 - 로컬 Git 저장소 커밋, 변경 파일, diff 수집과 증분 동기화
 - 개발자, 프로그램 목록, 개발계획 Excel 업로드와 화면 기반 직접 관리
@@ -18,7 +18,7 @@ AI Commit Advisor는 로컬 Git 저장소의 커밋, 변경 파일, diff, 개발
 - 작업트리, staged 변경, 최신/특정 커밋 대상 AI Code Review
 - 샘플 Git 저장소와 Excel 데이터 생성으로 전체 기능 데모 가능
 
-## Quick Start
+## 빠른 시작
 
 가볍게 앱 흐름만 확인하려면 mock 설정을 사용합니다.
 
@@ -48,7 +48,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 
 자세한 설치, DB migration, LLM/embedding 설정, 운영 주의사항은 [Setup and Operations](docs/setup-and-operations.md)를 참고하세요.
 
-## Sample Project
+## 샘플 프로젝트
 
 실제 업무 프로젝트를 건드리지 않고 전체 흐름을 검증하려면 샘플 대상 Git 저장소를 생성합니다.
 
@@ -60,27 +60,27 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 
 전체 데모 순서와 과도한 LLM/embedding 호출을 피하는 실행 기준은 [Rich Sample Demo Walkthrough](docs/rich-sample-demo-walkthrough.md)를 먼저 확인하세요. 샘플 repo 설계와 기능별 데모 포인트는 [Sample Target Repo Demo Design](docs/sample-target-repo-demo-design.md)에서 관리합니다.
 
-## Screenshots
+## 스크린샷
 
 대표 화면은 아래와 같습니다. 기능별 전체 캡처는 [Screenshot Gallery](docs/screenshot-gallery.md)에서 확인할 수 있습니다.
 
 ![Home](docs/images/features/home.png)
 
-## Documentation
+## 문서
 
-- [Feature Guide](docs/feature-guide.md): 주요 화면, 기능 흐름, 분석 결과가 무엇을 의미하는지 설명합니다.
+- [기능 가이드](docs/feature-guide.md): 주요 화면, 기능 흐름, 분석 결과가 무엇을 의미하는지 설명합니다.
 - [Screenshot Gallery](docs/screenshot-gallery.md): 샘플 프로젝트 기준 기능별 화면 캡처를 모아 둔 갤러리입니다.
-- [Setup and Operations](docs/setup-and-operations.md): 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 가이드입니다.
-- [Rich Sample Demo Walkthrough](docs/rich-sample-demo-walkthrough.md): 팀원이 샘플 프로젝트로 기능을 검증할 때 따르는 안전 실행 순서입니다.
-- [Sample Target Repo Demo Design](docs/sample-target-repo-demo-design.md): 샘플 Git 저장소 목표, commit 시나리오, 기능별 데모 포인트입니다.
-- [AI Technical Overview](docs/ai-technical-overview.md): Mapping, RAG, Project Chat, Code Review, Risk Analysis 등 AI 동작 방식입니다.
-- [Source Indexing and Embedding Plan](docs/source-indexing-and-embedding-plan.md): Project Chat source_file 증분 인덱싱, embedding 비용 제어, cloud 운영 계획입니다.
-- [Architecture](README_ARCHITECTURE.md): 모듈 구조, 데이터 흐름, 서비스 책임입니다.
-- [DB Migrations](docs/db-migrations.md): Alembic 기반 DB schema 관리 기준입니다.
-- [AI Change Log](AI_CHANGELOG.md): AI 에이전트가 수행한 변경 이력입니다.
-- [Agent Instructions](AGENTS.md): 코딩 에이전트 작업 규칙입니다.
+- [설치와 운영](docs/setup-and-operations.md): 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 가이드입니다.
+- [풍부한 샘플 데모 진행 가이드](docs/rich-sample-demo-walkthrough.md): 팀원이 샘플 프로젝트로 기능을 검증할 때 따르는 안전 실행 순서입니다.
+- [샘플 대상 저장소 데모 설계](docs/sample-target-repo-demo-design.md): 샘플 Git 저장소 목표, commit 시나리오, 기능별 데모 포인트입니다.
+- [AI 기술 개요](docs/ai-technical-overview.md): Mapping, RAG, Project Chat, Code Review, Risk Analysis 등 AI 동작 방식입니다.
+- [소스 인덱싱과 임베딩 운영 계획](docs/source-indexing-and-embedding-plan.md): Project Chat source_file 증분 인덱싱, embedding 비용 제어, cloud 운영 계획입니다.
+- [아키텍처](README_ARCHITECTURE.md): 모듈 구조, 데이터 흐름, 서비스 책임입니다.
+- [DB 마이그레이션](docs/db-migrations.md): Alembic 기반 DB schema 관리 기준입니다.
+- [AI 변경 이력](AI_CHANGELOG.md): AI 에이전트가 수행한 변경 이력입니다.
+- [에이전트 작업 규칙](AGENTS.md): 코딩 에이전트 작업 규칙입니다.
 
-## Project Structure
+## 프로젝트 구조
 
 ```text
 app.py
@@ -98,7 +98,7 @@ requirements.txt
 .env.local-llm.example
 ```
 
-## Notes
+## 참고 사항
 
 - RAG/embedding은 mock과 OpenAI-compatible 서버를 모두 지원합니다. 실제 검색 품질 평가는 embedding 모델과 `PGVECTOR_DIMENSION` 설정이 맞아야 합니다.
 - Project Chat은 현재 소스 검증을 통과한 `source_file` chunk만 기본 답변 근거로 사용합니다.

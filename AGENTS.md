@@ -30,6 +30,25 @@ For work that is not already in `ROADMAP.md`, add or update a task entry before 
 
 When changing AI-facing behavior such as Mapping, RAG, Project Chat, Code Review, AI Progress, Risk Analysis, embedding, or LLM behavior, update `docs/ai-technical-overview.md` if the public explanation or safety model changes.
 
+## User-Facing Documentation Language
+
+User-facing documentation should use Korean for explanatory prose by default, especially when describing setup, workflows, feature behavior, operational guidance, and product decisions.
+
+This applies to README sections, feature guides, setup and operations guides, architecture explanations, screenshot captions, sample/demo guides, migration guidance, and other documents a teammate or product user would read to use or understand the app.
+
+Do not force every heading, label, or familiar product/documentation term into Korean when the English form is clearer or more natural. Keep technical identifiers and conventional labels in their original form when that is clearer or required, including:
+
+- file paths
+- commands
+- environment variables
+- API names
+- model/provider names
+- common documentation labels such as `Quick Start` or `Screenshot Gallery` when they read more naturally
+- table, column, class, function, and module names
+- UI product names that are intentionally English in the app
+
+Internal agent instructions, historical changelog entries, roadmap task names, commit messages, code comments tied to source conventions, and generated third-party content do not need forced translation unless the user explicitly asks for it.
+
 ## Sample Target Repository
 
 When changing the synthetic sample target repository, sample commit history, sample data generation, or demo scenario, check `docs/sample-target-repo-demo-design.md` before implementing.

@@ -2,6 +2,16 @@
 
 ## 2026-06-09
 
+### Korean-first user documentation cleanup
+
+- Reworked user-facing Markdown documentation so explanatory prose is Korean-first, while preserving natural English headings, code identifiers, commands, environment variables, API names, and product/menu names where appropriate.
+- Translated English-heavy documentation for source indexing, sample target repo design, rich sample demo walkthrough, DB migrations, and AI technical overview.
+- Aligned README documentation links, screenshot gallery labels, and architecture/menu wording with the current Korean sidebar structure.
+- Added an agent instruction that user-facing documentation should use Korean for explanatory prose by default without forcing familiar English documentation labels into Korean.
+- Kept internal agent/task-management documents such as `AGENTS.md`, `ROADMAP.md`, and historical `AI_CHANGELOG.md` entries out of the translation scope except for the new roadmap/changelog bookkeeping.
+- Important files: `AGENTS.md`, `README.md`, `README_ARCHITECTURE.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, `docs/feature-guide.md`, `docs/rich-sample-demo-walkthrough.md`, `docs/sample-target-repo-demo-design.md`, `docs/screenshot-gallery.md`, `docs/setup-and-operations.md`, `docs/source-indexing-and-embedding-plan.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `git diff --check` passed; project Markdown link sanity check passed.
+
 ### Artifact management sidebar grouping
 
 - Added a `산출물 관리` sidebar group for developer list, program list, development plan, and standard terminology management screens.

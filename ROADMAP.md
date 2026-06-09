@@ -39,6 +39,7 @@
 | P2 | Docs | Rich sample demo walkthrough and screenshots | Done | 풍부한 샘플 데모 검증과 화면 캡처 갱신 | dd8fd5e |
 | P2 | Docs | README documentation hub restructure | Done | README 문서 허브 개편 | 6b27b35 |
 | P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 | 02f2b14 |
+| P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup | - |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
@@ -541,6 +542,21 @@ Checklist:
 - [x] Document that provider/model changes require regenerating embeddings for RAG Search and Project Chat.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run markdown/link sanity checks.
+
+## P2 - Korean-First User Documentation Cleanup
+
+Status: Done
+
+Goal:
+Make user-facing Markdown documentation Korean-first unless a technical identifier, command, file path, API name, or product name is clearer in English.
+
+Checklist:
+
+- [x] Translate English-heavy docs under `docs/` to Korean while preserving code identifiers and commands.
+- [x] Keep internal agent/task-management documents out of scope unless they directly face users.
+- [x] Align architecture and feature wording where user-facing menu names changed.
+- [x] Run markdown/link sanity checks.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Application Dockerfile And Deployment Guide
 

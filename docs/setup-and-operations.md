@@ -1,4 +1,4 @@
-# Setup And Operations
+# 설치와 운영
 
 이 문서는 AI Commit Advisor의 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 기준을 정리합니다.
 

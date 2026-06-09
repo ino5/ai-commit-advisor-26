@@ -1,4 +1,4 @@
-# AI Commit Advisor Architecture
+# AI Commit Advisor 아키텍처
 
 이 문서는 `ai-commit-advisor` 프로젝트 작성자가 전체 구조와 처리 흐름을 빠르게 이해할 수 있도록 정리한 아키텍처 문서입니다.
 
@@ -9,14 +9,16 @@ flowchart TB
     User["회사 관리자 / PL / 개발 리더"] --> Streamlit["Streamlit App<br/>app.py"]
 
     Streamlit --> Home["Home"]
-    Streamlit --> ProjectUI["Project / Developer / Upload / Program Detail"]
+    Streamlit --> ProjectUI["프로젝트 / 개발자 현황 / Program Detail"]
+    Streamlit --> ArtifactUI["산출물 관리"]
     Streamlit --> GitUI["Git 동기화"]
     Streamlit --> MappingUI["Mapping / Risk / Impact / Code Review"]
     Streamlit --> RagUI["RAG 검색 / Project Chat"]
-    Streamlit --> DashboardUI["Dashboard / Planning / AI Progress"]
-    Streamlit --> SettingsUI["Settings"]
+    Streamlit --> DashboardUI["Dashboard / 개발계획 / AI Progress"]
+    Streamlit --> SettingsUI["설정"]
 
     ProjectUI --> ExcelService["excel_service.py"]
+    ArtifactUI --> ExcelService
     GitUI --> GitService["git_service.py"]
     MappingUI --> MappingService["mapping_service.py"]
     MappingUI --> MappingFeedbackService["mapping_feedback_service.py"]
@@ -71,12 +73,12 @@ flowchart TB
 ```mermaid
 flowchart LR
     Home["Home<br/>전체 현황 요약"] --> Project["Project<br/>프로젝트 등록/관리"]
-    Project --> Program["Program Upload<br/>프로그램 목록 업로드"]
-    Project --> PlanUpload["Plan Upload<br/>개발계획 업로드"]
-    Project --> Developer["Developer<br/>개발자 관리"]
+    Project --> Developer["개발자 현황<br/>Git author 기반 현황"]
+    Project --> Program["프로그램 목록<br/>산출물 관리"]
+    Project --> PlanUpload["개발계획<br/>산출물 관리"]
     Project --> Git["Git<br/>커밋/파일/diff 수집"]
     Program --> Mapping["Mapping<br/>프로그램-커밋 매핑"]
-    PlanUpload --> PlanningDashboard["Planning Dashboard<br/>개발계획 현황"]
+    PlanUpload --> PlanningDashboard["개발계획 대시보드<br/>개발계획 현황"]
     Git --> Mapping
     Program --> RAG["RAG<br/>chunk / embedding / 검색"]
     Git --> RAG
@@ -96,10 +98,10 @@ flowchart LR
 
 - `Home`: 전체 프로젝트 현황, KPI, AI 진척도, 리스크 프로그램 요약.
 - `Project`: 프로젝트 이름, 설명, 로컬 Git 저장소 경로 관리.
-- `Developer`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리.
-- `Developer Upload`: 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기.
+- `개발자 현황`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리.
+- `개발자 목록`: 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - `Program`: 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, 저장.
-- `Plan Upload`: 개발계획 현재 데이터 조회, 직접 수정, 일괄 업데이트, Excel 양식 다운로드, 업로드 전 검증/미리보기.
+- `개발계획`: 개발계획 현재 데이터 조회, 직접 수정, 일괄 업데이트, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - `Program Detail`: 특정 프로그램의 계획, AI 구현상태, 관련 커밋, 파일 diff, 리스크를 상세 조회.
 - `Git`: 로컬 Git 저장소에서 커밋, 변경 파일, diff 수집.
 - `Mapping`: 프로그램과 커밋의 관련성을 LLM으로 분석해 `program_commit_mappings`에 저장하고, 피드백 리뷰 큐로 검토가 필요한 매핑을 보정.
@@ -107,7 +109,7 @@ flowchart LR
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
 - `AI Code Review`: staged 변경, 최근 커밋, 특정 커밋을 LLM으로 리뷰하고 결과를 저장.
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약.
-- `Planning Dashboard`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
+- `개발계획 대시보드`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
 - `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
 - `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답하고, 답변 전 현재 소스 인덱스 상태를 확인.
@@ -326,7 +328,7 @@ erDiagram
 ```mermaid
 sequenceDiagram
     participant User as 사용자
-    participant Upload as Program Upload 화면
+    participant Upload as 프로그램 목록 화면
     participant Excel as excel_service
     participant DB as PostgreSQL
     participant Git as Git 화면 / git_service
@@ -479,7 +481,7 @@ LLM 출력 예시:
 - Risk Analysis 실행, 리스크 저장, 미해결 리스크 조회 및 해결 처리.
 - Commit Impact 분석.
 - AI Code Review 실행 및 리뷰 이력 저장.
-- Home/Dashboard/Planning Dashboard/AI Progress 운영 대시보드.
+- Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
 - RAG chunk 생성: source_file, program, commit, commit_file.
 - mock/openai/local embedding client 구조.
 - pgvector vector 저장 및 cosine 검색.
@@ -516,11 +518,12 @@ LLM 출력 예시:
 주요 메뉴 그룹:
 
 - `개요`: Home
-- `프로젝트 관리`: Project, Developer, Program Detail, Developer Upload, Program Upload, Development Plan Upload
+- `프로젝트 관리`: Project, 개발자 현황, Program Detail
+- `산출물 관리`: 개발자 목록, 프로그램 목록, 개발계획, 표준용어/표준단어
 - `데이터 수집`: Git, Sample Data
 - `AI 분석`: Mapping, Risk Analysis, Commit Impact, RAG, Project Chat, AI Code Review
 - `분석 결과`: Dashboard, 개발계획 대시보드, AI Progress
-- `관리`: Settings
+- `관리`: 설정
 
 ### 주요 UI 파일
 
@@ -528,7 +531,7 @@ LLM 출력 예시:
 |---|---|
 | `src/ui/home_page.py` | 전체 현황 KPI와 리스크 요약. |
 | `src/ui/project_page.py` | 프로젝트 등록/수정. |
-| `src/ui/developer_page.py` | 개발자 목록, Git author 기반 추출, 개발자 통계. |
+| `src/ui/developer_page.py` | Git author 기반 개발자 현황, 자동 추출, 개발자 통계. |
 | `src/ui/developer_upload_page.py` | 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/upload_page.py` | 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/development_plan_upload_page.py` | 개발계획 조회, 직접 수정, 일괄 업데이트, Excel 양식, 업로드 검증, 저장. |
@@ -604,5 +607,5 @@ flowchart LR
     H --> I["프로그램별 구현상태 분석"]
     I --> J["Risk Analysis 실행"]
     J --> K["AI Progress 확인"]
-    K --> L["Dashboard / Planning Dashboard로 운영 현황 확인"]
+    K --> L["Dashboard / 개발계획 대시보드로 운영 현황 확인"]
 ```

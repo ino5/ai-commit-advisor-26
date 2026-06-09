@@ -21,9 +21,9 @@
 </details>
 
 <details>
-<summary>Developer</summary>
+<summary>개발자 현황</summary>
 
-![Developer](images/features/developer.png)
+![개발자 현황](images/features/developer.png)
 
 </details>
 
@@ -39,11 +39,11 @@
 
 현재 개발자 데이터
 
-![Developer Upload](images/features/developer-upload.png)
+![개발자 목록](images/features/developer-upload.png)
 
 업로드 검증 결과
 
-![Developer Upload Validation](images/features/developer-upload-validation.png)
+![개발자 목록 업로드 검증](images/features/developer-upload-validation.png)
 
 </details>
 
@@ -52,11 +52,11 @@
 
 현재 프로그램 데이터
 
-![Program Upload](images/features/program-upload.png)
+![프로그램 목록](images/features/program-upload.png)
 
 업로드 검증 결과
 
-![Program Upload Validation](images/features/program-upload-validation.png)
+![프로그램 목록 업로드 검증](images/features/program-upload-validation.png)
 
 </details>
 
@@ -65,11 +65,11 @@
 
 현재 개발계획
 
-![Development Plan Upload](images/features/development-plan-upload.png)
+![개발계획](images/features/development-plan-upload.png)
 
 업로드 검증 결과
 
-![Development Plan Upload Validation](images/features/development-plan-upload-validation.png)
+![개발계획 업로드 검증](images/features/development-plan-upload-validation.png)
 
 </details>
 
@@ -166,7 +166,7 @@
 <details>
 <summary>개발계획 대시보드</summary>
 
-![Planning Dashboard](images/features/planning-dashboard.png)
+![개발계획 대시보드](images/features/planning-dashboard.png)
 
 </details>
 
@@ -180,6 +180,6 @@
 <details>
 <summary>설정</summary>
 
-![Settings](images/features/settings.png)
+![설정](images/features/settings.png)
 
 </details>
