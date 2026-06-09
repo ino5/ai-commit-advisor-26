@@ -74,6 +74,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 - [Rich Sample Demo Walkthrough](docs/rich-sample-demo-walkthrough.md): 팀원이 샘플 프로젝트로 기능을 검증할 때 따르는 안전 실행 순서입니다.
 - [Sample Target Repo Demo Design](docs/sample-target-repo-demo-design.md): 샘플 Git 저장소 목표, commit 시나리오, 기능별 데모 포인트입니다.
 - [AI Technical Overview](docs/ai-technical-overview.md): Mapping, RAG, Project Chat, Code Review, Risk Analysis 등 AI 동작 방식입니다.
+- [Source Indexing and Embedding Plan](docs/source-indexing-and-embedding-plan.md): Project Chat source_file 증분 인덱싱, embedding 비용 제어, cloud 운영 계획입니다.
 - [Architecture](README_ARCHITECTURE.md): 모듈 구조, 데이터 흐름, 서비스 책임입니다.
 - [DB Migrations](docs/db-migrations.md): Alembic 기반 DB schema 관리 기준입니다.
 - [AI Change Log](AI_CHANGELOG.md): AI 에이전트가 수행한 변경 이력입니다.

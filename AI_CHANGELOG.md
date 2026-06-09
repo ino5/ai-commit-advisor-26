@@ -2,6 +2,14 @@
 
 ## 2026-06-09
 
+### Source indexing and embedding plan
+
+- Added a handoff design document for incremental source indexing, embedding cost control, cloud embedding operation, and Project Chat evidence scope.
+- Added a roadmap task for incremental source indexing and embedding cost control so future implementation has a tracked plan.
+- Linked the new design document from the README documentation hub for teammate handoff.
+- Important files: `docs/source-indexing-and-embedding-plan.md`, `README.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `git diff --check` passed.
+
 ### Project Chat reset button alignment
 
 - Adjusted the Project Chat section header column ratio so the reset action sits farther to the right as a section-level action.

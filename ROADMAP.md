@@ -17,6 +17,7 @@
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
 | P1 | RAG | Project Chat answer quality and history persistence | In Progress | Project Chat 답변 품질과 근거 부족 처리 개선 | edcb4e7 |
 | P1 | RAG | Standard terminology glossary upload and Korean query expansion | Done | Standard terminology documentation and screenshots | 05a40ad |
+| P1 | RAG | Incremental source indexing and embedding cost control | Planned | Source indexing and embedding plan | - |
 | P1 | RAG | Project Chat answer formatting and citation accuracy | Done | Standard terminology documentation and screenshots | 05a40ad |
 | P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 표시 세부 보완 | 7895831 |
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | fa625d2 |
@@ -170,6 +171,36 @@ Out of scope for first pass:
 - Manual row-level glossary edit/delete UI.
 - LLM-based query rewrite.
 - Full DB table/column lineage inference from source code.
+
+## P1 - Incremental Source Indexing And Embedding Cost Control
+
+Status: Planned
+
+Goal:
+Make Project Chat source indexing practical for large SI repositories and cloud deployment by avoiding full source scans and repeated embedding calls during normal work.
+
+Context:
+
+- Git commit sync is already incremental through `last_synced_commit_hash`.
+- Source file re-indexing is currently manual and content-aware, but it still scans the repository tree.
+- Embedding generation already creates vectors only for missing `chunk_id + embedding_model` pairs.
+- A complete commit-triggered incremental source indexing pipeline does not exist yet.
+
+Design document:
+
+- `docs/source-indexing-and-embedding-plan.md`
+
+Checklist:
+
+- [ ] Document current behavior and limitations in user-facing operations guidance.
+- [ ] Add a changed-file source indexing service that accepts added, modified, deleted, and renamed file paths.
+- [ ] Rebuild chunks only for changed source files during incremental refresh.
+- [ ] Remove chunks and vectors for deleted source files.
+- [ ] Keep full source re-indexing as a separate recovery and large-change action.
+- [ ] Add UI status for missing embeddings, stale chunks, and when full re-index is recommended.
+- [ ] Keep embedding generation explicit or limited so cloud API usage is controlled.
+- [ ] Add focused tests for modified, deleted, renamed, unchanged, and model-changed indexing cases.
+- [ ] Update README, setup/operations guidance, AI technical overview, and `AI_CHANGELOG.md` when implemented.
 
 ## P1 - Project Chat Answer Formatting And Citation Accuracy
 
