@@ -13,6 +13,28 @@ Each entry should include:
 
 Do not record trivial read-only investigation unless it changes project direction.
 
+## CI Failure History
+
+When a GitHub Actions, local verification, deployment smoke check, or other automated validation failure is caused by agent work or investigated during agent work, update `docs/ci-failure-history.md` before finishing if the failure has reusable learning value.
+
+Record failures that reveal a missing CI service, environment variable, dependency, migration, fixture, test assumption, workflow step, or operational policy gap.
+
+Each failure-history entry should include:
+
+- date
+- related run/job URL when available
+- failed commit or workflow
+- symptom
+- root cause
+- why local or prior verification missed it
+- fix
+- prevention policy
+- verification commands and results
+
+When adding or changing tests that require PostgreSQL, pgvector, Docker services, browser automation, local LLM/embedding servers, external APIs, or other infrastructure, check the CI workflow in the same change set. If CI should not call an external service, set explicit mock/default environment variables in the workflow.
+
+Do not treat GitHub Actions warnings as root causes unless the log shows they stopped the job. Record warnings separately from the actual failed step.
+
 ## Roadmap
 
 Before starting meaningful feature, UX, schema, test, or documentation work, check `ROADMAP.md`.
@@ -84,6 +106,7 @@ Use this checklist:
 - `docs/ai-technical-overview.md`: required when Mapping, RAG, Project Chat, Code Review, AI Progress, Risk Analysis, embedding, or LLM behavior changes.
 - `docs/db-migrations.md`: required when database migration process or schema management guidance changes.
 - `docs/sample-target-repo-demo-design.md`: required when sample target repo goals, commit scenarios, demo coverage, or sample generation direction changes.
+- `docs/ci-failure-history.md`: required when an automated validation failure has reusable root-cause or prevention value.
 
 If no documentation update is needed, mention that in the final response or commit notes.
 
