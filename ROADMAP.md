@@ -41,7 +41,7 @@
 | P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 | 02f2b14 |
 | P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup | 3d56a7a |
 | P2 | Ops | Application Dockerfile and deployment guide | Done | Application Dockerfile and deployment guide | d9944f0 |
-| P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log | Pending |
+| P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log | e23334a |
 
 ## P0 - Program Management UX Improvement
 
