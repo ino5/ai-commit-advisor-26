@@ -622,6 +622,26 @@ LLM 출력 예시:
 - `DocumentChunk`: RAG 원문 chunk.
 - `VectorItem`: RAG embedding vector.
 
+## 6. Docker 배포 구조
+
+Docker 배포는 개발자별 Python 환경 차이를 줄이고 서버 기동 순서를 표준화하기 위해 추가되었습니다. Compose 기준 실행 단위는 `app`과 `postgres`입니다.
+
+```mermaid
+flowchart LR
+    Browser["Browser<br/>http://localhost:8501"] --> App["app container<br/>Streamlit"]
+    App --> Init["python -m src.db.init_db<br/>Alembic migration"]
+    Init --> DB[(postgres container<br/>PostgreSQL + pgvector)]
+    App --> DB
+    App -. optional .-> HostLLM["host.docker.internal:1234/v1<br/>LM Studio / OpenAI-compatible API"]
+```
+
+- `Dockerfile`은 Python 3.11 slim image에 `requirements.txt`를 설치하고 `app.py`를 Streamlit으로 실행합니다.
+- 컨테이너 시작 command는 앱 실행 전에 `python -m src.db.init_db`를 호출해 DB 초기화와 Alembic migration을 적용합니다.
+- `docker-compose.yml`의 `postgres` service는 `pgvector/pgvector:pg16` image를 사용하고, `app` service는 PostgreSQL healthcheck 통과 후 시작됩니다.
+- Docker 내부 DB 접속 주소는 Compose service 이름인 `postgres`를 사용합니다. 로컬 Python 실행의 `127.0.0.1` DB 주소와 다릅니다.
+- 로컬 LM Studio를 컨테이너에서 호출할 때는 `host.docker.internal:1234/v1`을 사용합니다.
+- 기본 provider는 `mock`이므로 외부 LLM 없이도 앱 기동과 DB 연결을 먼저 검증할 수 있습니다.
+
 ## 부록: 추천 운영 순서
 
 ```mermaid

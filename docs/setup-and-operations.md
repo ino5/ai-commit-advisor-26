@@ -80,6 +80,125 @@ streamlit run app.py
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
+## Docker 앱 배포
+
+### 도입 배경과 기대 효과
+
+기존 실행 방식은 PostgreSQL은 Docker Compose로 띄우고 Streamlit 앱은 로컬 Python 가상환경에서 직접 실행하는 흐름이었습니다. 이 방식은 개발 중에는 빠르지만, 팀원이 같은 환경을 재현하거나 서버에 올릴 때 Python 버전, 패키지 설치, DB 접속 주소, migration 실행 순서가 사람마다 달라질 수 있습니다.
+
+앱 Dockerfile과 Compose `app` service는 이 차이를 줄이기 위해 추가했습니다. 목표는 다음과 같습니다.
+
+- 신규 팀원이 `docker compose up`만으로 PostgreSQL + Streamlit 앱 조합을 재현합니다.
+- 서버 배포 시 앱 시작 전에 DB schema 초기화와 Alembic migration을 같은 방식으로 실행합니다.
+- mock LLM/embedding 기본값으로 먼저 화면과 DB 연결을 확인한 뒤, 필요할 때 local/OpenAI-compatible provider로 전환합니다.
+- 배포 후 health endpoint로 최소 기동 상태를 빠르게 확인합니다.
+
+### Compose 전체 실행
+
+기본 Compose 실행은 PostgreSQL과 Streamlit 앱을 함께 띄웁니다.
+
+```powershell
+docker compose up -d --build
+```
+
+앱은 `http://localhost:8501`에서 열립니다. Compose의 `app` service는 `postgres` healthcheck가 통과한 뒤 시작됩니다.
+
+실행 상태 확인:
+
+```powershell
+docker compose ps
+```
+
+로그 확인:
+
+```powershell
+docker compose logs app
+```
+
+종료:
+
+```powershell
+docker compose down
+```
+
+DB volume까지 삭제해 깨끗한 상태로 다시 시작해야 할 때만 다음 명령을 사용합니다.
+
+```powershell
+docker compose down -v
+```
+
+### 앱 이미지 단독 빌드
+
+Compose 없이 이미지 빌드만 확인하려면 다음 명령을 사용합니다.
+
+```powershell
+docker build -t ai-commit-advisor:local .
+```
+
+### Docker 환경 변수
+
+`docker-compose.yml`의 `app.environment`는 컨테이너 내부 실행 기준입니다. 로컬 Python 실행의 `.env`와 달리 DB host는 `127.0.0.1`이 아니라 Compose service 이름인 `postgres`를 사용합니다.
+
+| 변수 | 기본값 | 설명 |
+|---|---|---|
+| `DATABASE_URL` | `postgresql+psycopg2://ai_user:ai_password@postgres:5432/ai_commit_advisor` | 앱 컨테이너가 Compose PostgreSQL에 접속하는 SQLAlchemy URL입니다. |
+| `PGVECTOR_DIMENSION` | `1536` | 새 DB에서 `vector_items.embedding` column을 만들 때 사용할 vector 차원입니다. 실제 embedding 모델 차원과 같아야 합니다. |
+| `LLM_PROVIDER` | `mock` | 기본은 외부 LLM 없이 동작 확인이 가능한 mock입니다. |
+| `LLM_BASE_URL` | `http://host.docker.internal:1234/v1` | 컨테이너에서 Windows host의 LM Studio에 접근할 때 쓰는 OpenAI-compatible base URL입니다. |
+| `LLM_API_KEY` | 빈 값 | local LM Studio는 보통 비워 둡니다. |
+| `LLM_MODEL` | `qwen2.5-coder-7b-instruct` | local/OpenAI-compatible provider 전환 시 사용할 chat model 이름입니다. |
+| `EMBEDDING_PROVIDER` | `mock` | 기본은 mock embedding입니다. 실제 RAG 품질 검증 시 `local_openai` 등으로 바꿉니다. |
+| `EMBEDDING_BASE_URL` | `http://host.docker.internal:1234/v1` | 컨테이너에서 Windows host의 embedding server에 접근할 때 쓰는 base URL입니다. |
+| `EMBEDDING_API_KEY` | 빈 값 | local embedding server는 보통 비워 둡니다. |
+| `EMBEDDING_MODEL` | `text-embedding-nomic-embed-text-v1` | 실제 embedding provider 전환 시 사용할 embedding model 이름입니다. |
+| `PORT` | `8501` | Dockerfile의 Streamlit 실행 port입니다. Compose는 host `8501`을 container `8501`에 연결합니다. |
+
+실제 LM Studio를 Compose 앱에서 사용하려면 provider를 바꿉니다.
+
+```yaml
+LLM_PROVIDER: local_openai
+EMBEDDING_PROVIDER: local_openai
+PGVECTOR_DIMENSION: "768"
+```
+
+`PGVECTOR_DIMENSION`은 embedding 모델 출력 차원과 반드시 맞춰야 합니다. 이미 다른 차원으로 DB가 만들어진 뒤에는 단순 환경 변수 변경만으로 기존 `vector_items.embedding` column 차원이 바뀌지 않습니다. 이 경우 새 DB volume으로 다시 시작하거나 schema migration 전략을 별도로 잡아야 합니다.
+
+### Migration 시작 동작
+
+Dockerfile의 기본 command는 앱 시작 전에 다음 순서로 실행됩니다.
+
+```text
+python -m src.db.init_db
+streamlit run app.py --server.address=0.0.0.0 --server.port=${PORT}
+```
+
+`src.db.init_db`는 PostgreSQL 연결을 확인한 뒤 Alembic migration을 최신 revision까지 적용합니다. 빈 DB에는 현재 schema를 만들고, 기존 DB에는 `alembic_version` 상태를 기준으로 누락 migration만 적용합니다. 따라서 Compose 배포에서는 앱 컨테이너가 시작될 때 schema 초기화와 migration 적용이 자동으로 수행됩니다.
+
+운영 중 migration 실패가 보이면 먼저 `docker compose logs app`에서 실패 revision과 DB 접속 정보를 확인하세요. schema 변경은 `migrations/versions/`의 Alembic migration으로 관리해야 하며, `src/db/init_db.py`에 임의 `ALTER TABLE` 목록을 추가하지 않습니다.
+
+### 배포 스모크 체크
+
+앱과 DB가 함께 정상 기동했는지 확인하는 최소 절차입니다.
+
+```powershell
+docker compose up -d --build
+docker compose ps
+```
+
+PostgreSQL healthcheck:
+
+```powershell
+docker exec ai_commit_advisor_postgres pg_isready -U ai_user -d ai_commit_advisor
+```
+
+Streamlit health endpoint:
+
+```powershell
+Invoke-WebRequest http://localhost:8501/_stcore/health -UseBasicParsing
+```
+
+정상이라면 Streamlit health endpoint가 HTTP 200 응답을 반환합니다. 이후 브라우저에서 `http://localhost:8501`을 열어 Home 화면이 표시되는지 확인합니다.
+
 ## LLM 설정
 
 기본 `.env.example`은 mock입니다. 실제 LLM 호출 없이 동작 확인용 fallback 결과를 생성합니다.

@@ -1,4 +1,25 @@
 services:
+  app:
+    build: .
+    container_name: ai_commit_advisor_app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://ai_user:ai_password@postgres:5432/ai_commit_advisor
+      PGVECTOR_DIMENSION: "1536"
+      LLM_PROVIDER: mock
+      LLM_BASE_URL: http://host.docker.internal:1234/v1
+      LLM_API_KEY: ""
+      LLM_MODEL: qwen2.5-coder-7b-instruct
+      EMBEDDING_PROVIDER: mock
+      EMBEDDING_BASE_URL: http://host.docker.internal:1234/v1
+      EMBEDDING_API_KEY: ""
+      EMBEDDING_MODEL: text-embedding-nomic-embed-text-v1
+    ports:
+      - "8501:8501"
+
   postgres:
     image: pgvector/pgvector:pg16
     container_name: ai_commit_advisor_postgres
@@ -11,6 +32,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_user -d ai_commit_advisor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

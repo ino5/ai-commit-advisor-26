@@ -24,13 +24,21 @@ AI Commit Advisor는 로컬 Git 저장소의 커밋, 변경 파일, diff, 개발
 
 ```powershell
 Copy-Item .env.example .env
-docker compose up -d
+docker compose up -d postgres
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python -m src.db.init_db
 streamlit run app.py
 ```
+
+Docker만으로 PostgreSQL과 앱을 함께 실행하려면 다음 명령을 사용합니다.
+
+```powershell
+docker compose up -d --build
+```
+
+Docker 앱은 `http://localhost:8501`에서 열립니다. 로컬 Python 실행과 Docker 앱 실행을 동시에 켜면 같은 port를 사용할 수 있으므로 한 방식만 선택하세요.
 
 실제 LLM/RAG/Project Chat 품질을 검증하려면 로컬 LLM 설정 예시를 사용합니다.
 

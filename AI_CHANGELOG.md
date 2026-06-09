@@ -2,6 +2,17 @@
 
 ## 2026-06-10
 
+### Application Dockerfile and deployment guide
+
+- Added an application `Dockerfile` so the Streamlit app can be built and run with a repeatable Python 3.11 container image.
+- Added `.dockerignore` to keep local virtualenvs, caches, secrets, generated screenshots, and database data out of the Docker build context.
+- Expanded `docker-compose.yml` with a Streamlit `app` service, PostgreSQL healthcheck, mock LLM/embedding defaults, and container-to-host local LLM base URLs.
+- Documented Docker deployment rationale, environment variables, migration startup behavior, and smoke-check commands in the setup/operations guide.
+- Updated README Quick Start to distinguish local Python execution with `docker compose up -d postgres` from full Docker app execution with `docker compose up -d --build`.
+- Updated the architecture document with the Docker deployment structure and startup migration flow.
+- Important files: `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `README.md`, `README_ARCHITECTURE.md`, `docs/setup-and-operations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `docker compose config` passed; `docker build -t ai-commit-advisor:local .` passed; `docker compose up -d --build app` passed; `Invoke-WebRequest http://localhost:8501/_stcore/health -UseBasicParsing` returned HTTP 200; `docker compose ps` showed `ai_commit_advisor_app` and `ai_commit_advisor_postgres` healthy; `docker exec ai_commit_advisor_postgres pg_isready -U ai_user -d ai_commit_advisor` reported accepting connections.
+
 ### Project Chat database history and citation export
 
 - Added database-backed Project Chat sessions and messages so project conversations survive Streamlit session resets and can be reopened by project.
