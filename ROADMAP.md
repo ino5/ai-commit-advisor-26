@@ -42,6 +42,7 @@
 | P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup | 3d56a7a |
 | P2 | Ops | Application Dockerfile and deployment guide | Done | Application Dockerfile and deployment guide | d9944f0 |
 | P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log | e23334a |
+| P2 | Ops | Feature screenshot capture automation | Done | Feature screenshot capture automation | Pending |
 
 ## P0 - Program Management UX Improvement
 
@@ -591,3 +592,20 @@ Checklist:
 - [x] Clarify the boundary between failure history and decision history.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run markdown/link sanity checks.
+
+## P2 - Feature Screenshot Capture Automation
+
+Status: Done
+
+Goal:
+Make README and Screenshot Gallery capture work more repeatable by using feature-based Playwright scenarios instead of one-off manual browser flows.
+
+Checklist:
+
+- [x] Add an extensible feature screenshot capture script.
+- [x] Include Home and Project Chat starter scenarios.
+- [x] Keep the existing Home verification command compatible.
+- [x] Document capture commands and runtime-surface guidance.
+- [x] Update engineering decision follow-up notes.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run focused script and documentation verification.

@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Feature screenshot capture automation
+
+- Added `scripts/capture_feature_screenshot.py`, an extensible Playwright-based capture tool with starter scenarios for `home` and `project-chat`.
+- Kept `scripts/verify_home_ui.py` as a compatibility wrapper around the new Home scenario.
+- Documented capture commands, runtime surface labeling, and `--expect-text` / `--forbid-text` state checks in setup and operations guidance.
+- Updated the engineering decisions log with the implemented script and initial scenario scope.
+- Important files: `scripts/capture_feature_screenshot.py`, `scripts/verify_home_ui.py`, `docs/setup-and-operations.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\\.venv\\Scripts\\python.exe -m py_compile scripts\\capture_feature_screenshot.py scripts\\verify_home_ui.py` passed; `.\\.venv\\Scripts\\python.exe scripts\\capture_feature_screenshot.py --help` passed; `.\\.venv\\Scripts\\python.exe scripts\\capture_feature_screenshot.py --feature home --url http://localhost:8501 --screenshot .tmp\\feature-home-check.png --surface local` passed; `.\\.venv\\Scripts\\python.exe scripts\\verify_home_ui.py --url http://localhost:8501 --screenshot .tmp\\home-wrapper-check.png` passed; `.\\.venv\\Scripts\\python.exe scripts\\capture_feature_screenshot.py --feature project-chat --url http://localhost:8501 --screenshot .tmp\\project-chat-scenario-check.png --surface local` passed; `.\\.venv\\Scripts\\python.exe scripts\\capture_feature_screenshot.py --feature all --url http://localhost:8501 --output-dir .tmp\\feature-captures --surface local` passed and wrote only under `.tmp`; `git diff --check` passed.
+
 ### Engineering decisions documentation log
 
 - Added `docs/engineering-decisions.md` to record non-failure engineering, operations, verification, automation, deployment, and documentation-structure decisions with rationale and tradeoffs.

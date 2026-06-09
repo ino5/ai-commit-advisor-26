@@ -81,7 +81,8 @@ README와 Screenshot Gallery의 화면 캡처는 단순한 장식이 아니라, 
 
 ### 후속 확인
 
-- 캡처 자동화가 실제로 추가될 때 `docs/setup-and-operations.md`에 실행 명령과 권장 사용 시점을 기록합니다.
+- 캡처 자동화는 `scripts/capture_feature_screenshot.py`로 시작했습니다. 초기 시나리오는 `home`과 `project-chat`이며, 기존 Home 검증 명령은 `scripts/verify_home_ui.py` wrapper로 유지합니다.
+- `docs/setup-and-operations.md`에 실행 명령, `--expect-text`/`--forbid-text` 검증 옵션, `--surface local|docker` 기록 방식을 남겼습니다.
 - README Screenshot Guidance와 같은 원칙을 유지해 빈 화면보다 기능 가치가 드러나는 상태를 캡처합니다.
 - 새 기능의 캡처 시나리오를 추가할 때는 해당 기능의 sample data 전제와 검증 text를 함께 남깁니다.
 
