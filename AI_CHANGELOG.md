@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### Standard terminology upload UI
+
+- Added a Streamlit `표준용어/표준단어` page under data collection for project-level glossary upload and lookup.
+- Added Excel template download, column guide, upload preview, validation summary, save action, and current glossary search/table display.
+- Important files: `app.py`, `src/ui/standard_terms_page.py`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `py_compile app.py src/ui/standard_terms_page.py` and `git diff --check` passed.
+
 ### Standard terminology schema and service
 
 - Added the `standard_terms` database model and Alembic migration for project-level SI standard terminology and standard words.

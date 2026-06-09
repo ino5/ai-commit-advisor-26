@@ -20,6 +20,7 @@ from src.ui.rag_page import render_rag_page
 from src.ui.risk_page import render_risk_page
 from src.ui.sample_data_page import render_sample_data_page
 from src.ui.settings_page import render_settings_page
+from src.ui.standard_terms_page import render_standard_terms_page
 from src.ui.upload_page import render_upload_page
 
 
@@ -45,6 +46,7 @@ PAGE_GROUPS = {
     "데이터 수집": {
         "Git 동기화": render_git_page,
         "샘플 데이터 생성": render_sample_data_page,
+        "표준용어/표준단어": render_standard_terms_page,
     },
     "AI 분석": {
         "Mapping": render_mapping_page,
