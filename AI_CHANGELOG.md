@@ -2,6 +2,12 @@
 
 ## 2026-06-10
 
+### Ignore Codex attachment staging folder
+
+- Added `.codex-remote-attachments/` to `.gitignore` so uploaded chat attachment files do not appear as untracked project changes.
+- Important files: `.gitignore`, `AI_CHANGELOG.md`.
+- Verification: `git status --short --branch` no longer lists `.codex-remote-attachments/` as an untracked path; `git diff --check` passed.
+
 ### Verification surface selection agent policy
 
 - Added `AGENTS.md` guidance for choosing local `.venv` verification versus Docker verification based on the behavior being changed.
