@@ -4,6 +4,7 @@ import pandas as pd
 from scripts.create_sample_target_repo import (
     DEVELOPERS,
     PROGRAM_ROWS,
+    STANDARD_TERM_ROWS,
     _apply_demo_plan_overrides,
     _apply_developer_profiles,
     _commit_steps,
@@ -83,6 +84,15 @@ def test_sample_program_rows_include_risk_demo_programs() -> None:
 
     assert len(PROGRAM_ROWS) == 8
     assert {"SMP-CPN-001", "SMP-SET-001"}.issubset(program_ids)
+
+
+def test_sample_standard_terms_cover_demo_domains() -> None:
+    korean_terms = {row["korean_term"] for row in STANDARD_TERM_ROWS}
+    english_terms = {row["english_term"] for row in STANDARD_TERM_ROWS}
+
+    assert {"결제금액", "결제승인", "주문상태", "쿠폰할인", "정산내보내기"}.issubset(korean_terms)
+    assert {"payment amount", "payment authorization", "order status", "coupon discount"}.issubset(english_terms)
+    assert all(row["abbreviation"] for row in STANDARD_TERM_ROWS)
 
 
 def test_sample_target_repo_uses_korean_developer_names() -> None:

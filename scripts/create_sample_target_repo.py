@@ -135,6 +135,80 @@ PROGRAM_ROWS = [
 ]
 
 
+STANDARD_TERM_ROWS = [
+    {
+        "term_type": "표준용어",
+        "korean_term": "결제금액",
+        "english_term": "payment amount",
+        "abbreviation": "pay amt",
+        "description": "결제 요청 금액. 코드에서는 amount, DB에서는 payments.amount로 표현됩니다.",
+    },
+    {
+        "term_type": "표준용어",
+        "korean_term": "결제승인",
+        "english_term": "payment authorization",
+        "abbreviation": "pay auth",
+        "description": "결제 요청을 승인하고 주문 상태를 PAID로 변경하는 업무입니다.",
+    },
+    {
+        "term_type": "표준용어",
+        "korean_term": "주문번호",
+        "english_term": "order number",
+        "abbreviation": "ord no",
+        "description": "주문 식별자. 샘플 코드에서는 orderId와 order_id로 표현됩니다.",
+    },
+    {
+        "term_type": "표준용어",
+        "korean_term": "주문상태",
+        "english_term": "order status",
+        "abbreviation": "ord stat",
+        "description": "주문 진행 상태. PAYMENT_WAITING, PAID, PACKING 같은 값으로 표현됩니다.",
+    },
+    {
+        "term_type": "표준용어",
+        "korean_term": "쿠폰할인",
+        "english_term": "coupon discount",
+        "abbreviation": "cpn dc",
+        "description": "쿠폰 정책에 따른 할인 가능 여부와 할인 금액 계산입니다.",
+    },
+    {
+        "term_type": "표준용어",
+        "korean_term": "재고예약",
+        "english_term": "inventory reservation",
+        "abbreviation": "inv rsv",
+        "description": "주문 생성 전후 판매 가능 수량을 확인하고 재고를 예약하는 업무입니다.",
+    },
+    {
+        "term_type": "표준용어",
+        "korean_term": "정산내보내기",
+        "english_term": "settlement export",
+        "abbreviation": "stl exp",
+        "description": "결제 승인 내역을 정산 파일로 생성해 운영자가 내려받는 업무입니다.",
+    },
+    {
+        "term_type": "표준용어",
+        "korean_term": "매출현황",
+        "english_term": "sales report",
+        "abbreviation": "sales rpt",
+        "description": "일자별 주문 금액, 결제 상태, 취소 금액 집계 화면입니다.",
+    },
+    {
+        "term_type": "표준단어",
+        "korean_term": "승인",
+        "english_term": "authorization",
+        "abbreviation": "auth",
+        "description": "결제 승인과 권한 승인 문맥에서 사용하는 표준단어입니다.",
+    },
+    {
+        "term_type": "표준단어",
+        "korean_term": "검증",
+        "english_term": "validation",
+        "abbreviation": "vld",
+        "description": "입력값과 업무 규칙 확인을 의미합니다.",
+    },
+]
+
+
 def _repo_default_path() -> Path:
     return Path(__file__).resolve().parents[2] / "ai-advisor-sample-shop"
 
@@ -176,6 +250,11 @@ def _commit(repo_path: Path, step: CommitStep, start_at: datetime) -> None:
 
 def _program_csv(repo_path: Path) -> None:
     pd.DataFrame(PROGRAM_ROWS).to_csv(repo_path / "샘플_프로그램목록.csv", index=False, encoding="utf-8-sig")
+
+
+def _standard_terms_excel(output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(STANDARD_TERM_ROWS).to_excel(output_dir / "sample_standard_terms.xlsx", index=False)
 
 
 def _apply_developer_profiles(developers: pd.DataFrame) -> pd.DataFrame:
@@ -1668,6 +1747,7 @@ def create_repo(target_path: Path, force: bool = False) -> None:
     developers = _apply_developer_profiles(developers)
     plan = _apply_demo_plan_overrides(plan)
     write_excel(target_path / "advisor_uploads", developers, programs, plan)
+    _standard_terms_excel(target_path / "advisor_uploads")
 
 
 def main() -> None:

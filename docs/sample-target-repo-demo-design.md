@@ -20,7 +20,7 @@ The current sample target is a synthetic Spring MVC + MyBatis retail operations 
 - Git commits: 30
 - Main stack: Java, Spring MVC, JSP, MyBatis XML
 - Current domains: orders, inventory, payments, reports, dashboard, coupon, settlement planning
-- Generated files: program CSV and upload Excel files for developers, programs, and development plans
+- Generated files: program CSV and upload Excel files for developers, programs, development plans, and standard terminology
 
 Strengths:
 
@@ -66,9 +66,38 @@ The sample should deliberately support these product workflows.
 | Commit Impact | Commits touching order, inventory, payment, and dashboard together | One commit affects multiple programs |
 | Risk Analysis | No related commits, overdue incomplete work, progress gaps, no recent commits, missing assignee | Multiple risk types visible in one run |
 | RAG Search | Current source, docs, commit messages, and diffs with searchable business terms | Source and history retrieval results |
-| Project Chat | Current source and docs that answer realistic business questions | Answers with file and line evidence |
+| Project Chat | Current source, docs, and standard terminology that answer realistic Korean business questions | Answers with file and line evidence |
 | AI Code Review | A latest or selected commit with concrete bug risk and refactoring opportunities | Bug findings and actionable suggestions |
 | AI Progress | Mix of completed, in-progress, not-started, and uncertain programs | Plan progress versus AI-estimated implementation status |
+
+## Standard Terminology Demo Dataset
+
+The sample target repository should include `advisor_uploads/sample_standard_terms.xlsx` so the glossary upload and Korean query expansion workflow can be demonstrated without external customer artifacts.
+
+The first-pass Excel shape is intentionally lightweight:
+
+- `term_type`
+- `korean_term`
+- `english_term`
+- `abbreviation`
+- `description`
+
+Required input for real teams is limited to Korean term and English term, with abbreviation strongly recommended. The application derives search variants such as camelCase, PascalCase, snake_case, upper snake case, compact lowercase, and token lists.
+
+The sample terminology should cover the code and SQL identifiers already present in the generated Spring/MyBatis source:
+
+| Korean term | English term | Abbreviation | Demo linkage |
+|---|---|---|---|
+| 결제금액 | payment amount | pay amt | `amount`, `payments.amount`, `PaymentService` |
+| 결제승인 | payment authorization | pay auth | `authorize`, `PaymentController`, `PaymentMapper` |
+| 주문번호 | order number | ord no | `orderId`, `order_id` |
+| 주문상태 | order status | ord stat | `updateOrderStatus`, `status` |
+| 쿠폰할인 | coupon discount | cpn dc | `CouponDiscountService`, `previewDiscount` |
+| 재고예약 | inventory reservation | inv rsv | `InventoryService.reserve` |
+| 정산내보내기 | settlement export | stl exp | settlement planning/risk scenario |
+| 매출현황 | sales report | sales rpt | `SalesReportService`, `ReportMapper.xml` |
+
+This dataset should support a Korean Project Chat question such as `결제 금액이 0원 이하일 때 어떤 검증 로직이 동작하나요?` by expanding it toward code identifiers like `payment amount`, `amount`, `PaymentService`, and `payment_amount`.
 
 ## Commit Scenario Design
 

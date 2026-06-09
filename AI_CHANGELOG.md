@@ -2,6 +2,14 @@
 
 ## 2026-06-09
 
+### Sample standard terminology artifact plan
+
+- Added sample target repository terminology rows for SI-style standard terms and standard words, including Korean term, English term, abbreviation, and description.
+- Updated the sample target generator to create `advisor_uploads/sample_standard_terms.xlsx` alongside the existing developer, program, and development-plan upload files.
+- Documented the standard terminology demo dataset and expected Korean Project Chat expansion scenario in the sample target repository design.
+- Important files: `scripts/create_sample_target_repo.py`, `tests/test_sample_data_generation.py`, `docs/sample-target-repo-demo-design.md`, `AI_CHANGELOG.md`.
+- Verification: `git diff --check` passed.
+
 ### Project Chat glossary and Korean query expansion roadmap
 
 - Added roadmap tasks for project standard terminology/standard word Excel upload, deterministic Korean query expansion, and Project Chat answer formatting/citation accuracy.
