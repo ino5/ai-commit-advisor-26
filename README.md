@@ -698,6 +698,7 @@ Git author 기반 개발자 통계를 보여줍니다.
 ## 샘플 데이터 생성
 
 실제 업무 프로젝트를 건드리지 않고 앱 흐름을 테스트하려면 가상 대상 Git repo를 먼저 만듭니다.
+팀원이 전체 데모 흐름을 검증하거나 화면 캡처를 갱신할 때는 `docs/rich-sample-demo-walkthrough.md`의 안전 실행 순서를 먼저 확인합니다.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\create_sample_target_repo.py

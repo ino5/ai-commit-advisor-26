@@ -2,6 +2,14 @@
 
 ## 2026-06-09
 
+### 풍부한 샘플 데모 안전 실행 가이드 추가
+
+- 팀원이 8개 프로그램/30개 커밋 샘플 repo를 검증할 때 LLM/embedding 작업이 과도하게 늘어나지 않도록 `docs/rich-sample-demo-walkthrough.md`를 추가했습니다.
+- 가이드에는 commit-based Mapping 우선 사용, 선택 커밋 1개 선검증, 후보 수 제한, RAG/Project Chat embedding 소량 실행, 추천 Code Review 대상 커밋, 예상 Risk Analysis 신호를 정리했습니다.
+- `README.md`의 샘플 데이터 생성 섹션에서 전체 데모 검증이나 화면 캡처 갱신 전 해당 가이드를 먼저 확인하도록 안내했습니다.
+- `ROADMAP.md`의 `Rich sample demo walkthrough and screenshots` 체크리스트에 safe execution flow 문서화 항목을 추가했습니다.
+- 검증: 문서 변경 범위 확인 및 `git diff --check` 통과.
+
 ### 샘플 데모 검증과 스크린샷 작업 로드맵 등록
 
 - 풍부해진 8개 프로그램/30개 커밋 샘플 데이터가 실제 앱 화면에서 잘 동작하는지 검증하고 README walkthrough 및 기능별 스크린샷을 맞추는 작업을 `ROADMAP.md`에 추가했습니다.

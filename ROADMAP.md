@@ -368,6 +368,7 @@ Verify the expanded sample target repository through the actual app workflow and
 
 Checklist:
 
+- [ ] Document the safe execution flow to avoid excessive LLM and embedding work.
 - [ ] Register or refresh the sample project in the app with `C:\dev\ai-advisor-sample-shop`.
 - [ ] Upload the `advisor_uploads` developer, program, and development-plan Excel files.
 - [ ] Run Git sync, Mapping, Risk Analysis, AI Progress, Commit Impact, RAG, Project Chat, and AI Code Review checks.
