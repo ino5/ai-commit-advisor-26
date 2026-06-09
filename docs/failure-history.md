@@ -1,28 +1,41 @@
-# CI Failure History
+# Failure History
 
-이 문서는 GitHub Actions, local verification, deployment smoke check 같은 자동 검증 실패 중 재발 방지 가치가 있는 사례를 기록합니다. 단순한 일시적 네트워크 실패나 사용자가 즉시 취소한 run은 기록하지 않고, 테스트/환경/문서/운영 정책을 바꿔야 하는 실패를 남깁니다.
+이 문서는 프로젝트 전반에서 발생한 실패, 시행착오, 운영상 누락, 검증 누락 중 재발 방지 가치가 있는 사례를 기록합니다. 범위는 CI에 한정하지 않습니다. 기능 설계, UX, 데이터, schema, RAG/LLM, embedding, sample data, 문서, 배포, local 검증, GitHub Actions, 운영 절차에서 배운 내용을 남깁니다.
+
+단순한 일시적 네트워크 실패, 사용자가 즉시 취소한 run, 방향을 바꾸지 않은 read-only 조사, 재현 불가능하고 조치가 없는 현상은 기록하지 않습니다.
 
 ## 기록 기준
 
 다음 중 하나에 해당하면 이 문서에 항목을 추가합니다.
 
-- CI 실패가 코드, 테스트, schema, dependency, workflow, 환경 변수, 외부 service 누락 때문에 발생했습니다.
-- local에서는 통과했지만 CI에서는 실패해 실행 환경 차이를 확인했습니다.
-- 실패를 해결하기 위해 workflow, Docker service, test fixture, 문서, agent policy를 변경했습니다.
+- 기능 설계나 구현이 실제 사용 시나리오를 충분히 반영하지 못했습니다.
+- local에서는 통과했지만 CI, 다른 PC, demo, 운영 환경에서는 실패했습니다.
+- 테스트, schema, migration, dependency, workflow, 환경 변수, 외부 service, sample data 전제가 누락됐습니다.
+- LLM/RAG/embedding 동작이 stale evidence, 비용, hallucination, 검증 불가 근거 같은 안전 문제를 만들었습니다.
+- 사용자 문서만 보고는 기능 목적, 사용 조건, 복구 방법, 한계를 이해하기 어려웠습니다.
+- 실패를 해결하기 위해 코드, 테스트, workflow, 문서, agent policy, 운영 절차를 변경했습니다.
 - 같은 종류의 실수를 피하기 위한 명확한 예방 규칙이 생겼습니다.
 
 각 항목은 가능한 한 다음 정보를 포함합니다.
 
-- 날짜와 관련 run/job URL
-- 실패한 commit 또는 workflow run
+- 날짜
+- 관련 기능, 문서, run/job URL, commit
 - 증상
 - 직접 원인
-- 왜 사전에 잡히지 않았는지
+- 배경 또는 구조적 원인
+- 왜 사전 검증에서 놓쳤는지
 - 수정 내용
 - 재발 방지 규칙
+- 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
 ## 2026-06-09 / 2026-06-10 - Incremental source indexing tests failed in CI
+
+분류:
+
+- Test/CI environment
+- RAG source indexing
+- pgvector service dependency
 
 관련 run:
 
@@ -59,9 +72,15 @@ steps:
 
 따라서 CI runner에서 pytest가 DB 연결 또는 migration 초기화가 필요한 테스트를 실행할 때 실패했습니다.
 
-### 사전에 잡히지 않은 이유
+### 배경 또는 구조적 원인
 
-로컬 검증은 실제 DB가 있는 개발 PC 기준으로 수행됐고, CI workflow의 service dependency까지 함께 검토하지 않았습니다. 테스트가 순수 unit test에서 DB-backed integration test로 확장됐는데, CI 실행 환경은 여전히 DB 없는 Python-only workflow였습니다.
+증분 source indexing 기능은 `DocumentChunk`, `VectorItem`, pgvector column, Alembic migration 상태를 함께 다루는 기능입니다. 수정/삭제/rename 처리에서 vector cleanup을 검증하려면 순수 unit test보다 DB-backed integration test가 더 적합했습니다.
+
+문제는 테스트의 성격이 바뀌었는데도 CI workflow의 실행 전제 조건은 Python-only 상태로 남아 있었다는 점입니다.
+
+### 사전 검증에서 놓친 이유
+
+로컬 검증은 실제 DB가 있는 개발 PC 기준으로 수행됐고, CI workflow의 service dependency까지 함께 검토하지 않았습니다. 테스트가 순수 unit test에서 DB-backed integration test로 확장됐는데, CI 실행 환경은 사전에 DB 없는 workflow였습니다.
 
 ### 수정 내용
 
@@ -96,8 +115,13 @@ env:
 - DB, pgvector, Docker service, external API, browser, local model server가 필요한 테스트를 추가하면 같은 commit 또는 같은 change set에서 CI workflow 전제 조건도 함께 확인합니다.
 - local에서 통과한 테스트라도 CI가 같은 service를 제공하는지 확인합니다.
 - CI에서 외부 LLM/embedding server가 필요하지 않도록 기본 provider는 mock으로 고정합니다.
-- CI 실패를 사용자가 보고하거나 agent가 확인하면 원인과 조치 내용을 이 문서에 기록합니다.
+- 자동 검증 실패를 사용자가 보고하거나 agent가 확인하면 원인과 조치 내용을 이 문서에 기록합니다.
 - GitHub Actions warning과 failure를 구분합니다. Warning은 별도 개선 후보로 기록하되, 실패 원인으로 단정하지 않습니다.
+
+### 남은 한계
+
+- GitHub Actions 상세 log는 비로그인 공개 화면에서 제한적으로만 보입니다. 가능한 경우 GitHub CLI 또는 로그인된 UI로 raw log를 확인해야 합니다.
+- Node.js 20 deprecation warning은 직접 실패 원인은 아니지만, 이후 GitHub Actions runtime 변경 전에 `actions/checkout`, `actions/setup-python` 버전 또는 runner 정책을 별도 점검할 수 있습니다.
 
 ### 검증
 

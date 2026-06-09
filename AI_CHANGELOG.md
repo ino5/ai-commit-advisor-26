@@ -2,13 +2,13 @@
 
 ## 2026-06-10
 
-### CI failure history documentation and agent policy
+### Project failure history documentation and agent policy
 
-- Added `docs/ci-failure-history.md` to record reusable CI failure root causes, fixes, prevention rules, and verification results.
-- Documented the incremental source indexing CI failure where DB-backed tests were added without a pgvector PostgreSQL service in GitHub Actions.
-- Added `AGENTS.md` policy requiring CI failure history updates when automated validation failures reveal reusable test, workflow, dependency, or environment assumptions.
-- Linked the CI failure history document from the README documentation hub.
-- Important files: `docs/ci-failure-history.md`, `AGENTS.md`, `README.md`, `AI_CHANGELOG.md`.
+- Added `docs/failure-history.md` to record reusable project-wide failure root causes, fixes, prevention rules, remaining limits, and verification results.
+- Documented the incremental source indexing CI failure as the first entry, where DB-backed tests were added without a pgvector PostgreSQL service in GitHub Actions.
+- Added `AGENTS.md` policy requiring failure history updates when product, UX, AI behavior, RAG/embedding, data, schema, migration, sample data, documentation, test, dependency, workflow, environment, deployment, or operational mistakes reveal reusable learning.
+- Linked the failure history document from the README documentation hub.
+- Important files: `docs/failure-history.md`, `AGENTS.md`, `README.md`, `AI_CHANGELOG.md`.
 - Verification: `git diff --check` passed; README documentation links for the new file passed local path checks.
 
 ## 2026-06-09
