@@ -35,7 +35,7 @@
 </details>
 
 <details>
-<summary>개발자 목록 업로드</summary>
+<summary>개발자 목록</summary>
 
 현재 개발자 데이터
 
@@ -48,7 +48,7 @@
 </details>
 
 <details>
-<summary>프로그램 목록 업로드</summary>
+<summary>프로그램 목록</summary>
 
 현재 프로그램 데이터
 
@@ -61,7 +61,7 @@
 </details>
 
 <details>
-<summary>개발계획 업로드</summary>
+<summary>개발계획</summary>
 
 현재 개발계획
 

@@ -2,6 +2,21 @@
 
 ## 2026-06-09
 
+### Artifact management sidebar grouping
+
+- Added a `산출물 관리` sidebar group for developer list, program list, development plan, and standard terminology management screens.
+- Renamed the Git-author developer page menu label to `개발자 현황` and shortened artifact page labels so upload/direct-management screens are easier to find.
+- Updated the feature guide and screenshot gallery labels to match the new sidebar grouping.
+- Refreshed the README and screenshot gallery Home images so the sidebar shows the new artifact management grouping.
+- Important files: `app.py`, `docs/feature-guide.md`, `docs/screenshot-gallery.md`, `docs/images/ai-commit-advisor-home.png`, `docs/images/features/home.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.venv\Scripts\python.exe -m py_compile app.py`, `.venv\Scripts\python.exe scripts\verify_home_ui.py --url http://localhost:8510 --screenshot docs\images\features\home.png`, `git diff --check`, and in-app Browser verification against `http://localhost:8510` passed.
+
+### Project Chat history roadmap status correction
+
+- Corrected the `Project Chat Answer Quality And History Persistence` roadmap detail status from `Done` to `In Progress` because database chat persistence, project-level history, and citation export remain incomplete.
+- Important files: `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `git diff --check` passed.
+
 ### Source indexing and embedding plan
 
 - Added a handoff design document for incremental source indexing, embedding cost control, cloud embedding operation, and Project Chat evidence scope.

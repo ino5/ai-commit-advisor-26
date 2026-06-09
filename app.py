@@ -37,16 +37,18 @@ PAGE_GROUPS = {
     },
     "프로젝트 관리": {
         "프로젝트": render_project_page,
-        "개발자": render_developer_page,
+        "개발자 현황": render_developer_page,
         "Program Detail": render_program_detail_page,
-        "개발자 목록 업로드": render_developer_upload_page,
-        "프로그램 목록 업로드": render_upload_page,
-        "개발계획 업로드": render_development_plan_upload_page,
+    },
+    "산출물 관리": {
+        "개발자 목록": render_developer_upload_page,
+        "프로그램 목록": render_upload_page,
+        "개발계획": render_development_plan_upload_page,
+        "표준용어/표준단어": render_standard_terms_page,
     },
     "데이터 수집": {
         "Git 동기화": render_git_page,
         "샘플 데이터 생성": render_sample_data_page,
-        "표준용어/표준단어": render_standard_terms_page,
     },
     "AI 분석": {
         "Mapping": render_mapping_page,

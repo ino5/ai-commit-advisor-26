@@ -27,6 +27,7 @@
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | a151133 |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
+| P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping | - |
 | P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | 562da8a |
 | P2 | UX | Home analysis command center | Done | Home 분석 관제 화면 개선 | c3a30a1 |
 | P2 | UX | Home copy tone cleanup | Done | Home 문구 톤 정리 | c8c421e |
@@ -103,7 +104,7 @@ Checklist:
 
 ## P1 - Project Chat Answer Quality And History Persistence
 
-Status: Done
+Status: In Progress
 
 Goal:
 Improve Project Chat from session-only Q&A into a more reliable project assistant.
@@ -345,6 +346,22 @@ Checklist:
 - [x] Show the current menu path clearly.
 - [x] Update README and `AI_CHANGELOG.md`.
 - [x] Run compileall and pytest.
+
+## P2 - Artifact Management Menu Grouping
+
+Status: Done
+
+Goal:
+Group upload and direct-management screens for project artifacts so users can find SI deliverables in one sidebar section.
+
+Checklist:
+
+- [x] Add a sidebar group for artifact management screens.
+- [x] Move developer list, program list, development plan, and standard terminology management pages into the artifact group.
+- [x] Keep Git sync and sample data generation under data collection.
+- [x] Update related workflow documentation.
+- [x] Run compile and UI verification.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - CI Test Workflow
 
