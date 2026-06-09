@@ -33,6 +33,10 @@ class Project(Base, TimestampMixin):
     git_commits: Mapped[list["GitCommit"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     analysis_runs: Mapped[list["AnalysisRun"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     standard_terms: Mapped[list["StandardTerm"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    chat_sessions: Mapped[list["ProjectChatSession"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
 
 
 class Developer(Base, TimestampMixin):
@@ -201,6 +205,44 @@ class CodeReviewResult(Base, TimestampMixin):
     raw_response: Mapped[dict | None] = mapped_column(JSONB)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ProjectChatSession(Base, TimestampMixin):
+    __tablename__ = "project_chat_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(50), default="active", nullable=False)
+    last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    raw_metadata: Mapped[dict | None] = mapped_column(JSONB)
+
+    project: Mapped["Project"] = relationship(back_populates="chat_sessions")
+    messages: Mapped[list["ProjectChatMessage"]] = relationship(
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="ProjectChatMessage.message_index",
+    )
+
+
+class ProjectChatMessage(Base, TimestampMixin):
+    __tablename__ = "project_chat_messages"
+    __table_args__ = (UniqueConstraint("session_id", "message_index", name="uq_project_chat_messages_session_index"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("project_chat_sessions.id", ondelete="CASCADE"), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    message_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    sources: Mapped[list | None] = mapped_column(JSONB)
+    expanded_queries: Mapped[list | None] = mapped_column(JSONB)
+    matched_terms: Mapped[list | None] = mapped_column(JSONB)
+    excluded_count: Mapped[int | None] = mapped_column(Integer)
+    used_source_count: Mapped[int | None] = mapped_column(Integer)
+    insufficient_evidence: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    raw_metadata: Mapped[dict | None] = mapped_column(JSONB)
+
+    session: Mapped["ProjectChatSession"] = relationship(back_populates="messages")
 
 
 class RiskFinding(Base, TimestampMixin):

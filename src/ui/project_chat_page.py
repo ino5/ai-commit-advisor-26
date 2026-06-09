@@ -7,6 +7,15 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import Project
 from src.rag.chat_service import answer_source_question
+from src.rag.chat_history_service import (
+    append_chat_message,
+    create_chat_session,
+    format_message_citation_export,
+    get_chat_session,
+    get_session_messages,
+    list_chat_sessions,
+    messages_to_ui_dicts,
+)
 from src.rag.source_index_service import (
     get_changed_source_files_since_latest_index,
     get_source_index_status,
@@ -39,6 +48,10 @@ def _load_projects() -> list[Project]:
 
 def _chat_key(project_id: int) -> str:
     return f"project_chat_messages_{project_id}"
+
+
+def _active_session_key(project_id: int) -> str:
+    return f"project_chat_active_session_{project_id}"
 
 
 def _short_hash(value: str | None) -> str:
@@ -245,6 +258,48 @@ def _render_chat_history(messages: list[dict]) -> None:
                     st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 chunk {excluded_count}건은 현재 코드 답변 근거에서 제외했습니다.")
                 _render_expansion_context(message)
                 _render_sources(message.get("sources") or [], index, used_source_count)
+                st.text_area(
+                    "근거 복사용 Markdown",
+                    value=format_message_citation_export(message),
+                    height=180,
+                    key=f"project_chat_citation_export_{index}",
+                )
+
+
+def _render_chat_session_selector(project_id: int) -> tuple[int | None, list[dict]]:
+    active_key = _active_session_key(project_id)
+    with SessionLocal() as db:
+        sessions = list_chat_sessions(db, project_id)
+        if not sessions:
+            session = create_chat_session(db, project_id)
+            sessions = [session]
+        active_session_id = st.session_state.get(active_key)
+        if active_session_id is None or all(session.id != active_session_id for session in sessions):
+            active_session_id = sessions[0].id
+            st.session_state[active_key] = active_session_id
+
+    session_options = {
+        f"{session.title or '새 대화'} · {session.last_message_at.strftime('%Y-%m-%d %H:%M') if session.last_message_at else '-'} · #{session.id}": session.id
+        for session in sessions
+    }
+    labels = list(session_options.keys())
+    selected_index = max(0, [session_options[label] for label in labels].index(st.session_state[active_key]))
+    col1, col2 = st.columns([5, 1])
+    selected_label = col1.selectbox("대화 이력", labels, index=selected_index)
+    st.session_state[active_key] = session_options[selected_label]
+
+    if col2.button("새 대화"):
+        with SessionLocal() as db:
+            session = create_chat_session(db, project_id)
+            st.session_state[active_key] = session.id
+        st.rerun()
+
+    with SessionLocal() as db:
+        session = get_chat_session(db, project_id, int(st.session_state[active_key]))
+        if session is None:
+            return None, []
+        messages = messages_to_ui_dicts(get_session_messages(db, session.id))
+    return int(st.session_state[active_key]), messages
 
 
 def render_project_chat_page() -> None:
@@ -260,8 +315,6 @@ def render_project_chat_page() -> None:
     selected_label = st.selectbox("프로젝트 선택", list(project_options.keys()))
     project_id = project_options[selected_label]
     project = next(project for project in projects if project.id == project_id)
-    messages_key = _chat_key(project_id)
-    st.session_state.setdefault(messages_key, [])
 
     _render_source_index_status(project)
 
@@ -273,16 +326,21 @@ def render_project_chat_page() -> None:
     chat_header, chat_action = st.columns([6, 1])
     chat_header.subheader("대화")
     if chat_action.button("대화 초기화"):
-        st.session_state[messages_key] = []
+        with SessionLocal() as db:
+            session = create_chat_session(db, project_id)
+            st.session_state[_active_session_key(project_id)] = session.id
         st.rerun()
 
-    _render_chat_history(st.session_state[messages_key])
+    active_session_id, messages = _render_chat_session_selector(project_id)
+    _render_chat_history(messages)
 
     prompt = st.chat_input("프로젝트에 대해 질문하세요.")
-    if not prompt:
+    if not prompt or active_session_id is None:
         return
 
-    st.session_state[messages_key].append({"role": "user", "content": prompt})
+    with SessionLocal() as db:
+        append_chat_message(db, active_session_id, role="user", content=prompt)
+
     with st.chat_message("user"):
         st.write(prompt)
 
@@ -319,17 +377,31 @@ def render_project_chat_page() -> None:
                         "matched_terms": [] if answer.errors else answer.matched_terms,
                     }
                 )
-                _render_sources(answer.sources, len(st.session_state[messages_key]), answer.used_source_count)
+                _render_sources(answer.sources, len(messages), answer.used_source_count)
+                st.text_area(
+                    "근거 복사용 Markdown",
+                    value=format_message_citation_export(
+                        {
+                            "content": content,
+                            "sources": answer.sources,
+                            "used_source_count": answer.used_source_count,
+                        }
+                    ),
+                    height=180,
+                    key=f"project_chat_citation_export_live_{active_session_id}",
+                )
 
-    st.session_state[messages_key].append(
-        {
-            "role": "assistant",
-            "content": content,
-            "sources": [] if answer.errors else answer.sources,
-            "expanded_queries": [] if answer.errors else answer.expanded_queries,
-            "matched_terms": [] if answer.errors else answer.matched_terms,
-            "excluded_count": 0 if answer.errors else answer.excluded_count,
-            "used_source_count": 0 if answer.errors else answer.used_source_count,
-            "insufficient_evidence": False if answer.errors else answer.insufficient_evidence,
-        }
-    )
+        append_chat_message(
+            db,
+            active_session_id,
+            role="assistant",
+            content=content,
+            sources=[] if answer.errors else answer.sources,
+            expanded_queries=[] if answer.errors else answer.expanded_queries,
+            matched_terms=[] if answer.errors else answer.matched_terms,
+            excluded_count=0 if answer.errors else answer.excluded_count,
+            used_source_count=0 if answer.errors else answer.used_source_count,
+            insufficient_evidence=False if answer.errors else answer.insufficient_evidence,
+            raw_metadata={"errors": answer.errors} if answer.errors else None,
+        )
+    st.rerun()
