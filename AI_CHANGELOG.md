@@ -2,6 +2,14 @@
 
 ## 2026-06-10
 
+### Feature rationale documentation policy
+
+- Added `AGENTS.md` guidance that meaningful new features, workflows, AI behavior, operational behavior, and major UX changes require rationale documentation in an appropriate Markdown file.
+- Clarified that rationale documentation should explain why the feature was introduced, the user or operational gap it addresses, expected effect, usage timing, tradeoffs, limitations, and related verification or failure-history lessons.
+- Added feature rationale documentation to the pre-commit documentation checklist.
+- Important files: `AGENTS.md`, `AI_CHANGELOG.md`.
+- Verification: `git diff --check` passed.
+
 ### Project failure history documentation and agent policy
 
 - Added `docs/failure-history.md` to record reusable project-wide failure root causes, fixes, prevention rules, remaining limits, and verification results.

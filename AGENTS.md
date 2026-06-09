@@ -64,6 +64,21 @@ Prefer documentation that explains:
 - the chosen approach and why it fits the project better than obvious alternatives
 - important tradeoffs, boundaries, or remaining limitations that future maintainers should preserve or revisit
 
+## Feature Rationale Documentation
+
+When adding a meaningful new feature, workflow, AI behavior, operational behavior, or major UX change, update an appropriate Markdown document with the feature rationale before finishing.
+
+The documentation should explain:
+
+- why the feature was introduced
+- what user problem, operational gap, or system limitation it addresses
+- expected effect or value
+- when users should use it
+- important tradeoffs, boundaries, and remaining limitations
+- related verification or failure-history lessons, if any
+
+Prefer updating an existing relevant document before creating a new one. Create a dedicated `docs/*.md` file only when the feature is large enough that `README.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `README_ARCHITECTURE.md`, or `docs/ai-technical-overview.md` would become too broad.
+
 ## User-Facing Documentation Language
 
 User-facing documentation should use Korean for explanatory prose by default, especially when describing setup, workflows, feature behavior, operational guidance, and product decisions.
@@ -103,6 +118,7 @@ Use this checklist:
 - `AI_CHANGELOG.md`: required for code, schema, test, documentation, or behavior changes.
 - `ROADMAP.md`: required when starting or completing roadmap-tracked work, or when the work affects product direction.
 - `README.md`: required when setup, usage, workflows, screens, sample data, commands, or user-facing behavior changes.
+- Feature rationale documentation: required when a meaningful new feature, workflow, AI behavior, operational behavior, or major UX change is introduced.
 - `README_ARCHITECTURE.md`: required when architecture, module boundaries, service responsibilities, or data flow changes.
 - `docs/ai-technical-overview.md`: required when Mapping, RAG, Project Chat, Code Review, AI Progress, Risk Analysis, embedding, or LLM behavior changes.
 - `docs/db-migrations.md`: required when database migration process or schema management guidance changes.
