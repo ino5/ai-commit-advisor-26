@@ -2,6 +2,16 @@
 
 ## 2026-06-10
 
+### Project Chat database history and citation export
+
+- Added database-backed Project Chat sessions and messages so project conversations survive Streamlit session resets and can be reopened by project.
+- Added Alembic migration `20260610_0004_add_project_chat_sessions` for `project_chat_sessions` and `project_chat_messages`.
+- Added a Project Chat history service for session creation, message persistence, UI conversion, and copy-friendly Markdown citation export.
+- Updated the Project Chat UI with project-level `대화 이력`, `새 대화`, persisted message rendering, and `근거 복사용 Markdown` for assistant answers.
+- Updated README, feature guide, architecture, setup/operations, and AI technical overview documentation to explain persisted chat history, citation export, and traceability.
+- Important files: `src/db/models.py`, `migrations/versions/20260610_0004_add_project_chat_sessions.py`, `src/rag/chat_history_service.py`, `src/ui/project_chat_page.py`, `tests/test_project_chat_history_service.py`, `README.md`, `README_ARCHITECTURE.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `docs/ai-technical-overview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\\.venv\\Scripts\\python.exe -m py_compile src/db/models.py src/rag/chat_history_service.py src/ui/project_chat_page.py migrations/versions/20260610_0004_add_project_chat_sessions.py` passed; `.\\.venv\\Scripts\\python.exe -m compileall src tests` passed; `.\\.venv\\Scripts\\python.exe -m pytest -q` passed with 80 tests; `git diff --check` passed without whitespace errors; Browser verification against `http://localhost:8512` confirmed Project Chat history controls render.
+
 ### Feature rationale documentation policy
 
 - Added `AGENTS.md` guidance that meaningful new features, workflows, AI behavior, operational behavior, and major UX changes require rationale documentation in an appropriate Markdown file.

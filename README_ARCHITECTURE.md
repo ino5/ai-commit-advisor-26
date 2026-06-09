@@ -65,7 +65,7 @@ flowchart TB
     ImplementationAnalyzer --> DB
     VectorStore --> DB
 
-    DB --> Tables["projects, developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>program_implementation_status,<br/>code_review_results, risk_findings,<br/>document_chunks, vector_items"]
+    DB --> Tables["projects, developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>program_implementation_status,<br/>code_review_results, risk_findings,<br/>project_chat_sessions, project_chat_messages,<br/>document_chunks, vector_items"]
 ```
 
 ## 2. 화면 흐름도
@@ -112,7 +112,7 @@ flowchart LR
 - `개발계획 대시보드`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
 - `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
-- `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답하고, 답변 전 현재 소스 인덱스 상태를 확인.
+- `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답하고, 답변 전 현재 소스 인덱스 상태를 확인하며, 프로젝트별 대화 session/message와 근거를 저장.
 
 ## 3. DB ERD
 
@@ -130,6 +130,8 @@ erDiagram
     ANALYSIS_RUNS ||--o{ PROGRAM_COMMIT_MAPPINGS : produced
     PROJECTS ||--o{ CODE_REVIEW_RESULTS : has
     PROJECTS ||--o{ RISK_FINDINGS : has
+    PROJECTS ||--o{ PROJECT_CHAT_SESSIONS : has
+    PROJECT_CHAT_SESSIONS ||--o{ PROJECT_CHAT_MESSAGES : contains
     DOCUMENT_CHUNKS ||--o{ VECTOR_ITEMS : embedded
 
     PROJECTS {
@@ -266,6 +268,30 @@ erDiagram
         string resolved_yn
     }
 
+    PROJECT_CHAT_SESSIONS {
+        int id PK
+        int project_id FK
+        string title
+        string status
+        datetime last_message_at
+        jsonb raw_metadata
+    }
+
+    PROJECT_CHAT_MESSAGES {
+        int id PK
+        int session_id FK
+        string role
+        text content
+        int message_index
+        jsonb sources
+        jsonb expanded_queries
+        jsonb matched_terms
+        int excluded_count
+        int used_source_count
+        bool insufficient_evidence
+        jsonb raw_metadata
+    }
+
     DOCUMENT_CHUNKS {
         int id PK
         int project_id FK
@@ -299,6 +325,8 @@ erDiagram
 | `analysis_runs` | Mapping 분석 실행 이력. 실행 상태, 처리 수, 실패 수, 파라미터, 요약을 저장한다. |
 | `code_review_results` | AI Code Review 실행 결과. 리뷰 대상, 요약, 커밋 분석, 버그 발견, 리팩토링 제안을 저장한다. |
 | `risk_findings` | 리스크 분석 결과. 리스크 유형/등급, 설명, 근거, 해결 여부를 저장한다. |
+| `project_chat_sessions` | Project Chat의 프로젝트별 대화 session 제목, 상태, 마지막 메시지 시각을 저장한다. |
+| `project_chat_messages` | Project Chat user/assistant message와 검색 근거, 확장 쿼리, 근거 부족 여부, 복사용 citation metadata를 저장한다. |
 | `document_chunks` | RAG 검색용 chunk 저장소. source_file, program, commit, commit_file 원문을 검색 가능한 텍스트 단위로 저장한다. |
 | `vector_items` | `document_chunks`의 embedding vector를 저장한다. pgvector cosine 검색에 사용된다. |
 
@@ -322,6 +350,7 @@ erDiagram
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
 | `vector_store.py` | embedding 저장, 중복 방지, embedding 실패 기록, pgvector cosine 검색. |
 | `retriever.py` | query embedding 생성 후 vector 검색 결과를 반환한다. Mapping 후보 프로그램 검색에도 사용된다. |
+| `chat_history_service.py` | Project Chat session/message 저장, 조회, UI 변환, 답변 근거 Markdown export를 담당한다. |
 
 ## 6. 프로그램 업로드부터 AI 진척도 계산까지의 처리 흐름
 

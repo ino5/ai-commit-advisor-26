@@ -131,6 +131,7 @@ Project Chat을 실제 LLM 모드로 검증하는 권장 순서:
 4. RAG 검색 화면에서 `Embedding 연결 테스트`를 실행합니다.
 5. RAG 검색 화면의 Embedding 영역에서 source_file chunk의 embedding을 생성합니다.
 6. Project Chat에서 질문하고 `답변 근거 보기`를 펼쳐 현재 소스 근거를 확인합니다.
+7. 답변을 기록으로 남겨야 하면 `근거 복사용 Markdown` 내용을 회의록, 리뷰 문서, 이슈에 붙여 넣습니다.
 
 ## source_file 재인덱싱 운영 주의사항
 
@@ -171,6 +172,8 @@ LM Studio 같은 로컬 embedding 서버는 한 번에 많은 chunk를 처리하
 - Project Chat의 source index 버튼도 embedding API를 호출하지 않습니다.
 - embedding API 호출은 `RAG 검색 > Embedding` 또는 RAG Index 화면에서 사용자가 명시적으로 선택한 제한 수량에서만 발생합니다.
 - embedding provider/model/dimension을 바꾸면 기존 vector를 조용히 재사용하지 말고 현재 model 기준 missing vector를 다시 생성하세요.
+
+Project Chat 대화는 프로젝트별 DB session으로 저장됩니다. `새 대화`와 `대화 초기화`는 기존 이력을 삭제하지 않고 새 session을 만들며, 이전 session은 `대화 이력`에서 다시 선택할 수 있습니다.
 
 재인덱싱이나 embedding 중 앱 또는 LM Studio를 강제 종료하면 PostgreSQL은 열린 transaction을 롤백합니다. 다만 이미 commit된 chunk/vector와 아직 처리되지 않은 chunk가 섞여 `pending` 또는 `failed` 상태가 남을 수 있습니다. 이 상태는 부분 완료 상태이며, RAG 화면에서 인덱스 상태를 확인한 뒤 embedding을 제한 수량으로 이어서 실행하면 됩니다.
 

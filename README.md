@@ -13,7 +13,7 @@ AI Commit Advisor는 로컬 Git 저장소의 커밋, 변경 파일, diff, 개발
 - LLM 기반 프로그램-커밋 Mapping과 사용자 피드백 보정
 - Commit Impact, Program Detail, AI Progress 기반 구현 현황 추적
 - 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
-- 현재 소스 검증형 RAG Search와 Project Chat
+- 현재 소스 검증형 RAG Search와 저장형 Project Chat
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
 - 작업트리, staged 변경, 최신/특정 커밋 대상 AI Code Review
 - 샘플 Git 저장소와 Excel 데이터 생성으로 전체 기능 데모 가능
@@ -102,6 +102,6 @@ requirements.txt
 ## 참고 사항
 
 - RAG/embedding은 mock과 OpenAI-compatible 서버를 모두 지원합니다. 실제 검색 품질 평가는 embedding 모델과 `PGVECTOR_DIMENSION` 설정이 맞아야 합니다.
-- Project Chat은 현재 소스 검증을 통과한 `source_file` chunk만 기본 답변 근거로 사용합니다.
+- Project Chat은 현재 소스 검증을 통과한 `source_file` chunk만 기본 답변 근거로 사용하며, 프로젝트별 대화 이력과 답변 근거를 저장합니다.
 - 현재 소스 파일을 수정하거나 브랜치/HEAD가 바뀐 뒤에는 RAG 또는 Project Chat 화면의 인덱스 상태를 확인하고 필요 시 현재 소스를 다시 인덱싱하세요.
 - LLM 매핑 분석과 AI 코드리뷰는 `.env`의 `LLM_PROVIDER` 설정에 따라 mock 또는 로컬 LLM을 사용합니다.

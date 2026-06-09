@@ -15,7 +15,7 @@
 | P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 | b1cf9ef |
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 | d00b868 |
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
-| P1 | RAG | Project Chat answer quality and history persistence | In Progress | Project Chat 답변 품질과 근거 부족 처리 개선 | edcb4e7 |
+| P1 | RAG | Project Chat answer quality and history persistence | Done | Project Chat database history and citation export | d08ff43 |
 | P1 | RAG | Standard terminology glossary upload and Korean query expansion | Done | Standard terminology documentation and screenshots | 05a40ad |
 | P1 | RAG | Incremental source indexing and embedding cost control | Done | Incremental source indexing and embedding cost control | fdb6d0f |
 | P1 | RAG | Project Chat answer formatting and citation accuracy | Done | Standard terminology documentation and screenshots | 05a40ad |
@@ -112,9 +112,9 @@ Improve Project Chat from session-only Q&A into a more reliable project assistan
 
 Checklist:
 
-- [ ] Persist chat sessions in the database.
-- [ ] Add project-level chat history list.
-- [ ] Add source citation export or copy-friendly format.
+- [x] Persist chat sessions in the database.
+- [x] Add project-level chat history list.
+- [x] Add source citation export or copy-friendly format.
 - [x] Add "insufficient evidence" answer classification.
 - [x] Separate current source evidence from historical/reference evidence in the UI.
 - [x] Add focused tests for insufficient, stale/invalid, and verified source evidence.
