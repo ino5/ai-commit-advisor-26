@@ -2,6 +2,14 @@
 
 ## 2026-06-10
 
+### Korean text encoding agent policy
+
+- Added `AGENTS.md` guidance for reading Korean Markdown and UTF-8 text on Windows with explicit UTF-8 commands.
+- Clarified that garbled PowerShell output should not be treated as file corruption until the file is re-read with explicit UTF-8.
+- Added guardrails to avoid rewriting Korean prose just to fix terminal-output mojibake.
+- Important files: `AGENTS.md`, `AI_CHANGELOG.md`.
+- Verification: `Get-Content -Path AGENTS.md -Encoding UTF8` rendered Korean policy text correctly; `git diff --check` passed.
+
 ### Korean documentation wording cleanup
 
 - Cleaned up awkward Korean wording in Markdown documentation where English terms had been translated too literally.

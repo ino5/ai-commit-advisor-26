@@ -98,6 +98,25 @@ Do not force every heading, label, or familiar product/documentation term into K
 
 Internal agent instructions, historical changelog entries, roadmap task names, commit messages, code comments tied to source conventions, and generated third-party content do not need forced translation unless the user explicitly asks for it.
 
+## Korean Text And Encoding
+
+This repository contains Korean Markdown and UTF-8 text. On Windows, PowerShell output can look corrupted when a command uses the console default encoding instead of UTF-8.
+
+When reading Korean Markdown or other user-facing text files, prefer commands that explicitly set UTF-8, for example:
+
+- `Get-Content -Path README.md -Encoding UTF8`
+- `Get-Content -Path docs\setup-and-operations.md -Encoding UTF8`
+- `rg -n "검색어" README.md docs`
+
+If Korean text appears garbled in command output:
+
+- do not assume the file content itself is corrupted
+- re-read the file with an explicit UTF-8 command before editing
+- avoid rewriting Korean prose just to "fix" text that was only garbled in terminal output
+- mention encoding uncertainty in the work notes when it affects verification
+
+When editing Markdown that already contains Korean text, preserve UTF-8 content and keep changes scoped to the requested wording or behavior.
+
 ## Sample Target Repository
 
 When changing the synthetic sample target repository, sample commit history, sample data generation, or demo scenario, check `docs/sample-target-repo-demo-design.md` before implementing.
