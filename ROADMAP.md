@@ -16,6 +16,8 @@
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 | d00b868 |
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
 | P1 | RAG | Project Chat answer quality and history persistence | In Progress | Project Chat 답변 품질과 근거 부족 처리 개선 | edcb4e7 |
+| P1 | RAG | Standard terminology glossary upload and Korean query expansion | Planned | - | - |
+| P1 | RAG | Project Chat answer formatting and citation accuracy | Planned | - | - |
 | P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 표시 세부 보완 | 7895831 |
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | fa625d2 |
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 | 704c7cf |
@@ -114,6 +116,86 @@ Checklist:
 - [x] Separate current source evidence from historical/reference evidence in the UI.
 - [x] Add focused tests for insufficient, stale/invalid, and verified source evidence.
 - [x] Update `AI_CHANGELOG.md`.
+
+## P1 - Standard Terminology Glossary Upload And Korean Query Expansion
+
+Status: Planned
+
+Goal:
+Improve Korean business-question retrieval by using project standard terminology and standard words to connect Korean terms with code, DB, and naming identifiers.
+
+Scope:
+
+- Add a project-level standard terminology/standard word management menu.
+- Support Excel template download and Excel upload for SI-style terminology deliverables.
+- Keep the Excel input lightweight: teams enter Korean term, English term, and abbreviation; the app derives search variants.
+- Use uploaded terminology to expand Korean Project Chat and RAG queries into English/code/DB identifier candidates.
+- Keep query expansion deterministic first, without adding an extra LLM call per chat question.
+
+Suggested menu:
+
+- `데이터 관리 > 표준용어/표준단어`
+
+Excel columns:
+
+- Required: `korean_term`, `english_term`
+- Recommended: `abbreviation`
+- Optional: `term_type`, `description`
+
+Derived search variants:
+
+- tokenized English words
+- abbreviation tokens
+- `camelCase`
+- `PascalCase`
+- `snake_case`
+- `UPPER_SNAKE_CASE`
+- compact lowercase form
+
+Checklist:
+
+- [ ] Add schema for project-level glossary terms through Alembic migration.
+- [ ] Add glossary service for normalization, validation, and derived keyword generation.
+- [ ] Add Excel template generation for standard terminology upload.
+- [ ] Add Excel upload validation for required columns, duplicate Korean/English terms, and empty values.
+- [ ] Add current glossary list/search UI.
+- [ ] Add glossary query expansion for Project Chat and RAG retrieval.
+- [ ] Merge multi-query retrieval results by chunk id and prefer verified `source_file` evidence for Project Chat.
+- [ ] Add focused tests for Korean payment amount questions expanding to `payment`, `amount`, `PaymentService`, `payment_amount`, and abbreviation variants.
+- [ ] Update README, Feature Guide, and AI technical overview.
+- [ ] Update `AI_CHANGELOG.md`.
+
+Out of scope for first pass:
+
+- Manual row-level glossary edit/delete UI.
+- LLM-based query rewrite.
+- Full DB table/column lineage inference from source code.
+
+## P1 - Project Chat Answer Formatting And Citation Accuracy
+
+Status: Planned
+
+Goal:
+Make Project Chat answers presentation-ready and defensible by preventing JSON-shaped responses, reducing line-number hallucination, and showing source evidence clearly.
+
+Observed issues:
+
+- local LLM responses can return JSON code blocks even when the UI expects readable chat text.
+- The LLM can infer incorrect line numbers instead of using the provided source metadata.
+- README screenshots look weak when answers show `Mock answer`, hidden evidence, or only file lists.
+
+Checklist:
+
+- [ ] Strengthen the Project Chat prompt to forbid JSON/code-block response wrappers unless the user explicitly asks for JSON.
+- [ ] Require Markdown prose/bullets in Korean for normal answers.
+- [ ] Require file paths and line ranges to be copied only from retrieved source metadata.
+- [ ] Add response post-processing for common JSON wrapper shapes from local LLMs.
+- [ ] Show the matched/expanded query information in debug or evidence context when useful.
+- [ ] Adjust source evidence rendering so screenshots can show answer plus key evidence without looking empty.
+- [ ] Add focused tests for JSON wrapper cleanup and citation line-range preservation.
+- [ ] Refresh the Project Chat README screenshot only after real local LLM/RAG verification succeeds.
+- [ ] Update README, Screenshot Gallery, Feature Guide, and AI technical overview as needed.
+- [ ] Update `AI_CHANGELOG.md`.
 
 ## P1 - Source File Re-Index Warning And One-Click Refresh
 

@@ -2,6 +2,14 @@
 
 ## 2026-06-09
 
+### Project Chat glossary and Korean query expansion roadmap
+
+- Added roadmap tasks for project standard terminology/standard word Excel upload, deterministic Korean query expansion, and Project Chat answer formatting/citation accuracy.
+- Captured the agreed first-pass scope: teams enter Korean term, English term, and abbreviation while the app derives camelCase, PascalCase, snake_case, upper snake, token, and compact search variants.
+- Documented that the initial query expansion should use uploaded terminology deterministically before adding any optional LLM query rewrite.
+- Important files: `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `git diff --check` passed.
+
 ### local LLM env 예시와 Project Chat 재현 절차
 
 - Added `.env.local-llm.example` so teammates can start from a ready local_openai configuration for LM Studio chat and embedding models.
