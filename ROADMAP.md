@@ -46,7 +46,7 @@
 | P2 | Docs | Architecture document path cleanup | Done | Architecture document path cleanup | f85df08 |
 | P2 | Docs | Application Preview rename | Done | Application Preview rename | 45e79f3 |
 | P2 | Docs | Sample project wording cleanup | Done | Sample project wording cleanup | 5abe51c |
-| P2 | Docs | Natural wording policy generalization | Done | Natural wording policy generalization | Pending |
+| P2 | Docs | Natural wording policy generalization | Done | Natural wording policy generalization | 6e946e4 |
 
 ## P0 - Program Management UX Improvement
 
