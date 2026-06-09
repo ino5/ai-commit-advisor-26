@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### Program upload and code review walkthrough screenshots
+
+- Re-captured the README Program Upload screenshots so the example shows the sample project's current program table and the Excel upload validation result instead of an empty/default project state.
+- Split the README AI Code Review example into target selection, review result summary, and review detail screenshots so the actual review output, bug finding, refactoring suggestion, and review history are visible.
+- Important files: `README.md`, `docs/images/features/program-upload.png`, `docs/images/features/program-upload-validation.png`, `docs/images/features/ai-code-review.png`, `docs/images/features/ai-code-review-result.png`, `docs/images/features/ai-code-review-detail.png`, `AI_CHANGELOG.md`.
+- Verification: visually inspected the refreshed screenshots and confirmed README references the new assets; `git diff --check` passed.
+
 ### Commit Impact walkthrough screenshots
 
 - Split the README Commit Impact example into three sequential screenshots so the flow shows commit selection, impact summary, and detailed affected program/developer analysis.
