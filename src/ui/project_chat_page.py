@@ -7,7 +7,12 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import Project
 from src.rag.chat_service import answer_source_question
-from src.rag.source_index_service import get_source_index_status, refresh_source_file_index
+from src.rag.source_index_service import (
+    get_changed_source_files_since_latest_index,
+    get_source_index_status,
+    refresh_changed_source_files,
+    refresh_source_file_index,
+)
 
 
 VERIFICATION_LABELS = {
@@ -91,7 +96,8 @@ def _render_source_index_status(project: Project) -> None:
     metric4.metric("Indexed HEAD", _short_hash(status.latest_indexed_head_hash))
     st.caption(
         f"HEAD 불일치 chunk {status.head_mismatch_chunk_count}건, "
-        f"stale chunk {status.stale_chunk_count}건, 검증 불가 {status.invalid_chunk_count}건"
+        f"stale chunk {status.stale_chunk_count}건, 검증 불가 {status.invalid_chunk_count}건, "
+        f"embedding 필요 {status.missing_embedding_count}건"
     )
 
     if status.source_vector_count == 0:
@@ -111,6 +117,31 @@ def _render_source_index_status(project: Project) -> None:
         "Project Chat의 재인덱싱은 PC 부하를 줄이기 위해 chunk만 갱신합니다. "
         "embedding 생성은 `RAG 검색 > Embedding`에서 제한 수량으로 실행하세요."
     )
+    if st.button("최근 Git sync 변경 파일만 인덱싱", type="primary", disabled=not bool(project.git_repo_path)):
+        with SessionLocal() as db:
+            current_project = db.get(Project, project.id)
+            if current_project is None:
+                st.error("프로젝트를 찾을 수 없습니다.")
+                return
+            changed_files = get_changed_source_files_since_latest_index(db, current_project)
+            if not changed_files:
+                st.info(
+                    "최근 indexed HEAD 이후 Git sync에 저장된 변경 파일이 없습니다. "
+                    "최초 구축이나 복구가 필요하면 전체 source_file 재인덱싱을 실행하세요."
+                )
+                return
+            with st.spinner("최근 Git sync 변경 파일만 source_file chunk로 갱신합니다. embedding은 자동 실행하지 않습니다."):
+                result = refresh_changed_source_files(db, current_project, changed_files)
+        st.success(
+            "증분 source_file 인덱싱 완료: "
+            f"변경 파일 {result.changed_file_count}건, "
+            f"인덱싱 대상 {result.indexed_file_count}건, "
+            f"삭제 chunk {result.deleted_file_count}건, "
+            f"신규 chunk {result.chunk_result.created_count}건, "
+            f"건너뜀 {result.chunk_result.skipped_count + result.skipped_file_count}건"
+        )
+        st.rerun()
+
     if st.button("현재 소스 다시 인덱싱", disabled=not bool(project.git_repo_path)):
         with SessionLocal() as db:
             current_project = db.get(Project, project.id)

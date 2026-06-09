@@ -4,9 +4,10 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from src.db.models import CommitFile, DocumentChunk, GitCommit, Program
+from src.db.models import CommitFile, DocumentChunk, GitCommit, Program, VectorItem
 from src.services.git_service import get_head_commit_hash
 
 
@@ -210,7 +211,13 @@ def _save_source_chunks(
 
 
 def _delete_source_file_chunks_for_path(db: Session, project_id: int, file_path: str) -> int:
-    return (
+    chunk_ids = select(DocumentChunk.id).where(
+        DocumentChunk.project_id == project_id,
+        DocumentChunk.source_type == SOURCE_FILE_TYPE,
+        DocumentChunk.raw_metadata["file_path"].astext == file_path,
+    )
+    db.query(VectorItem).filter(VectorItem.chunk_id.in_(chunk_ids)).delete(synchronize_session=False)
+    return int(
         db.query(DocumentChunk)
         .filter(
             DocumentChunk.project_id == project_id,
@@ -219,6 +226,87 @@ def _delete_source_file_chunks_for_path(db: Session, project_id: int, file_path:
         )
         .delete(synchronize_session=False)
     )
+
+
+def build_source_file_chunks_for_paths(
+    db: Session,
+    project_id: int,
+    repo_path: str,
+    file_paths: list[str],
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    overlap: int = DEFAULT_CHUNK_OVERLAP,
+) -> ChunkBuildResult:
+    result = ChunkBuildResult()
+    repo_root = Path(repo_path).expanduser().resolve()
+    if not repo_root.exists():
+        raise ValueError(f"Repository path does not exist: {repo_root}")
+
+    indexed_head_hash = get_head_commit_hash(repo_root)
+    for file_path in sorted({path.replace("\\", "/").strip("/") for path in file_paths if path}):
+        path = (repo_root / file_path).resolve()
+        try:
+            relative_path = path.relative_to(repo_root).as_posix()
+        except ValueError:
+            result.skipped_count += 1
+            continue
+
+        if not path.is_file() or not _is_source_file(path, repo_root):
+            result.skipped_count += 1
+            continue
+
+        text = _read_text_file(path)
+        if text is None:
+            result.skipped_count += 1
+            continue
+
+        file_hash = _content_hash(text)
+        existing = (
+            db.query(DocumentChunk.id)
+            .filter(
+                DocumentChunk.project_id == project_id,
+                DocumentChunk.source_type == SOURCE_FILE_TYPE,
+                DocumentChunk.raw_metadata["file_path"].astext == relative_path,
+                DocumentChunk.raw_metadata["content_hash"].astext == file_hash,
+                DocumentChunk.raw_metadata["indexed_head_hash"].astext == (indexed_head_hash or ""),
+            )
+            .first()
+        )
+        if existing is not None:
+            result.skipped_count += 1
+            continue
+
+        _delete_source_file_chunks_for_path(db, project_id, relative_path)
+        lines = text.splitlines()
+        if not lines:
+            result.skipped_count += 1
+            continue
+
+        for index, (line_start, line_end, chunk) in enumerate(chunk_lines(lines, chunk_size, overlap)):
+            db.add(
+                DocumentChunk(
+                    project_id=project_id,
+                    source_type=SOURCE_FILE_TYPE,
+                    source_id=relative_path,
+                    chunk_index=index,
+                    chunk_text=chunk,
+                    raw_metadata={
+                        "source_snapshot": "HEAD",
+                        "repo_path": str(repo_root),
+                        "file_path": relative_path,
+                        "extension": path.suffix.lower(),
+                        "line_start": line_start,
+                        "line_end": line_end,
+                        "content_hash": file_hash,
+                        "chunk_content_hash": _line_range_hash(lines, line_start, line_end),
+                        "indexed_head_hash": indexed_head_hash or "",
+                        "embedding_status": "pending",
+                    },
+                )
+            )
+            result.created_count += 1
+
+    db.commit()
+    return result
 
 
 def build_source_file_chunks(

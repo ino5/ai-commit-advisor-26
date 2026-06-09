@@ -6,12 +6,13 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.db.models import DocumentChunk, Project, VectorItem
+from src.db.models import CommitFile, DocumentChunk, GitCommit, Project, VectorItem
 from src.rag.chunker import (
     DEFAULT_CHUNK_OVERLAP,
     DEFAULT_CHUNK_SIZE,
     SOURCE_FILE_TYPE,
     ChunkBuildResult,
+    build_source_file_chunks_for_paths,
     build_source_file_chunks,
 )
 from src.rag.embedding_client import EmbeddingClient
@@ -28,6 +29,7 @@ class SourceIndexStatus:
     indexed_head_hashes: list[str]
     source_chunk_count: int
     source_vector_count: int
+    missing_embedding_count: int
     head_mismatch_chunk_count: int
     stale_chunk_count: int
     invalid_chunk_count: int
@@ -41,6 +43,31 @@ class SourceIndexRefreshResult:
     embedding_result: EmbeddingBuildResult
     status: SourceIndexStatus
     deleted_unverified_count: int = 0
+
+
+@dataclass(frozen=True)
+class ChangedSourceFile:
+    file_path: str
+    change_type: str = "Modified"
+    old_file_path: str | None = None
+    diff_text: str | None = None
+
+
+@dataclass
+class IncrementalSourceIndexResult:
+    changed_file_count: int = 0
+    indexed_file_count: int = 0
+    deleted_file_count: int = 0
+    skipped_file_count: int = 0
+    chunk_result: ChunkBuildResult = None
+    embedding_result: EmbeddingBuildResult = None
+    status: SourceIndexStatus | None = None
+
+    def __post_init__(self) -> None:
+        if self.chunk_result is None:
+            self.chunk_result = ChunkBuildResult()
+        if self.embedding_result is None:
+            self.embedding_result = EmbeddingBuildResult()
 
 
 def source_index_needs_refresh(
@@ -137,6 +164,11 @@ def get_source_index_status(db: Session, project: Project) -> SourceIndexStatus:
         .filter(DocumentChunk.project_id == project.id, DocumentChunk.source_type == SOURCE_FILE_TYPE)
         .count()
     )
+    missing_embedding_count = VectorStore(db).count_missing_chunks(
+        EmbeddingClient().embedding_model_name,
+        project_id=project.id,
+        source_types=[SOURCE_FILE_TYPE],
+    )
 
     indexed_head_hashes = sorted(
         {
@@ -177,6 +209,7 @@ def get_source_index_status(db: Session, project: Project) -> SourceIndexStatus:
         indexed_head_hashes=indexed_head_hashes,
         source_chunk_count=source_chunk_count,
         source_vector_count=source_vector_count,
+        missing_embedding_count=missing_embedding_count,
         head_mismatch_chunk_count=head_mismatch_chunk_count,
         stale_chunk_count=stale_chunk_count,
         invalid_chunk_count=invalid_chunk_count,
@@ -198,6 +231,149 @@ def clear_source_file_index(db: Session, project_id: int) -> int:
     )
     db.commit()
     return int(deleted_chunks or 0)
+
+
+def _normalize_repo_path(path: str | None) -> str | None:
+    if not path:
+        return None
+    normalized = str(path).replace("\\", "/").strip().lstrip("/")
+    return normalized or None
+
+
+def _extract_rename_old_path(diff_text: str | None) -> str | None:
+    if not diff_text:
+        return None
+    for line in diff_text.splitlines():
+        if line.startswith("rename from "):
+            return _normalize_repo_path(line.removeprefix("rename from "))
+    return None
+
+
+def _coerce_changed_source_file(item: ChangedSourceFile | CommitFile | dict) -> ChangedSourceFile:
+    if isinstance(item, ChangedSourceFile):
+        return item
+    if isinstance(item, CommitFile):
+        old_file_path = _extract_rename_old_path(item.diff_text)
+        return ChangedSourceFile(
+            file_path=item.file_path,
+            change_type=item.change_type or "Modified",
+            old_file_path=old_file_path,
+            diff_text=item.diff_text,
+        )
+    return ChangedSourceFile(
+        file_path=str(item.get("file_path") or ""),
+        change_type=str(item.get("change_type") or "Modified"),
+        old_file_path=item.get("old_file_path") or _extract_rename_old_path(item.get("diff_text")),
+        diff_text=item.get("diff_text"),
+    )
+
+
+def _delete_source_file_chunks_for_paths(db: Session, project_id: int, file_paths: set[str]) -> int:
+    normalized_paths = sorted(path for path in {_normalize_repo_path(path) for path in file_paths} if path)
+    if not normalized_paths:
+        return 0
+    chunk_ids = select(DocumentChunk.id).where(
+        DocumentChunk.project_id == project_id,
+        DocumentChunk.source_type == SOURCE_FILE_TYPE,
+        DocumentChunk.raw_metadata["file_path"].astext.in_(normalized_paths),
+    )
+    db.query(VectorItem).filter(VectorItem.chunk_id.in_(chunk_ids)).delete(synchronize_session=False)
+    deleted_count = (
+        db.query(DocumentChunk)
+        .filter(
+            DocumentChunk.project_id == project_id,
+            DocumentChunk.source_type == SOURCE_FILE_TYPE,
+            DocumentChunk.raw_metadata["file_path"].astext.in_(normalized_paths),
+        )
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return int(deleted_count or 0)
+
+
+def get_changed_source_files_since_latest_index(db: Session, project: Project) -> list[ChangedSourceFile]:
+    status = get_source_index_status(db, project)
+    if not status.latest_indexed_head_hash:
+        return []
+
+    base_commit = (
+        db.query(GitCommit)
+        .filter(GitCommit.project_id == project.id, GitCommit.commit_hash == status.latest_indexed_head_hash)
+        .one_or_none()
+    )
+    query = (
+        db.query(CommitFile)
+        .join(GitCommit, CommitFile.commit_id == GitCommit.id)
+        .filter(GitCommit.project_id == project.id)
+        .order_by(GitCommit.id, CommitFile.id)
+    )
+    if base_commit is not None:
+        query = query.filter(GitCommit.id > base_commit.id)
+    return [_coerce_changed_source_file(file) for file in query.all()]
+
+
+def refresh_changed_source_files(
+    db: Session,
+    project: Project,
+    changed_files: list[ChangedSourceFile | CommitFile | dict],
+    *,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    overlap: int = DEFAULT_CHUNK_OVERLAP,
+    embed_after_refresh: bool = False,
+    embedding_limit: int = 100,
+) -> IncrementalSourceIndexResult:
+    if not project.git_repo_path:
+        raise ValueError("Git 저장소 경로가 등록된 프로젝트만 source_file 증분 인덱싱을 실행할 수 있습니다.")
+
+    result = IncrementalSourceIndexResult(changed_file_count=len(changed_files))
+    paths_to_delete: set[str] = set()
+    paths_to_index: set[str] = set()
+
+    for item in changed_files:
+        changed_file = _coerce_changed_source_file(item)
+        file_path = _normalize_repo_path(changed_file.file_path)
+        old_file_path = _normalize_repo_path(changed_file.old_file_path)
+        change_type = (changed_file.change_type or "Modified").lower()
+
+        if not file_path:
+            result.skipped_file_count += 1
+            continue
+        if change_type == "deleted":
+            paths_to_delete.add(file_path)
+            continue
+        if change_type == "renamed":
+            if old_file_path:
+                paths_to_delete.add(old_file_path)
+            paths_to_index.add(file_path)
+            continue
+        if change_type in {"added", "modified", "copied"}:
+            paths_to_index.add(file_path)
+            continue
+        paths_to_index.add(file_path)
+
+    deleted_count = _delete_source_file_chunks_for_paths(db, project.id, paths_to_delete)
+    chunk_result = build_source_file_chunks_for_paths(
+        db=db,
+        project_id=project.id,
+        repo_path=project.git_repo_path,
+        file_paths=sorted(paths_to_index),
+        chunk_size=chunk_size,
+        overlap=overlap,
+    )
+    result.deleted_file_count = deleted_count
+    result.indexed_file_count = len(paths_to_index)
+    result.chunk_result = chunk_result
+
+    if embed_after_refresh:
+        client = EmbeddingClient()
+        result.embedding_result = VectorStore(db).embed_missing_chunks(
+            client,
+            project_id=project.id,
+            source_types=[SOURCE_FILE_TYPE],
+            limit=embedding_limit,
+        )
+    result.status = get_source_index_status(db, project)
+    return result
 
 
 def remove_unverified_source_file_chunks(
