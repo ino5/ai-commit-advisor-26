@@ -64,6 +64,30 @@ Prefer documentation that explains:
 - the chosen approach and why it fits the project better than obvious alternatives
 - important tradeoffs, boundaries, or remaining limitations that future maintainers should preserve or revisit
 
+## Engineering Decisions
+
+When a non-trivial decision changes how the project is built, verified, documented, automated, deployed, or operated, update `docs/engineering-decisions.md` before finishing if the decision has future reuse value.
+
+Use the engineering decisions log for decisions that are not primarily failures or incidents but still need durable rationale, including:
+
+- choosing one implementation, verification, automation, documentation, deployment, or operations approach over another
+- adding a repeatable workflow or agent policy that affects future work
+- accepting a meaningful tradeoff in cost, reliability, maintainability, speed, or scope
+- defining a cross-feature convention that future features should follow
+
+Each decision entry should include:
+
+- date
+- decision title
+- background or problem context
+- chosen approach
+- reasons for the choice
+- alternatives considered
+- impact, tradeoffs, and remaining limitations
+- related documents, changelog entries, failure-history entries, or commits when available
+
+Do not duplicate `AI_CHANGELOG.md`: use the changelog for concrete file/behavior changes and verification results. Do not duplicate `docs/failure-history.md`: use failure history when a failure, incident, or significant mistake reveals a reusable root cause or prevention rule. Link between the documents when a failure leads to a broader decision.
+
 ## Feature Rationale Documentation
 
 When adding a meaningful new feature, workflow, AI behavior, operational behavior, or major UX change, update an appropriate Markdown document with the feature rationale before finishing.
@@ -140,6 +164,7 @@ Use this checklist:
 - Feature rationale documentation: required when a meaningful new feature, workflow, AI behavior, operational behavior, or major UX change is introduced.
 - `README_ARCHITECTURE.md`: required when architecture, module boundaries, service responsibilities, or data flow changes.
 - `docs/ai-technical-overview.md`: required when Mapping, RAG, Project Chat, Code Review, AI Progress, Risk Analysis, embedding, or LLM behavior changes.
+- `docs/engineering-decisions.md`: required when a meaningful engineering, operations, verification, automation, deployment, or documentation-structure decision is introduced or changed.
 - `docs/db-migrations.md`: required when database migration process or schema management guidance changes.
 - `docs/sample-target-repo-demo-design.md`: required when sample target repo goals, commit scenarios, demo coverage, or sample generation direction changes.
 - `docs/failure-history.md`: required when a failure, incident, or significant mistake has reusable root-cause or prevention value.

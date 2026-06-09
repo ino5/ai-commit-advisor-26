@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Engineering decisions documentation log
+
+- Added `docs/engineering-decisions.md` to record non-failure engineering, operations, verification, automation, deployment, and documentation-structure decisions with rationale and tradeoffs.
+- Recorded the screenshot capture automation direction as the first decision, including why future capture work should use extensible feature scenarios instead of one-off manual flows.
+- Updated `AGENTS.md`, README, and failure-history guidance so agents can distinguish changelog entries, failure history, and decision history.
+- Added a roadmap task for the decision log documentation work.
+- Important files: `docs/engineering-decisions.md`, `AGENTS.md`, `README.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `Get-Content -Path docs\engineering-decisions.md -Encoding UTF8` rendered the new Korean decision log correctly; `rg -n "engineering-decisions|Engineering Decisions|Engineering decisions documentation log|Engineering Decisions Log" README.md AGENTS.md docs\failure-history.md AI_CHANGELOG.md ROADMAP.md` confirmed the expected links and policy references; local `Test-Path` checks passed for the linked Markdown files; `git diff --check` passed with only Git line-ending warnings.
+
 ### Ignore Codex attachment staging folder
 
 - Added `.codex-remote-attachments/` to `.gitignore` so uploaded chat attachment files do not appear as untracked project changes.

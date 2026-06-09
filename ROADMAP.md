@@ -41,6 +41,7 @@
 | P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 | 02f2b14 |
 | P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup | 3d56a7a |
 | P2 | Ops | Application Dockerfile and deployment guide | Done | Application Dockerfile and deployment guide | d9944f0 |
+| P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log | Pending |
 
 ## P0 - Program Management UX Improvement
 
@@ -573,3 +574,20 @@ Checklist:
 - [x] Document migration startup behavior.
 - [x] Add deployment smoke check.
 - [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Engineering Decisions Log
+
+Status: Done
+
+Goal:
+Separate non-failure engineering, operations, verification, automation, and documentation-structure decisions from failure history and the change log.
+
+Checklist:
+
+- [x] Add a dedicated engineering decisions document and reusable entry template.
+- [x] Record the screenshot capture automation direction as the first decision.
+- [x] Add agent policy for when to update the decision log.
+- [x] Link the decision log from README.
+- [x] Clarify the boundary between failure history and decision history.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run markdown/link sanity checks.

@@ -85,6 +85,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 - [소스 인덱싱과 임베딩 운영 계획](docs/source-indexing-and-embedding-plan.md): Project Chat source_file 증분 인덱싱, embedding 비용 제어, cloud 운영 계획입니다.
 - [아키텍처](README_ARCHITECTURE.md): 모듈 구조, 데이터 흐름, 서비스 책임입니다.
 - [DB 마이그레이션](docs/db-migrations.md): Alembic 기반 DB schema 관리 기준입니다.
+- [Engineering Decisions](docs/engineering-decisions.md): 주요 설계, 운영, 검증, 자동화 결정의 배경과 tradeoff를 기록합니다.
 - [실패 이력](docs/failure-history.md): 프로젝트 전반의 실패 원인, 수정 내용, 재발 방지 기준을 기록합니다.
 - [AI 변경 이력](AI_CHANGELOG.md): AI 에이전트가 수행한 변경 이력입니다.
 - [에이전트 작업 규칙](AGENTS.md): 코딩 에이전트 작업 규칙입니다.

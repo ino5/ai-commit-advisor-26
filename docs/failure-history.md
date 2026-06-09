@@ -2,6 +2,8 @@
 
 이 문서는 프로젝트 전반에서 발생한 실패, 시행착오, 운영상 누락, 검증 누락 중 재발 방지 가치가 있는 사례를 기록합니다. 범위는 CI에 한정하지 않습니다. 기능 설계, UX, 데이터, schema, RAG/LLM, embedding, sample data, 문서, 배포, local 검증, GitHub Actions, 운영 절차에서 배운 내용을 남깁니다.
 
+실패나 incident가 아닌 설계, 운영, 검증, 자동화, 문서 구조 결정은 [Engineering Decisions](engineering-decisions.md)에 기록합니다. 실패 이력이 더 넓은 운영 기준으로 이어질 때는 두 문서를 서로 연결합니다.
+
 단순한 일시적 네트워크 실패, 사용자가 즉시 취소한 run, 방향을 바꾸지 않은 read-only 조사, 재현 불가능하고 조치가 없는 현상은 기록하지 않습니다.
 
 ## 기록 기준
