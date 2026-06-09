@@ -42,7 +42,7 @@
 | P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup | 3d56a7a |
 | P2 | Ops | Application Dockerfile and deployment guide | Done | Application Dockerfile and deployment guide | d9944f0 |
 | P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log | e23334a |
-| P2 | Ops | Feature screenshot capture automation | Done | Feature screenshot capture automation | Pending |
+| P2 | Ops | Feature screenshot capture automation | Done | Feature screenshot capture automation | c7b7884 |
 
 ## P0 - Program Management UX Improvement
 
