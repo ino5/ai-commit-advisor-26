@@ -2,6 +2,13 @@
 
 ## 2026-06-10
 
+### Project Chat verified answer screenshot recapture
+
+- Re-captured the Project Chat screenshot after confirming Docker source verification was fixed.
+- The refreshed screenshot shows matching Current HEAD and Indexed HEAD, a successful answer for `결제금액 검증은 어디에서 수행되나요?`, visible `PaymentService.java` evidence, and `근거 복사용 Markdown`.
+- Important files: `docs/images/features/project-chat.png`, `AI_CHANGELOG.md`.
+- Verification: Playwright verified `대화 이력`, the payment validation question, `PaymentService.java`, current source evidence count, and `근거 복사용 Markdown` were visible; visually inspected the screenshot; `git diff --check` passed.
+
 ### Docker repository path mapping for Project Chat verification
 
 - Added repository path prefix mapping so Docker app containers can read host Git repositories stored in the DB as Windows paths such as `C:\dev\ai-advisor-sample-shop`.
