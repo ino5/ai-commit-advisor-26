@@ -2,6 +2,12 @@
 
 ## 2026-06-09
 
+### 샘플 데모 검증과 스크린샷 작업 로드맵 등록
+
+- 풍부해진 8개 프로그램/30개 커밋 샘플 데이터가 실제 앱 화면에서 잘 동작하는지 검증하고 README walkthrough 및 기능별 스크린샷을 맞추는 작업을 `ROADMAP.md`에 추가했습니다.
+- Docker/deployment 작업보다 샘플 데모 검증과 문서/스크린샷 정합성 작업을 먼저 볼 수 있도록 `P2 | Docs | Rich sample demo walkthrough and screenshots`를 `Planned`로 등록했습니다.
+- 검증: 문서 변경 범위 확인 및 `git diff --check` 통과.
+
 ### README Home 화면 캡처 갱신
 
 - README 대표 Home 이미지와 기능별 Home 캡처를 현재 Home 화면 문구 기준으로 갱신했습니다.
