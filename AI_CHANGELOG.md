@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### Project Chat source evidence expander fix
+
+- Fixed Project Chat source evidence rendering so evidence details no longer create nested Streamlit expanders, which caused `StreamlitAPIException` when an answer had verified sources.
+- Kept the evidence summary expander and rendered individual source chunks as labeled detail blocks inside it.
+- Important files: `src/ui/project_chat_page.py`, `AI_CHANGELOG.md`.
+- Verification: `.venv\Scripts\python.exe -m py_compile src\ui\project_chat_page.py` passed; `git diff --check` passed.
+
 ### README screenshot guidance
 
 - Added `AGENTS.md` guidance for README screenshots to prioritize meaningful workflow states and feature value over empty/default/pre-execution screens.

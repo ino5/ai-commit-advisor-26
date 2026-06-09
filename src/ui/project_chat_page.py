@@ -151,19 +151,19 @@ def _render_source_group(title: str, sources: list[dict], message_index: int, ke
     for rank, source in enumerate(sources, start=1):
         row = rows[rank - 1]
         detail_title = f"#{rank} {row['verification_status']} / {row['source']}"
-        with st.expander(detail_title, expanded=False):
-            st.caption(
-                f"source_type: {source.get('source_type')} | "
-                f"verification_status: {source.get('verification_status')} | "
-                f"line_range: {row['line_range']}"
-            )
-            st.text_area(
-                "chunk",
-                value=(source.get("text") or "")[:2000],
-                height=220,
-                disabled=True,
-                key=f"project_chat_source_{key_prefix}_{message_index}_{rank}_{source.get('id')}",
-            )
+        st.markdown(f"**{detail_title}**")
+        st.caption(
+            f"source_type: {source.get('source_type')} | "
+            f"verification_status: {source.get('verification_status')} | "
+            f"line_range: {row['line_range']}"
+        )
+        st.text_area(
+            "chunk",
+            value=(source.get("text") or "")[:2000],
+            height=220,
+            disabled=True,
+            key=f"project_chat_source_{key_prefix}_{message_index}_{rank}_{source.get('id')}",
+        )
 
 
 def _render_sources(sources: list[dict], message_index: int, used_source_count: int = 0) -> None:
