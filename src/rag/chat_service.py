@@ -139,6 +139,24 @@ def clean_llm_answer(text: str) -> str:
     return stripped
 
 
+def ensure_answer_citations(answer: str, verified_sources: list[dict], *, max_sources: int = 3) -> str:
+    if re.search(r"`?[\w./\\-]+\.[A-Za-z0-9]+:\d+-\d+`?", answer):
+        return answer
+
+    citation_lines = []
+    for source in verified_sources[:max_sources]:
+        metadata = source.get("metadata") or {}
+        file_path = metadata.get("file_path") or source.get("source_id")
+        line_start = metadata.get("line_start")
+        line_end = metadata.get("line_end")
+        if file_path and line_start and line_end:
+            citation_lines.append(f"- `{file_path}:{line_start}-{line_end}`")
+
+    if not citation_lines:
+        return answer
+    return answer.rstrip() + "\n\n근거:\n" + "\n".join(citation_lines)
+
+
 def answer_source_question(
     db: Session,
     project: Project,
@@ -218,7 +236,7 @@ def answer_source_question(
         )
 
     return RagChatAnswer(
-        answer=clean_llm_answer(response.text),
+        answer=ensure_answer_citations(clean_llm_answer(response.text), verified_sources),
         sources=annotated,
         expanded_queries=expansion.expanded_queries,
         matched_terms=expansion.matched_terms,
