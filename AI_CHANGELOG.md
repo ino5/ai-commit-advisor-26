@@ -2,6 +2,13 @@
 
 ## 2026-06-10
 
+### Project Chat persisted history screenshot refresh
+
+- Refreshed the Project Chat screenshot so the gallery shows the newly added persisted `대화 이력`, saved question/answer rendering, insufficient-evidence notice, and `근거 복사용 Markdown` export area.
+- Added a short screenshot-gallery caption describing the captured Project Chat state.
+- Important files: `docs/images/features/project-chat.png`, `docs/screenshot-gallery.md`, `AI_CHANGELOG.md`.
+- Verification: Playwright captured `docs/images/features/project-chat.png` from `http://localhost:8501` after verifying `대화 이력`, `결제금액 검증은 어디에서 수행되나요?`, `근거 복사용 Markdown`, and the insufficient-evidence notice were visible; visually inspected the refreshed screenshot; `git diff --check` passed.
+
 ### Korean text encoding agent policy
 
 - Added `AGENTS.md` guidance for reading Korean Markdown and UTF-8 text on Windows with explicit UTF-8 commands.
