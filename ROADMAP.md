@@ -33,6 +33,7 @@
 | P2 | Sample Data | Rich demo target repository scenario design | Done | 샘플 대상 repo 데모 시나리오 설계 문서 추가 | 7038ac5 |
 | P2 | Sample Data | Rich demo target repository implementation | Done | 풍부한 샘플 대상 repo 구현 | fd1940d |
 | P2 | Docs | Rich sample demo walkthrough and screenshots | Done | 풍부한 샘플 데모 검증과 화면 캡처 갱신 | dd8fd5e |
+| P2 | Docs | README documentation hub restructure | Done | README 문서 허브 개편 | - |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
@@ -376,6 +377,23 @@ Checklist:
 - [x] Refresh README feature screenshots that changed because of the richer sample data.
 - [x] Update `docs/sample-target-repo-demo-design.md` if verified behavior differs from the design.
 - [x] Update `AI_CHANGELOG.md`.
+
+## P2 - README Documentation Hub Restructure
+
+Status: Done
+
+Goal:
+Make README easier for teammates to scan by turning it into a concise entry document and moving detailed screenshots, feature explanations, setup, and operations guidance into dedicated docs.
+
+Checklist:
+
+- [x] Keep README focused on overview, quick start, sample project entry points, representative screenshots, and documentation links.
+- [x] Move feature screenshots into `docs/screenshot-gallery.md`.
+- [x] Move feature workflow explanations into `docs/feature-guide.md`.
+- [x] Move setup, LLM/embedding, RAG operations, and verification commands into `docs/setup-and-operations.md`.
+- [x] Use GitHub-friendly relative links from README to each supporting document.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run markdown/link sanity checks.
 
 ## P2 - Application Dockerfile And Deployment Guide
 

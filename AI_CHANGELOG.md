@@ -2,6 +2,14 @@
 
 ## 2026-06-09
 
+### README 문서 허브 개편
+
+- README를 짧은 진입 문서로 재구성하고, 상세 스크린샷/기능 설명/설치 운영 가이드를 별도 문서로 분리했습니다.
+- GitHub에서 동작하는 상대 링크로 README의 Documentation 섹션을 구성해 팀원이 필요한 문서를 바로 찾을 수 있게 했습니다.
+- 기능별 화면 캡처는 `docs/screenshot-gallery.md`, 기능 흐름 설명은 `docs/feature-guide.md`, 설치/LLM/RAG 운영 기준은 `docs/setup-and-operations.md`로 이동했습니다.
+- Important files: `README.md`, `docs/screenshot-gallery.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: markdown/link sanity checks and `git diff --check` passed.
+
 ### README feature screenshot coverage refresh
 
 - Refreshed README feature screenshots for Project, Git Sync, Sample Data, and RAG Search so they show realistic sample project state, execution results, generated data previews, and RAG retrieval results.
