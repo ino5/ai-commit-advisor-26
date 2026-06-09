@@ -126,18 +126,13 @@ Internal agent instructions, historical changelog entries, roadmap task names, c
 
 User-facing Korean documentation should read like product documentation written by a person, not a literal translation of internal identifiers.
 
-When describing demo/sample materials to users, prefer natural reader-facing terms:
-
-- use `샘플 프로젝트` for the demo project in ordinary prose
-- use `데모용 샘플 프로젝트` when emphasizing that it is not real customer code
-- use `샘플 프로젝트 Git 저장소` only when the Git repository distinction matters
-- use `샘플 프로젝트 설계` for the reader-facing label of `docs/sample-target-repo-demo-design.md`
+When describing demo/sample materials to users, use reader-facing product terms instead of literal internal repository or data-generation terminology. Describe what the reader is using and why it matters; mention Git repositories, generated data, or internal demo mechanics only when that distinction affects the user's action.
 
 Avoid literal or AI-sounding wording in user-facing prose. In particular, do not translate internal repository roles, data-generation mechanics, or demo implementation details too directly when a simpler product-facing phrase would be clearer.
 
 Use technical wording only when it is a file name, code identifier, historical task title, or the exact technical distinction is necessary.
 
-When a technical file name still contains an older term, keep the file path unchanged if renaming would create churn, but make the surrounding link label and explanatory sentence natural.
+When a technical file name still contains older internal wording, keep the file path unchanged if renaming would create churn, but make the surrounding link label and explanatory sentence natural.
 
 ## Korean Text And Encoding
 

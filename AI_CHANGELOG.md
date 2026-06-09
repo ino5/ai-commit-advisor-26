@@ -2,6 +2,14 @@
 
 ## 2026-06-10
 
+### Reader-facing wording policy simplification
+
+- Simplified the `AGENTS.md` natural Korean documentation wording policy by removing preferred phrase examples.
+- Kept the principle that user-facing Korean docs should use reader-facing product terms instead of literal internal repository or data-generation terminology.
+- Kept the guidance to preserve stable technical file paths while making link labels and surrounding explanation natural.
+- Important files: `AGENTS.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `Get-Content -Path AGENTS.md -Encoding UTF8` rendered the simplified policy correctly; targeted search confirmed the preferred phrase examples were removed from `AGENTS.md`; `git diff --check` passed with only Git line-ending warnings.
+
 ### Natural wording policy generalization
 
 - Generalized the `AGENTS.md` natural Korean documentation wording policy so it no longer lists awkward phrases one by one.

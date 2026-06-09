@@ -47,6 +47,7 @@
 | P2 | Docs | Application Preview rename | Done | Application Preview rename | 45e79f3 |
 | P2 | Docs | Sample project wording cleanup | Done | Sample project wording cleanup | 5abe51c |
 | P2 | Docs | Natural wording policy generalization | Done | Natural wording policy generalization | 6e946e4 |
+| P2 | Docs | Reader-facing wording policy simplification | Done | Reader-facing wording policy simplification | Pending |
 
 ## P0 - Program Management UX Improvement
 
@@ -677,5 +678,20 @@ Checklist:
 - [x] Remove the explicit awkward-phrase list from `AGENTS.md`.
 - [x] Keep the preferred reader-facing sample project wording.
 - [x] Generalize the policy around avoiding direct translations of internal repository roles and demo mechanics.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run targeted wording and whitespace checks.
+
+## P2 - Reader-Facing Wording Policy Simplification
+
+Status: Done
+
+Goal:
+Keep `AGENTS.md` natural wording guidance principle-based instead of listing preferred phrases.
+
+Checklist:
+
+- [x] Remove preferred phrase examples from the natural Korean documentation wording policy.
+- [x] Keep the guidance about reader-facing product terms.
+- [x] Keep the exception for stable technical file paths.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run targeted wording and whitespace checks.
