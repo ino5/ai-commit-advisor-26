@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### README feature screenshot coverage refresh
+
+- Refreshed README feature screenshots for Project, Git Sync, Sample Data, and RAG Search so they show realistic sample project state, execution results, generated data previews, and RAG retrieval results.
+- Added sequential validation screenshots for Developer Upload and Development Plan Upload, and added a Project Chat screenshot showing a question, answer, and verified source evidence summary.
+- Important files: `README.md`, `docs/images/features/project.png`, `docs/images/features/git-sync.png`, `docs/images/features/sample-data.png`, `docs/images/features/rag-search.png`, `docs/images/features/project-chat.png`, `docs/images/features/developer-upload-validation.png`, `docs/images/features/development-plan-upload-validation.png`, `AI_CHANGELOG.md`.
+- Verification: visually inspected refreshed screenshots; captured RAG and Project Chat in mock mode to match the stored sample vectors; `git diff --check` passed.
+
 ### Project Chat source evidence expander fix
 
 - Fixed Project Chat source evidence rendering so evidence details no longer create nested Streamlit expanders, which caused `StreamlitAPIException` when an answer had verified sources.
