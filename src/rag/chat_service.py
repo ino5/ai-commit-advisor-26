@@ -135,8 +135,19 @@ def clean_llm_answer(text: str) -> str:
         for key in ("response", "answer", "content", "message"):
             value = parsed.get(key)
             if isinstance(value, str) and value.strip():
-                return value.strip()
-    return stripped
+                return _normalize_korean_answer_text(value.strip())
+    return _normalize_korean_answer_text(stripped)
+
+
+def _normalize_korean_answer_text(text: str) -> str:
+    replacements = {
+        "具体적으로": "구체적으로",
+        "具体的으로": "구체적으로",
+        "具体的": "구체적으로",
+    }
+    for source, target in replacements.items():
+        text = text.replace(source, target)
+    return text
 
 
 def ensure_answer_citations(answer: str, verified_sources: list[dict], *, max_sources: int = 3) -> str:

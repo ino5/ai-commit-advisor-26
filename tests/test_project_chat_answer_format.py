@@ -13,6 +13,10 @@ def test_clean_llm_answer_keeps_plain_markdown() -> None:
     assert clean_llm_answer(raw) == raw
 
 
+def test_clean_llm_answer_normalizes_common_mixed_language_phrase() -> None:
+    assert clean_llm_answer("具体的으로 설명하면 처리됩니다.") == "구체적으로 설명하면 처리됩니다."
+
+
 def test_ensure_answer_citations_appends_metadata_line_ranges() -> None:
     answer = "PaymentService authorize 메서드에서 검증합니다."
     sources = [
