@@ -32,6 +32,7 @@ class Project(Base, TimestampMixin):
     programs: Mapped[list["Program"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     git_commits: Mapped[list["GitCommit"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     analysis_runs: Mapped[list["AnalysisRun"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    standard_terms: Mapped[list["StandardTerm"]] = relationship(back_populates="project", cascade="all, delete-orphan")
 
 
 class Developer(Base, TimestampMixin):
@@ -215,6 +216,25 @@ class RiskFinding(Base, TimestampMixin):
     evidence: Mapped[dict | None] = mapped_column(JSONB)
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     resolved_yn: Mapped[str] = mapped_column(String(1), default="N", nullable=False)
+
+
+class StandardTerm(Base, TimestampMixin):
+    __tablename__ = "standard_terms"
+    __table_args__ = (
+        UniqueConstraint("project_id", "korean_term", "english_term", name="uq_standard_terms_project_terms"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    term_type: Mapped[str | None] = mapped_column(String(50))
+    korean_term: Mapped[str] = mapped_column(String(255), nullable=False)
+    english_term: Mapped[str] = mapped_column(String(255), nullable=False)
+    abbreviation: Mapped[str | None] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(Text)
+    derived_keywords: Mapped[list | None] = mapped_column(JSONB)
+    raw_metadata: Mapped[dict | None] = mapped_column(JSONB)
+
+    project: Mapped["Project"] = relationship(back_populates="standard_terms")
 
 
 class DocumentChunk(Base, TimestampMixin):

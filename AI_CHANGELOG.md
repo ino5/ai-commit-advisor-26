@@ -2,6 +2,14 @@
 
 ## 2026-06-09
 
+### Standard terminology schema and service
+
+- Added the `standard_terms` database model and Alembic migration for project-level SI standard terminology and standard words.
+- Added a standard term service for Excel template generation, upload parsing, validation, save/update behavior, search, and derived keyword generation from English terms and abbreviations.
+- Added focused tests for derived camelCase/PascalCase/snake_case/upper-snake keywords, required columns, duplicate detection, and row normalization.
+- Important files: `src/db/models.py`, `migrations/versions/20260609_0003_add_standard_terms.py`, `src/services/standard_term_service.py`, `tests/test_standard_term_service.py`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `pytest tests/test_standard_term_service.py -q` and `git diff --check` passed.
+
 ### Sample standard terminology artifact plan
 
 - Added sample target repository terminology rows for SI-style standard terms and standard words, including Korean term, English term, abbreviation, and description.

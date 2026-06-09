@@ -16,7 +16,7 @@
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 | d00b868 |
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
 | P1 | RAG | Project Chat answer quality and history persistence | In Progress | Project Chat 답변 품질과 근거 부족 처리 개선 | edcb4e7 |
-| P1 | RAG | Standard terminology glossary upload and Korean query expansion | Planned | Project Chat glossary and Korean query expansion roadmap | 9854ead |
+| P1 | RAG | Standard terminology glossary upload and Korean query expansion | In Progress | Project Chat glossary and Korean query expansion roadmap | 9854ead |
 | P1 | RAG | Project Chat answer formatting and citation accuracy | Planned | Project Chat glossary and Korean query expansion roadmap | 9854ead |
 | P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 표시 세부 보완 | 7895831 |
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | fa625d2 |
@@ -119,7 +119,7 @@ Checklist:
 
 ## P1 - Standard Terminology Glossary Upload And Korean Query Expansion
 
-Status: Planned
+Status: In Progress
 
 Goal:
 Improve Korean business-question retrieval by using project standard terminology and standard words to connect Korean terms with code, DB, and naming identifiers.
@@ -154,10 +154,10 @@ Derived search variants:
 
 Checklist:
 
-- [ ] Add schema for project-level glossary terms through Alembic migration.
-- [ ] Add glossary service for normalization, validation, and derived keyword generation.
-- [ ] Add Excel template generation for standard terminology upload.
-- [ ] Add Excel upload validation for required columns, duplicate Korean/English terms, and empty values.
+- [x] Add schema for project-level glossary terms through Alembic migration.
+- [x] Add glossary service for normalization, validation, and derived keyword generation.
+- [x] Add Excel template generation for standard terminology upload.
+- [x] Add Excel upload validation for required columns, duplicate Korean/English terms, and empty values.
 - [ ] Add current glossary list/search UI.
 - [ ] Add glossary query expansion for Project Chat and RAG retrieval.
 - [ ] Merge multi-query retrieval results by chunk id and prefer verified `source_file` evidence for Project Chat.
