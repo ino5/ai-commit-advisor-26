@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### Commit Impact walkthrough screenshots
+
+- Split the README Commit Impact example into three sequential screenshots so the flow shows commit selection, impact summary, and detailed affected program/developer analysis.
+- Re-captured the selected high-impact sample commit screen and added `commit-impact-summary.png` and `commit-impact-detail.png`.
+- Important files: `README.md`, `docs/images/features/commit-impact.png`, `docs/images/features/commit-impact-summary.png`, `docs/images/features/commit-impact-detail.png`, `AI_CHANGELOG.md`.
+- Verification: visually inspected all three screenshots and confirmed the README references the new assets; `git diff --check` passed.
+
 ### Commit Impact README screenshot refresh
 
 - Refreshed the README Commit Impact screenshot so it shows the selected high-impact sample commit, impact metrics, affected program analysis, and affected developer analysis instead of only the commit selection area.
