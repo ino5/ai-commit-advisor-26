@@ -213,3 +213,80 @@ Local verification:
 
 - `compileall` passed
 - `pytest` passed with 80 tests
+
+## 2026-06-10 - Docker app could not verify host Git repository paths
+
+분류:
+
+- Docker deployment
+- Project Chat/RAG source verification
+- Screenshot verification
+
+관련 기능:
+
+- Docker app service
+- Project Chat persisted history screenshot
+- `docs/images/features/project-chat.png`
+
+### 증상
+
+Docker app(`http://localhost:8501`)에서 Project Chat 캡처를 갱신했을 때, 샘플 프로젝트의 `결제금액 검증은 어디에서 수행되나요?` 질문에 대해 원래 답변이 가능해야 하는데 `현재 검증된 소스 근거만으로는 답변하기 어렵습니다`가 표시됐습니다.
+
+Project Chat status도 Current HEAD가 `-`로 보이고 source_file chunk 70건이 `검증 불가`로 표시됐습니다.
+
+### 직접 원인
+
+DB에 저장된 프로젝트 Git 경로는 Windows host 기준 `C:\dev\ai-advisor-sample-shop`였습니다. 그러나 Docker app 컨테이너는 Linux filesystem에서 실행되므로 해당 경로를 직접 읽을 수 없었습니다.
+
+그 결과 Git HEAD 확인, source_file line 검증, Project Chat source verification이 모두 실패했습니다.
+
+### 배경 또는 구조적 원인
+
+Docker 배포 기능을 추가하면서 PostgreSQL과 Streamlit app 실행은 컨테이너화했지만, 앱이 분석 대상 로컬 Git 저장소를 어떻게 읽을지는 명시하지 않았습니다. 로컬 Python 실행에서는 Windows 경로가 바로 동작했기 때문에 이 차이가 캡처 검증 전까지 드러나지 않았습니다.
+
+### 사전 검증에서 놓친 이유
+
+Docker smoke check는 Streamlit health endpoint와 DB migration 성공만 확인했습니다. Project Chat이 실제 host Git repository file을 읽어 source_file chunk를 검증하는 흐름은 Docker 컨테이너 기준으로 확인하지 않았습니다.
+
+### 수정 내용
+
+Docker app에 host repo mount와 path mapping을 추가했습니다.
+
+```yaml
+volumes:
+  - C:/dev:/host-dev:ro
+environment:
+  REPO_PATH_HOST_PREFIX: "C:\\dev"
+  REPO_PATH_CONTAINER_PREFIX: /host-dev
+```
+
+앱은 DB에 저장된 `C:\dev\...` 경로를 파일 접근 시 `/host-dev/...`로 변환합니다. 이 변환은 Git 명령, source_file 인덱싱, source verification, Project Chat current source 검증에 적용됩니다.
+
+또한 Python slim base image에는 Git binary가 기본 포함되어 있지 않으므로 Dockerfile에 `git` 설치를 추가했습니다. Git Sync와 현재 HEAD 확인은 GitPython만으로는 충분하지 않고 컨테이너 안의 `git` command가 필요합니다.
+
+### 재발 방지 규칙
+
+- Docker 앱에서 RAG 또는 Project Chat을 검증할 때는 health endpoint뿐 아니라 Current HEAD와 source_file verification 상태를 확인합니다.
+- DB에 저장된 repo path가 host OS 경로라면 컨테이너 mount와 path prefix mapping이 함께 설정되어야 합니다.
+- Project Chat 캡처는 단순 UI 표시뿐 아니라 실제 답변 근거가 정상인지 확인한 뒤 갱신합니다.
+
+### 남은 한계
+
+- 기본 Compose 설정은 `C:/dev` 아래 저장소를 대상으로 합니다. 다른 drive나 directory를 쓰는 환경에서는 mount와 `REPO_PATH_*` 환경 변수를 변경해야 합니다.
+- 읽기 전용 mount이므로 컨테이너에서 대상 repo 파일을 수정하는 기능에는 적합하지 않습니다. 현재 Git Sync/RAG/Project Chat 검증은 읽기 작업이므로 충분합니다.
+
+### 검증
+
+Local verification:
+
+```powershell
+.\.venv\Scripts\python.exe -m py_compile src/utils/config.py src/utils/repo_path.py src/services/git_service.py src/rag/source_verifier.py src/rag/source_index_service.py src/rag/chunker.py
+.\.venv\Scripts\python.exe -m pytest tests/test_repo_path.py tests/test_source_file_rag.py tests/test_source_index_service.py tests/test_project_chat_service.py -q
+docker compose config
+docker compose up -d --build app
+```
+
+Docker verification:
+
+- app container can read `/host-dev/ai-advisor-sample-shop`
+- Project Chat source index status shows Current HEAD matching Indexed HEAD for the sample project

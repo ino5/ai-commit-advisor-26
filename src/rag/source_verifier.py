@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from pathlib import Path
 
 from src.services.git_service import get_head_commit_hash
+from src.utils.repo_path import resolve_repo_path
 
 
 @dataclass
@@ -32,7 +32,7 @@ def verify_source_file_chunk(repo_path: str, metadata: dict) -> SourceVerificati
     if not file_path or not line_start or not line_end or not expected_chunk_hash:
         return SourceVerification("invalid", "source_file metadata is incomplete")
 
-    repo_root = Path(repo_path).expanduser().resolve()
+    repo_root = resolve_repo_path(repo_path)
     target = (repo_root / str(file_path)).resolve()
     try:
         target.relative_to(repo_root)

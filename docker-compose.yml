@@ -17,8 +17,12 @@ services:
       EMBEDDING_BASE_URL: http://host.docker.internal:1234/v1
       EMBEDDING_API_KEY: ""
       EMBEDDING_MODEL: text-embedding-nomic-embed-text-v1
+      REPO_PATH_HOST_PREFIX: "C:\\dev"
+      REPO_PATH_CONTAINER_PREFIX: /host-dev
     ports:
       - "8501:8501"
+    volumes:
+      - C:/dev:/host-dev:ro
 
   postgres:
     image: pgvector/pgvector:pg16

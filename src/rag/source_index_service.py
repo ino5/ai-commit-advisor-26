@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -19,6 +18,7 @@ from src.rag.embedding_client import EmbeddingClient
 from src.rag.source_verifier import SourceVerification, hash_text
 from src.rag.vector_store import EmbeddingBuildResult, VectorStore
 from src.services.git_service import get_head_commit_hash
+from src.utils.repo_path import resolve_repo_path
 
 
 @dataclass
@@ -114,7 +114,7 @@ def _verify_source_file_chunk_at_head(
     if indexed_head_hash and current_head_hash and indexed_head_hash != current_head_hash:
         return SourceVerification("stale", "repository HEAD changed since indexing", current_head_hash)
 
-    repo_root = Path(repo_path).expanduser().resolve()
+    repo_root = resolve_repo_path(repo_path)
     target = (repo_root / str(file_path)).resolve()
     try:
         target.relative_to(repo_root)
@@ -145,7 +145,7 @@ def get_source_index_status(db: Session, project: Project) -> SourceIndexStatus:
 
     if repo_path:
         try:
-            current_head_hash = get_head_commit_hash(Path(repo_path).expanduser().resolve())
+            current_head_hash = get_head_commit_hash(resolve_repo_path(repo_path))
         except Exception as exc:
             errors.append(f"Git HEAD 확인 실패: {exc}")
     else:
@@ -384,7 +384,7 @@ def remove_unverified_source_file_chunks(
     if not project.git_repo_path:
         return 0
     if current_head_hash is None:
-        current_head_hash = get_head_commit_hash(Path(project.git_repo_path).expanduser().resolve())
+        current_head_hash = get_head_commit_hash(resolve_repo_path(project.git_repo_path))
 
     chunks = (
         db.query(DocumentChunk)
@@ -417,7 +417,7 @@ def refresh_source_file_index(
     if not project.git_repo_path:
         raise ValueError("Git 저장소 경로가 등록된 프로젝트만 source_file 인덱스를 갱신할 수 있습니다.")
 
-    current_head_hash = get_head_commit_hash(Path(project.git_repo_path).expanduser().resolve())
+    current_head_hash = get_head_commit_hash(resolve_repo_path(project.git_repo_path))
     chunk_result = build_source_file_chunks(
         db=db,
         project_id=project.id,

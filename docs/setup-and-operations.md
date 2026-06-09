@@ -92,6 +92,7 @@ streamlit run app.py
 - 서버 배포 시 앱 시작 전에 DB schema 초기화와 Alembic migration을 같은 방식으로 실행합니다.
 - mock LLM/embedding 기본값으로 먼저 화면과 DB 연결을 확인한 뒤, 필요할 때 local/OpenAI-compatible provider로 전환합니다.
 - 배포 후 health endpoint로 최소 기동 상태를 빠르게 확인합니다.
+- DB에 저장된 Windows host Git 경로를 컨테이너 내부 mount 경로로 변환해 Git Sync, RAG source_file 검증, Project Chat 현재 소스 검증이 Docker 앱에서도 동작하게 합니다.
 
 ### Compose 전체 실행
 
@@ -151,6 +152,8 @@ docker build -t ai-commit-advisor:local .
 | `EMBEDDING_BASE_URL` | `http://host.docker.internal:1234/v1` | 컨테이너에서 Windows host의 embedding server에 접근할 때 쓰는 base URL입니다. |
 | `EMBEDDING_API_KEY` | 빈 값 | local embedding server는 보통 비워 둡니다. |
 | `EMBEDDING_MODEL` | `text-embedding-nomic-embed-text-v1` | 실제 embedding provider 전환 시 사용할 embedding model 이름입니다. |
+| `REPO_PATH_HOST_PREFIX` | `C:\dev` | DB와 화면에 저장되는 host 기준 Git 저장소 경로 prefix입니다. |
+| `REPO_PATH_CONTAINER_PREFIX` | `/host-dev` | app 컨테이너가 같은 저장소를 읽을 때 사용하는 mount 경로 prefix입니다. |
 | `PORT` | `8501` | Dockerfile의 Streamlit 실행 port입니다. Compose는 host `8501`을 container `8501`에 연결합니다. |
 
 실제 LM Studio를 Compose 앱에서 사용하려면 provider를 바꿉니다.
@@ -162,6 +165,40 @@ PGVECTOR_DIMENSION: "768"
 ```
 
 `PGVECTOR_DIMENSION`은 embedding 모델 출력 차원과 반드시 맞춰야 합니다. 이미 다른 차원으로 DB가 만들어진 뒤에는 단순 환경 변수 변경만으로 기존 `vector_items.embedding` column 차원이 바뀌지 않습니다. 이 경우 새 DB volume으로 다시 시작하거나 schema migration 전략을 별도로 잡아야 합니다.
+
+### Docker에서 로컬 Git 저장소 접근
+
+Project Chat과 RAG source_file 검증은 DB에 저장된 Git 저장소 경로의 실제 파일을 읽습니다. 로컬 Python 실행에서는 `C:\dev\ai-advisor-sample-shop` 같은 Windows 경로를 바로 읽을 수 있지만, Docker app 컨테이너 안에서는 같은 경로가 존재하지 않습니다.
+
+`docker-compose.yml`은 기본적으로 Windows host의 `C:/dev`를 app 컨테이너의 `/host-dev`에 읽기 전용으로 mount합니다.
+
+```yaml
+volumes:
+  - C:/dev:/host-dev:ro
+```
+
+그리고 다음 path mapping 환경 변수를 사용합니다.
+
+```yaml
+REPO_PATH_HOST_PREFIX: "C:\\dev"
+REPO_PATH_CONTAINER_PREFIX: /host-dev
+```
+
+예를 들어 DB에 저장된 프로젝트 경로가 `C:\dev\ai-advisor-sample-shop`이면 Docker app은 파일을 읽을 때 `/host-dev/ai-advisor-sample-shop`으로 변환합니다. 이 변환은 Git Sync, 현재 HEAD 확인, source_file 인덱싱, Project Chat source verification에 적용됩니다.
+
+다른 위치의 저장소를 분석하려면 mount와 prefix를 같이 바꾸세요.
+
+```yaml
+volumes:
+  - D:/work:/host-work:ro
+environment:
+  REPO_PATH_HOST_PREFIX: "D:\\work"
+  REPO_PATH_CONTAINER_PREFIX: /host-work
+```
+
+이 mapping이 없거나 mount가 맞지 않으면 Docker 앱에서는 Current HEAD가 `-`로 보이거나 source_file chunk가 `검증 불가`로 표시될 수 있습니다. 이 경우 Project Chat은 현재 소스 근거를 검증하지 못하므로 추측성 답변을 만들지 않습니다.
+
+Docker image에는 Git Sync와 현재 HEAD 확인에 필요한 `git` binary가 포함되어 있습니다. Dockerfile을 수정해 base image를 바꾸는 경우에도 `git` 설치는 유지해야 합니다.
 
 ### Migration 시작 동작
 

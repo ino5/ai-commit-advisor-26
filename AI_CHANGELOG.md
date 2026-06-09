@@ -2,6 +2,18 @@
 
 ## 2026-06-10
 
+### Docker repository path mapping for Project Chat verification
+
+- Added repository path prefix mapping so Docker app containers can read host Git repositories stored in the DB as Windows paths such as `C:\dev\ai-advisor-sample-shop`.
+- Mounted `C:/dev` into the app container as `/host-dev` and added `REPO_PATH_HOST_PREFIX` / `REPO_PATH_CONTAINER_PREFIX` environment variables in Compose.
+- Installed `git` in the Docker image because Git Sync and current HEAD checks need the Git command inside the app container.
+- Applied mapped repo paths to Git commands, source_file chunking, source index status, and Project Chat source verification.
+- Added focused tests for repository path mapping.
+- Documented the Docker host repo mount behavior in setup/operations, architecture, and failure history.
+- Re-captured the Project Chat screenshot after Docker source verification was restored so the answer shows verified `PaymentService.java` evidence instead of an insufficient-evidence state.
+- Important files: `Dockerfile`, `src/utils/config.py`, `src/utils/repo_path.py`, `src/services/git_service.py`, `src/rag/source_verifier.py`, `src/rag/source_index_service.py`, `src/rag/chunker.py`, `tests/test_repo_path.py`, `docker-compose.yml`, `docs/setup-and-operations.md`, `README_ARCHITECTURE.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- Verification: `.\\.venv\\Scripts\\python.exe -m py_compile src/utils/config.py src/utils/repo_path.py src/services/git_service.py src/rag/source_verifier.py src/rag/source_index_service.py src/rag/chunker.py` passed; `.\\.venv\\Scripts\\python.exe -m pytest tests/test_repo_path.py tests/test_source_file_rag.py tests/test_source_index_service.py tests/test_project_chat_service.py -q` passed; `docker compose config` passed; Docker app verified the sample Project Chat source index with matching Current HEAD and Indexed HEAD, invalid/stale/mismatch counts at 0, and visible `PaymentService.java` answer evidence; `git diff --check` passed.
+
 ### CI manual rerun trigger for hosted runner failures
 
 - Added `workflow_dispatch` to the GitHub Actions CI workflow so CI can be manually rerun from the Actions UI without creating another push.
@@ -11,10 +23,10 @@
 
 ### Project Chat persisted history screenshot refresh
 
-- Refreshed the Project Chat screenshot so the gallery shows the newly added persisted `대화 이력`, saved question/answer rendering, insufficient-evidence notice, and `근거 복사용 Markdown` export area.
+- Refreshed the Project Chat screenshot so the gallery shows the newly added persisted `대화 이력`, saved question/answer rendering, verified current source evidence, and `근거 복사용 Markdown` export area.
 - Added a short screenshot-gallery caption describing the captured Project Chat state.
 - Important files: `docs/images/features/project-chat.png`, `docs/screenshot-gallery.md`, `AI_CHANGELOG.md`.
-- Verification: Playwright captured `docs/images/features/project-chat.png` from `http://localhost:8501` after verifying `대화 이력`, `결제금액 검증은 어디에서 수행되나요?`, `근거 복사용 Markdown`, and the insufficient-evidence notice were visible; visually inspected the refreshed screenshot; `git diff --check` passed.
+- Verification: Playwright captured `docs/images/features/project-chat.png` from `http://localhost:8501` after verifying `대화 이력`, `결제금액 검증은 어디에서 수행되나요?`, `근거 복사용 Markdown`, and answer evidence were visible; visually inspected the refreshed screenshot; `git diff --check` passed.
 
 ### Korean text encoding agent policy
 

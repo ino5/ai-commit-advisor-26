@@ -8,6 +8,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from src.db.models import CommitFile, GitCommit, Project
+from src.utils.repo_path import resolve_repo_path
 
 
 MAX_DIFF_TEXT_LENGTH = 5000
@@ -44,7 +45,7 @@ class GitSyncResult:
 
 
 def _run_git(repo_path: str | Path, args: list[str]) -> str:
-    path = Path(repo_path).resolve()
+    path = resolve_repo_path(repo_path)
     result = subprocess.run(
         ["git", "-c", f"safe.directory={path.as_posix()}", *args],
         cwd=path,
@@ -58,7 +59,7 @@ def _run_git(repo_path: str | Path, args: list[str]) -> str:
 
 
 def is_git_repository(repo_path: str | Path) -> bool:
-    path = Path(repo_path).expanduser()
+    path = resolve_repo_path(repo_path)
     if not path.exists():
         return False
     try:

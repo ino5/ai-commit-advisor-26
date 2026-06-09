@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from src.db.models import CommitFile, DocumentChunk, GitCommit, Program, VectorItem
 from src.services.git_service import get_head_commit_hash
+from src.utils.repo_path import resolve_repo_path
 
 
 DEFAULT_CHUNK_SIZE = 1200
@@ -237,7 +238,7 @@ def build_source_file_chunks_for_paths(
     overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> ChunkBuildResult:
     result = ChunkBuildResult()
-    repo_root = Path(repo_path).expanduser().resolve()
+    repo_root = resolve_repo_path(repo_path)
     if not repo_root.exists():
         raise ValueError(f"Repository path does not exist: {repo_root}")
 
@@ -317,7 +318,7 @@ def build_source_file_chunks(
     overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> ChunkBuildResult:
     result = ChunkBuildResult()
-    repo_root = Path(repo_path).expanduser().resolve()
+    repo_root = resolve_repo_path(repo_path)
     if not repo_root.exists():
         raise ValueError(f"Repository path does not exist: {repo_root}")
 
