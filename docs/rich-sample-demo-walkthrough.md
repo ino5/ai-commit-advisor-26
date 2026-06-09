@@ -35,6 +35,12 @@ Follow these rules during demo verification.
 
 2. In the app, register or update the project path.
 
+For repeatable screenshot verification, use a dedicated project name so it is easy to select and does not mix with older sample data.
+
+```text
+AAA Sample Shop Rich Demo
+```
+
 ```text
 C:\dev\ai-advisor-sample-shop
 ```
@@ -61,6 +67,8 @@ The `advisor_uploads` files include demo-specific plan overrides for delayed cou
 - Analyze one selected commit first.
 - If the result looks reasonable, run unprocessed commit batch analysis.
 - Avoid program-based analysis for the first verification pass.
+
+For UI-only verification with `LLM_PROVIDER=mock`, use program-based analysis or pre-generated validation data because the commit-based path expects JSON from the LLM. The mock provider is useful for checking screens and downstream risk/progress views without calling a real local model.
 
 6. Run Risk Analysis.
 
@@ -99,6 +107,8 @@ Recommended flow:
 - Refresh current source chunks first.
 - Generate embeddings with a small limit.
 - Search or ask a focused question.
+
+The sample project is Spring MVC + JSP + MyBatis. Current source indexing should include Java, JSP, XML, Markdown, JavaScript, and CSS files before Project Chat verification.
 
 Useful Project Chat questions:
 

@@ -64,6 +64,8 @@ The most important risk in a source-code chatbot is presenting outdated code as 
 | `commit` | Commit message history | No, historical evidence |
 | `commit_file` | File path and diff from a commit | No, historical diff evidence |
 
+Current source indexing includes common text/code assets used by the app and sample projects, including Python, Java, JSP, JavaScript, CSS, Markdown, XML, SQL, JSON, YAML, and configuration files. Binary files, virtual environments, caches, images, and Excel files are excluded.
+
 ### Verification States
 
 | State | Meaning | Project Chat Behavior |

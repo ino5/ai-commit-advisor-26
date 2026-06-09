@@ -32,7 +32,7 @@
 | P2 | Sample Data | Synthetic target project repository | Done | 가상 샘플 대상 프로젝트 생성 스크립트 추가 | fa7fcbb |
 | P2 | Sample Data | Rich demo target repository scenario design | Done | 샘플 대상 repo 데모 시나리오 설계 문서 추가 | 7038ac5 |
 | P2 | Sample Data | Rich demo target repository implementation | Done | 풍부한 샘플 대상 repo 구현 | fd1940d |
-| P2 | Docs | Rich sample demo walkthrough and screenshots | Planned | 샘플 데모 검증과 스크린샷 작업 로드맵 등록 | 95db200 |
+| P2 | Docs | Rich sample demo walkthrough and screenshots | Done | 풍부한 샘플 데모 검증과 화면 캡처 갱신 | - |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
@@ -361,21 +361,21 @@ Checklist:
 
 ## P2 - Rich Sample Demo Walkthrough And Screenshots
 
-Status: Planned
+Status: Done
 
 Goal:
 Verify the expanded sample target repository through the actual app workflow and align the README walkthrough and feature screenshots with the richer 8-program, 30-commit demo data.
 
 Checklist:
 
-- [ ] Document the safe execution flow to avoid excessive LLM and embedding work.
-- [ ] Register or refresh the sample project in the app with `C:\dev\ai-advisor-sample-shop`.
-- [ ] Upload the `advisor_uploads` developer, program, and development-plan Excel files.
-- [ ] Run Git sync, Mapping, Risk Analysis, AI Progress, Commit Impact, RAG, Project Chat, and AI Code Review checks.
-- [ ] Document the recommended demo walkthrough, including expected risk scenarios and recommended code review commits.
-- [ ] Refresh README feature screenshots that changed because of the richer sample data.
-- [ ] Update `docs/sample-target-repo-demo-design.md` if verified behavior differs from the design.
-- [ ] Update `AI_CHANGELOG.md`.
+- [x] Document the safe execution flow to avoid excessive LLM and embedding work.
+- [x] Register or refresh the sample project in the app with `C:\dev\ai-advisor-sample-shop`.
+- [x] Upload the `advisor_uploads` developer, program, and development-plan Excel files.
+- [x] Run Git sync, Mapping, Risk Analysis, AI Progress, Commit Impact, RAG, Project Chat, and AI Code Review checks.
+- [x] Document the recommended demo walkthrough, including expected risk scenarios and recommended code review commits.
+- [x] Refresh README feature screenshots that changed because of the richer sample data.
+- [x] Update `docs/sample-target-repo-demo-design.md` if verified behavior differs from the design.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Application Dockerfile And Deployment Guide
 

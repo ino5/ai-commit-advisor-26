@@ -16,10 +16,14 @@ def test_chunk_lines_preserves_line_ranges():
 def test_is_source_file_excludes_virtualenv_and_binary_suffix(tmp_path: Path):
     repo = tmp_path
     source = repo / "src" / "app.py"
+    java_source = repo / "src" / "main" / "java" / "OrderService.java"
+    jsp_source = repo / "src" / "main" / "webapp" / "WEB-INF" / "views" / "orders" / "new.jsp"
     binary = repo / "docs" / "image.png"
     venv_file = repo / ".venv" / "Lib" / "site-packages" / "x.py"
 
     assert _is_source_file(source, repo) is True
+    assert _is_source_file(java_source, repo) is True
+    assert _is_source_file(jsp_source, repo) is True
     assert _is_source_file(binary, repo) is False
     assert _is_source_file(venv_file, repo) is False
 

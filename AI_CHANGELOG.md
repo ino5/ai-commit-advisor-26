@@ -2,6 +2,17 @@
 
 ## 2026-06-09
 
+### 풍부한 샘플 데모 검증과 화면 캡처 갱신
+
+- 앱 DB에 검증 전용 프로젝트 `AAA Sample Shop Rich Demo`를 구성하고 `C:\dev\ai-advisor-sample-shop`의 8개 프로그램/30개 커밋 샘플 repo와 `advisor_uploads` Excel 3종을 반영했습니다.
+- mock LLM/embedding 기반으로 Git Sync, 프로그램/개발계획 적재, Mapping fallback, Risk Analysis, AI Progress, Commit Impact, RAG source indexing, Project Chat, AI Code Review 흐름을 검증했습니다.
+- 검증 중 Spring MVC 샘플의 현재 소스 근거가 Project Chat에 잡히도록 RAG source_file 인덱싱 대상에 `.java`, `.jsp`를 추가하고 focused test를 보강했습니다.
+- `docs/ai-technical-overview.md`에 current source indexing이 Java/JSP 등 샘플 프로젝트의 주요 텍스트/코드 파일을 포함한다는 설명을 추가했습니다.
+- `docs/rich-sample-demo-walkthrough.md`와 `README.md`에 검증 전용 프로젝트명, mock 모드 Mapping 검증 주의점, Java/JSP source indexing 확인 기준을 보강했습니다.
+- README 대표 이미지와 기능별 화면 캡처 전체를 새 샘플 데이터 기준으로 갱신했습니다.
+- 검증 결과: 프로그램 8건, 커밋 30건, 관련 매핑 25건, unresolved risk 13건, source_file chunk/vector 70건, Project Chat verified source 8건, Code Review 1건 저장 확인.
+- 검증: `.venv\Scripts\python.exe -m pytest tests\test_source_file_rag.py -q` 통과(`4 passed`), `.venv\Scripts\python.exe -m py_compile src\rag\chunker.py` 통과, Playwright로 README 기능별 화면 캡처 18종 갱신, `git diff --check` 통과.
+
 ### 풍부한 샘플 데모 안전 실행 가이드 추가
 
 - 팀원이 8개 프로그램/30개 커밋 샘플 repo를 검증할 때 LLM/embedding 작업이 과도하게 늘어나지 않도록 `docs/rich-sample-demo-walkthrough.md`를 추가했습니다.

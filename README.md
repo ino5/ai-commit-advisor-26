@@ -699,6 +699,7 @@ Git author 기반 개발자 통계를 보여줍니다.
 
 실제 업무 프로젝트를 건드리지 않고 앱 흐름을 테스트하려면 가상 대상 Git repo를 먼저 만듭니다.
 팀원이 전체 데모 흐름을 검증하거나 화면 캡처를 갱신할 때는 `docs/rich-sample-demo-walkthrough.md`의 안전 실행 순서를 먼저 확인합니다.
+반복 검증이나 README 캡처 갱신에는 전용 프로젝트명 `AAA Sample Shop Rich Demo`와 `C:\dev\ai-advisor-sample-shop\advisor_uploads`의 Excel 3종을 사용합니다.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\create_sample_target_repo.py
