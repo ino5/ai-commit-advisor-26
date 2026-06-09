@@ -2,6 +2,12 @@
 
 ## 2026-06-09
 
+### Project Chat screenshot top-state refresh
+
+- Refreshed the Project Chat screenshot so it shows the selected sample project, source index status, chat controls, Korean question, answer, and source citations in one view.
+- Important files: `docs/images/features/project-chat.png`, `AI_CHANGELOG.md`.
+- Verification: visually inspected the refreshed screenshot; `git diff --check` passed.
+
 ### Standard terminology documentation and screenshots
 
 - Updated README, Feature Guide, and AI technical overview to explain standard terminology upload and deterministic Korean query expansion.
