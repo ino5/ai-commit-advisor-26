@@ -2,6 +2,13 @@
 
 ## 2026-06-10
 
+### Natural wording policy generalization
+
+- Generalized the `AGENTS.md` natural Korean documentation wording policy so it no longer lists awkward phrases one by one.
+- Kept the preferred `샘플 프로젝트`, `데모용 샘플 프로젝트`, `샘플 프로젝트 Git 저장소`, and `샘플 프로젝트 설계` guidance while describing the avoid rule as a general principle.
+- Important files: `AGENTS.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: targeted `AGENTS.md` search confirmed the explicit awkward-phrase list was removed; `Get-Content -Path AGENTS.md -Encoding UTF8` rendered the generalized policy correctly; `git diff --check` passed with only Git line-ending warnings.
+
 ### Sample project wording cleanup
 
 - Added `AGENTS.md` guidance to avoid literal sample/demo wording such as `샘플 대상 저장소`, `합성 샘플 저장소`, and `sample target repo` in user-facing Korean documentation.

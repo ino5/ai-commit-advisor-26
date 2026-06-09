@@ -46,6 +46,7 @@
 | P2 | Docs | Architecture document path cleanup | Done | Architecture document path cleanup | f85df08 |
 | P2 | Docs | Application Preview rename | Done | Application Preview rename | 45e79f3 |
 | P2 | Docs | Sample project wording cleanup | Done | Sample project wording cleanup | 5abe51c |
+| P2 | Docs | Natural wording policy generalization | Done | Natural wording policy generalization | Pending |
 
 ## P0 - Program Management UX Improvement
 
@@ -661,5 +662,20 @@ Checklist:
 - [x] Update sample project design and verification guide prose.
 - [x] Update related engineering decision rationale.
 - [x] Keep code identifiers and file names unchanged.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run targeted wording and whitespace checks.
+
+## P2 - Natural Wording Policy Generalization
+
+Status: Done
+
+Goal:
+Keep the natural Korean documentation policy useful without turning `AGENTS.md` into a literal banned-phrase list.
+
+Checklist:
+
+- [x] Remove the explicit awkward-phrase list from `AGENTS.md`.
+- [x] Keep the preferred reader-facing sample project wording.
+- [x] Generalize the policy around avoiding direct translations of internal repository roles and demo mechanics.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run targeted wording and whitespace checks.

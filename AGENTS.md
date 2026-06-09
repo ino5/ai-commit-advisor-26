@@ -133,14 +133,9 @@ When describing demo/sample materials to users, prefer natural reader-facing ter
 - use `샘플 프로젝트 Git 저장소` only when the Git repository distinction matters
 - use `샘플 프로젝트 설계` for the reader-facing label of `docs/sample-target-repo-demo-design.md`
 
-Avoid literal or AI-sounding wording in user-facing prose unless it is a file name, code identifier, historical task title, or the exact technical distinction is necessary:
+Avoid literal or AI-sounding wording in user-facing prose. In particular, do not translate internal repository roles, data-generation mechanics, or demo implementation details too directly when a simpler product-facing phrase would be clearer.
 
-- `샘플 대상 저장소`
-- `합성 샘플 저장소`
-- `sample target repo`
-- `target repository`
-- `대상 저장소`
-- `기능별 데모 포인트`
+Use technical wording only when it is a file name, code identifier, historical task title, or the exact technical distinction is necessary.
 
 When a technical file name still contains an older term, keep the file path unchanged if renaming would create churn, but make the surrounding link label and explanatory sentence natural.
 
