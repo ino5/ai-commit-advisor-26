@@ -143,3 +143,73 @@ GitHub Actions verification:
 
 - Fix commit `140c2d2` was pushed to `main`.
 - The new workflow run was queued with the PostgreSQL service configuration.
+
+## 2026-06-10 - GitHub hosted runner acquisition failure
+
+분류:
+
+- GitHub Actions platform
+- CI operation
+- External infrastructure
+
+관련 run:
+
+- Workflow: `CI`
+- Run: `docs: explain RAG chat rationale #42`
+- Commit shown by GitHub: `731c436`
+- 증상 annotation:
+  - `The job was not acquired by Runner of type hosted even after multiple attempts`
+  - `Internal server error. Correlation ID: 6837253b-ba61-49c9-b3d3-ffc082e3424c`
+
+### 증상
+
+GitHub Actions summary에서 job duration이 약 15분으로 표시됐지만, 실제 실패 annotation은 test command나 pytest assertion이 아니라 hosted runner 배정 실패와 GitHub internal server error였습니다.
+
+### 직접 원인
+
+GitHub-hosted runner가 job을 가져가지 못했습니다. 이 경우 repository code, workflow step, dependency 설치, pytest 결과와 무관하게 GitHub Actions platform 단계에서 실패할 수 있습니다.
+
+### 배경 또는 구조적 원인
+
+CI workflow는 GitHub-hosted `ubuntu-latest` runner에 의존합니다. Runner pool 또는 GitHub Actions service에 일시적인 문제가 있으면 workflow file이 올바르고 local verification이 통과해도 job이 시작되지 못할 수 있습니다.
+
+### 사전 검증에서 놓친 이유
+
+Local verification은 code와 test 실행 가능성을 확인하지만, GitHub-hosted runner acquisition 자체는 local에서 재현하거나 사전에 검증할 수 없습니다.
+
+### 수정 내용
+
+`.github/workflows/ci.yml`에 `workflow_dispatch`를 추가했습니다. 이제 push 없이도 Actions UI에서 CI를 수동 재실행할 수 있습니다.
+
+```yaml
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+```
+
+### 재발 방지 규칙
+
+- Annotation이 runner acquisition, internal server error, GitHub platform error를 가리키면 code/test failure로 단정하지 않습니다.
+- 먼저 같은 commit에서 workflow를 rerun하거나 `workflow_dispatch`로 수동 실행합니다.
+- 반복되면 GitHub status와 Actions service 상태를 확인합니다.
+- `Run tests`, `Compile Python files`, dependency install 같은 실제 step log가 실패한 경우에만 code, test, workflow dependency 문제로 조사합니다.
+
+### 남은 한계
+
+- GitHub-hosted runner 장애는 repository 안에서 완전히 방지할 수 없습니다.
+- `workflow_dispatch`는 재실행 편의를 높일 뿐, GitHub platform 장애 자체를 해결하지는 않습니다.
+
+### 검증
+
+Local verification:
+
+```powershell
+.\.venv\Scripts\python.exe -m compileall src app.py
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+결과:
+
+- `compileall` passed
+- `pytest` passed with 80 tests

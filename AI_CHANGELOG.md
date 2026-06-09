@@ -2,6 +2,13 @@
 
 ## 2026-06-10
 
+### CI manual rerun trigger for hosted runner failures
+
+- Added `workflow_dispatch` to the GitHub Actions CI workflow so CI can be manually rerun from the Actions UI without creating another push.
+- Documented the GitHub-hosted runner acquisition failure for `docs: explain RAG chat rationale #42`, including how to distinguish platform runner failures from code/test failures.
+- Important files: `.github/workflows/ci.yml`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- Verification: `.\\.venv\\Scripts\\python.exe -m compileall src app.py` passed; `.\\.venv\\Scripts\\python.exe -m pytest -q` passed with 80 tests; `git diff --check` passed.
+
 ### Project Chat persisted history screenshot refresh
 
 - Refreshed the Project Chat screenshot so the gallery shows the newly added persisted `대화 이력`, saved question/answer rendering, insufficient-evidence notice, and `근거 복사용 Markdown` export area.
