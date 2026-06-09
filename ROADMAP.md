@@ -39,7 +39,7 @@
 | P2 | Docs | Rich sample demo walkthrough and screenshots | Done | 풍부한 샘플 데모 검증과 화면 캡처 갱신 | dd8fd5e |
 | P2 | Docs | README documentation hub restructure | Done | README 문서 허브 개편 | 6b27b35 |
 | P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 | 02f2b14 |
-| P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup | - |
+| P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup | 3d56a7a |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
