@@ -2,6 +2,12 @@
 
 ## 2026-06-09
 
+### README Home 화면 캡처 갱신
+
+- README 대표 Home 이미지와 기능별 Home 캡처를 현재 Home 화면 문구 기준으로 갱신했습니다.
+- 갱신한 이미지: `docs/images/ai-commit-advisor-home.png`, `docs/images/features/home.png`.
+- 검증: 실행 중인 Streamlit 앱(`http://localhost:8501`) 기준으로 `.venv\Scripts\python.exe scripts\verify_home_ui.py --screenshot docs\images\features\home.png` 통과, 대표 이미지는 동일 캡처로 동기화, 이미지 육안 확인 통과.
+
 ### 풍부한 샘플 대상 repo 구현
 
 - `scripts/create_sample_target_repo.py`의 샘플 대상 repo 생성 흐름을 확장해 8개 프로그램, 30개 Git commit, 6명의 가상 개발자 author를 생성하도록 했습니다.
