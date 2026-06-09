@@ -57,6 +57,21 @@ Use this checklist:
 
 If no documentation update is needed, mention that in the final response or commit notes.
 
+## README Screenshot Guidance
+
+When refreshing README screenshots, capture the feature value rather than only the initial or empty state.
+
+Prefer screenshots that show a meaningful workflow state, such as:
+
+- selected sample project or realistic data
+- user input or target selection when it is needed to understand the flow
+- validation, execution, analysis, or saved result
+- evidence, detail, or output tables when they are central to the feature
+
+If one screenshot cannot clearly show the workflow, split it into sequential screenshots with short labels.
+
+Avoid README screenshots that mainly show a blank form, empty/default project, idle button, or pre-execution state unless that state is the feature being documented.
+
 ## Commit Boundaries
 
 When committing changes, keep materially different concerns in separate commits when practical.
