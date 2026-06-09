@@ -27,7 +27,7 @@
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | a151133 |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
-| P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping | - |
+| P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping | 60dd64c |
 | P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | 562da8a |
 | P2 | UX | Home analysis command center | Done | Home 분석 관제 화면 개선 | c3a30a1 |
 | P2 | UX | Home copy tone cleanup | Done | Home 문구 톤 정리 | c8c421e |
