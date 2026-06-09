@@ -1,19 +1,19 @@
-# 샘플 대상 저장소 데모 설계
+# 샘플 프로젝트 설계
 
 ## 목적
 
-합성 샘플 대상 저장소는 실제 고객 코드나 제품 코드를 사용하지 않고 AI Commit Advisor를 시연하기 위해 존재합니다. Git sync, program mapping, risk analysis, RAG, Project Chat, AI Code Review, AI Progress가 의미 있는 결과를 만들 수 있을 만큼 현실적인 구조를 가져야 합니다.
+데모용 샘플 프로젝트는 실제 고객 코드나 제품 코드를 사용하지 않고 AI Commit Advisor를 시연하기 위해 존재합니다. Git sync, program mapping, risk analysis, RAG, Project Chat, AI Code Review, AI Progress가 의미 있는 결과를 만들 수 있을 만큼 현실적인 구조를 가져야 합니다.
 
-샘플 대상 저장소는 이 애플리케이션 저장소와 의도적으로 분리되어 있습니다.
+샘플 프로젝트는 이 애플리케이션 저장소와 의도적으로 분리되어 있습니다.
 
 - 애플리케이션 저장소: `C:\dev\ai-commit-advisor`
-- 샘플 대상 저장소: `C:\dev\ai-advisor-sample-shop`
+- 샘플 프로젝트 Git 저장소: `C:\dev\ai-advisor-sample-shop`
 - 생성 스크립트: `scripts/create_sample_target_repo.py`
 - 생성된 upload 파일: `C:\dev\ai-advisor-sample-shop\advisor_uploads`
 
 ## 현재 상태
 
-현재 샘플 대상은 합성 Spring MVC + MyBatis retail operations project입니다.
+현재 샘플 프로젝트는 데모용 Spring MVC + MyBatis retail operations project입니다.
 
 - Programs: 8
 - Developers: 6
@@ -24,16 +24,16 @@
 
 강점:
 
-- 대상 저장소가 sibling Git repository로 이미 격리되어 있습니다.
+- 샘플 프로젝트가 애플리케이션 저장소 밖의 sibling Git repository로 격리되어 있습니다.
 - Git sync, developer extraction, program upload, development plan upload, Mapping, RAG, Project Chat, Risk Analysis, AI Code Review, Commit Impact, AI Progress 확인에 필요한 구조가 충분합니다.
 - package path와 program module이 명확해 program-commit mapping 후보 선택에 도움이 됩니다.
-- 생성된 Excel file이 fake repository history와 정합성을 가집니다.
+- 생성된 Excel file이 커밋 이력과 서로 맞습니다.
 - history에는 feature addition, bug-introducing change, bug fix, test, refactoring, documentation, cross-module change, incomplete work가 포함되어 있습니다.
 
 알려진 한계:
 
 - 샘플은 Maven build 성공보다 분석 가치에 최적화되어 있습니다.
-- 코드는 synthetic code이며 production implementation guidance로 취급하면 안 됩니다.
+- 코드는 데모용 예제 코드이며 production implementation guidance로 취급하면 안 됩니다.
 - 일부 risk scenario는 generated development-plan override를 통해 만들어져 Risk Analysis가 delayed, unassigned, no-related-commit case를 보여줄 수 있게 합니다.
 
 ## 목표 데모 규모
@@ -72,7 +72,7 @@
 
 ## 표준용어 데모 데이터셋
 
-샘플 대상 저장소는 외부 고객 산출물 없이도 glossary upload와 Korean query expansion workflow를 시연할 수 있도록 `advisor_uploads/sample_standard_terms.xlsx`를 포함해야 합니다.
+샘플 프로젝트는 외부 고객 산출물 없이도 glossary upload와 Korean query expansion workflow를 시연할 수 있도록 `advisor_uploads/sample_standard_terms.xlsx`를 포함해야 합니다.
 
 첫 구현의 Excel shape은 의도적으로 가볍게 유지합니다.
 
@@ -201,7 +201,7 @@ AI Progress는 다음을 보여야 합니다.
 이 설계를 구현할 때는 다음을 지킵니다.
 
 - `scripts/create_sample_target_repo.py`를 수정해 더 현실적인 commit history를 생성합니다.
-- 샘플 대상 저장소는 `C:\dev\ai-commit-advisor` 밖의 sibling repo로 유지합니다.
+- 샘플 프로젝트 Git 저장소는 `C:\dev\ai-commit-advisor` 밖의 sibling repo로 유지합니다.
 - 필요하면 `sample_data`와 `advisor_uploads` output을 update 또는 regenerate합니다.
 - expected sample shape, developer profile, program row, risk/demo scenario에 대한 test를 추가하거나 수정합니다.
 - generation 또는 recommended demo flow가 바뀌면 README sample usage instruction을 업데이트합니다.
@@ -209,6 +209,6 @@ AI Progress는 다음을 보여야 합니다.
 
 ## 비목표
 
-- 샘플 저장소가 실제 external service에 의존하게 만들지 않습니다.
+- 샘플 프로젝트가 실제 external service에 의존하게 만들지 않습니다.
 - 실제 고객명, production code, secret, internal business data를 포함하지 않습니다.
 - 샘플을 분석 가치보다 buildability에 맞춰 최적화하지 않습니다. 그럴듯한 source code여야 하지만 주 목적은 AI Commit Advisor demonstration입니다.

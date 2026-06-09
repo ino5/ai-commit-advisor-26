@@ -16,7 +16,7 @@ AI Commit Advisor는 로컬 Git 저장소의 커밋, 변경 파일, diff, 개발
 - 현재 소스 검증형 RAG Search와 저장형 Project Chat
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
 - 작업트리, staged 변경, 최신/특정 커밋 대상 AI Code Review
-- 샘플 Git 저장소와 Excel 데이터 생성으로 전체 기능 데모 가능
+- 데모용 샘플 프로젝트와 Excel 데이터 생성으로 전체 기능 확인 가능
 
 ## 빠른 시작
 
@@ -58,15 +58,15 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 
 ## 샘플 프로젝트
 
-실제 업무 프로젝트를 건드리지 않고 전체 흐름을 검증하려면 샘플 대상 Git 저장소를 생성합니다.
+실제 업무 프로젝트를 건드리지 않고 전체 흐름을 검증하려면 데모용 샘플 프로젝트를 생성합니다.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\create_sample_target_repo.py
 ```
 
-기본 생성 위치는 `C:\dev\ai-advisor-sample-shop`입니다. 샘플 repo는 8개 프로그램, 30개 commit, Spring MVC + MyBatis 예제 소스, 업로드용 Excel 3종을 포함합니다.
+기본 생성 위치는 `C:\dev\ai-advisor-sample-shop`입니다. 샘플 프로젝트는 8개 프로그램, 30개 commit, Spring MVC + MyBatis 예제 소스, 업로드용 Excel 3종을 포함합니다.
 
-전체 데모 흐름과 LLM/embedding 작업을 과도하게 실행하지 않는 방법은 [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md)를 먼저 확인하세요. 샘플 repo 설계와 기능별 데모 포인트는 [Sample Target Repo Demo Design](docs/sample-target-repo-demo-design.md)에서 관리합니다.
+전체 데모 흐름과 LLM/embedding 작업을 과도하게 실행하지 않는 방법은 [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md)를 먼저 확인하세요. 샘플 프로젝트 구성과 기능별 확인 포인트는 [샘플 프로젝트 설계](docs/sample-target-repo-demo-design.md)에서 관리합니다.
 
 ## 스크린샷
 
@@ -80,7 +80,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 - [Application Preview](docs/application-preview.md): 샘플 프로젝트 기준 주요 화면과 기능 상태를 미리 확인할 수 있습니다.
 - [설치와 운영](docs/setup-and-operations.md): 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 가이드입니다.
 - [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md): 샘플 프로젝트로 주요 기능을 확인할 때 참고하는 권장 실행 흐름입니다.
-- [샘플 대상 저장소 데모 설계](docs/sample-target-repo-demo-design.md): 샘플 Git 저장소 목표, commit 시나리오, 기능별 데모 포인트입니다.
+- [샘플 프로젝트 설계](docs/sample-target-repo-demo-design.md): 데모용 샘플 프로젝트의 구성, commit 시나리오, 기능별 확인 포인트입니다.
 - [AI 기술 개요](docs/ai-technical-overview.md): Mapping, RAG, Project Chat, Code Review, Risk Analysis 등 AI 동작 방식입니다.
 - [소스 인덱싱과 임베딩 운영 계획](docs/source-indexing-and-embedding-plan.md): Project Chat source_file 증분 인덱싱, embedding 비용 제어, cloud 운영 계획입니다.
 - [아키텍처](docs/architecture.md): 모듈 구조, 데이터 흐름, 서비스 책임입니다.

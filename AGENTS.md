@@ -122,6 +122,28 @@ Do not force every heading, label, or familiar product/documentation term into K
 
 Internal agent instructions, historical changelog entries, roadmap task names, commit messages, code comments tied to source conventions, and generated third-party content do not need forced translation unless the user explicitly asks for it.
 
+## Natural Korean Documentation Wording
+
+User-facing Korean documentation should read like product documentation written by a person, not a literal translation of internal identifiers.
+
+When describing demo/sample materials to users, prefer natural reader-facing terms:
+
+- use `샘플 프로젝트` for the demo project in ordinary prose
+- use `데모용 샘플 프로젝트` when emphasizing that it is not real customer code
+- use `샘플 프로젝트 Git 저장소` only when the Git repository distinction matters
+- use `샘플 프로젝트 설계` for the reader-facing label of `docs/sample-target-repo-demo-design.md`
+
+Avoid literal or AI-sounding wording in user-facing prose unless it is a file name, code identifier, historical task title, or the exact technical distinction is necessary:
+
+- `샘플 대상 저장소`
+- `합성 샘플 저장소`
+- `sample target repo`
+- `target repository`
+- `대상 저장소`
+- `기능별 데모 포인트`
+
+When a technical file name still contains an older term, keep the file path unchanged if renaming would create churn, but make the surrounding link label and explanatory sentence natural.
+
 ## Korean Text And Encoding
 
 This repository contains Korean Markdown and UTF-8 text. On Windows, PowerShell output can look corrupted when a command uses the console default encoding instead of UTF-8.
@@ -143,11 +165,11 @@ When editing Markdown that already contains Korean text, preserve UTF-8 content 
 
 ## Sample Target Repository
 
-When changing the synthetic sample target repository, sample commit history, sample data generation, or demo scenario, check `docs/sample-target-repo-demo-design.md` before implementing.
+When changing the demo sample project, sample commit history, sample data generation, or demo scenario, check `docs/sample-target-repo-demo-design.md` before implementing.
 
-Keep the sample target repository aligned with the demo design:
+Keep the sample project aligned with the demo design:
 
-- target repo location and generation flow
+- sample project location and generation flow
 - intended commit scenarios
 - product features each sample scenario should demonstrate
 - expected risk, mapping, RAG, Project Chat, Code Review, and AI Progress demo points
@@ -166,7 +188,7 @@ Use this checklist:
 - `docs/ai-technical-overview.md`: required when Mapping, RAG, Project Chat, Code Review, AI Progress, Risk Analysis, embedding, or LLM behavior changes.
 - `docs/engineering-decisions.md`: required when a meaningful engineering, operations, verification, automation, deployment, or documentation-structure decision is introduced or changed.
 - `docs/db-migrations.md`: required when database migration process or schema management guidance changes.
-- `docs/sample-target-repo-demo-design.md`: required when sample target repo goals, commit scenarios, demo coverage, or sample generation direction changes.
+- `docs/sample-target-repo-demo-design.md`: required when sample project goals, commit scenarios, demo coverage, or sample generation direction changes.
 - `docs/failure-history.md`: required when a failure, incident, or significant mistake has reusable root-cause or prevention value.
 
 If no documentation update is needed, mention that in the final response or commit notes.

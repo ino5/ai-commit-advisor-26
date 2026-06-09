@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Sample project wording cleanup
+
+- Added `AGENTS.md` guidance to avoid literal sample/demo wording such as `샘플 대상 저장소`, `합성 샘플 저장소`, and `sample target repo` in user-facing Korean documentation.
+- Updated README, sample project design, and sample verification guide prose to use `샘플 프로젝트`, `데모용 샘플 프로젝트`, and `샘플 프로젝트 Git 저장소` where appropriate.
+- Recorded the wording decision in `docs/engineering-decisions.md`.
+- Kept code identifiers and existing file names unchanged to avoid unnecessary path churn.
+- Important files: `AGENTS.md`, `README.md`, `docs/sample-target-repo-demo-design.md`, `docs/rich-sample-demo-walkthrough.md`, `docs/source-indexing-and-embedding-plan.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: targeted wording search across README and user-facing docs returned no matches for the awkward sample-target/synthetic-target wording; `Get-Content -Encoding UTF8` confirmed README, sample project design, and sample verification guide render Korean text correctly; `git diff --check` passed with only Git line-ending warnings.
+
 ### Application Preview rename
 
 - Renamed the previous screenshot-focused document to `docs/application-preview.md`.

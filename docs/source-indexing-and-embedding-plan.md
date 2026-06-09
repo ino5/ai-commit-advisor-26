@@ -251,7 +251,7 @@ Project Chat과 RAG 화면은 다음 상태를 보여야 합니다.
 - background job complexity 없이 embedding cost를 줄일 수 있습니다.
 - cloud API usage에 대한 사용자 제어권을 유지합니다.
 - 현재 Streamlit UI와 기존 `embed_missing_chunks` 동작에 잘 맞습니다.
-- 작은 synthetic Git repo로 테스트할 수 있습니다.
+- 작은 데모용 Git 저장소로 테스트할 수 있습니다.
 
 첫 번째 구현에서는 commit sync가 embedding API를 자동 호출하게 만들지 않습니다.
 

@@ -45,6 +45,7 @@
 | P2 | Ops | Feature screenshot capture automation | Done | Feature screenshot capture automation | c7b7884 |
 | P2 | Docs | Architecture document path cleanup | Done | Architecture document path cleanup | f85df08 |
 | P2 | Docs | Application Preview rename | Done | Application Preview rename | 45e79f3 |
+| P2 | Docs | Sample project wording cleanup | Done | Sample project wording cleanup | Pending |
 
 ## P0 - Program Management UX Improvement
 
@@ -645,3 +646,20 @@ Checklist:
 - [x] Replace stale Markdown path references.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run markdown path and whitespace checks.
+
+## P2 - Sample Project Wording Cleanup
+
+Status: Done
+
+Goal:
+Make sample/demo documentation read naturally in Korean by using reader-facing `샘플 프로젝트` wording instead of literal internal repository terminology.
+
+Checklist:
+
+- [x] Add agent guidance for natural Korean sample/demo wording.
+- [x] Update README sample project wording.
+- [x] Update sample project design and verification guide prose.
+- [x] Update related engineering decision rationale.
+- [x] Keep code identifiers and file names unchanged.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run targeted wording and whitespace checks.
