@@ -161,6 +161,31 @@ If one screenshot cannot clearly show the workflow, split it into sequential scr
 
 Avoid README screenshots that mainly show a blank form, empty/default project, idle button, or pre-execution state unless that state is the feature being documented.
 
+## Verification Surface Selection
+
+Choose the cheapest verification surface that still exercises the behavior being changed.
+
+Use local `.venv` verification first for ordinary Python code, service logic, unit/integration tests, documentation-only changes, and Streamlit UI changes that do not depend on Docker runtime behavior. Typical commands:
+
+- `.\.venv\Scripts\python.exe -m compileall src app.py`
+- `.\.venv\Scripts\python.exe -m pytest -q`
+- `.\.venv\Scripts\python.exe -m streamlit run app.py`
+
+Use Docker verification when the change or bug depends on container runtime behavior, including:
+
+- `Dockerfile` or `docker-compose.yml` changes
+- container environment variables
+- DB hostnames, service healthchecks, startup migration, or deployment smoke checks
+- host-to-container volume mounts
+- repository path mapping between Windows host paths and Linux container paths
+- bugs that reproduce only in Docker or only after container startup
+
+Do not rebuild the Docker image for every app source change by default. Rebuild with `docker compose up -d --build app` only when the Docker image or container runtime is part of what must be verified.
+
+Docker build logs can be long. Prefer checking the concise command result, container health, relevant service logs, and targeted smoke checks. Inspect full build or container logs only when a failure requires them.
+
+When a screenshot or UI verification is captured from Docker, confirm the Docker runtime can access any required host resources, such as local Git repositories, model servers, mounted files, or DB services. If the same feature can behave differently in local Python and Docker, state which surface was verified.
+
 ## Commit Boundaries
 
 When committing changes, keep materially different concerns in separate commits when practical.

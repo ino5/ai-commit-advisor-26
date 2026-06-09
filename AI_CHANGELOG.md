@@ -2,6 +2,14 @@
 
 ## 2026-06-10
 
+### Verification surface selection agent policy
+
+- Added `AGENTS.md` guidance for choosing local `.venv` verification versus Docker verification based on the behavior being changed.
+- Clarified that ordinary app source changes should not trigger Docker image rebuilds by default, while Dockerfile, Compose, mount, env, startup migration, healthcheck, and container-only bugs require Docker verification.
+- Added guidance to keep Docker build log inspection targeted because build logs are long, and to state which surface was verified when local Python and Docker can differ.
+- Important files: `AGENTS.md`, `AI_CHANGELOG.md`.
+- Verification: `Get-Content -Path AGENTS.md -Encoding UTF8` confirmed the new policy text; `git diff --check` passed.
+
 ### Project Chat verified answer screenshot recapture
 
 - Re-captured the Project Chat screenshot after confirming Docker source verification was fixed.
