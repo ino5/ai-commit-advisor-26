@@ -136,9 +136,41 @@ Project Chat을 실제 LLM 모드로 검증하는 권장 순서:
 
 LM Studio 같은 로컬 embedding 서버는 한 번에 많은 chunk를 처리하면 CPU/GPU와 메모리를 오래 점유할 수 있습니다. 그래서 현재 소스 재인덱싱과 embedding 생성을 분리합니다.
 
+- `RAG 검색 > 최근 Git sync 변경 파일만 인덱싱`: 최근 indexed HEAD 이후 Git Sync가 DB에 저장한 changed file path만 source_file chunk로 갱신합니다. 일반적인 개발 흐름에서는 이 버튼을 먼저 사용합니다. embedding은 자동 실행하지 않습니다.
+- `Project Chat > 최근 Git sync 변경 파일만 인덱싱`: Chat 화면에서 같은 증분 인덱싱을 실행합니다. 답변 전 source index 상태가 오래되었을 때 빠르게 최신 sync 변경분만 반영할 수 있습니다.
 - `Project Chat > 현재 소스 다시 인덱싱`: 현재 HEAD 기준으로 source_file chunk만 갱신합니다. embedding은 자동 실행하지 않습니다.
 - `RAG 검색 > 현재 소스 다시 인덱싱`: 기본값은 chunk 갱신만 수행합니다. `재인덱싱 후 embedding도 바로 생성`을 직접 체크한 경우에만 제한 수량으로 embedding을 생성합니다.
 - `RAG 검색 > Embedding`: 남은 pending chunk를 별도로 처리할 때 사용합니다. 화면에서 남은 작업 수와 예상 소요 시간을 확인한 뒤 여러 번 나눠 실행하세요.
+
+### 증분 인덱싱과 전체 재인덱싱 선택 기준
+
+| 상황 | 권장 action | 이유 |
+|---|---|---|
+| Git Sync로 최신 commit을 가져온 직후 | `최근 Git sync 변경 파일만 인덱싱` | 변경된 파일만 읽으므로 대형 repo에서도 빠르고 embedding 비용이 자동 발생하지 않습니다. |
+| 특정 파일 수정, 삭제, rename만 반영하면 되는 경우 | `최근 Git sync 변경 파일만 인덱싱` | `Added`, `Modified`, `Deleted`, `Renamed` path만 chunk 교체/삭제합니다. |
+| 처음 source_file index를 만드는 경우 | `현재 소스 다시 인덱싱` | 기준 chunk가 없으면 전체 source file scan이 필요합니다. |
+| branch를 크게 바꾸었거나 include/exclude/chunking rule이 바뀐 경우 | `현재 소스 다시 인덱싱` | 최근 commit file 목록만으로는 전체 repository snapshot을 보정하기 어렵습니다. |
+| stale/invalid chunk가 많이 보이거나 삭제된 파일이 계속 evidence에 나타나는 경우 | `현재 소스 다시 인덱싱` | 전체 scan과 검증 cleanup으로 오래된 chunk/vector를 정리합니다. |
+| chunk는 최신인데 검색 결과가 없거나 embedding model을 바꾼 경우 | `RAG 검색 > Embedding` | 현재 model 기준 missing vector만 제한 수량으로 생성해야 합니다. |
+
+증분 인덱싱의 처리 방식은 다음과 같습니다.
+
+1. 화면에서 현재 `Current HEAD`, `Indexed HEAD`, stale/invalid chunk 수를 확인합니다.
+2. Git Sync가 최신 commit을 저장한 상태라면 `최근 Git sync 변경 파일만 인덱싱`을 실행합니다.
+3. app은 최근 indexed HEAD 이후 DB에 저장된 `CommitFile` row를 읽습니다.
+4. source-like text/code file만 chunk 대상으로 삼고, binary/image/Excel/cache/virtualenv/oversized file은 건너뜁니다.
+5. 수정된 파일은 기존 path chunk와 vector를 제거한 뒤 새 chunk를 만들고 `embedding_status=pending`으로 둡니다.
+6. 삭제된 파일은 해당 path의 chunk와 vector를 제거합니다.
+7. rename은 old path를 제거하고 new path가 source-like file이면 새 chunk를 만듭니다.
+8. 검색 품질 확인이 필요하면 `RAG 검색 > Embedding`에서 pending chunk를 작은 limit으로 나누어 처리합니다.
+
+중요한 비용 제어 규칙:
+
+- Git Sync는 commit/diff metadata만 저장하며 embedding API를 호출하지 않습니다.
+- `최근 Git sync 변경 파일만 인덱싱`은 chunk만 갱신하며 embedding API를 호출하지 않습니다.
+- Project Chat의 source index 버튼도 embedding API를 호출하지 않습니다.
+- embedding API 호출은 `RAG 검색 > Embedding` 또는 RAG Index 화면에서 사용자가 명시적으로 선택한 제한 수량에서만 발생합니다.
+- embedding provider/model/dimension을 바꾸면 기존 vector를 조용히 재사용하지 말고 현재 model 기준 missing vector를 다시 생성하세요.
 
 재인덱싱이나 embedding 중 앱 또는 LM Studio를 강제 종료하면 PostgreSQL은 열린 transaction을 롤백합니다. 다만 이미 commit된 chunk/vector와 아직 처리되지 않은 chunk가 섞여 `pending` 또는 `failed` 상태가 남을 수 있습니다. 이 상태는 부분 완료 상태이며, RAG 화면에서 인덱스 상태를 확인한 뒤 embedding을 제한 수량으로 이어서 실행하면 됩니다.
 

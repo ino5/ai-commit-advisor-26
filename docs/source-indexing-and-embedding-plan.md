@@ -255,6 +255,39 @@ Project Chat과 RAG 화면은 다음 상태를 보여야 합니다.
 
 첫 번째 구현에서는 commit sync가 embedding API를 자동 호출하게 만들지 않습니다.
 
+## 구현된 MVP 동작
+
+현재 구현된 첫 번째 버전은 `manual incremental indexing`입니다. 사용자가 Git Sync를 실행해 commit과 `CommitFile` row를 저장한 뒤, RAG 검색 또는 Project Chat 화면에서 `최근 Git sync 변경 파일만 인덱싱`을 누르면 최근 indexed HEAD 이후 DB에 저장된 변경 파일만 source_file chunk로 갱신합니다.
+
+증분 인덱싱은 다음 원칙을 지킵니다.
+
+- repository 전체를 `rglob("*")`로 다시 스캔하지 않고, Git sync가 저장한 changed file path만 처리합니다.
+- `Added`, `Modified`, `Copied`는 해당 파일이 source-like text/code file일 때만 기존 path chunk를 교체하고 새 chunk를 만듭니다.
+- `Deleted`는 해당 path의 `source_file` chunk와 연결된 vector를 함께 제거합니다.
+- `Renamed`는 old path chunk/vector를 제거하고 new path가 source-like file이면 새 chunk를 만듭니다. 기존 DB에는 old path 컬럼이 없으므로 API 입력의 `old_file_path`를 우선 사용하고, `CommitFile.diff_text`의 `rename from ...` line을 보조적으로 읽습니다.
+- binary, image, Excel, virtualenv, cache, oversized file, empty file, repository 밖으로 벗어나는 path는 chunk를 만들지 않고 skipped count로 처리합니다.
+- 새 chunk metadata는 `embedding_status=pending`으로 저장합니다.
+- `embed_after_refresh` 기본값은 `False`입니다. 즉 증분 인덱싱 버튼은 embedding API를 자동 호출하지 않습니다.
+- embedding은 `RAG 검색 > Embedding`에서 현재 embedding model 기준 missing vector만 제한 수량으로 생성합니다.
+
+이 MVP는 Git sync 직후 자동으로 실행되지 않습니다. Cloud embedding 비용과 local LM Studio CPU/GPU 부하를 사용자가 통제할 수 있도록 수동 action으로 둡니다. 이후 자동 모드를 추가하더라도 opt-in, batch limit, 예상 runtime 안내가 필요합니다.
+
+사용자가 선택할 수 있는 action은 다음과 같이 구분합니다.
+
+| Action | 처리 범위 | embedding 호출 | 권장 상황 |
+|---|---|---|---|
+| `최근 Git sync 변경 파일만 인덱싱` | 최근 indexed HEAD 이후 Git sync에 저장된 changed file path | 자동 호출 안 함 | 일반적인 commit sync 후 최신 변경분만 반영 |
+| `현재 소스 다시 인덱싱` | 현재 include/exclude rule에 맞는 repository 전체 source file scan | Project Chat에서는 호출 안 함, RAG에서는 사용자가 체크한 경우만 제한 호출 | 최초 구축, branch 대폭 변경, stale/invalid chunk가 많음, 복구 필요 |
+| `RAG 검색 > Embedding` | vector가 없는 selected source_type chunk | 사용자가 지정한 limit만 호출 | chunk 갱신 뒤 RAG/Project Chat 검색 품질 확인 |
+
+현재 구현 파일:
+
+- `src/rag/source_index_service.py`: `ChangedSourceFile`, `refresh_changed_source_files`, `get_changed_source_files_since_latest_index`
+- `src/rag/chunker.py`: `build_source_file_chunks_for_paths`
+- `src/ui/rag_page.py`: RAG Index tab의 manual incremental indexing button
+- `src/ui/project_chat_page.py`: Project Chat 상단 source index status의 manual incremental indexing button
+- `tests/test_incremental_source_index_service.py`: modified, deleted, renamed, non-source changed file 검증
+
 ## 구현 전 확인할 파일
 
 - `src/services/git_service.py`

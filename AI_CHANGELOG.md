@@ -2,6 +2,17 @@
 
 ## 2026-06-09
 
+### Incremental source indexing and embedding cost control
+
+- Added manual incremental source indexing for `source_file` chunks so RAG and Project Chat can refresh only Git Sync changed files instead of scanning the whole repository during normal work.
+- Added changed-file handling for added, modified, copied, deleted, and renamed files. Deleted and replaced source chunks now remove related vectors so stale file evidence does not remain searchable.
+- Kept embedding generation explicit: incremental indexing and Project Chat source refresh leave new chunks as `embedding_status=pending`; users generate missing vectors from `RAG 검색 > Embedding` with a bounded limit.
+- Added current embedding-model missing vector count to source index status and surfaced it in RAG and Project Chat.
+- Added RAG and Project Chat buttons for `최근 Git sync 변경 파일만 인덱싱`, while keeping full `현재 소스 다시 인덱싱` as the recovery/initial-build action.
+- Expanded Korean operations and AI technical documentation so teammates can distinguish Git Sync, incremental indexing, full re-indexing, and embedding generation from documentation alone.
+- Important files: `src/rag/source_index_service.py`, `src/rag/chunker.py`, `src/ui/rag_page.py`, `src/ui/project_chat_page.py`, `tests/test_incremental_source_index_service.py`, `docs/setup-and-operations.md`, `docs/ai-technical-overview.md`, `docs/source-indexing-and-embedding-plan.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m compileall src tests` passed; `.\.venv\Scripts\python.exe -m pytest -q` passed with 78 tests; Browser verification against `http://localhost:8511` confirmed the new incremental indexing controls render on RAG and Project Chat.
+
 ### Agent documentation rationale guidance
 
 - Added AGENTS guidance that feature, architecture, workflow, and AI behavior documentation should capture the user problem, operational gap, design rationale, tradeoffs, and remaining limitations, not only implementation details.
