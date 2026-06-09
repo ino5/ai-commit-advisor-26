@@ -1,8 +1,8 @@
-# Screenshot Gallery
+# Application Preview
 
-이 문서는 README를 가볍게 유지하기 위해 기능별 화면 캡처를 따로 모아 둔 갤러리입니다. 캡처는 샘플 프로젝트 `AAA Sample Shop Rich Demo` 기준의 의미 있는 workflow 상태를 우선합니다.
+이 문서는 README를 가볍게 유지하기 위해 주요 화면과 기능 상태를 미리 볼 수 있도록 정리한 Application Preview입니다. 캡처는 샘플 프로젝트 `AAA Sample Shop Rich Demo` 기준의 의미 있는 workflow 상태를 우선합니다.
 
-## Feature Screenshots
+## Preview Screens
 
 <details>
 <summary>Home</summary>

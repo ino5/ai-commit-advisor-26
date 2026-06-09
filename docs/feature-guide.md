@@ -1,6 +1,6 @@
 # 기능 가이드
 
-이 문서는 AI Commit Advisor의 주요 기능을 화면 흐름 기준으로 설명합니다. 전체 화면 예시는 [Screenshot Gallery](screenshot-gallery.md)를 참고하세요.
+이 문서는 AI Commit Advisor의 주요 기능을 화면 흐름 기준으로 설명합니다. 전체 화면 예시는 [Application Preview](application-preview.md)를 참고하세요.
 
 ## AI / LLM 활용 흐름
 

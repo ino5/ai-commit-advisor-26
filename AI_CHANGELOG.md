@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Application Preview rename
+
+- Renamed the previous screenshot-focused document to `docs/application-preview.md`.
+- Updated README, Feature Guide, setup/operations guidance, `AGENTS.md`, and engineering decision references to use `Application Preview`.
+- Renamed the agent screenshot policy section to `Application Preview Screenshot Guidance`.
+- Replaced stale Markdown path references so current documentation searches point to the new document path.
+- Important files: `docs/application-preview.md`, `README.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `docs/engineering-decisions.md`, `AGENTS.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: legacy gallery naming and path searches returned no matches; local `Test-Path` checks passed for `docs\application-preview.md` and updated Markdown files; `Get-Content -Path docs\application-preview.md -Encoding UTF8` rendered the renamed Korean document correctly; `git diff --check` passed with only Git line-ending warnings.
+
 ### Architecture document path cleanup
 
 - Moved the root architecture guide to `docs/architecture.md` so detailed project documentation lives under `docs/`.
@@ -72,8 +81,8 @@
 ### Project Chat persisted history screenshot refresh
 
 - Refreshed the Project Chat screenshot so the gallery shows the newly added persisted `대화 이력`, saved question/answer rendering, verified current source evidence, and `근거 복사용 Markdown` export area.
-- Added a short screenshot-gallery caption describing the captured Project Chat state.
-- Important files: `docs/images/features/project-chat.png`, `docs/screenshot-gallery.md`, `AI_CHANGELOG.md`.
+- Added a short Application Preview caption describing the captured Project Chat state.
+- Important files: `docs/images/features/project-chat.png`, `docs/application-preview.md`, `AI_CHANGELOG.md`.
 - Verification: Playwright captured `docs/images/features/project-chat.png` from `http://localhost:8501` after verifying `대화 이력`, `결제금액 검증은 어디에서 수행되나요?`, `근거 복사용 Markdown`, and answer evidence were visible; visually inspected the refreshed screenshot; `git diff --check` passed.
 
 ### Korean text encoding agent policy
@@ -170,7 +179,7 @@
 - Aligned README documentation links, screenshot gallery labels, and architecture/menu wording with the current Korean sidebar structure.
 - Added an agent instruction that user-facing documentation should use Korean for explanatory prose by default without forcing familiar English documentation labels into Korean.
 - Kept internal agent/task-management documents such as `AGENTS.md`, `ROADMAP.md`, and historical `AI_CHANGELOG.md` entries out of the translation scope except for the new roadmap/changelog bookkeeping.
-- Important files: `AGENTS.md`, `README.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, `docs/feature-guide.md`, `docs/rich-sample-demo-walkthrough.md`, `docs/sample-target-repo-demo-design.md`, `docs/screenshot-gallery.md`, `docs/setup-and-operations.md`, `docs/source-indexing-and-embedding-plan.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Important files: `AGENTS.md`, `README.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, `docs/feature-guide.md`, `docs/rich-sample-demo-walkthrough.md`, `docs/sample-target-repo-demo-design.md`, `docs/application-preview.md`, `docs/setup-and-operations.md`, `docs/source-indexing-and-embedding-plan.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
 - Verification: `git diff --check` passed; project Markdown link sanity check passed.
 
 ### Artifact management sidebar grouping
@@ -179,7 +188,7 @@
 - Renamed the Git-author developer page menu label to `개발자 현황` and shortened artifact page labels so upload/direct-management screens are easier to find.
 - Updated the feature guide and screenshot gallery labels to match the new sidebar grouping.
 - Refreshed the README and screenshot gallery Home images so the sidebar shows the new artifact management grouping.
-- Important files: `app.py`, `docs/feature-guide.md`, `docs/screenshot-gallery.md`, `docs/images/ai-commit-advisor-home.png`, `docs/images/features/home.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Important files: `app.py`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/images/ai-commit-advisor-home.png`, `docs/images/features/home.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
 - Verification: `.venv\Scripts\python.exe -m py_compile app.py`, `.venv\Scripts\python.exe scripts\verify_home_ui.py --url http://localhost:8510 --screenshot docs\images\features\home.png`, `git diff --check`, and in-app Browser verification against `http://localhost:8510` passed.
 
 ### Project Chat history roadmap status correction
@@ -219,7 +228,7 @@
 
 - Updated README, Feature Guide, and AI technical overview to explain standard terminology upload and deterministic Korean query expansion.
 - Added the standard terminology page to the screenshot gallery.
-- Important files: `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/screenshot-gallery.md`, `docs/images/features/standard-terms.png`, `docs/images/features/project-chat.png`, `AI_CHANGELOG.md`.
+- Important files: `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/application-preview.md`, `docs/images/features/standard-terms.png`, `docs/images/features/project-chat.png`, `AI_CHANGELOG.md`.
 - Verification: refreshed screenshots through the local Streamlit app; `git diff --check` passed.
 
 ### Project Chat answer formatting and evidence context
@@ -282,8 +291,8 @@
 
 - README를 짧은 진입 문서로 재구성하고, 상세 스크린샷/기능 설명/설치 운영 가이드를 별도 문서로 분리했습니다.
 - GitHub에서 동작하는 상대 링크로 README의 Documentation 섹션을 구성해 필요한 문서를 바로 찾을 수 있게 했습니다.
-- 기능별 화면 캡처는 `docs/screenshot-gallery.md`, 기능 흐름 설명은 `docs/feature-guide.md`, 설치/LLM/RAG 운영 기준은 `docs/setup-and-operations.md`로 이동했습니다.
-- Important files: `README.md`, `docs/screenshot-gallery.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 기능별 화면 캡처는 `docs/application-preview.md`, 기능 흐름 설명은 `docs/feature-guide.md`, 설치/LLM/RAG 운영 기준은 `docs/setup-and-operations.md`로 이동했습니다.
+- Important files: `README.md`, `docs/application-preview.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
 - Verification: markdown/link sanity checks and `git diff --check` passed.
 
 ### README feature screenshot coverage refresh

@@ -44,6 +44,7 @@
 | P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log | e23334a |
 | P2 | Ops | Feature screenshot capture automation | Done | Feature screenshot capture automation | c7b7884 |
 | P2 | Docs | Architecture document path cleanup | Done | Architecture document path cleanup | f85df08 |
+| P2 | Docs | Application Preview rename | Done | Application Preview rename | Pending |
 
 ## P0 - Program Management UX Improvement
 
@@ -230,7 +231,7 @@ Checklist:
 - [x] Adjust source evidence rendering so screenshots can show answer plus key evidence without looking empty.
 - [x] Add focused tests for JSON wrapper cleanup and citation line-range preservation.
 - [x] Refresh the Project Chat README screenshot only after real local LLM/RAG verification succeeds.
-- [x] Update README, Screenshot Gallery, Feature Guide, and AI technical overview as needed.
+- [x] Update README, Application Preview, Feature Guide, and AI technical overview as needed.
 - [x] Update `AI_CHANGELOG.md`.
 
 ## P1 - Source File Re-Index Warning And One-Click Refresh
@@ -523,7 +524,7 @@ Make README easier for teammates to scan by turning it into a concise entry docu
 Checklist:
 
 - [x] Keep README focused on overview, quick start, sample project entry points, representative screenshots, and documentation links.
-- [x] Move feature screenshots into `docs/screenshot-gallery.md`.
+- [x] Move feature screenshots into `docs/application-preview.md`.
 - [x] Move feature workflow explanations into `docs/feature-guide.md`.
 - [x] Move setup, LLM/embedding, RAG operations, and verification commands into `docs/setup-and-operations.md`.
 - [x] Use GitHub-friendly relative links from README to each supporting document.
@@ -599,7 +600,7 @@ Checklist:
 Status: Done
 
 Goal:
-Make README and Screenshot Gallery capture work more repeatable by using feature-based Playwright scenarios instead of one-off manual browser flows.
+Make README and Application Preview capture work more repeatable by using feature-based Playwright scenarios instead of one-off manual browser flows.
 
 Checklist:
 
@@ -625,5 +626,22 @@ Checklist:
 - [x] Update agent documentation checklist and rationale guidance.
 - [x] Replace stale architecture document path references in Markdown.
 - [x] Record the documentation structure decision.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run markdown path and whitespace checks.
+
+## P2 - Application Preview Rename
+
+Status: Done
+
+Goal:
+Rename the screenshot-focused documentation to Application Preview so the document reads like an app preview instead of a raw image collection.
+
+Checklist:
+
+- [x] Move the screenshot-focused document to `docs/application-preview.md`.
+- [x] Update README and feature guide links.
+- [x] Update `AGENTS.md` screenshot guidance naming.
+- [x] Update setup/operations and engineering decision references.
+- [x] Replace stale Markdown path references.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run markdown path and whitespace checks.

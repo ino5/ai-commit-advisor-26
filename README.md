@@ -70,14 +70,14 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 
 ## 스크린샷
 
-대표 화면은 아래와 같습니다. 기능별 전체 캡처는 [Screenshot Gallery](docs/screenshot-gallery.md)에서 확인할 수 있습니다.
+대표 화면은 아래와 같습니다. 주요 화면 미리보기는 [Application Preview](docs/application-preview.md)에서 확인할 수 있습니다.
 
 ![Home](docs/images/features/home.png)
 
 ## 문서
 
 - [기능 가이드](docs/feature-guide.md): 주요 화면, 기능 흐름, 분석 결과가 무엇을 의미하는지 설명합니다.
-- [Screenshot Gallery](docs/screenshot-gallery.md): 샘플 프로젝트 기준 기능별 화면 캡처를 모아 둔 갤러리입니다.
+- [Application Preview](docs/application-preview.md): 샘플 프로젝트 기준 주요 화면과 기능 상태를 미리 확인할 수 있습니다.
 - [설치와 운영](docs/setup-and-operations.md): 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 가이드입니다.
 - [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md): 샘플 프로젝트로 주요 기능을 확인할 때 참고하는 권장 실행 흐름입니다.
 - [샘플 대상 저장소 데모 설계](docs/sample-target-repo-demo-design.md): 샘플 Git 저장소 목표, commit 시나리오, 기능별 데모 포인트입니다.

@@ -116,7 +116,7 @@ Do not force every heading, label, or familiar product/documentation term into K
 - environment variables
 - API names
 - model/provider names
-- common documentation labels such as `Quick Start` or `Screenshot Gallery` when they read more naturally
+- common documentation labels such as `Quick Start` or `Application Preview` when they read more naturally
 - table, column, class, function, and module names
 - UI product names that are intentionally English in the app
 
@@ -171,9 +171,9 @@ Use this checklist:
 
 If no documentation update is needed, mention that in the final response or commit notes.
 
-## README Screenshot Guidance
+## Application Preview Screenshot Guidance
 
-When refreshing README screenshots, capture the feature value rather than only the initial or empty state.
+When refreshing README or Application Preview screenshots, capture the feature value rather than only the initial or empty state.
 
 Prefer screenshots that show a meaningful workflow state, such as:
 
