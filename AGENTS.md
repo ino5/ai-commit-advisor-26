@@ -101,7 +101,7 @@ The documentation should explain:
 - important tradeoffs, boundaries, and remaining limitations
 - related verification or failure-history lessons, if any
 
-Prefer updating an existing relevant document before creating a new one. Create a dedicated `docs/*.md` file only when the feature is large enough that `README.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `README_ARCHITECTURE.md`, or `docs/ai-technical-overview.md` would become too broad.
+Prefer updating an existing relevant document before creating a new one. Create a dedicated `docs/*.md` file only when the feature is large enough that `README.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `docs/architecture.md`, or `docs/ai-technical-overview.md` would become too broad.
 
 ## User-Facing Documentation Language
 
@@ -162,7 +162,7 @@ Use this checklist:
 - `ROADMAP.md`: required when starting or completing roadmap-tracked work, or when the work affects product direction.
 - `README.md`: required when setup, usage, workflows, screens, sample data, commands, or user-facing behavior changes.
 - Feature rationale documentation: required when a meaningful new feature, workflow, AI behavior, operational behavior, or major UX change is introduced.
-- `README_ARCHITECTURE.md`: required when architecture, module boundaries, service responsibilities, or data flow changes.
+- `docs/architecture.md`: required when architecture, module boundaries, service responsibilities, or data flow changes.
 - `docs/ai-technical-overview.md`: required when Mapping, RAG, Project Chat, Code Review, AI Progress, Risk Analysis, embedding, or LLM behavior changes.
 - `docs/engineering-decisions.md`: required when a meaningful engineering, operations, verification, automation, deployment, or documentation-structure decision is introduced or changed.
 - `docs/db-migrations.md`: required when database migration process or schema management guidance changes.

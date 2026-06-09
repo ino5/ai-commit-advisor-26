@@ -43,6 +43,7 @@
 | P2 | Ops | Application Dockerfile and deployment guide | Done | Application Dockerfile and deployment guide | d9944f0 |
 | P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log | e23334a |
 | P2 | Ops | Feature screenshot capture automation | Done | Feature screenshot capture automation | c7b7884 |
+| P2 | Docs | Architecture document path cleanup | Done | Architecture document path cleanup | Pending |
 
 ## P0 - Program Management UX Improvement
 
@@ -609,3 +610,20 @@ Checklist:
 - [x] Update engineering decision follow-up notes.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run focused script and documentation verification.
+
+## P2 - Architecture Document Path Cleanup
+
+Status: Done
+
+Goal:
+Move the architecture guide into the `docs/` documentation set so the README hub and agent documentation checklist use one consistent document location.
+
+Checklist:
+
+- [x] Move the root architecture guide to `docs/architecture.md`.
+- [x] Update README document hub link.
+- [x] Update agent documentation checklist and rationale guidance.
+- [x] Replace stale architecture document path references in Markdown.
+- [x] Record the documentation structure decision.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run markdown path and whitespace checks.

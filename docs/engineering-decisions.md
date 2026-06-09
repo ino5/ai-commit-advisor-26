@@ -92,3 +92,34 @@ README와 Screenshot Gallery의 화면 캡처는 단순한 장식이 아니라, 
 - [Verification Surface Selection](../AGENTS.md#verification-surface-selection)
 - [Screenshot Gallery](screenshot-gallery.md)
 - [Failure History](failure-history.md)
+
+## 2026-06-10 - 아키텍처 문서 경로 정리
+
+### 배경
+
+README는 프로젝트 진입점이고, 상세 문서는 대부분 `docs/` 아래에 모여 있습니다. 그런데 아키텍처 문서만 루트에 별도 파일로 남아 있어 문서 허브 구조에서 튀고, 새 문서를 찾을 때 일관성이 떨어졌습니다.
+
+### 결정
+
+아키텍처 문서를 `docs/architecture.md`로 이동하고, README 문서 허브와 `AGENTS.md`의 문서 체크리스트도 새 경로를 기준으로 정리합니다.
+
+### 이유
+
+- 루트에는 README와 프로젝트 설정 파일을 중심으로 두고, 세부 가이드는 `docs/`에 모으는 편이 탐색하기 쉽습니다.
+- `docs/feature-guide.md`, `docs/setup-and-operations.md`, `docs/ai-technical-overview.md`와 같은 문서 구조와 맞습니다.
+- 이후 architecture, data flow, service responsibility를 수정할 때 어느 파일을 업데이트해야 하는지 더 명확합니다.
+
+### 검토한 대안
+
+- 루트의 아키텍처 문서 유지: 기존 링크를 바꾸지 않아도 되지만 문서 구조의 어색함이 계속 남습니다.
+- 파일명을 `ARCHITECTURE.md`로만 축약: 루트 파일명은 나아지지만 상세 문서를 `docs/`에 모은다는 방향과는 맞지 않습니다.
+
+### 영향과 tradeoff
+
+- 기존 루트 경로를 직접 열던 사람은 새 경로를 사용해야 합니다.
+- README와 agent policy가 새 경로를 안내하므로 문서 허브를 통해 접근하는 흐름은 더 단순해집니다.
+
+### 관련 문서
+
+- [Architecture](architecture.md)
+- [README 문서 허브](../README.md#문서)

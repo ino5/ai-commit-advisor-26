@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Architecture document path cleanup
+
+- Moved the root architecture guide to `docs/architecture.md` so detailed project documentation lives under `docs/`.
+- Updated README and `AGENTS.md` references to use the new architecture document path.
+- Replaced stale architecture document path references in Markdown history so current path searches do not point to the removed root file.
+- Recorded the documentation structure rationale in `docs/engineering-decisions.md`.
+- Important files: `docs/architecture.md`, `README.md`, `AGENTS.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `rg -n "README_ARCHITECTURE\\.md" .` returned no matches; `rg -n "docs/architecture\\.md|architecture\\.md|Architecture document path cleanup|아키텍처" README.md AGENTS.md AI_CHANGELOG.md ROADMAP.md docs` confirmed the new references; local `Test-Path` checks passed for `docs\architecture.md` and updated Markdown files; `Get-Content -Path docs\architecture.md -Encoding UTF8` rendered the moved Korean document correctly; `git diff --check` passed with only Git line-ending warnings.
+
 ### Feature screenshot capture automation
 
 - Added `scripts/capture_feature_screenshot.py`, an extensible Playwright-based capture tool with starter scenarios for `home` and `project-chat`.
@@ -50,7 +59,7 @@
 - Added focused tests for repository path mapping.
 - Documented the Docker host repo mount behavior in setup/operations, architecture, and failure history.
 - Re-captured the Project Chat screenshot after Docker source verification was restored so the answer shows verified `PaymentService.java` evidence instead of an insufficient-evidence state.
-- Important files: `Dockerfile`, `src/utils/config.py`, `src/utils/repo_path.py`, `src/services/git_service.py`, `src/rag/source_verifier.py`, `src/rag/source_index_service.py`, `src/rag/chunker.py`, `tests/test_repo_path.py`, `docker-compose.yml`, `docs/setup-and-operations.md`, `README_ARCHITECTURE.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- Important files: `Dockerfile`, `src/utils/config.py`, `src/utils/repo_path.py`, `src/services/git_service.py`, `src/rag/source_verifier.py`, `src/rag/source_index_service.py`, `src/rag/chunker.py`, `tests/test_repo_path.py`, `docker-compose.yml`, `docs/setup-and-operations.md`, `docs/architecture.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
 - Verification: `.\\.venv\\Scripts\\python.exe -m py_compile src/utils/config.py src/utils/repo_path.py src/services/git_service.py src/rag/source_verifier.py src/rag/source_index_service.py src/rag/chunker.py` passed; `.\\.venv\\Scripts\\python.exe -m pytest tests/test_repo_path.py tests/test_source_file_rag.py tests/test_source_index_service.py tests/test_project_chat_service.py -q` passed; `docker compose config` passed; Docker app verified the sample Project Chat source index with matching Current HEAD and Indexed HEAD, invalid/stale/mismatch counts at 0, and visible `PaymentService.java` answer evidence; `git diff --check` passed.
 
 ### CI manual rerun trigger for hosted runner failures
@@ -92,7 +101,7 @@
 - Documented Docker deployment rationale, environment variables, migration startup behavior, and smoke-check commands in the setup/operations guide.
 - Updated README Quick Start to distinguish local Python execution with `docker compose up -d postgres` from full Docker app execution with `docker compose up -d --build`.
 - Updated the architecture document with the Docker deployment structure and startup migration flow.
-- Important files: `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `README.md`, `README_ARCHITECTURE.md`, `docs/setup-and-operations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Important files: `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `README.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
 - Verification: `docker compose config` passed; `docker build -t ai-commit-advisor:local .` passed; `docker compose up -d --build app` passed; `Invoke-WebRequest http://localhost:8501/_stcore/health -UseBasicParsing` returned HTTP 200; `docker compose ps` showed `ai_commit_advisor_app` and `ai_commit_advisor_postgres` healthy; `docker exec ai_commit_advisor_postgres pg_isready -U ai_user -d ai_commit_advisor` reported accepting connections.
 
 ### Project Chat database history and citation export
@@ -102,7 +111,7 @@
 - Added a Project Chat history service for session creation, message persistence, UI conversion, and copy-friendly Markdown citation export.
 - Updated the Project Chat UI with project-level `대화 이력`, `새 대화`, persisted message rendering, and `근거 복사용 Markdown` for assistant answers.
 - Updated README, feature guide, architecture, setup/operations, and AI technical overview documentation to explain persisted chat history, citation export, and traceability.
-- Important files: `src/db/models.py`, `migrations/versions/20260610_0004_add_project_chat_sessions.py`, `src/rag/chat_history_service.py`, `src/ui/project_chat_page.py`, `tests/test_project_chat_history_service.py`, `README.md`, `README_ARCHITECTURE.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `docs/ai-technical-overview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Important files: `src/db/models.py`, `migrations/versions/20260610_0004_add_project_chat_sessions.py`, `src/rag/chat_history_service.py`, `src/ui/project_chat_page.py`, `tests/test_project_chat_history_service.py`, `README.md`, `docs/architecture.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `docs/ai-technical-overview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
 - Verification: `.\\.venv\\Scripts\\python.exe -m py_compile src/db/models.py src/rag/chat_history_service.py src/ui/project_chat_page.py migrations/versions/20260610_0004_add_project_chat_sessions.py` passed; `.\\.venv\\Scripts\\python.exe -m compileall src tests` passed; `.\\.venv\\Scripts\\python.exe -m pytest -q` passed with 80 tests; `git diff --check` passed without whitespace errors; Browser verification against `http://localhost:8512` confirmed Project Chat history controls render.
 
 ### Feature rationale documentation policy
@@ -161,7 +170,7 @@
 - Aligned README documentation links, screenshot gallery labels, and architecture/menu wording with the current Korean sidebar structure.
 - Added an agent instruction that user-facing documentation should use Korean for explanatory prose by default without forcing familiar English documentation labels into Korean.
 - Kept internal agent/task-management documents such as `AGENTS.md`, `ROADMAP.md`, and historical `AI_CHANGELOG.md` entries out of the translation scope except for the new roadmap/changelog bookkeeping.
-- Important files: `AGENTS.md`, `README.md`, `README_ARCHITECTURE.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, `docs/feature-guide.md`, `docs/rich-sample-demo-walkthrough.md`, `docs/sample-target-repo-demo-design.md`, `docs/screenshot-gallery.md`, `docs/setup-and-operations.md`, `docs/source-indexing-and-embedding-plan.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Important files: `AGENTS.md`, `README.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, `docs/feature-guide.md`, `docs/rich-sample-demo-walkthrough.md`, `docs/sample-target-repo-demo-design.md`, `docs/screenshot-gallery.md`, `docs/setup-and-operations.md`, `docs/source-indexing-and-embedding-plan.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
 - Verification: `git diff --check` passed; project Markdown link sanity check passed.
 
 ### Artifact management sidebar grouping
@@ -476,7 +485,7 @@
 
 ### Mapping 피드백 리뷰 큐 문서 정리
 
-- `README_ARCHITECTURE.md`에 `mapping_feedback_service.py` 역할, Mapping 피드백 리뷰 큐 흐름, 주요 서비스 목록을 최신 구현에 맞게 추가했습니다.
+- `docs/architecture.md`에 `mapping_feedback_service.py` 역할, Mapping 피드백 리뷰 큐 흐름, 주요 서비스 목록을 최신 구현에 맞게 추가했습니다.
 - `docs/ai-technical-overview.md`의 traceability 설명에 매핑 리뷰 큐가 피드백 미완료, 판단불가, 낮은 관련도, 비관련 판정, 근거 부족 후보를 우선 검토하도록 돕는다는 내용을 추가했습니다.
 - 검증: 문서 변경만 수행해 테스트는 생략했습니다.
 
@@ -493,7 +502,7 @@
 ### AI Progress 문서 설명 정리
 
 - `README.md` 주요 기능 목록에 AI Progress가 계획 진척도, 매핑 기반 AI 진척도, 저장된 프로그램 단위 구현상태 분석 요약을 함께 비교한다는 설명을 추가했습니다.
-- `README_ARCHITECTURE.md`의 AI Progress 화면 역할, 처리 흐름, AI 진척도 계산 규칙, 주요 UI/서비스 설명을 최신 구현에 맞게 정리했습니다.
+- `docs/architecture.md`의 AI Progress 화면 역할, 처리 흐름, AI 진척도 계산 규칙, 주요 UI/서비스 설명을 최신 구현에 맞게 정리했습니다.
 - 저장된 `program_implementation_status` 결과는 업무 검토용 요약 근거이며 AI 진척도/진척도 차이/리스크 조건 계산을 대체하지 않는다는 점을 문서에 명시했습니다.
 - 검증: 문서 변경만 수행해 테스트는 생략했습니다.
 
@@ -554,7 +563,7 @@
 - Project Chat의 재인덱싱은 chunk만 갱신하고, embedding 생성은 RAG 화면의 별도 선택 또는 Embedding 탭에서 제한 수량으로 실행하도록 분리했습니다.
 - source_file refresh가 기존 chunk/vector를 먼저 전체 삭제하지 않고, 현재 HEAD 기준 chunk 생성 후 검증 불가 chunk/vector만 정리하도록 바꿨습니다.
 - 갑작스러운 종료 시 기존 인덱스가 먼저 비워지는 위험을 줄이고, 삭제된 파일 근거는 성공적인 chunk 갱신 이후 제거하도록 했습니다.
-- `README.md`, `README_ARCHITECTURE.md`, `docs/ai-technical-overview.md`의 재인덱싱 설명을 안전한 동작 기준으로 수정했습니다.
+- `README.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`의 재인덱싱 설명을 안전한 동작 기준으로 수정했습니다.
 - 검증: `.venv\Scripts\python.exe -m pytest -q` 통과(`31 passed`), `.venv\Scripts\python.exe -m compileall app.py src` 통과.
 
 ### source_file 인덱스 상태 확인과 원클릭 재인덱싱
@@ -563,7 +572,7 @@
 - `src/rag/source_index_service.py`를 추가해 source_file 인덱스 상태 계산과 현재 HEAD 기준 재인덱싱을 공통 서비스로 분리했습니다.
 - `현재 소스 다시 인덱싱` 버튼은 현재 Git HEAD 기준 source_file chunk를 갱신하고 검증되지 않는 오래된 chunk/vector를 정리합니다. embedding 자동 생성은 이후 안전장치 보완에서 기본 비활성화했습니다.
 - 삭제된 파일이나 수정된 라인의 오래된 근거가 Project Chat 답변에 남지 않도록 재인덱싱 경로를 추가했습니다.
-- `README.md`, `README_ARCHITECTURE.md`, `docs/ai-technical-overview.md`에 소스 인덱스 상태 확인과 재인덱싱 흐름을 반영했습니다.
+- `README.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`에 소스 인덱스 상태 확인과 재인덱싱 흐름을 반영했습니다.
 - source_file 인덱스 refresh 필요 판단 테스트를 추가했습니다.
 - 검증: `.venv\Scripts\python.exe -m pytest -q` 통과(`31 passed`), `.venv\Scripts\python.exe -m compileall app.py src` 통과.
 
@@ -627,7 +636,7 @@
 ### README 문서 업데이트
 
 - `README.md`에 Project Chat, 검증형 source_file RAG, Alembic migration, RAG metadata 설명을 반영했습니다.
-- `README_ARCHITECTURE.md`의 아키텍처 다이어그램, RAG 흐름, 기능 목록, 제한사항, 주요 UI/서비스 목록을 최신 구현에 맞게 수정했습니다.
+- `docs/architecture.md`의 아키텍처 다이어그램, RAG 흐름, 기능 목록, 제한사항, 주요 UI/서비스 목록을 최신 구현에 맞게 수정했습니다.
 
 ### 현재 소스 검증형 RAG 검색 챗 추가
 
