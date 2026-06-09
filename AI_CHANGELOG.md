@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### Commit Impact README screenshot refresh
+
+- Refreshed the README Commit Impact screenshot so it shows the selected high-impact sample commit, impact metrics, affected program analysis, and affected developer analysis instead of only the commit selection area.
+- Kept README text unchanged; only the screenshot asset was updated.
+- Important files: `docs/images/features/commit-impact.png`, `AI_CHANGELOG.md`.
+- Verification: visually inspected the refreshed screenshot and confirmed it shows `HIGH` impact with affected program/developer analysis; `git diff --check` passed.
+
 ### Agent commit boundary guidance
 
 - Added `AGENTS.md` guidance to keep materially different work types in separate commits when practical.
