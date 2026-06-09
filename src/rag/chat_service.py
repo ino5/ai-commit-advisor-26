@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
@@ -68,6 +70,10 @@ Do not describe commit history or deleted diff lines as current source code.
 Commit and commit_file evidence, when present, is historical/reference evidence only.
 Always mention file path and line range for claims about code.
 Answer in Korean.
+For normal answers, use Markdown prose and bullets.
+Do not wrap the answer in JSON.
+Do not use a fenced code block unless the user explicitly asks for code or JSON.
+Copy file paths and line ranges only from the provided context metadata. Do not infer narrower line numbers.
 
 [Question]
 {question}
@@ -115,6 +121,22 @@ def _retrieve_with_expansion(retriever: Retriever, expansion, *, top_k: int, pro
         project_id=project_id,
         source_types=source_types,
     )
+
+
+def clean_llm_answer(text: str) -> str:
+    stripped = text.strip()
+    fence_match = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", stripped, flags=re.DOTALL | re.IGNORECASE)
+    payload = fence_match.group(1).strip() if fence_match else stripped
+    if payload.startswith("{") and payload.endswith("}"):
+        try:
+            parsed = json.loads(payload)
+        except json.JSONDecodeError:
+            return stripped
+        for key in ("response", "answer", "content", "message"):
+            value = parsed.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    return stripped
 
 
 def answer_source_question(
@@ -196,7 +218,7 @@ def answer_source_question(
         )
 
     return RagChatAnswer(
-        answer=response.text.strip(),
+        answer=clean_llm_answer(response.text),
         sources=annotated,
         expanded_queries=expansion.expanded_queries,
         matched_terms=expansion.matched_terms,

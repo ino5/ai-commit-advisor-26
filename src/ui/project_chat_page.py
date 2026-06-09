@@ -182,6 +182,21 @@ def _render_sources(sources: list[dict], message_index: int, used_source_count: 
         _render_source_group("이력/참고 근거", reference_sources, message_index, "reference")
 
 
+def _render_expansion_context(message: dict) -> None:
+    expanded_queries = message.get("expanded_queries") or []
+    matched_terms = message.get("matched_terms") or []
+    if not expanded_queries and not matched_terms:
+        return
+
+    with st.expander("검색 확장 정보", expanded=False):
+        if matched_terms:
+            st.caption("표준용어/표준단어 매칭")
+            st.dataframe(pd.DataFrame(matched_terms), use_container_width=True, hide_index=True)
+        if expanded_queries:
+            st.caption("검색에 사용된 쿼리")
+            st.write("\n".join(f"- {query}" for query in expanded_queries))
+
+
 def _render_chat_history(messages: list[dict]) -> None:
     for index, message in enumerate(messages):
         with st.chat_message(message["role"]):
@@ -197,6 +212,7 @@ def _render_chat_history(messages: list[dict]) -> None:
                 excluded_count = int(message.get("excluded_count") or 0)
                 if excluded_count:
                     st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 chunk {excluded_count}건은 현재 코드 답변 근거에서 제외했습니다.")
+                _render_expansion_context(message)
                 _render_sources(message.get("sources") or [], index, used_source_count)
 
 
@@ -263,6 +279,12 @@ def render_project_chat_page() -> None:
                         st.caption(f"답변에 사용된 현재 소스 근거 {answer.used_source_count}건")
                 if answer.excluded_count:
                     st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 chunk {answer.excluded_count}건은 현재 코드 답변 근거에서 제외했습니다.")
+                _render_expansion_context(
+                    {
+                        "expanded_queries": [] if answer.errors else answer.expanded_queries,
+                        "matched_terms": [] if answer.errors else answer.matched_terms,
+                    }
+                )
                 _render_sources(answer.sources, len(st.session_state[messages_key]), answer.used_source_count)
 
     st.session_state[messages_key].append(
@@ -270,6 +292,8 @@ def render_project_chat_page() -> None:
             "role": "assistant",
             "content": content,
             "sources": [] if answer.errors else answer.sources,
+            "expanded_queries": [] if answer.errors else answer.expanded_queries,
+            "matched_terms": [] if answer.errors else answer.matched_terms,
             "excluded_count": 0 if answer.errors else answer.excluded_count,
             "used_source_count": 0 if answer.errors else answer.used_source_count,
             "insufficient_evidence": False if answer.errors else answer.insufficient_evidence,

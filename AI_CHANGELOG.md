@@ -2,6 +2,14 @@
 
 ## 2026-06-09
 
+### Project Chat answer formatting and evidence context
+
+- Strengthened the Project Chat prompt so normal answers should be Korean Markdown, not JSON/code-block wrappers, and line ranges must be copied from retrieved metadata.
+- Added local LLM response cleanup for common JSON wrapper responses such as fenced `{"response": "..."}` payloads.
+- Added Project Chat evidence context for matched standard terms and expanded queries so Korean query expansion is explainable during verification.
+- Important files: `src/rag/chat_service.py`, `src/ui/project_chat_page.py`, `tests/test_project_chat_answer_format.py`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `pytest tests/test_project_chat_answer_format.py tests/test_project_chat_service.py -q` and `git diff --check` passed.
+
 ### Glossary-based Korean query expansion
 
 - Added deterministic Project Chat query expansion using uploaded project standard terms and standard words.

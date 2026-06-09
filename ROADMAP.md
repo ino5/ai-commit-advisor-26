@@ -17,7 +17,7 @@
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
 | P1 | RAG | Project Chat answer quality and history persistence | In Progress | Project Chat 답변 품질과 근거 부족 처리 개선 | edcb4e7 |
 | P1 | RAG | Standard terminology glossary upload and Korean query expansion | In Progress | Project Chat glossary and Korean query expansion roadmap | 9854ead |
-| P1 | RAG | Project Chat answer formatting and citation accuracy | Planned | Project Chat glossary and Korean query expansion roadmap | 9854ead |
+| P1 | RAG | Project Chat answer formatting and citation accuracy | In Progress | Project Chat glossary and Korean query expansion roadmap | 9854ead |
 | P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 표시 세부 보완 | 7895831 |
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | fa625d2 |
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 | 704c7cf |
@@ -173,7 +173,7 @@ Out of scope for first pass:
 
 ## P1 - Project Chat Answer Formatting And Citation Accuracy
 
-Status: Planned
+Status: In Progress
 
 Goal:
 Make Project Chat answers presentation-ready and defensible by preventing JSON-shaped responses, reducing line-number hallucination, and showing source evidence clearly.
@@ -186,13 +186,13 @@ Observed issues:
 
 Checklist:
 
-- [ ] Strengthen the Project Chat prompt to forbid JSON/code-block response wrappers unless the user explicitly asks for JSON.
-- [ ] Require Markdown prose/bullets in Korean for normal answers.
-- [ ] Require file paths and line ranges to be copied only from retrieved source metadata.
-- [ ] Add response post-processing for common JSON wrapper shapes from local LLMs.
-- [ ] Show the matched/expanded query information in debug or evidence context when useful.
-- [ ] Adjust source evidence rendering so screenshots can show answer plus key evidence without looking empty.
-- [ ] Add focused tests for JSON wrapper cleanup and citation line-range preservation.
+- [x] Strengthen the Project Chat prompt to forbid JSON/code-block response wrappers unless the user explicitly asks for JSON.
+- [x] Require Markdown prose/bullets in Korean for normal answers.
+- [x] Require file paths and line ranges to be copied only from retrieved source metadata.
+- [x] Add response post-processing for common JSON wrapper shapes from local LLMs.
+- [x] Show the matched/expanded query information in debug or evidence context when useful.
+- [x] Adjust source evidence rendering so screenshots can show answer plus key evidence without looking empty.
+- [x] Add focused tests for JSON wrapper cleanup and citation line-range preservation.
 - [ ] Refresh the Project Chat README screenshot only after real local LLM/RAG verification succeeds.
 - [ ] Update README, Screenshot Gallery, Feature Guide, and AI technical overview as needed.
 - [ ] Update `AI_CHANGELOG.md`.
