@@ -200,7 +200,7 @@ AI Progress는 다음을 보여야 합니다.
 
 이 설계를 구현할 때는 다음을 지킵니다.
 
-- `scripts/create_sample_target_repo.py`를 수정해 더 풍부한 commit history를 생성합니다.
+- `scripts/create_sample_target_repo.py`를 수정해 더 현실적인 commit history를 생성합니다.
 - 샘플 대상 저장소는 `C:\dev\ai-commit-advisor` 밖의 sibling repo로 유지합니다.
 - 필요하면 `sample_data`와 `advisor_uploads` output을 update 또는 regenerate합니다.
 - expected sample shape, developer profile, program row, risk/demo scenario에 대한 test를 추가하거나 수정합니다.

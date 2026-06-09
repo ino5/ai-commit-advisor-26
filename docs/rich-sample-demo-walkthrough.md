@@ -1,8 +1,8 @@
-# 풍부한 샘플 데모 진행 가이드
+# 샘플 프로젝트 검증 가이드
 
 ## 목적
 
-이 가이드는 synthetic sample target repository로 AI Commit Advisor를 검증하고 시연할 때, local LLM 또는 embedding 작업을 과도하게 실행하지 않도록 안전한 절차를 설명합니다.
+이 가이드는 synthetic sample target repository로 AI Commit Advisor를 검증하거나 시연할 때, local LLM 또는 embedding 작업을 과도하게 실행하지 않는 방법을 설명합니다.
 
 다음을 사용할 때 이 문서를 확인하세요.
 
@@ -12,9 +12,9 @@
 
 샘플 저장소는 8개 program과 30개 commit으로 Git Sync, Mapping, Program Detail, Commit Impact, Risk Analysis, RAG, Project Chat, AI Code Review, AI Progress를 보여주도록 설계되어 있습니다.
 
-## 안전 실행 규칙
+## 권장 실행 기준
 
-Demo verification 중에는 다음 규칙을 따릅니다.
+Demo verification 중에는 다음 기준을 권장합니다.
 
 - Mapping은 commit-based analysis mode를 우선 사용합니다.
 - batch 실행 전 selected commit 1개를 먼저 분석합니다.
@@ -61,7 +61,7 @@ C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_development_plan.xlsx
 
 `advisor_uploads` file에는 delayed coupon work, missing settlement assignee, no-related-commit risk scenario를 위한 demo-specific plan override가 포함되어 있습니다.
 
-5. Mapping을 안전하게 실행합니다.
+5. Mapping은 작은 범위부터 실행합니다.
 
 - commit-based analysis를 선택합니다.
 - selected commit 1개를 먼저 분석합니다.

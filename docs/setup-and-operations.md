@@ -84,11 +84,11 @@ streamlit run app.py
 
 ### 도입 배경과 기대 효과
 
-기존 실행 방식은 PostgreSQL은 Docker Compose로 띄우고 Streamlit 앱은 로컬 Python 가상환경에서 직접 실행하는 흐름이었습니다. 이 방식은 개발 중에는 빠르지만, 팀원이 같은 환경을 재현하거나 서버에 올릴 때 Python 버전, 패키지 설치, DB 접속 주소, migration 실행 순서가 사람마다 달라질 수 있습니다.
+기존 실행 방식은 PostgreSQL은 Docker Compose로 띄우고 Streamlit 앱은 로컬 Python 가상환경에서 직접 실행하는 흐름이었습니다. 이 방식은 개발 중에는 빠르지만, 다른 환경에서 재현하거나 서버에 올릴 때 Python 버전, 패키지 설치, DB 접속 주소, migration 적용 방식이 사람마다 달라질 수 있습니다.
 
 앱 Dockerfile과 Compose `app` service는 이 차이를 줄이기 위해 추가했습니다. 목표는 다음과 같습니다.
 
-- 신규 팀원이 `docker compose up`만으로 PostgreSQL + Streamlit 앱 조합을 재현합니다.
+- 처음 실행하는 사람도 `docker compose up`만으로 PostgreSQL + Streamlit 앱 조합을 재현합니다.
 - 서버 배포 시 앱 시작 전에 DB schema 초기화와 Alembic migration을 같은 방식으로 실행합니다.
 - mock LLM/embedding 기본값으로 먼저 화면과 DB 연결을 확인한 뒤, 필요할 때 local/OpenAI-compatible provider로 전환합니다.
 - 배포 후 health endpoint로 최소 기동 상태를 빠르게 확인합니다.

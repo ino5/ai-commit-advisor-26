@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Korean documentation wording cleanup
+
+- Cleaned up awkward Korean wording in Markdown documentation where English terms had been translated too literally.
+- Renamed the sample walkthrough wording to `샘플 프로젝트 검증 가이드`.
+- Replaced reader-limiting wording with more general reader-focused phrasing where the document is not team-only.
+- Replaced literal safety-sequence wording with `권장 실행 흐름` or direct explanations about avoiding excessive LLM/embedding work.
+- Important files: `README.md`, `docs/rich-sample-demo-walkthrough.md`, `docs/sample-target-repo-demo-design.md`, `docs/setup-and-operations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: searched Markdown for the awkward sample-guide and reader-limiting phrases; `git diff --check` passed.
+
 ### Application Dockerfile and deployment guide
 
 - Added an application `Dockerfile` so the Streamlit app can be built and run with a repeatable Python 3.11 container image.
@@ -190,7 +199,7 @@
 ### README 문서 허브 개편
 
 - README를 짧은 진입 문서로 재구성하고, 상세 스크린샷/기능 설명/설치 운영 가이드를 별도 문서로 분리했습니다.
-- GitHub에서 동작하는 상대 링크로 README의 Documentation 섹션을 구성해 팀원이 필요한 문서를 바로 찾을 수 있게 했습니다.
+- GitHub에서 동작하는 상대 링크로 README의 Documentation 섹션을 구성해 필요한 문서를 바로 찾을 수 있게 했습니다.
 - 기능별 화면 캡처는 `docs/screenshot-gallery.md`, 기능 흐름 설명은 `docs/feature-guide.md`, 설치/LLM/RAG 운영 기준은 `docs/setup-and-operations.md`로 이동했습니다.
 - Important files: `README.md`, `docs/screenshot-gallery.md`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
 - Verification: markdown/link sanity checks and `git diff --check` passed.
@@ -244,7 +253,7 @@
 - Important files: `AGENTS.md`, `AI_CHANGELOG.md`.
 - Verification: `git diff --check` passed.
 
-### 풍부한 샘플 데모 검증과 화면 캡처 갱신
+### 샘플 프로젝트 검증과 화면 캡처 갱신
 
 - 앱 DB에 검증 전용 프로젝트 `AAA Sample Shop Rich Demo`를 구성하고 `C:\dev\ai-advisor-sample-shop`의 8개 프로그램/30개 커밋 샘플 repo와 `advisor_uploads` Excel 3종을 반영했습니다.
 - mock LLM/embedding 기반으로 Git Sync, 프로그램/개발계획 적재, Mapping fallback, Risk Analysis, AI Progress, Commit Impact, RAG source indexing, Project Chat, AI Code Review 흐름을 검증했습니다.
@@ -255,18 +264,18 @@
 - 검증 결과: 프로그램 8건, 커밋 30건, 관련 매핑 25건, unresolved risk 13건, source_file chunk/vector 70건, Project Chat verified source 8건, Code Review 1건 저장 확인.
 - 검증: `.venv\Scripts\python.exe -m pytest tests\test_source_file_rag.py -q` 통과(`4 passed`), `.venv\Scripts\python.exe -m py_compile src\rag\chunker.py` 통과, Playwright로 README 기능별 화면 캡처 18종 갱신, `git diff --check` 통과.
 
-### 풍부한 샘플 데모 안전 실행 가이드 추가
+### 샘플 프로젝트 검증 가이드 추가
 
-- 팀원이 8개 프로그램/30개 커밋 샘플 repo를 검증할 때 LLM/embedding 작업이 과도하게 늘어나지 않도록 `docs/rich-sample-demo-walkthrough.md`를 추가했습니다.
+- 8개 프로그램/30개 커밋 샘플 repo를 검증할 때 LLM/embedding 작업이 과도하게 늘어나지 않도록 `docs/rich-sample-demo-walkthrough.md`를 추가했습니다.
 - 가이드에는 commit-based Mapping 우선 사용, 선택 커밋 1개 선검증, 후보 수 제한, RAG/Project Chat embedding 소량 실행, 추천 Code Review 대상 커밋, 예상 Risk Analysis 신호를 정리했습니다.
 - `README.md`의 샘플 데이터 생성 섹션에서 전체 데모 검증이나 화면 캡처 갱신 전 해당 가이드를 먼저 확인하도록 안내했습니다.
-- `ROADMAP.md`의 `Rich sample demo walkthrough and screenshots` 체크리스트에 safe execution flow 문서화 항목을 추가했습니다.
+- `ROADMAP.md`의 `Rich sample demo walkthrough and screenshots` 체크리스트에 권장 실행 흐름 문서화 항목을 추가했습니다.
 - 검증: 문서 변경 범위 확인 및 `git diff --check` 통과.
 
-### 샘플 데모 검증과 스크린샷 작업 로드맵 등록
+### 샘플 프로젝트 검증과 스크린샷 작업 로드맵 등록
 
-- 풍부해진 8개 프로그램/30개 커밋 샘플 데이터가 실제 앱 화면에서 잘 동작하는지 검증하고 README walkthrough 및 기능별 스크린샷을 맞추는 작업을 `ROADMAP.md`에 추가했습니다.
-- Docker/deployment 작업보다 샘플 데모 검증과 문서/스크린샷 정합성 작업을 먼저 볼 수 있도록 `P2 | Docs | Rich sample demo walkthrough and screenshots`를 `Planned`로 등록했습니다.
+- 확장된 8개 프로그램/30개 커밋 샘플 데이터가 실제 앱 화면에서 잘 동작하는지 검증하고 README walkthrough 및 기능별 스크린샷을 맞추는 작업을 `ROADMAP.md`에 추가했습니다.
+- Docker/deployment 작업보다 샘플 프로젝트 검증과 문서/스크린샷 정합성 작업을 먼저 볼 수 있도록 `P2 | Docs | Rich sample demo walkthrough and screenshots`를 `Planned`로 등록했습니다.
 - 검증: 문서 변경 범위 확인 및 `git diff --check` 통과.
 
 ### README Home 화면 캡처 갱신
@@ -275,7 +284,7 @@
 - 갱신한 이미지: `docs/images/ai-commit-advisor-home.png`, `docs/images/features/home.png`.
 - 검증: 실행 중인 Streamlit 앱(`http://localhost:8501`) 기준으로 `.venv\Scripts\python.exe scripts\verify_home_ui.py --screenshot docs\images\features\home.png` 통과, 대표 이미지는 동일 캡처로 동기화, 이미지 육안 확인 통과.
 
-### 풍부한 샘플 대상 repo 구현
+### 확장 샘플 대상 repo 구현
 
 - `scripts/create_sample_target_repo.py`의 샘플 대상 repo 생성 흐름을 확장해 8개 프로그램, 30개 Git commit, 6명의 가상 개발자 author를 생성하도록 했습니다.
 - 주문, 재고, 결제, 매출, 대시보드, 쿠폰, 정산 계획 프로그램을 포함하고, 기능 추가/버그 유발/버그 수정/테스트 보강/리팩터링/문서 변경/교차 모듈 영향/미완료 기능 시나리오를 커밋 히스토리에 반영했습니다.
