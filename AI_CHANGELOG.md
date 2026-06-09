@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### CI database service for incremental source indexing tests
+
+- Added a pgvector PostgreSQL service to the GitHub Actions CI workflow so database-backed source indexing tests can run in CI.
+- Set CI `DATABASE_URL`, `PGVECTOR_DIMENSION`, `LLM_PROVIDER=mock`, and `EMBEDDING_PROVIDER=mock` explicitly to match the test environment assumptions.
+- Important files: `.github/workflows/ci.yml`, `AI_CHANGELOG.md`.
+- Verification: `.\\.venv\\Scripts\\python.exe -m compileall src tests` passed; `.\\.venv\\Scripts\\python.exe -m pytest -q` passed with 78 tests.
+
 ### RAG and Project Chat rationale documentation
 
 - Added feature guide rationale for why Project Chat uses verified current `source_file` chunks and standard terminology expansion instead of answering from stale chunks or commit diffs.

@@ -7,6 +7,25 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: ai_commit_advisor
+          POSTGRES_USER: ai_user
+          POSTGRES_PASSWORD: ai_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ai_user -d ai_commit_advisor"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+psycopg2://ai_user:ai_password@localhost:5432/ai_commit_advisor
+      PGVECTOR_DIMENSION: "768"
+      LLM_PROVIDER: mock
+      EMBEDDING_PROVIDER: mock
 
     steps:
       - name: Checkout
