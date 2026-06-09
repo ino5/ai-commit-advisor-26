@@ -16,8 +16,8 @@
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 | d00b868 |
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
 | P1 | RAG | Project Chat answer quality and history persistence | In Progress | Project Chat 답변 품질과 근거 부족 처리 개선 | edcb4e7 |
-| P1 | RAG | Standard terminology glossary upload and Korean query expansion | Done | Standard terminology documentation and screenshots | - |
-| P1 | RAG | Project Chat answer formatting and citation accuracy | Done | Standard terminology documentation and screenshots | - |
+| P1 | RAG | Standard terminology glossary upload and Korean query expansion | Done | Standard terminology documentation and screenshots | 05a40ad |
+| P1 | RAG | Project Chat answer formatting and citation accuracy | Done | Standard terminology documentation and screenshots | 05a40ad |
 | P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 표시 세부 보완 | 7895831 |
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | fa625d2 |
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 | 704c7cf |
