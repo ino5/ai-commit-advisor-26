@@ -2,6 +2,12 @@
 
 ## 2026-06-09
 
+### RAG and Project Chat rationale documentation
+
+- Added feature guide rationale for why Project Chat uses verified current `source_file` chunks and standard terminology expansion instead of answering from stale chunks or commit diffs.
+- Important files: `docs/feature-guide.md`, `AI_CHANGELOG.md`.
+- Verification: `git diff --check` passed.
+
 ### Incremental source indexing and embedding cost control
 
 - Added manual incremental source indexing for `source_file` chunks so RAG and Project Chat can refresh only Git Sync changed files instead of scanning the whole repository during normal work.
