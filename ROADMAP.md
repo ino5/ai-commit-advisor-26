@@ -34,6 +34,7 @@
 | P2 | Sample Data | Rich demo target repository implementation | Done | 풍부한 샘플 대상 repo 구현 | fd1940d |
 | P2 | Docs | Rich sample demo walkthrough and screenshots | Done | 풍부한 샘플 데모 검증과 화면 캡처 갱신 | dd8fd5e |
 | P2 | Docs | README documentation hub restructure | Done | README 문서 허브 개편 | 6b27b35 |
+| P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 | - |
 | P2 | Ops | Application Dockerfile and deployment guide | Planned | - | - |
 
 ## P0 - Program Management UX Improvement
@@ -392,6 +393,22 @@ Checklist:
 - [x] Move feature workflow explanations into `docs/feature-guide.md`.
 - [x] Move setup, LLM/embedding, RAG operations, and verification commands into `docs/setup-and-operations.md`.
 - [x] Use GitHub-friendly relative links from README to each supporting document.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run markdown/link sanity checks.
+
+## P2 - Local LLM Env Onboarding Guide
+
+Status: Done
+
+Goal:
+Make it clear which environment file teammates should use for lightweight mock runs versus real local LLM/RAG/Project Chat verification.
+
+Checklist:
+
+- [x] Add a local LLM environment example for LM Studio based chat and embedding.
+- [x] Keep `.env.example` as the lightweight mock default.
+- [x] Explain the two env choices in README Quick Start.
+- [x] Document that provider/model changes require regenerating embeddings for RAG Search and Project Chat.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run markdown/link sanity checks.
 

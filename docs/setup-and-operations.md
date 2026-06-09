@@ -13,9 +13,19 @@
 
 ### 1. 환경 파일 생성
 
+가볍게 앱 흐름만 확인하려면 mock 설정을 사용합니다.
+
 ```powershell
 Copy-Item .env.example .env
 ```
+
+실제 LLM/RAG/Project Chat 품질을 검증하려면 로컬 LLM 설정 예시를 사용합니다.
+
+```powershell
+Copy-Item .env.local-llm.example .env
+```
+
+local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼저 로드해야 합니다. `.env`를 바꾼 뒤에는 Streamlit 앱을 재시작해야 합니다.
 
 ### 2. PostgreSQL + pgvector 실행
 
@@ -72,7 +82,7 @@ streamlit run app.py
 
 ## LLM 설정
 
-기본값은 mock입니다. 실제 LLM 호출 없이 동작 확인용 fallback 결과를 생성합니다.
+기본 `.env.example`은 mock입니다. 실제 LLM 호출 없이 동작 확인용 fallback 결과를 생성합니다.
 
 ```env
 LLM_PROVIDER=mock
@@ -81,7 +91,7 @@ LLM_API_KEY=
 LLM_MODEL=exaone-3.5-2.4b-instruct
 ```
 
-LM Studio를 사용할 경우:
+LM Studio를 사용할 경우 `.env.local-llm.example`을 복사하거나 `.env`를 아래처럼 설정합니다.
 
 1. LM Studio에서 모델을 로드합니다.
 2. Local Server를 켭니다.
@@ -92,7 +102,7 @@ LM Studio를 사용할 경우:
 LLM_PROVIDER=local_openai
 LLM_BASE_URL=http://127.0.0.1:1234/v1
 LLM_API_KEY=
-LLM_MODEL=exaone-3.5-2.4b-instruct
+LLM_MODEL=qwen2.5-coder-7b-instruct
 ```
 
 일부 모델은 LM Studio prompt template 문제로 `prediction-error` 또는 Jinja template 오류가 날 수 있습니다. 이 경우 `lmstudio-community` 모델을 사용하거나 해당 모델의 Prompt Template을 수정하세요.
@@ -105,11 +115,22 @@ LLM_MODEL=exaone-3.5-2.4b-instruct
 EMBEDDING_PROVIDER=local_openai
 EMBEDDING_BASE_URL=http://127.0.0.1:1234/v1
 EMBEDDING_API_KEY=
-EMBEDDING_MODEL=text-embedding-nomic-embed-text-v1
+EMBEDDING_MODEL=text-embedding-nomic-embed-text-v1.5
 PGVECTOR_DIMENSION=768
 ```
 
 LM Studio를 사용할 경우 embedding 모델을 로드하고 Local Server를 켠 뒤, RAG 화면의 `Embedding 연결 테스트`로 `/v1/embeddings` 응답과 vector dimension을 확인합니다. `PGVECTOR_DIMENSION`은 사용하는 embedding 모델의 출력 차원과 같아야 하며, 이미 다른 차원으로 생성된 `vector_items.embedding` 컬럼은 DB를 새로 만들거나 migration해야 합니다.
+
+mock embedding으로 생성된 vector는 local_openai embedding 검색에 사용되지 않습니다. `LLM_PROVIDER`, `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `PGVECTOR_DIMENSION`을 바꾼 뒤에는 현재 모델 기준으로 embedding을 다시 생성해야 RAG Search와 Project Chat이 같은 근거를 검색할 수 있습니다.
+
+Project Chat을 실제 LLM 모드로 검증하는 권장 순서:
+
+1. LM Studio에서 chat 모델과 embedding 모델을 로드합니다.
+2. `Copy-Item .env.local-llm.example .env`로 local LLM 설정을 적용합니다.
+3. Streamlit 앱을 재시작합니다.
+4. RAG 검색 화면에서 `Embedding 연결 테스트`를 실행합니다.
+5. RAG 검색 화면의 Embedding 영역에서 source_file chunk의 embedding을 생성합니다.
+6. Project Chat에서 질문하고 `답변 근거 보기`를 펼쳐 현재 소스 근거를 확인합니다.
 
 ## source_file 재인덱싱 운영 주의사항
 

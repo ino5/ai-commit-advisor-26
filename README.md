@@ -19,6 +19,8 @@ AI Commit Advisor는 로컬 Git 저장소의 커밋, 변경 파일, diff, 개발
 
 ## Quick Start
 
+가볍게 앱 흐름만 확인하려면 mock 설정을 사용합니다.
+
 ```powershell
 Copy-Item .env.example .env
 docker compose up -d
@@ -28,6 +30,14 @@ pip install -r requirements.txt
 python -m src.db.init_db
 streamlit run app.py
 ```
+
+실제 LLM/RAG/Project Chat 품질을 검증하려면 로컬 LLM 설정 예시를 사용합니다.
+
+```powershell
+Copy-Item .env.local-llm.example .env
+```
+
+local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼저 로드해야 합니다. RAG/Project Chat 사용 전에는 현재 embedding 모델 기준으로 source_file embedding을 생성하세요.
 
 가상환경 활성화 없이 실행하려면:
 
@@ -83,6 +93,7 @@ docs/
 docker-compose.yml
 requirements.txt
 .env.example
+.env.local-llm.example
 ```
 
 ## Notes

@@ -2,6 +2,14 @@
 
 ## 2026-06-09
 
+### local LLM env 예시와 Project Chat 재현 절차
+
+- Added `.env.local-llm.example` so teammates can start from a ready local_openai configuration for LM Studio chat and embedding models.
+- Kept `.env.example` as the lightweight mock default, and updated README Quick Start to explain when to copy each env file.
+- Documented that mock vectors are not reused by local_openai embedding search, so RAG Search and Project Chat require regenerating embeddings after provider/model changes.
+- Important files: `.env.local-llm.example`, `README.md`, `docs/setup-and-operations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: markdown/link sanity checks and `git diff --check` passed.
+
 ### README 문서 허브 개편
 
 - README를 짧은 진입 문서로 재구성하고, 상세 스크린샷/기능 설명/설치 운영 가이드를 별도 문서로 분리했습니다.
