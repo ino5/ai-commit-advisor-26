@@ -2,6 +2,13 @@
 
 ## 2026-06-09
 
+### Project Chat reset button placement
+
+- Moved the Project Chat reset action from the search setting controls to the chat section header.
+- Kept the reset button available in the chat header so the first answered turn does not render with a disabled-looking action.
+- Important files: `src/ui/project_chat_page.py`, `AI_CHANGELOG.md`.
+- Verification: `py_compile src/ui/project_chat_page.py` and `git diff --check` passed.
+
 ### Project Chat screenshot top-state refresh
 
 - Refreshed the Project Chat screenshot so it shows the selected sample project, source index status, chat controls, Korean question, answer, and source citations in one view.

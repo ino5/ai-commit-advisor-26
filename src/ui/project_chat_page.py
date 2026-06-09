@@ -234,14 +234,17 @@ def render_project_chat_page() -> None:
 
     _render_source_index_status(project)
 
-    control1, control2, control3 = st.columns([1, 1, 2])
+    control1, control2 = st.columns([1, 3])
     top_k = control1.slider("TOP K", min_value=3, max_value=30, value=8)
     include_history = control2.checkbox("커밋 이력도 참고에 포함", value=False)
-    if control3.button("대화 초기화"):
+
+    st.divider()
+    chat_header, chat_action = st.columns([4, 1])
+    chat_header.subheader("대화")
+    if chat_action.button("대화 초기화"):
         st.session_state[messages_key] = []
         st.rerun()
 
-    st.divider()
     _render_chat_history(st.session_state[messages_key])
 
     prompt = st.chat_input("프로젝트에 대해 질문하세요.")
