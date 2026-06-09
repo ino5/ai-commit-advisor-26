@@ -2,6 +2,12 @@
 
 ## 2026-06-09
 
+### Agent documentation rationale guidance
+
+- Added AGENTS guidance that feature, architecture, workflow, and AI behavior documentation should capture the user problem, operational gap, design rationale, tradeoffs, and remaining limitations, not only implementation details.
+- Important files: `AGENTS.md`, `AI_CHANGELOG.md`.
+- Verification: `git diff --check` passed.
+
 ### Korean-first user documentation cleanup
 
 - Reworked user-facing Markdown documentation so explanatory prose is Korean-first, while preserving natural English headings, code identifiers, commands, environment variables, API names, and product/menu names where appropriate.

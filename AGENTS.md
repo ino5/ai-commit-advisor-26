@@ -30,6 +30,17 @@ For work that is not already in `ROADMAP.md`, add or update a task entry before 
 
 When changing AI-facing behavior such as Mapping, RAG, Project Chat, Code Review, AI Progress, Risk Analysis, embedding, or LLM behavior, update `docs/ai-technical-overview.md` if the public explanation or safety model changes.
 
+## Documentation Context And Rationale
+
+When documenting features, architecture, workflows, or AI behavior, include the reason the change exists instead of recording only implementation details.
+
+Prefer documentation that explains:
+
+- the user problem, operational gap, or system limitation that made the feature necessary
+- the concrete scenario or failure mode that the design is meant to address
+- the chosen approach and why it fits the project better than obvious alternatives
+- important tradeoffs, boundaries, or remaining limitations that future maintainers should preserve or revisit
+
 ## User-Facing Documentation Language
 
 User-facing documentation should use Korean for explanatory prose by default, especially when describing setup, workflows, feature behavior, operational guidance, and product decisions.
