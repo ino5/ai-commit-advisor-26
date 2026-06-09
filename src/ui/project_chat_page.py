@@ -239,7 +239,7 @@ def render_project_chat_page() -> None:
     include_history = control2.checkbox("커밋 이력도 참고에 포함", value=False)
 
     st.divider()
-    chat_header, chat_action = st.columns([4, 1])
+    chat_header, chat_action = st.columns([6, 1])
     chat_header.subheader("대화")
     if chat_action.button("대화 초기화"):
         st.session_state[messages_key] = []

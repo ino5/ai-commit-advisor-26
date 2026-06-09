@@ -2,6 +2,12 @@
 
 ## 2026-06-09
 
+### Project Chat reset button alignment
+
+- Adjusted the Project Chat section header column ratio so the reset action sits farther to the right as a section-level action.
+- Important files: `src/ui/project_chat_page.py`, `docs/images/features/project-chat.png`, `AI_CHANGELOG.md`.
+- Verification: `py_compile src/ui/project_chat_page.py` and `git diff --check` passed.
+
 ### Project Chat reset button placement
 
 - Moved the Project Chat reset action from the search setting controls to the chat section header.
