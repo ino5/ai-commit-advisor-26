@@ -49,6 +49,7 @@
 | P2 | Docs | Natural wording policy generalization | Done | Natural wording policy generalization | 6e946e4 |
 | P2 | Docs | Reader-facing wording policy simplification | Done | Reader-facing wording policy simplification | fe093bc |
 | P2 | UX | Sidebar menu hierarchy sizing | Done | Sidebar 메뉴 계층 크기 조정 |  |
+| P2 | Docs | Documentation impact gate policy | Done | Documentation impact gate policy |  |
 
 ## P0 - Program Management UX Improvement
 
@@ -711,3 +712,19 @@ Checklist:
 - [x] Keep the exception for stable technical file paths.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run targeted wording and whitespace checks.
+
+## P2 - Documentation Impact Gate Policy
+
+Status: Done
+
+Goal:
+Make agent documentation impact review explicit before meaningful work starts, especially when maintainability, verification policy, structural tradeoffs, or agent behavior are part of the request.
+
+Checklist:
+
+- [x] Add a `Documentation Impact Gate` to `AGENTS.md`.
+- [x] Require `docs/engineering-decisions.md` as a review candidate for maintainability, future reuse, verification policy, structural tradeoff, operating policy, or agent behavior changes.
+- [x] Record the policy decision in `docs/engineering-decisions.md`.
+- [x] Record the missed engineering-decision review as reusable failure history.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run targeted documentation and whitespace checks.

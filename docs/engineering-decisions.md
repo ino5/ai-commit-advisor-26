@@ -45,6 +45,61 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-10 - Documentation impact gate for agent work
+
+### 배경
+
+사이드바 메뉴 위치 흔들림을 read-only로 조사한 뒤 유지보수성 관점의 처리 계획을 세우는 과정에서, 변경이 `docs/engineering-decisions.md` 검토 대상이라는 판단이 늦었습니다. `AGENTS.md`에는 이미 Engineering Decisions 기준이 있었지만, 계획 단계에서 변경 유형을 단순 UX 버그로 좁게 분류하면서 유지보수성·검증 정책·반복 가능한 agent policy 관점이 바로 연결되지 않았습니다.
+
+이번 사례는 개별 문서 하나를 더 기억하는 문제가 아니라, 의미 있는 작업을 시작하기 전에 문서 영향도를 명시적으로 분류하는 게이트가 필요하다는 신호입니다.
+
+### 결정
+
+`AGENTS.md`에 `Documentation Impact Gate`를 추가합니다. 에이전트는 의미 있는 code, UX, test, behavior, automation, operations, documentation 작업을 제안하거나 시작하기 전에 최소한 다음 문서 영향도를 분류해야 합니다.
+
+- `AI_CHANGELOG.md`
+- `ROADMAP.md`
+- `docs/engineering-decisions.md`
+- `docs/failure-history.md`
+- user-facing docs
+- `docs/architecture.md`
+- `docs/ai-technical-overview.md`
+- `docs/db-migrations.md`
+- `docs/sample-target-repo-demo-design.md`
+
+특히 사용자가 유지보수성, future reuse, verification policy, structural tradeoff, operating policy, agent behavior 관점으로 변경을 설명하면 `docs/engineering-decisions.md`를 필수 검토 후보로 취급합니다.
+
+### 이유
+
+- 기존 지침은 각 문서의 역할을 설명했지만, 작업 계획 시점에 문서 영향도 분류를 하나의 명시적 게이트로 강제하지는 않았습니다.
+- 유지보수성이나 검증 정책을 다루는 변경은 코드 diff가 작아도 앞으로 반복될 판단 기준을 바꿀 수 있습니다.
+- 문서 업데이트를 빠뜨렸는지 사후에 확인하는 방식보다, 계획 단계에서 업데이트 대상과 제외 사유를 분리하는 편이 누락을 줄입니다.
+- 새 문서를 만들기보다 기존 `AI_CHANGELOG.md`, `ROADMAP.md`, `engineering-decisions`, `failure-history`의 역할을 더 명확히 연결하는 편이 유지보수 부담이 낮습니다.
+
+### 검토한 대안
+
+- 별도 문서 영향도 체크리스트 파일 추가: 확인 대상이 늘어나고, 기존 `AGENTS.md` 정책과 중복될 수 있어 선택하지 않았습니다.
+- `Pre-Commit Documentation Check`만 보강: commit 직전에는 이미 구현 방향이 굳어진 뒤라, 계획 단계 누락을 막기에는 늦습니다.
+- 에이전트 응답 관행에만 맡기기: 이번 누락처럼 변경 분류가 좁아질 때 같은 문제가 반복될 수 있습니다.
+
+### 영향과 tradeoff
+
+- 의미 있는 작업 계획이 조금 길어질 수 있습니다.
+- 반대로 agent policy, 검증 정책, 유지보수성 판단이 들어간 변경에서 문서 누락 가능성이 줄어듭니다.
+- 모든 문서를 매번 수정하라는 뜻은 아닙니다. 영향도를 검토하고, 업데이트하지 않는 문서는 계획·최종 응답·commit note 중 한 곳에 이유를 남기는 것이 핵심입니다.
+
+### 후속 확인
+
+- 이번 변경은 `docs/failure-history.md`에도 연결해, 기존 정책이 있었는데도 `engineering-decisions` 검토가 늦어진 원인과 예방 규칙을 남깁니다.
+- 향후 사이드바 구조 안정화처럼 유지보수성 중심의 UX 변경을 구현할 때는 이 게이트에 따라 `docs/engineering-decisions.md`를 먼저 검토해야 합니다.
+
+### 관련 문서
+
+- [Documentation Impact Gate](../AGENTS.md#documentation-impact-gate)
+- [Failure History](failure-history.md)
+- [AI Change Log](../AI_CHANGELOG.md)
+- [Roadmap](../ROADMAP.md)
+
 ## 2026-06-10 - 기능 스크린샷 캡처 자동화 방향
 
 ### 배경

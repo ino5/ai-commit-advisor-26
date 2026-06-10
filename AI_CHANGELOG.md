@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Documentation impact gate policy
+
+- Added a `Documentation Impact Gate` to `AGENTS.md` so meaningful code, UX, test, behavior, automation, operations, and documentation work must classify documentation impact before implementation.
+- Made `docs/engineering-decisions.md` a required review candidate when a request is framed around maintainability, future reuse, verification policy, structural tradeoffs, operating policy, or agent behavior.
+- Recorded the policy rationale in `docs/engineering-decisions.md` and the missed engineering-decision review in `docs/failure-history.md`.
+- Added a roadmap task for the documentation impact gate policy work.
+- Important files: `AGENTS.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `Get-Content -Path AGENTS.md -Encoding UTF8`, `Get-Content -Path docs\engineering-decisions.md -Encoding UTF8`, and `Get-Content -Path docs\failure-history.md -Encoding UTF8` rendered the new policy, decision, and failure-history entries correctly; `rg -n "Documentation Impact Gate|Documentation impact gate|Engineering decision review|engineering-decisions.md" AGENTS.md docs AI_CHANGELOG.md ROADMAP.md` confirmed the expected references; `git diff --check` passed with only Git line-ending warnings.
+
 ### Sidebar 메뉴 계층 크기 조정
 
 - Sidebar 중메뉴가 하위 메뉴보다 살짝 크게 보이도록 그룹 제목은 `0.9rem`, 하위 메뉴와 선택 메뉴는 `0.86rem`으로 조정했습니다.

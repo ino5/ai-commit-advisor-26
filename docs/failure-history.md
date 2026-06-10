@@ -31,6 +31,77 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-10 - Engineering decision review was missed during maintainability planning
+
+분류:
+
+- Agent policy
+- Documentation workflow
+- Engineering decision review
+
+관련 문서:
+
+- `AGENTS.md`
+- `docs/engineering-decisions.md`
+- `ROADMAP.md`
+- `AI_CHANGELOG.md`
+
+### 증상
+
+사이드바 메뉴 위치 흔들림 재발을 read-only로 조사한 뒤, 사용자가 유지보수성 관점의 처리 계획을 요청했습니다. 초기 계획은 `AI_CHANGELOG.md`, `ROADMAP.md`, 검증 스크립트 보강을 중심으로 정리됐지만, `docs/engineering-decisions.md` 검토가 바로 포함되지 않았습니다.
+
+사용자가 "기능 개선하면 적는 md"와 `AGENTS.md` 기준을 다시 지적한 뒤에야, 이 작업이 반복 가능한 유지보수 원칙과 검증 정책을 바꾸는 engineering decision 후보라는 점을 명확히 반영했습니다.
+
+### 직접 원인
+
+에이전트가 변경을 "사이드바 UX 버그와 CSS/렌더링 구조 개선"으로 좁게 분류했고, 사용자가 유지보수성을 핵심 판단 기준으로 제시한 시점에도 `docs/engineering-decisions.md`를 필수 검토 후보로 즉시 승격하지 않았습니다.
+
+### 배경 또는 구조적 원인
+
+`AGENTS.md`에는 이미 Engineering Decisions 기준과 Pre-Commit Documentation Check가 있었지만, 의미 있는 작업을 제안하거나 시작하기 전에 문서 영향도를 한 번에 분류하는 명시적 게이트는 없었습니다.
+
+그 결과 개별 문서 기준은 존재했지만, 계획 단계에서 "이 변경은 앞으로 반복될 정책이나 유지보수 원칙을 만드는가?"라는 질문이 빠질 수 있었습니다.
+
+### 사전 검증에서 놓친 이유
+
+read-only 조사와 계획 수립 단계였기 때문에 코드 검증이나 commit 전 체크리스트를 아직 실행하지 않았습니다. 하지만 문서 영향도 검토는 구현 후가 아니라 계획 단계에서 필요한 작업이었고, 기존 체크리스트는 그 타이밍을 충분히 강제하지 못했습니다.
+
+### 수정 내용
+
+`AGENTS.md`에 `Documentation Impact Gate`를 추가했습니다. 에이전트는 의미 있는 code, UX, test, behavior, automation, operations, documentation 작업을 제안하거나 시작하기 전에 `AI_CHANGELOG.md`, `ROADMAP.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, user-facing docs, architecture, AI technical overview, DB migration, sample project design 문서 영향도를 명시적으로 분류해야 합니다.
+
+또한 사용자가 유지보수성, future reuse, verification policy, structural tradeoff, operating policy, agent behavior 관점으로 변경을 설명하면 `docs/engineering-decisions.md`를 필수 검토 후보로 취급하도록 했습니다.
+
+### 재발 방지 규칙
+
+- 작업 계획을 세울 때 문서 영향도 분류를 별도 단계로 수행합니다.
+- 유지보수성이나 반복 가능한 검증·운영·문서화 정책을 다루는 변경은 `docs/engineering-decisions.md`를 먼저 검토합니다.
+- 재발, 검증 공백, agent-caused mistake가 드러난 경우 `docs/failure-history.md` 기록 여부를 계획 단계에서 판단합니다.
+- 문서를 업데이트하지 않는 경우에는 계획, 최종 응답, commit note 중 한 곳에 이유를 남깁니다.
+
+### 남은 한계
+
+- 문서 영향도 게이트는 판단 누락을 줄이는 정책입니다. 모든 변경에 대해 모든 문서를 수정하라는 뜻은 아니므로, 에이전트가 변경 범위와 문서 역할을 계속 구분해야 합니다.
+- 작은 read-only 조사만으로 끝나는 경우에는 기록하지 않아도 되지만, 조사 결과가 작업 방향이나 운영 정책을 바꾸면 다시 문서 영향도 분류를 해야 합니다.
+
+### 검증
+
+Local verification:
+
+```powershell
+Get-Content -Path AGENTS.md -Encoding UTF8
+Get-Content -Path docs\engineering-decisions.md -Encoding UTF8
+Get-Content -Path docs\failure-history.md -Encoding UTF8
+rg -n "Documentation Impact Gate|Documentation impact gate|Engineering decision review" AGENTS.md docs AI_CHANGELOG.md ROADMAP.md
+git diff --check
+```
+
+결과:
+
+- `Get-Content -Encoding UTF8` rendered the new Korean and English policy text correctly.
+- `rg` confirmed the new gate, engineering decision, failure-history entry, roadmap task, and changelog references.
+- `git diff --check` passed with only Git line-ending warnings.
+
 ## 2026-06-09 / 2026-06-10 - Incremental source indexing tests failed in CI
 
 분류:

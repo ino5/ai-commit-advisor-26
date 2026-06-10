@@ -49,6 +49,26 @@ When working on a roadmap task:
 
 For work that is not already in `ROADMAP.md`, add or update a task entry before implementing when the work affects product direction.
 
+## Documentation Impact Gate
+
+Before proposing or starting meaningful code, UX, test, behavior, automation, operations, or documentation work, explicitly classify the documentation impact.
+
+Check at minimum:
+
+- `AI_CHANGELOG.md` for any code, schema, test, documentation, or behavior change.
+- `ROADMAP.md` for roadmap-tracked work, product-direction changes, UX direction changes, or agent-policy work.
+- `docs/engineering-decisions.md` when the work introduces or changes a repeatable engineering, UX implementation, verification, documentation, automation, deployment, operations, or agent-policy convention.
+- `docs/failure-history.md` when the work investigates or fixes a recurring failure, missed verification, incident, or agent-caused mistake with reusable learning value.
+- User-facing docs when setup, usage, workflows, screenshots, sample data, commands, or visible behavior changes.
+- `docs/architecture.md` when architecture, module boundaries, service responsibilities, or data flow changes.
+- `docs/ai-technical-overview.md` when Mapping, RAG, Project Chat, Code Review, AI Progress, Risk Analysis, embedding, LLM behavior, or AI safety explanation changes.
+- `docs/db-migrations.md` when database migration process or schema management guidance changes.
+- `docs/sample-target-repo-demo-design.md` when sample project goals, commit scenarios, demo coverage, or sample generation direction changes.
+
+When the user frames a change in terms of maintainability, future reuse, verification policy, structural tradeoffs, operating policy, or agent behavior, treat `docs/engineering-decisions.md` as a required review candidate before implementation.
+
+If a document is not updated after this review, state why in the plan, final response, or commit notes.
+
 ## AI Documentation
 
 When changing AI-facing behavior such as Mapping, RAG, Project Chat, Code Review, AI Progress, Risk Analysis, embedding, or LLM behavior, update `docs/ai-technical-overview.md` if the public explanation or safety model changes.
