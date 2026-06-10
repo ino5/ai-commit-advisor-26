@@ -51,6 +51,7 @@
 | P2 | UX | Sidebar menu hierarchy sizing | Done | Sidebar 메뉴 계층 크기 조정 |  |
 | P2 | Docs | Documentation impact gate policy | Done | Documentation impact gate policy | 88ef1cb |
 | P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization | 5094ebb |
+| P2 | Docs | AI Agent onboarding guide | Done | AI Agent onboarding guide |  |
 
 ## P0 - Program Management UX Improvement
 
@@ -746,3 +747,19 @@ Checklist:
 - [x] Record the previous CSS-only stabilization gap in `docs/failure-history.md`.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run compile and focused UI verification.
+
+## P2 - AI Agent Onboarding Guide
+
+Status: Done
+
+Goal:
+Help teammates who are new to AI Agent coding understand how to use this project with Codex without repeating durable project rules in every prompt.
+
+Checklist:
+
+- [x] Add a beginner-friendly onboarding guide for AI Agent coding in this project.
+- [x] Explain what `AGENTS.md`, `ROADMAP.md`, and `AI_CHANGELOG.md` are for.
+- [x] Clarify when Codex reads project instructions automatically and when prompts should mention documentation checks.
+- [x] Link the onboarding guide from README.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run markdown/link sanity checks.
