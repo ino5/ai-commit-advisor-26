@@ -145,17 +145,107 @@ def _sidebar_item_box(page: Page, label: str) -> dict[str, float]:
     return box
 
 
+def _sidebar_item_metrics(page: Page, labels: tuple[str, ...]) -> dict[str, dict[str, float]]:
+    metrics = page.evaluate(
+        """
+        (labels) => {
+            const sidebar = document.querySelector('section[data-testid="stSidebar"]');
+            if (!sidebar) {
+                throw new Error("Sidebar not found");
+            }
+            const activeMarkupCount = sidebar.querySelectorAll('.nav-active').length;
+            if (activeMarkupCount > 0) {
+                throw new Error(`Unexpected custom active sidebar markup: ${activeMarkupCount}`);
+            }
+            const buttons = Array.from(sidebar.querySelectorAll('.stButton > button'));
+            const result = {};
+            for (const label of labels) {
+                const button = buttons.find((item) => (item.innerText || item.textContent || '').trim() === label);
+                if (!button) {
+                    throw new Error(`Sidebar button not found: ${label}`);
+                }
+                const box = button.getBoundingClientRect();
+                const text = button.querySelector('p') || button;
+                const textBox = text.getBoundingClientRect();
+                result[label] = {
+                    x: box.x,
+                    y: box.y,
+                    width: box.width,
+                    height: box.height,
+                    textRelX: textBox.x - box.x,
+                    textRelY: textBox.y - box.y,
+                    textHeight: textBox.height,
+                };
+            }
+            return result;
+        }
+        """,
+        list(labels),
+    )
+    return metrics
+
+
+def _assert_metric_delta(
+    before: dict[str, dict[str, float]],
+    after: dict[str, dict[str, float]],
+    labels: tuple[str, ...],
+    fields: tuple[str, ...],
+    max_delta: float,
+) -> None:
+    unstable: dict[str, dict[str, float]] = {}
+    for label in labels:
+        deltas = {
+            field: abs(after[label][field] - before[label][field])
+            for field in fields
+            if abs(after[label][field] - before[label][field]) > max_delta
+        }
+        if deltas:
+            unstable[label] = deltas
+
+    if unstable:
+        raise AssertionError(f"Sidebar item metrics changed after navigation: {unstable}")
+
+
+def _sidebar_spacing(metrics: dict[str, dict[str, float]], first: str, second: str) -> float:
+    first_box = metrics[first]
+    second_box = metrics[second]
+    return second_box["y"] - (first_box["y"] + first_box["height"])
+
+
 def _verify_sidebar_layout_stability(page: Page) -> None:
-    before = _sidebar_item_box(page, "Mapping")
+    top_labels = ("Home", "Dashboard", "AI Progress")
+    before_top = _sidebar_item_metrics(page, top_labels)
+    before_dashboard_spacing = _sidebar_spacing(before_top, "Dashboard", "AI Progress")
+
+    _navigate_to_sidebar_item(page, "Dashboard")
+    page.get_by_text("프로젝트 계획, AI 분석, Git 활동을 한 화면에서 확인합니다.").wait_for(timeout=15_000)
+    after_dashboard = _sidebar_item_metrics(page, top_labels)
+
+    _assert_metric_delta(
+        before_top,
+        after_dashboard,
+        top_labels,
+        ("x", "y", "width", "height", "textRelX", "textRelY", "textHeight"),
+        max_delta=1.0,
+    )
+
+    after_dashboard_spacing = _sidebar_spacing(after_dashboard, "Dashboard", "AI Progress")
+    if abs(after_dashboard_spacing - before_dashboard_spacing) > 1.0:
+        raise AssertionError(
+            "Sidebar adjacent item spacing changed after active item navigation: "
+            f"{before_dashboard_spacing} -> {after_dashboard_spacing}"
+        )
+
+    before_mapping = _sidebar_item_box(page, "Mapping")
     _navigate_to_sidebar_item(page, "프로젝트/Git 설정")
     page.get_by_text("프로젝트 저장").wait_for(timeout=15_000)
-    after = _sidebar_item_box(page, "Mapping")
+    after_mapping = _sidebar_item_box(page, "Mapping")
 
     max_delta = 1.0
     deltas = {
-        "x": abs(after["x"] - before["x"]),
-        "y": abs(after["y"] - before["y"]),
-        "width": abs(after["width"] - before["width"]),
+        "x": abs(after_mapping["x"] - before_mapping["x"]),
+        "y": abs(after_mapping["y"] - before_mapping["y"]),
+        "width": abs(after_mapping["width"] - before_mapping["width"]),
     }
     unstable = {name: delta for name, delta in deltas.items() if delta > max_delta}
     if unstable:

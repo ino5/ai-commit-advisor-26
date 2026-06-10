@@ -45,6 +45,51 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-10 - Sidebar navigation uses one Streamlit rendering structure
+
+### 배경
+
+사이드바 메뉴는 이전에 활성 항목을 custom `div.nav-active`로 렌더링하고, 비활성 항목은 `st.button`으로 렌더링했습니다. CSS로 높이, padding, 왼쪽 border, font size를 맞췄지만 실제 DOM 구조와 wrapper margin이 달라 클릭 후 항목 위치가 미묘하게 달라질 수 있었습니다.
+
+사용자 관점에서는 버튼 색만 바뀌어야 할 것처럼 보이는데 실제로는 메뉴 슬롯이 흔들리는 느낌을 줬고, 유지보수자 관점에서는 Streamlit button 구조와 custom HTML 구조를 계속 맞춰야 하는 부담이 남았습니다.
+
+### 결정
+
+사이드바 내비게이션 항목은 활성/비활성 상태와 관계없이 모두 `st.button`으로 렌더링합니다. 선택된 항목을 다시 클릭하면 상태 변경과 `st.rerun()` 없이 no-op로 처리합니다.
+
+현재 위치 표시는 사이드바 상단의 `현재 위치` 경로에 맡기고, 메뉴 행 자체는 같은 box model과 같은 Streamlit DOM 구조를 유지합니다.
+
+### 이유
+
+- 같은 역할의 메뉴 항목이 상태에 따라 다른 DOM 구조를 쓰면 CSS 보정이 누적되고 회귀 가능성이 커집니다.
+- Streamlit 앱에서는 기본 컴포넌트 구조를 유지하는 편이 custom HTML/JS 내비게이션보다 다음 유지보수자가 이해하기 쉽습니다.
+- 활성 항목의 시각 강조보다 클릭 전후 위치 안정성이 더 중요한 UX 문제였습니다.
+- 기존 `현재 위치` 표시가 선택 상태를 이미 알려주므로 메뉴 행에서 별도 active markup을 유지할 필요가 낮습니다.
+
+### 검토한 대안
+
+- `div.nav-active` 구조를 유지하고 margin/padding을 더 정밀하게 보정: 당장 차이는 줄일 수 있지만 Streamlit 내부 button wrapper와 custom div를 계속 동기화해야 합니다.
+- 전체 사이드바를 custom HTML/JS navigation으로 재작성: 시각 제어는 가장 강하지만 Streamlit 상태 처리, 접근성, URL/query 동작을 직접 책임져야 해서 현재 앱 규모에는 과합니다.
+- 선택된 버튼 label에 prefix를 붙여 active 상태를 표시: DOM 구조는 통일되지만 label text가 바뀌어 테스트, 문서, 사용자의 메뉴 인식에 불필요한 차이를 만듭니다.
+
+### 영향과 tradeoff
+
+- 메뉴 행의 active highlight는 제거되고, 선택 상태는 상단 `현재 위치` 표시로 확인합니다.
+- Playwright 검증은 custom `.nav-active`가 남아 있으면 실패하고, 클릭 전후 메뉴 항목 box, text offset, 인접 간격이 바뀌면 실패하도록 보강했습니다.
+- 향후 active highlight를 다시 추가해야 한다면 같은 `st.button` 구조 위에서 구현하거나, 동일한 wrapper 구조를 유지하는 별도 설계를 먼저 검증해야 합니다.
+
+### 후속 확인
+
+- Home feature screenshot capture는 사이드바 안정성 검증을 포함합니다.
+- 사이드바에 새 메뉴 상태를 추가할 때는 활성/비활성 렌더링 구조가 갈라지지 않는지 확인합니다.
+
+### 관련 문서
+
+- [Failure History](failure-history.md)
+- [Documentation Impact Gate](../AGENTS.md#documentation-impact-gate)
+- [AI Change Log](../AI_CHANGELOG.md)
+- [Roadmap](../ROADMAP.md)
+
 ## 2026-06-10 - Documentation impact gate for agent work
 
 ### 배경

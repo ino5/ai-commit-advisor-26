@@ -98,25 +98,9 @@ def _inject_sidebar_styles() -> None:
         section[data-testid="stSidebar"] .stButton > button:hover {
             background: rgba(49, 51, 63, 0.08);
         }
-        section[data-testid="stSidebar"] .stButton > button p,
-        section[data-testid="stSidebar"] .nav-active p {
+        section[data-testid="stSidebar"] .stButton > button p {
             font-size: 0.86rem;
             line-height: 1.35;
-        }
-        section[data-testid="stSidebar"] .nav-active {
-            border-left: 3px solid #2563eb;
-            background: rgba(37, 99, 235, 0.10);
-            border-radius: 6px;
-            box-sizing: border-box;
-            display: flex;
-            align-items: center;
-            font-size: 0.86rem;
-            font-weight: 600;
-            line-height: 1.35;
-            min-height: 2.35rem;
-            padding: 0.42rem 0.62rem;
-            margin: 0.1rem 0 0.35rem 0;
-            width: 100%;
         }
         section[data-testid="stSidebar"] .nav-group {
             color: #64748b;
@@ -166,10 +150,9 @@ def _render_sidebar_navigation() -> tuple[str, str, Callable[[], None]]:
         st.sidebar.markdown(f'<div class="nav-group">{group}</div>', unsafe_allow_html=True)
         for page_name in pages:
             is_active = group == state["group"] and page_name == state["page"]
-            if is_active:
-                st.sidebar.markdown(f'<div class="nav-active">{page_name}</div>', unsafe_allow_html=True)
-                continue
             if st.sidebar.button(page_name, key=f"nav_{group}_{page_name}", use_container_width=True):
+                if is_active:
+                    continue
                 _select_page(group, page_name)
                 st.rerun()
 

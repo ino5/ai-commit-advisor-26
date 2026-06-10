@@ -31,6 +31,74 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-10 - Sidebar active menu jitter returned after CSS-only stabilization
+
+분류:
+
+- UX
+- Streamlit sidebar navigation
+- Visual verification gap
+
+관련 문서:
+
+- `app.py`
+- `scripts/capture_feature_screenshot.py`
+- `docs/engineering-decisions.md`
+- `ROADMAP.md`
+- `AI_CHANGELOG.md`
+
+### 증상
+
+사이드바 메뉴 클릭 시 선택 항목의 색상만 바뀌는 것이 아니라 위치와 간격이 미묘하게 깨져 보였습니다. 이전에 `Sidebar 메뉴 위치 흔들림 보정` 작업으로 높이, margin, box sizing, 왼쪽 border 폭을 맞췄지만, 사용자가 다시 같은 종류의 어색함을 확인했습니다.
+
+read-only 계측에서 `Dashboard` 같은 항목이 비활성 버튼일 때와 활성 custom `div`일 때 같은 메뉴 슬롯 안에서 `y` 위치가 약 16px 달라지는 사례가 확인됐습니다.
+
+### 직접 원인
+
+활성 메뉴는 `st.sidebar.markdown('<div class="nav-active">...')`로 렌더링했고, 비활성 메뉴는 `st.sidebar.button(...)`으로 렌더링했습니다. 두 항목은 CSS 값 일부가 같아도 Streamlit wrapper, button 내부 `p` 구조, margin 적용 위치가 달랐습니다.
+
+### 배경 또는 구조적 원인
+
+이전 보정은 active/inactive box sizing을 맞추는 CSS 조정에 집중했습니다. 하지만 상태에 따라 DOM 구조가 달라지는 설계 자체는 유지됐기 때문에, Streamlit 내부 구조나 특정 선택 상태에서 다시 시각 차이가 드러날 수 있었습니다.
+
+### 사전 검증에서 놓친 이유
+
+기존 Playwright 검증은 클릭 전후 `Mapping` 항목의 `x`, `y`, `width`가 크게 밀리는지 확인했습니다. 이 검증은 메뉴 전체가 이동하는 문제는 잡지만, 선택된 항목 자체가 비활성 버튼에서 활성 `div`로 바뀌며 슬롯 위치와 텍스트 기준선이 달라지는 문제는 충분히 확인하지 못했습니다.
+
+### 수정 내용
+
+사이드바 메뉴 항목을 활성/비활성 상태와 관계없이 모두 `st.button`으로 렌더링하도록 변경했습니다. 선택된 메뉴를 다시 클릭하면 상태 변경과 rerun을 하지 않습니다.
+
+검증 스크립트는 custom `.nav-active` markup이 남아 있으면 실패하고, `Home`, `Dashboard`, `AI Progress` 항목의 클릭 전후 box 위치, 크기, text relative offset, 인접 간격이 바뀌면 실패하도록 보강했습니다.
+
+### 재발 방지 규칙
+
+- 같은 역할의 UI 항목은 상태가 달라도 같은 Streamlit 컴포넌트 구조로 렌더링합니다.
+- CSS 보정으로 시각 차이를 줄이기 전에 DOM 구조가 갈라져 있는지 먼저 확인합니다.
+- 메뉴 안정성 검증은 주변 항목 이동뿐 아니라 선택 항목 자체의 box, text offset, adjacent spacing을 확인합니다.
+- active highlight를 다시 추가하려면 같은 button 구조 위에서 구현하거나, 동일 wrapper 구조를 유지하는 설계를 먼저 검증합니다.
+
+### 남은 한계
+
+- 메뉴 행 자체의 active highlight는 제거됐고, 현재 선택 상태는 사이드바 상단 `현재 위치` 경로로 확인합니다.
+- Streamlit이 button DOM 구조를 크게 바꾸면 검증 스크립트 selector도 함께 조정해야 합니다.
+
+### 검증
+
+Local verification:
+
+```powershell
+.\.venv\Scripts\python.exe -m compileall app.py src scripts
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature home --url http://localhost:8518 --screenshot .tmp\sidebar-structure-home.png --surface local
+git diff --check
+```
+
+결과:
+
+- `compileall` passed for `app.py`, `src`, and `scripts`.
+- Home screenshot verification passed against local Streamlit port 8518 and confirmed sidebar structure stability.
+- `git diff --check` passed with only Git line-ending warnings.
+
 ## 2026-06-10 - Engineering decision review was missed during maintainability planning
 
 분류:

@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Sidebar navigation structure stabilization
+
+- Rendered active and inactive sidebar menu items through the same `st.button` path instead of mixing Streamlit buttons with custom `.nav-active` markup.
+- Removed custom active menu `div` CSS and made repeated clicks on the current page a no-op without rerun.
+- Expanded Home screenshot verification so sidebar checks fail when custom `.nav-active` markup returns or when menu item boxes, text offsets, or adjacent spacing change after navigation.
+- Recorded the maintainability decision in `docs/engineering-decisions.md` and the previous CSS-only stabilization gap in `docs/failure-history.md`.
+- Important files: `app.py`, `scripts/capture_feature_screenshot.py`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m compileall app.py src scripts` passed; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature home --url http://localhost:8518 --screenshot .tmp\sidebar-structure-home.png --surface local` passed; `git diff --check` passed with only Git line-ending warnings.
+
 ### Documentation impact gate policy
 
 - Added a `Documentation Impact Gate` to `AGENTS.md` so meaningful code, UX, test, behavior, automation, operations, and documentation work must classify documentation impact before implementation.

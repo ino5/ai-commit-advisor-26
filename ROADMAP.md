@@ -50,6 +50,7 @@
 | P2 | Docs | Reader-facing wording policy simplification | Done | Reader-facing wording policy simplification | fe093bc |
 | P2 | UX | Sidebar menu hierarchy sizing | Done | Sidebar 메뉴 계층 크기 조정 |  |
 | P2 | Docs | Documentation impact gate policy | Done | Documentation impact gate policy | 88ef1cb |
+| P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization |  |
 
 ## P0 - Program Management UX Improvement
 
@@ -728,3 +729,20 @@ Checklist:
 - [x] Record the missed engineering-decision review as reusable failure history.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run targeted documentation and whitespace checks.
+
+## P2 - Sidebar Navigation Structure Stabilization
+
+Status: Done
+
+Goal:
+Remove sidebar menu position jitter by rendering active and inactive navigation items with the same Streamlit button structure instead of mixing buttons with custom active `div` markup.
+
+Checklist:
+
+- [x] Render active and inactive sidebar menu items through the same `st.button` path.
+- [x] Remove custom `.nav-active` markup and CSS from the sidebar menu.
+- [x] Expand Playwright sidebar stability checks to compare active/inactive item boxes, text offsets, and adjacent spacing.
+- [x] Record the maintainability decision in `docs/engineering-decisions.md`.
+- [x] Record the previous CSS-only stabilization gap in `docs/failure-history.md`.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile and focused UI verification.
