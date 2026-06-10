@@ -53,7 +53,7 @@
 | P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization | 5094ebb |
 | P2 | Docs | AI Agent onboarding guide | Done | AI Agent onboarding guide |  |
 | P2 | UX | Global project context | Done | Global project context | 17b281d |
-| P2 | UX | Home current project focus | Done | Home current project focus |  |
+| P2 | UX | Home current project focus | Done | Home current project focus | 6027d20 |
 
 ## P0 - Program Management UX Improvement
 
