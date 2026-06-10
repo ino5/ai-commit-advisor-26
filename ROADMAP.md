@@ -26,7 +26,7 @@
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 | 704c7cf |
 | P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 | c42d847 |
 | P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 | fc87e29 |
-| P1 | Mapping / Ops | Commit-based mapping fallback and verified screenshots | Done | Commit-based mapping fallback and verified screenshots | bcfbf0c, 06ab07c |
+| P1 | Mapping / Ops | Commit-based mapping fallback and verified screenshots | Done | Commit-based mapping fallback and verified screenshots | bcfbf0c, 06ab07c, 93e202c |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | a151133 |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
