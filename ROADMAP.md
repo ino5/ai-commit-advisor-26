@@ -50,7 +50,7 @@
 | P2 | Docs | Reader-facing wording policy simplification | Done | Reader-facing wording policy simplification | fe093bc |
 | P2 | UX | Sidebar menu hierarchy sizing | Done | Sidebar 메뉴 계층 크기 조정 |  |
 | P2 | Docs | Documentation impact gate policy | Done | Documentation impact gate policy | 88ef1cb |
-| P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization |  |
+| P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization | 5094ebb |
 
 ## P0 - Program Management UX Improvement
 
