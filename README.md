@@ -76,7 +76,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 
 ## 문서
 
-- [AI Agent와 함께 개발하기](docs/agent-onboarding.md): AI Agent 기반 개발을 처음 시작하는 사용자를 위한 온보딩 문서로, `AGENTS.md`, `ROADMAP.md`, `AI_CHANGELOG.md`의 역할과 프롬프트 작성 방식을 설명합니다.
+- [AI Agent 작업 안내](docs/agent-onboarding.md): 이 프로젝트에서 Agent로 작업할 때 참고할 흐름, 문서 규칙, 프롬프트 예시를 정리합니다.
 - [기능 가이드](docs/feature-guide.md): 주요 화면, 기능 흐름, 분석 결과가 무엇을 의미하는지 설명합니다.
 - [Application Preview](docs/application-preview.md): 샘플 프로젝트 기준 주요 화면과 기능 상태를 미리 확인할 수 있습니다.
 - [설치와 운영](docs/setup-and-operations.md): 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 가이드입니다.

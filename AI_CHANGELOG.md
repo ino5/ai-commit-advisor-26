@@ -9,8 +9,9 @@
 - Clarified when users should mention `ROADMAP.md`, documentation checks, verification constraints, or exclusions directly in a prompt.
 - Linked the onboarding guide from README and tracked the documentation task in `ROADMAP.md`.
 - Generalized README and onboarding wording around `AI Agent` users instead of naming Codex beginners or teammates in the entry description.
+- Shortened the guide title and README description so the onboarding link reads like a project document rather than a generic AI Agent introduction.
 - Important files: `docs/agent-onboarding.md`, `README.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
-- Verification: `Test-Path docs\agent-onboarding.md` returned `True`; `rg -n "\[AI Agent와 함께 개발하기\]\(docs/agent-onboarding\.md\)|AI Agent onboarding guide|AGENTS.md를 매번" README.md docs\agent-onboarding.md AI_CHANGELOG.md ROADMAP.md` confirmed the expected references; `Get-Content -Path README.md -Encoding UTF8` rendered the README document link correctly; `git diff --check` passed with only Git line-ending warnings.
+- Verification: `Test-Path docs\agent-onboarding.md` returned `True`; `rg -n "AI Agent 작업 안내|AGENTS.md를 매번" README.md docs\agent-onboarding.md AI_CHANGELOG.md ROADMAP.md` confirmed the expected references; `Get-Content -Path README.md -Encoding UTF8` rendered the README document link correctly; `git diff --check` passed with only Git line-ending warnings.
 
 ### Sidebar navigation structure stabilization
 
