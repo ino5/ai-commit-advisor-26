@@ -45,6 +45,57 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-10 - Global project context through a shared UI helper
+
+### 배경
+
+프로젝트 단위 화면마다 `프로젝트 선택` selectbox와 프로젝트 목록 조회 코드가 반복되어 있었습니다. 사용자는 메뉴를 이동할 때마다 같은 프로젝트를 다시 고르는 느낌을 받았고, 유지보수자는 selector label, 정렬, 선택 복구, 프로젝트 삭제 시 fallback 같은 규칙을 여러 화면에서 맞춰야 했습니다.
+
+AI Commit Advisor의 주요 업무는 하나의 프로젝트를 기준으로 Git, 산출물, Mapping, Risk, RAG, Project Chat 결과를 연결하는 흐름입니다. 따라서 현재 작업 프로젝트를 앱 공통 컨텍스트로 두는 편이 사용자 흐름과 데이터 모델 모두에 더 잘 맞습니다.
+
+### 결정
+
+`src/ui/project_context.py`를 현재 프로젝트 컨텍스트의 공식 진입점으로 둡니다.
+
+- 사이드바에서 현재 프로젝트를 한 번 선택합니다.
+- 프로젝트 단위 화면은 `st.session_state`를 직접 읽지 않고 `require_project_context()` 또는 `get_current_project_context()`를 통해 프로젝트를 받습니다.
+- helper는 프로젝트 목록 로드, 현재 선택 저장/조회, 삭제되었거나 잘못된 선택 복구, 프로젝트가 없을 때 안내를 담당합니다.
+- Mapping, Risk, RAG, Project Chat, AI Progress, Program Detail, Commit Impact, Git, Developer, 개발계획, 표준용어 같은 프로젝트 단위 화면의 local 프로젝트 selector를 제거합니다.
+- `프로젝트/Git 설정`은 프로젝트 생성/수정 화면이므로 자체 선택 UI를 유지하되, 저장한 프로젝트를 현재 프로젝트로 동기화합니다.
+- `프로그램 목록`은 전역 프로젝트를 기본으로 쓰고, 기존처럼 새 프로젝트명으로 저장해야 하는 경우를 별도 옵션으로 분리합니다.
+
+### 이유
+
+- 전역 프로젝트 선택은 사용자가 페이지를 이동할 때 같은 분석 대상을 유지하게 해 줍니다.
+- 페이지가 `st.session_state` key를 직접 읽으면 선택 복구 정책이 흩어지므로, helper를 통해 접근하는 규칙이 유지보수에 유리합니다.
+- 현재 `PAGE_GROUPS`는 인자 없는 render 함수를 사용합니다. 모든 page renderer를 `render_page(project_context)` 형태로 한 번에 바꾸면 변경 범위가 커져 회귀 위험이 큽니다.
+- 얇은 helper 방식은 중복 selector를 제거하면서도 기존 Streamlit 페이지 구조를 크게 흔들지 않습니다.
+
+### 검토한 대안
+
+- 각 페이지의 selector를 그대로 두고 기본값만 전역 선택으로 맞춤: 사용자 혼란은 조금 줄지만 선택 UI와 fallback 규칙 중복은 남습니다.
+- 모든 render 함수가 `ProjectContext`를 인자로 받도록 즉시 변경: 의존성이 명확해지는 장점은 있지만 `app.py`, 모든 페이지, 테스트를 동시에 크게 바꿔야 해서 이번 범위에는 과합니다.
+- `app.py`에서 직접 `st.session_state["current_project_id"]`를 관리하고 페이지들이 같은 key를 읽게 함: 구현은 빠르지만 삭제 복구, 안내 문구, DB 조회 정책이 페이지별로 퍼질 가능성이 큽니다.
+
+### 영향과 tradeoff
+
+- 프로젝트 단위 화면의 상단에는 현재 프로젝트 caption만 표시되고, 프로젝트 전환은 사이드바에서 수행합니다.
+- helper가 비대해지지 않도록 Mapping, Risk, RAG, 업로드 검증, Project Chat 세션 같은 페이지별 비즈니스 로직은 helper에 넣지 않습니다.
+- 전역 선택이 없는 상태에서도 프로그램 목록은 새 프로젝트명으로 저장할 수 있지만, 일반적인 작업 흐름은 프로젝트/Git 설정에서 프로젝트를 만든 뒤 사이드바에서 선택하는 방식입니다.
+- 나중에 앱 구조가 커지면 `render_page(project_context)` 방식으로 명시적 의존성 주입을 다시 검토할 수 있습니다.
+
+### 후속 확인
+
+- 새 프로젝트 저장, 프로젝트 삭제 또는 이름 변경 흐름이 추가되면 `project_context.py`의 선택 복구와 동기화 규칙을 먼저 확인합니다.
+- 프로젝트 단위 새 화면을 추가할 때는 페이지 내부 `프로젝트 선택`을 만들기 전에 `require_project_context()` 사용을 우선 검토합니다.
+
+### 관련 문서
+
+- [Feature Guide](feature-guide.md)
+- [Architecture](architecture.md)
+- [AI Change Log](../AI_CHANGELOG.md)
+- [Roadmap](../ROADMAP.md)
+
 ## 2026-06-10 - Sidebar navigation uses one Streamlit rendering structure
 
 ### 배경

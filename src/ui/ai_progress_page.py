@@ -3,16 +3,9 @@ import plotly.express as px
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
-from src.db.models import Project
 from src.services.progress_service import get_ai_progress_summary, get_program_commit_details
 from src.services.risk_service import get_unresolved_findings
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
+from src.ui.project_context import require_project_context
 
 
 def _format_datetime(value) -> str:
@@ -280,14 +273,10 @@ def render_ai_progress_page() -> None:
     st.title("AI Progress")
     st.caption("계획 진척도와 LLM 매핑 결과 기반 AI 진척도를 비교하고 리스크를 추적합니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트를 등록해 주세요.")
+    context = require_project_context("먼저 프로젝트를 등록해 주세요.")
+    if context is None:
         return
-
-    project_options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_label = st.selectbox("프로젝트 선택", list(project_options.keys()))
-    project_id = project_options[selected_label]
+    project_id = context.project_id
 
     with SessionLocal() as db:
         summary = get_ai_progress_summary(db, project_id)

@@ -19,6 +19,7 @@ from src.services.program_import_service import (
     program_column_guide,
     validate_program_import,
 )
+from src.ui.project_context import get_current_project_context, set_current_project_id
 
 
 TARGET_COLUMNS = PROGRAM_TEMPLATE_COLUMNS
@@ -46,29 +47,19 @@ def _guess_source_column(target_column: str, source_columns: list[str]) -> str |
     return None
 
 
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
-
-
-def _project_selector() -> tuple[int | None, str]:
-    projects = _load_projects()
-    options = ["새 프로젝트: Default Project"] + [f"{project.id} - {project.name}" for project in projects]
-    selected = st.selectbox("프로젝트 선택", options)
-    if selected.startswith("새 프로젝트"):
-        return None, "Default Project"
-    selected_id = int(selected.split(" - ", 1)[0])
-    project = next(project for project in projects if project.id == selected_id)
-    return selected_id, project.name
-
-
 def _existing_program_ids(project_id: int | None) -> set[str]:
     if project_id is None:
         return set()
     with SessionLocal() as db:
         rows = db.query(Program.program_id).filter(Program.project_id == project_id).all()
     return {str(row[0]) for row in rows if row[0]}
+
+
+def _set_current_project_by_name(project_name: str) -> None:
+    with SessionLocal() as db:
+        project = db.query(Project).filter(Project.name == project_name).one_or_none()
+        if project is not None:
+            set_current_project_id(int(project.id))
 
 
 def _empty_program_payload() -> dict:
@@ -263,6 +254,7 @@ def _render_manual_create_tab(project_name: str) -> None:
     with SessionLocal() as db:
         validation = save_manual_program(db, project_name.strip() or "Default Project", payload)
     if validation.is_valid:
+        _set_current_project_by_name(project_name.strip() or "Default Project")
         st.success("프로그램을 추가했습니다.")
         st.rerun()
     for error in validation.errors:
@@ -335,6 +327,7 @@ def _render_upload_tab(project_id: int | None, project_name: str) -> None:
         with SessionLocal() as db:
             result = save_programs_with_result(db, project_name.strip() or "Default Project", validation.valid_rows)
 
+        _set_current_project_by_name(project_name.strip() or "Default Project")
         col1, col2, col3 = st.columns(3)
         col1.metric("신규 생성", result.created_count)
         col2.metric("업데이트", result.updated_count)
@@ -346,9 +339,18 @@ def render_upload_page() -> None:
     st.title("프로그램 관리")
     st.caption("프로그램 데이터를 조회하고, 양식을 내려받고, Excel 업로드 전 검증 후 저장합니다.")
 
-    project_id, project_name = _project_selector()
-    if project_id is None:
-        project_name = st.text_input("새 프로젝트명", value=project_name)
+    context = get_current_project_context()
+    create_new_project = st.checkbox("새 프로젝트명으로 저장", value=context is None)
+    if create_new_project:
+        project_id = None
+        project_name = st.text_input("새 프로젝트명", value="Default Project")
+    else:
+        if context is None:
+            st.info("먼저 프로젝트를 등록하거나 새 프로젝트명으로 저장을 선택해 주세요.")
+            return
+        project_id = context.project_id
+        project_name = context.project_name
+        st.caption(f"현재 프로젝트: {project_name} ({project_id})")
 
     tab1, tab2, tab3, tab4 = st.tabs(["현재 데이터", "직접 추가", "Excel 업로드", "양식"])
     with tab1:

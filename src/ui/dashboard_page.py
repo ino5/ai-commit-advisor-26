@@ -3,22 +3,10 @@ import plotly.express as px
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
 from src.db.models import AnalysisRun, GitCommit, Project
 from src.services.developer_service import get_developer_stats
 from src.services.progress_service import get_ai_progress_summary
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
-
-
-def _select_project(projects: list[Project]) -> int:
-    options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_label = st.selectbox("프로젝트 선택", list(options.keys()))
-    return options[selected_label]
+from src.ui.project_context import require_project_context
 
 
 def _program_df(summary) -> pd.DataFrame:
@@ -153,10 +141,8 @@ def render_dashboard_page() -> None:
     st.title("Dashboard")
     st.caption("프로젝트 계획, AI 분석, Git 활동을 한 화면에서 확인합니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트를 등록해 주세요.")
+    context = require_project_context("먼저 프로젝트를 등록해 주세요.")
+    if context is None:
         return
 
-    project_id = _select_project(projects)
-    _render_project_summary(project_id)
+    _render_project_summary(context.project_id)

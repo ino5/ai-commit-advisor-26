@@ -4,15 +4,8 @@ import streamlit as st
 from datetime import date, timedelta
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
-from src.db.models import Project
 from src.services.commit_impact_service import get_commit_impact_analysis, list_commit_options
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
+from src.ui.project_context import require_project_context
 
 
 def _format_datetime(value) -> str:
@@ -168,14 +161,10 @@ def render_commit_impact_page() -> None:
     st.title("Commit Impact")
     st.caption("특정 Git 커밋이 어떤 프로그램, 개발자, 모듈, 파일에 영향을 주는지 기존 매핑 결과로 분석합니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트를 등록해 주세요.")
+    context = require_project_context("먼저 프로젝트를 등록해 주세요.")
+    if context is None:
         return
-
-    project_options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_project = st.selectbox("프로젝트 선택", list(project_options.keys()))
-    project_id = project_options[selected_project]
+    project_id = context.project_id
 
     commit_db_id = _select_commit(project_id)
     if commit_db_id is None:

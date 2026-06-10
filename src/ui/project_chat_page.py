@@ -4,7 +4,6 @@ import pandas as pd
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
 from src.db.models import Project
 from src.rag.chat_service import answer_source_question
 from src.rag.chat_history_service import (
@@ -22,6 +21,7 @@ from src.rag.source_index_service import (
     refresh_changed_source_files,
     refresh_source_file_index,
 )
+from src.ui.project_context import require_project_context
 
 
 VERIFICATION_LABELS = {
@@ -38,14 +38,6 @@ SOURCE_TYPE_LABELS = {
     "commit": "커밋 이력",
     "commit_file": "커밋 파일 변경",
 }
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
-
-
 def _chat_key(project_id: int) -> str:
     return f"project_chat_messages_{project_id}"
 
@@ -306,15 +298,11 @@ def render_project_chat_page() -> None:
     st.title("Project Chat")
     st.caption("현재 소스 파일에서 검증된 RAG 근거로 프로젝트 질문에 답합니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트를 등록해 주세요.")
+    context = require_project_context("먼저 프로젝트를 등록해 주세요.")
+    if context is None:
         return
-
-    project_options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_label = st.selectbox("프로젝트 선택", list(project_options.keys()))
-    project_id = project_options[selected_label]
-    project = next(project for project in projects if project.id == project_id)
+    project_id = context.project_id
+    project = Project(id=context.project_id, name=context.project_name, git_repo_path=context.git_repo_path)
 
     _render_source_index_status(project)
 

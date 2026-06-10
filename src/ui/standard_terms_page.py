@@ -2,7 +2,6 @@ import pandas as pd
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
 from src.db.models import Project
 from src.services.standard_term_service import (
     build_standard_term_template_excel,
@@ -13,22 +12,7 @@ from src.services.standard_term_service import (
     standard_term_column_guide,
     validate_standard_term_import,
 )
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
-
-
-def _project_selector() -> int | None:
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트를 등록해 주세요.")
-        return None
-    options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected = st.selectbox("프로젝트 선택", list(options.keys()))
-    return options[selected]
+from src.ui.project_context import require_project_context
 
 
 def _render_column_guide() -> None:
@@ -123,9 +107,10 @@ def render_standard_terms_page() -> None:
     st.title("표준용어/표준단어")
     st.caption("SI 산출물의 표준용어와 표준단어를 업로드해 한글 업무 질문을 코드/DB 식별자로 연결합니다.")
 
-    project_id = _project_selector()
-    if project_id is None:
+    context = require_project_context("먼저 프로젝트를 등록해 주세요.")
+    if context is None:
         return
+    project_id = context.project_id
 
     tab1, tab2, tab3 = st.tabs(["현재 데이터", "Excel 업로드", "양식"])
     with tab1:

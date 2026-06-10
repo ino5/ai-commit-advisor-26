@@ -2,7 +2,6 @@ import pandas as pd
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
 from src.db.models import DocumentChunk, Project, VectorItem
 from src.rag.chunker import DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE, build_project_chunks
 from src.rag.chat_service import answer_source_question
@@ -16,6 +15,7 @@ from src.rag.source_index_service import (
 )
 from src.rag.source_verifier import annotate_retrieval_result
 from src.rag.vector_store import VectorStore
+from src.ui.project_context import require_project_context
 from src.utils.config import settings
 from src.utils.runtime_estimator import estimate_runtime
 
@@ -34,14 +34,6 @@ VERIFICATION_LABELS = {
     "historical": "변경 이력",
     "not_applicable": "검증 대상 아님",
 }
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
-
-
 def _source_label(source_type: str) -> str:
     return SOURCE_TYPE_LABELS.get(source_type, source_type)
 
@@ -488,15 +480,11 @@ def render_rag_page() -> None:
     st.title("RAG 검색")
     st.caption("프로그램 정보, 커밋 메시지, 변경 파일/diff를 chunk로 만들고 pgvector cosine 검색 품질을 확인합니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트를 등록하세요.")
+    context = require_project_context("먼저 프로젝트를 등록하세요.")
+    if context is None:
         return
-
-    project_options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_label = st.selectbox("프로젝트 선택", list(project_options.keys()))
-    project_id = project_options[selected_label]
-    project = next(project for project in projects if project.id == project_id)
+    project_id = context.project_id
+    project = Project(id=context.project_id, name=context.project_name, git_repo_path=context.git_repo_path)
 
     _render_index_stats(project_id)
 

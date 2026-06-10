@@ -3,8 +3,6 @@ import plotly.express as px
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
-from src.db.models import Project
 from src.services.program_analysis_service import (
     get_commit_file_details,
     get_program_detail_analysis,
@@ -15,12 +13,7 @@ from src.services.program_implementation_analyzer import (
     get_program_implementation_status,
 )
 from src.services.risk_service import get_unresolved_findings
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
+from src.ui.project_context import require_project_context
 
 
 def _format_date(value) -> str:
@@ -396,14 +389,10 @@ def render_program_detail_page() -> None:
     st.title("Program Detail")
     st.caption("특정 프로그램의 계획, AI 매핑 결과, 관련 커밋, 개발자 기여와 리스크를 한 화면에서 확인합니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트를 등록해 주세요.")
+    context = require_project_context("먼저 프로젝트를 등록해 주세요.")
+    if context is None:
         return
-
-    project_options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_project = st.selectbox("프로젝트 선택", list(project_options.keys()))
-    project_id = project_options[selected_project]
+    project_id = context.project_id
 
     st.divider()
     program_db_id = _render_program_selector(project_id)

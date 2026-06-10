@@ -2,6 +2,17 @@
 
 ## 2026-06-10
 
+### Global project context
+
+- Added `src/ui/project_context.py` as the shared UI helper for current project selection, validation, deleted-selection recovery, and sidebar rendering.
+- Moved the current project selector into the sidebar and converted project-scoped pages to use the shared context instead of repeated page-level `프로젝트 선택` controls.
+- Kept `프로젝트/Git 설정` as the project creation/editing exception and synchronized saved projects back to the global current project.
+- Updated `프로그램 관리` so the global project is the default target while preserving an explicit `새 프로젝트명으로 저장` exception for legacy upload/create flows.
+- Added focused tests for project context selection retention, invalid selection recovery, and no-project cleanup.
+- Updated feature, architecture, engineering decision, roadmap, changelog, and Home preview screenshot documentation for the new project-selection flow.
+- Important files: `app.py`, `src/ui/project_context.py`, `src/ui/*_page.py`, `tests/test_project_context.py`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `docs/images/features/home.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m compileall src app.py` passed; `.\.venv\Scripts\python.exe -m pytest -q` passed with 85 tests; Browser verification on `http://localhost:8522` confirmed Home, Dashboard, and Mapping show the sidebar current project without duplicated page-level project selectors, while `프로젝트/Git 설정` keeps its expected project selector; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature home --url http://localhost:8522 --screenshot docs\images\features\home.png --surface local` passed.
+
 ### AI Agent onboarding guide
 
 - Added `docs/agent-onboarding.md`, a beginner-friendly Korean guide for developers using AI Agent workflows with this project.

@@ -2,8 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
-from src.db.models import GitCommit, Program, Project
+from src.db.models import GitCommit, Program
 from src.services.mapping_service import (
     DEFAULT_CANDIDATES_PER_COMMIT,
     DEFAULT_CANDIDATES_PER_PROGRAM,
@@ -17,12 +16,7 @@ from src.services.mapping_feedback_service import (
     list_mapping_review_queue_rows,
     summarize_mapping_feedback_quality,
 )
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
+from src.ui.project_context import require_project_context
 
 
 def _commit_status(commit: GitCommit) -> str:
@@ -390,14 +384,10 @@ def render_mapping_page() -> None:
     st.title("프로그램-커밋 매핑 분석")
     st.caption("커밋 기준 분석을 기본 추천 방식으로 사용합니다. 기존 프로그램 기준 분석도 유지됩니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트를 등록해 주세요.")
+    context = require_project_context("먼저 프로젝트를 등록해 주세요.")
+    if context is None:
         return
-
-    project_options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_label = st.selectbox("프로젝트 선택", list(project_options.keys()))
-    project_id = project_options[selected_label]
+    project_id = context.project_id
 
     with SessionLocal() as db:
         program_count = db.query(Program).filter(Program.project_id == project_id).count()

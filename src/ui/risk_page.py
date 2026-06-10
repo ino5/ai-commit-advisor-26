@@ -3,18 +3,11 @@ import plotly.express as px
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
-from src.db.models import Project
 from src.services.risk_service import get_unresolved_findings, resolve_findings, run_risk_analysis, summarize_findings
+from src.ui.project_context import require_project_context
 
 
 LEVEL_ORDER = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
 
 
 def _findings_dataframe(findings) -> pd.DataFrame:
@@ -130,14 +123,10 @@ def render_risk_page() -> None:
     st.title("Risk Analysis")
     st.caption("프로그램 목록, 개발계획, Git 커밋, LLM 매핑 결과를 기반으로 누락/위험 프로그램을 규칙 기반으로 탐지합니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트를 등록해 주세요.")
+    context = require_project_context("먼저 프로젝트를 등록해 주세요.")
+    if context is None:
         return
-
-    project_options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_project = st.selectbox("프로젝트 선택", list(project_options.keys()))
-    project_id = project_options[selected_project]
+    project_id = context.project_id
 
     if st.button("리스크 분석 실행", type="primary"):
         with SessionLocal() as db:

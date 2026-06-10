@@ -8,6 +8,7 @@
 flowchart TB
     User["회사 관리자 / PL / 개발 리더"] --> Streamlit["Streamlit App<br/>app.py"]
 
+    Streamlit --> ProjectContext["project_context.py<br/>현재 프로젝트 선택/검증"]
     Streamlit --> Home["Home"]
     Streamlit --> ProjectUI["프로젝트/Git 설정 / 개발자 현황"]
     Streamlit --> ArtifactUI["산출물 관리"]
@@ -17,6 +18,7 @@ flowchart TB
     Streamlit --> DashboardUI["Dashboard / 개발계획 / AI Progress"]
     Streamlit --> SettingsUI["설정"]
 
+    ProjectContext --> DB
     ProjectUI --> ExcelService["excel_service.py"]
     ArtifactUI --> ExcelService
     GitUI --> GitService["git_service.py"]
@@ -97,7 +99,7 @@ flowchart LR
 ### 주요 화면 역할
 
 - `Home`: 전체 프로젝트 현황, KPI, AI 진척도, 리스크 프로그램 요약.
-- `Project`: 프로젝트 이름, 설명, 로컬 Git 저장소 경로 관리.
+- `Project`: 프로젝트 이름, 설명, 로컬 Git 저장소 경로 관리. 프로젝트 저장 후 사이드바 현재 프로젝트 선택과 동기화.
 - `개발자 현황`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리.
 - `개발자 목록`: 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - `Program`: 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, 저장.
@@ -113,6 +115,8 @@ flowchart LR
 - `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
 - `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
 - `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답하고, 답변 전 현재 소스 인덱스 상태를 확인하며, 프로젝트별 대화 session/message와 근거를 저장.
+
+대부분의 프로젝트 단위 화면은 각 화면 안에서 프로젝트를 다시 고르지 않고, 사이드바의 현재 프로젝트 컨텍스트를 사용합니다. `프로젝트/Git 설정`은 프로젝트 생성과 수정을 담당하므로 자체 선택 UI를 유지하고, `프로그램 목록`은 기존 프로젝트에 데이터를 넣는 흐름과 새 프로젝트명으로 저장하는 예외 흐름을 분리합니다.
 
 ## 3. DB ERD
 
@@ -543,6 +547,7 @@ LLM 출력 예시:
 - Streamlit 앱의 시작점.
 - `PAGE_GROUPS`에서 업무 흐름 기준 메뉴를 정의한다.
 - 각 메뉴 항목은 `src/ui/*_page.py`의 render 함수로 연결된다.
+- 사이드바에서 현재 프로젝트를 한 번 선택하고, 프로젝트 단위 화면은 `src/ui/project_context.py`를 통해 같은 프로젝트 컨텍스트를 사용한다.
 
 주요 메뉴 그룹:
 
@@ -558,6 +563,7 @@ LLM 출력 예시:
 | 파일 | 역할 |
 |---|---|
 | `src/ui/home_page.py` | 전체 현황 KPI와 리스크 요약. |
+| `src/ui/project_context.py` | 현재 프로젝트 선택값 저장/조회, 삭제된 선택 복구, 사이드바 전역 프로젝트 selector. |
 | `src/ui/project_page.py` | 프로젝트 등록/수정. |
 | `src/ui/developer_page.py` | Git author 기반 개발자 현황, 자동 추출, 개발자 통계. |
 | `src/ui/developer_upload_page.py` | 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |

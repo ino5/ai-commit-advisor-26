@@ -52,6 +52,7 @@
 | P2 | Docs | Documentation impact gate policy | Done | Documentation impact gate policy | 88ef1cb |
 | P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization | 5094ebb |
 | P2 | Docs | AI Agent onboarding guide | Done | AI Agent onboarding guide |  |
+| P2 | UX | Global project context | Done | Global project context |  |
 
 ## P0 - Program Management UX Improvement
 
@@ -763,3 +764,21 @@ Checklist:
 - [x] Link the onboarding guide from README.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run markdown/link sanity checks.
+
+## P2 - Global Project Context
+
+Status: Done
+
+Goal:
+Move repeated page-level project selection into a shared app-level project context so project-based workflows stay consistent across menus.
+
+Checklist:
+
+- [x] Add a shared project context helper for loading, selecting, validating, and displaying the current project.
+- [x] Render the current project selector once in the sidebar.
+- [x] Convert analysis and project-scoped management pages to use the shared project context instead of local project selectors.
+- [x] Keep project creation, sample data generation, and global settings outside forced project context where appropriate.
+- [x] Record the maintainability decision in `docs/engineering-decisions.md`.
+- [x] Update related user-facing and architecture documentation where the navigation/project-selection flow changes.
+- [x] Run compile, tests, and focused UI verification.
+- [x] Update `AI_CHANGELOG.md`.

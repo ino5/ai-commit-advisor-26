@@ -2,15 +2,9 @@ import pandas as pd
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
 from src.db.models import Project
 from src.services.git_service import is_git_repository, sync_git_repository
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
+from src.ui.project_context import require_project_context
 
 
 def _render_sync_result(result) -> None:
@@ -36,18 +30,12 @@ def render_git_page() -> None:
     st.title("Git")
     st.caption("프로젝트에 등록된 로컬 Git 저장소의 전체 커밋을 수집하고 이후 새 커밋만 증분 동기화합니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트/Git 설정에서 프로젝트와 로컬 Git 저장소 경로를 등록해 주세요.")
+    context = require_project_context("먼저 프로젝트/Git 설정에서 프로젝트와 로컬 Git 저장소 경로를 등록해 주세요.")
+    if context is None:
         return
 
-    options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_label = st.selectbox("프로젝트 선택", list(options.keys()))
-    selected_project_id = options[selected_label]
-
-    init_db()
     with SessionLocal() as db:
-        project = db.get(Project, selected_project_id)
+        project = db.get(Project, context.project_id)
         if project is None:
             st.error("선택한 프로젝트를 찾을 수 없습니다.")
             return

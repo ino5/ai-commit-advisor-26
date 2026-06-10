@@ -4,21 +4,22 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import Project
 from src.services.git_service import is_git_repository
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
+from src.ui.project_context import CURRENT_PROJECT_ID_KEY, load_projects, set_current_project_id
 
 
 def render_project_page() -> None:
     st.title("프로젝트/Git 설정")
     st.caption("프로젝트와 로컬 Git 저장소 경로를 등록합니다.")
 
-    projects = _load_projects()
+    projects = load_projects()
     project_options = ["새 프로젝트"] + [f"{project.id} - {project.name}" for project in projects]
-    selected = st.selectbox("프로젝트 선택", project_options)
+    current_project_id = st.session_state.get(CURRENT_PROJECT_ID_KEY)
+    default_index = 0
+    for index, option in enumerate(project_options):
+        if option.startswith(f"{current_project_id} - "):
+            default_index = index
+            break
+    selected = st.selectbox("프로젝트 선택", project_options, index=default_index)
     selected_project = None
     if selected != "새 프로젝트":
         selected_id = int(selected.split(" - ", 1)[0])
@@ -55,5 +56,8 @@ def render_project_page() -> None:
         project.git_repo_path = repo_path.strip() or None
         project.description = description.strip() or None
         db.commit()
+        db.refresh(project)
+        saved_project_id = int(project.id)
 
+    set_current_project_id(saved_project_id)
     st.success("프로젝트를 저장했습니다.")

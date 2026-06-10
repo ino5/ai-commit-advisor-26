@@ -15,6 +15,7 @@ from src.ui.mapping_page import render_mapping_page
 from src.ui.planning_dashboard_page import render_planning_dashboard_page
 from src.ui.program_detail_page import render_program_detail_page
 from src.ui.project_chat_page import render_project_chat_page
+from src.ui.project_context import render_global_project_selector
 from src.ui.project_page import render_project_page
 from src.ui.rag_page import render_rag_page
 from src.ui.risk_page import render_risk_page
@@ -143,6 +144,7 @@ def _render_sidebar_navigation() -> tuple[str, str, Callable[[], None]]:
 
     st.sidebar.title("AI Commit Advisor")
     st.sidebar.caption("업무 흐름 기반 프로젝트 분석 콘솔")
+    render_global_project_selector()
     st.sidebar.markdown('<div class="nav-current">현재 위치</div>', unsafe_allow_html=True)
     st.sidebar.caption(f"{state['group']} / {state['page']}")
 

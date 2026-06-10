@@ -5,8 +5,7 @@ import streamlit as st
 from sqlalchemy.orm import joinedload
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
-from src.db.models import Developer, Program, Project
+from src.db.models import Developer, Program
 from src.services.development_plan_management_service import (
     bulk_update_plan,
     build_plan_template_excel,
@@ -16,22 +15,7 @@ from src.services.development_plan_management_service import (
     validate_plan_import,
 )
 from src.services.excel_service import read_program_excel
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
-
-
-def _project_selector() -> int | None:
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트와 프로그램을 등록해 주세요.")
-        return None
-    options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected = st.selectbox("프로젝트 선택", list(options.keys()))
-    return options[selected]
+from src.ui.project_context import require_project_context
 
 
 def _load_programs(project_id: int, keyword: str | None = None) -> list[Program]:
@@ -230,9 +214,10 @@ def _render_template_tab() -> None:
 def render_development_plan_upload_page() -> None:
     st.title("개발계획 관리")
     st.caption("개발계획을 조회하고, 직접 수정/일괄 수정하거나, Excel 업로드 전 검증 후 저장합니다.")
-    project_id = _project_selector()
-    if project_id is None:
+    context = require_project_context("먼저 프로젝트와 프로그램을 등록해 주세요.")
+    if context is None:
         return
+    project_id = context.project_id
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["현재 계획", "직접 수정", "Excel 업로드", "일괄 업데이트", "양식"])
     with tab1:

@@ -3,7 +3,6 @@ import plotly.express as px
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
 from src.db.models import Project
 from src.services.developer_service import (
     ROLE_OPTIONS,
@@ -11,29 +10,19 @@ from src.services.developer_service import (
     get_developer_stats,
     update_developer_profile,
 )
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
+from src.ui.project_context import require_project_context
 
 
 def render_developer_page() -> None:
     st.title("Developer")
     st.caption("Git 커밋 author 정보를 기준으로 개발자를 자동 추출하고 role, skills를 관리합니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트/Git 설정에서 프로젝트를 등록하고 Git 동기화에서 커밋을 수집해 주세요.")
+    context = require_project_context("먼저 프로젝트/Git 설정에서 프로젝트를 등록하고 Git 동기화에서 커밋을 수집해 주세요.")
+    if context is None:
         return
 
-    project_options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_label = st.selectbox("프로젝트 선택", list(project_options.keys()))
-    project_id = project_options[selected_label]
-
     with SessionLocal() as db:
-        project = db.get(Project, project_id)
+        project = db.get(Project, context.project_id)
         if project is None:
             st.error("선택한 프로젝트를 찾을 수 없습니다.")
             return

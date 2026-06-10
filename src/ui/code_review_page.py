@@ -2,9 +2,9 @@ import pandas as pd
 import streamlit as st
 
 from src.db.database import SessionLocal
-from src.db.init_db import init_db
 from src.db.models import Project
 from src.services.code_review_service import CodeReviewService, get_recent_code_reviews
+from src.ui.project_context import require_project_context
 
 
 TARGET_OPTIONS = {
@@ -13,14 +13,6 @@ TARGET_OPTIONS = {
     "최신 커밋": "latest_commit",
     "특정 커밋": "commit",
 }
-
-
-def _load_projects() -> list[Project]:
-    init_db()
-    with SessionLocal() as db:
-        return db.query(Project).order_by(Project.name).all()
-
-
 def _render_review_result(review) -> None:
     st.subheader("리뷰 결과")
     status_col, target_col, ref_col = st.columns(3)
@@ -78,14 +70,10 @@ def render_code_review_page() -> None:
     st.title("AI Code Review")
     st.caption("로컬 Git 변경 또는 커밋을 LLM으로 분석해 커밋 요약, 버그 후보, 리팩토링 제안을 기록합니다.")
 
-    projects = _load_projects()
-    if not projects:
-        st.info("먼저 프로젝트를 등록해 주세요.")
+    context = require_project_context("먼저 프로젝트를 등록해 주세요.")
+    if context is None:
         return
-
-    project_options = {f"{project.name} ({project.id})": project.id for project in projects}
-    selected_project_label = st.selectbox("프로젝트 선택", list(project_options.keys()))
-    project_id = project_options[selected_project_label]
+    project_id = context.project_id
 
     with SessionLocal() as db:
         project = db.query(Project).filter(Project.id == project_id).one()
