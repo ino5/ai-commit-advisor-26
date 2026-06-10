@@ -7,6 +7,8 @@
 - Move a task to `Done` when implementation, verification, `AI_CHANGELOG.md`, and documentation updates are complete.
 - Record the related `AI_CHANGELOG.md` heading and commit hash after completion.
 - Keep tasks small enough to complete and verify in one focused change set when practical.
+- Use `Candidate Tasks` for known product/UX/engineering concerns that are worth preserving but not yet approved for implementation.
+- When starting a candidate task, promote it into the priority overview and add a detailed task section before implementation.
 
 ## Priority Overview
 
@@ -54,6 +56,16 @@
 | P2 | Docs | AI Agent onboarding guide | Done | AI Agent onboarding guide |  |
 | P2 | UX | Global project context | Done | Global project context | 17b281d |
 | P2 | UX | Home current project focus | Done | Home current project focus | 6027d20 |
+
+## Candidate Tasks
+
+These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
+
+| Priority | Area | Candidate | Why It Matters | Possible Direction | Notes |
+|---|---|---|---|---|---|
+| P2 | UX / State | Project-scoped UI state namespacing | The global project selector changes the data context, but Streamlit widget values with stable keys can remain in `st.session_state` across projects. Text search reuse can be useful, but project-specific selections such as program, commit, mapping, or filter state can feel stale or misleading after switching projects. | Keep intentional global state small (`current_project_id`, sidebar navigation). For project-dependent UI state, include `project_id` in widget keys or provide a shared helper for project-scoped keys. Avoid clearing all inputs blindly because cross-project keyword comparison can be useful. | Review RAG search, Mapping filters, Program Detail filters, Commit Impact filters, and any selected row/commit/program widgets before implementation. |
+| P2 | UX | Program management project flow cleanup | `프로그램 관리` now defaults to the global current project, but it still keeps an explicit `새 프로젝트명으로 저장` option for legacy upload/create flows. This preserves compatibility but makes the page slightly less direct than other project-scoped screens. | Consider making program management strictly current-project based and moving new project creation to `프로젝트/Git 설정`. If keeping the exception, make the create-new-project path visually secondary and explain when it should be used. | Check sample data and Excel upload workflows before removing the exception. |
+| P3 | UX / Data Model | Developer management scope decision | `개발자 목록` is currently closer to a global developer master, while `개발자 현황` is project-aware through Git author activity. As project context becomes more central, users may expect developer assignment and developer management to be project-specific. | Decide whether developers remain a global master with project-specific activity views, or whether a project-level developer membership/assignment screen is needed. | This may become a schema or workflow change if project-specific membership is introduced. Do not start without checking `docs/architecture.md` and migration impact. |
 
 ## P0 - Program Management UX Improvement
 

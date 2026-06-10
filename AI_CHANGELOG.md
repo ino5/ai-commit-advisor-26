@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Roadmap candidate task tracking
+
+- Added a `Candidate Tasks` section to `ROADMAP.md` for unresolved product, UX, state-management, and architecture concerns that should be preserved without marking them active.
+- Recorded follow-up candidates for project-scoped UI state namespacing, program management project-flow cleanup, and developer management scope decision.
+- Updated `AGENTS.md` so agents add candidate tasks when the user wants to preserve a concern without starting implementation, and promote candidates into active roadmap tasks before implementation.
+- Recorded the documentation/roadmap management decision in `docs/engineering-decisions.md`.
+- Important files: `ROADMAP.md`, `AGENTS.md`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
+- Verification: `Get-Content -Path ROADMAP.md -Encoding UTF8`, `Get-Content -Path AGENTS.md -Encoding UTF8`, and `Get-Content -Path docs\engineering-decisions.md -Encoding UTF8` rendered the new sections correctly; `rg -n "Candidate Tasks|Project-scoped UI state namespacing|Program management project flow cleanup|Developer management scope decision" ROADMAP.md AGENTS.md docs\engineering-decisions.md AI_CHANGELOG.md` confirmed expected references; `git diff --check` passed with only line-ending warnings.
+
 ### Home current project focus
 
 - Changed Home from an all-project aggregate into a current-project command screen that uses the shared sidebar project context.

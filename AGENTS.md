@@ -49,6 +49,17 @@ When working on a roadmap task:
 
 For work that is not already in `ROADMAP.md`, add or update a task entry before implementing when the work affects product direction.
 
+Use `ROADMAP.md` `Candidate Tasks` for known product, UX, state-management, architecture, or engineering concerns that should be preserved but are not yet approved for implementation.
+
+When a user asks to record a concern, tradeoff, or possible future improvement without starting work, add or update a candidate task instead of creating a full active roadmap task.
+
+When starting work from a candidate task:
+
+- move or copy it into the priority overview before implementation
+- add a dedicated roadmap task section with goal and checklist
+- set the active task status to `In Progress`
+- leave the candidate only if there is still unresolved scope that should remain tracked separately
+
 ## Documentation Impact Gate
 
 Before proposing or starting meaningful code, UX, test, behavior, automation, operations, or documentation work, explicitly classify the documentation impact.
