@@ -38,6 +38,7 @@
 | P2 | Sample Data | Synthetic target project repository | Done | 가상 샘플 대상 프로젝트 생성 스크립트 추가 | fa7fcbb |
 | P2 | Sample Data | Rich demo target repository scenario design | Done | 샘플 대상 repo 데모 시나리오 설계 문서 추가 | 7038ac5 |
 | P2 | Sample Data | Rich demo target repository implementation | Done | 확장 샘플 대상 repo 구현 | fd1940d |
+| P2 | Sample Data | Sample project commit history expansion | Done | Sample project commit history expansion | fd4c892 |
 | P2 | Docs | Rich sample demo walkthrough and screenshots | Done | 샘플 프로젝트 검증과 화면 캡처 갱신 | dd8fd5e |
 | P2 | Docs | README documentation hub restructure | Done | README 문서 허브 개편 | 6b27b35 |
 | P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 | 02f2b14 |
@@ -620,6 +621,22 @@ Checklist:
 - [x] Regenerate the sibling sample target repository.
 - [x] Update README and sample design documentation if needed.
 - [x] Run compileall, pytest, and sample generation verification.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Sample Project Commit History Expansion
+
+Status: Done
+
+Goal:
+Expand the 샘플 프로젝트 commit history from a compact 30-commit demo into a fuller 48-commit workflow history so Git History, Mapping, RAG, Project Chat, Risk Analysis, AI Code Review, and AI Progress have more realistic evidence without making local analysis unnecessarily slow.
+
+Checklist:
+
+- [x] Update the sample design target scale from about 30 commits to 35-50 commits.
+- [x] Add meaningful follow-up commits for payment, inventory, dashboard, reports, coupon, settlement, QA, and Project Chat evidence.
+- [x] Update focused tests for the expanded commit count and new scenario markers.
+- [x] Regenerate the sibling sample project repository.
+- [x] Run compileall, focused tests, and sample generation verification.
 - [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Rich Sample Demo Walkthrough And Screenshots

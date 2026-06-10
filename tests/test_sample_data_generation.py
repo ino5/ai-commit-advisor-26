@@ -55,6 +55,7 @@ def test_sample_target_repo_is_spring_mybatis_shaped() -> None:
     }
 
     assert "pom.xml" in all_paths
+    assert ".gitignore" in all_paths
     assert any(path.endswith("OrderController.java") for path in all_paths)
     assert any(path.endswith("OrderMapper.java") for path in all_paths)
     assert any(path.endswith("OrderMapper.xml") for path in all_paths)
@@ -67,15 +68,22 @@ def test_sample_target_repo_has_rich_demo_commit_history() -> None:
     messages = {step.message for step in steps}
     all_paths = {path for step in steps for path in step.files}
 
-    assert len(steps) == 30
+    assert len(steps) == 48
     assert "Relax partner payment validation for pilot channel" in messages
     assert "Reject zero and negative payment amounts" in messages
     assert "Change dashboard summary query across operations modules" in messages
     assert "Fix dashboard summary over-counting" in messages
     assert "Add coupon discount service skeleton" in messages
+    assert "Reject excessive payment amount requests" in messages
+    assert "Add settlement export controller stub" in messages
+    assert "Fix sales report tax calculation for canceled payments" in messages
+    assert "Add source citation hints for Project Chat" in messages
     assert "Add release verification checklist" in messages
     assert "docs/review-targets/payment-zero-amount-risk.md" in all_paths
     assert "docs/business-rules/payment-inventory-rules.md" in all_paths
+    assert "docs/business-rules/payment-limit-rules.md" in all_paths
+    assert "docs/requirements/settlement-export.md" in all_paths
+    assert "docs/business-rules/project-chat-demo-questions.md" in all_paths
     assert "docs/demo-guide.md" in all_paths
 
 

@@ -19,7 +19,7 @@
 
 - Programs: 8
 - Developers: 6
-- Git commits: 30
+- Git commits: 48
 - Main stack: Java, Spring MVC, JSP, MyBatis XML
 - Current domains: orders, inventory, payments, reports, dashboard, coupon, settlement planning
 - Generated files: developers, programs, development plans, standard terminology용 program CSV와 upload Excel files
@@ -44,13 +44,13 @@
 
 - Programs: 6 to 8
 - Developers: 6 to 7
-- Commits: 25 to 40
-- 선호 기준: 약 30 commits
+- Commits: 35 to 50
+- 선호 기준: 약 48 commits
 
 근거:
 
 - 15개 미만 commit은 smoke test에는 유용하지만 설득력 있는 demo에는 작습니다.
-- 약 30개 commit이면 주요 program마다 implementation, fix, test, documentation event를 여러 개 배치할 수 있습니다.
+- 약 48개 commit이면 주요 program마다 implementation, bug, fix, test, documentation, operations evidence event를 여러 개 배치할 수 있습니다.
 - 70개를 넘는 commit은 발표 가치가 크게 늘지 않으면서 local LLM과 embedding demo를 느리게 만들 수 있습니다.
 
 ## 시연해야 할 제품 기능
@@ -59,7 +59,7 @@
 
 | 제품 기능 | 샘플 데이터 요구사항 | 데모 신호 |
 |---|---|---|
-| Git Sync | 다양한 author와 date를 가진 25 to 40 commits | Commit table, changed files, diffs, author extraction |
+| Git Sync | 다양한 author와 date를 가진 35 to 50 commits | Commit table, changed files, diffs, author extraction |
 | Developer management | PM, PL, developers, QA, optional operations role | Auto extraction과 의미 있는 roles/skills |
 | Program upload | module, screen, description이 있는 6 to 8 business programs | Program table과 mapping candidates |
 | Development plan upload | complete, in-progress, delayed, unassigned row 혼합 | AI Progress와 Risk Analysis 차이 |
@@ -136,9 +136,27 @@
 | 27 | Documentation update | Document payment and inventory business rules | Payments, inventory | Project Chat citations |
 | 28 | Latest risky change | Change dashboard summary query across modules | Dashboard, orders, inventory, payments | Best selected commit for AI Code Review |
 | 29 | Latest fix | Fix dashboard summary over-counting | Dashboard, reports | Bug fix and Commit Impact |
-| 30 | Final QA evidence | Add release verification checklist | All | RAG, AI Progress caveat |
+| 30 | Payment audit trail | Add payment audit trail mapper | Payment approval | RAG, Project Chat |
+| 31 | Coupon mapper draft | Add coupon mapper draft without policy enforcement | Coupon | AI Progress partial evidence |
+| 32 | Payment audit integration | Log payment authorization audit events | Payment approval | Project Chat, Code Review |
+| 33 | Payment limit rule | Reject excessive payment amount requests | Payment approval | Business rule citation |
+| 34 | Inventory release | Add inventory reservation release flow | Inventory reservation | RAG, Commit Impact |
+| 35 | Inventory QA | Add inventory release validation test | Inventory reservation | Test evidence |
+| 36 | Dashboard stale warning | Add dashboard stale payment warning | Dashboard, payment approval | Cross-module impact |
+| 37 | Settlement requirement | Add settlement export requirement draft | Settlement | Risk Analysis |
+| 38 | Settlement stub | Add settlement export controller stub | Settlement | AI Progress partial evidence |
+| 39 | Return backlog | Document return request backlog without implementation | Returns | RAG planned-work contrast |
+| 40 | Report tax addition | Add sales report tax amount column | Sales report | Mapping |
+| 41 | Report tax fix | Fix sales report tax calculation for canceled payments | Sales report | Bug fix history |
+| 42 | Coupon expiration | Add coupon expiration validation | Coupon | Partial completion |
+| 43 | Coupon gap note | Add coupon minimum order TODO note | Coupon | AI Progress limitation |
+| 44 | Dashboard refactor | Refactor dashboard indicator names | Dashboard | Mapping review queue |
+| 45 | Operations smoke test | Add operations smoke test checklist | All | RAG, QA evidence |
+| 46 | Project Chat hints | Add source citation hints for Project Chat | All | Suggested Korean questions |
+| 47 | Settlement and operator evidence | Tighten settlement export risk note / Document operator audit evidence requirements | Dashboard, reports, settlement | Risk Analysis, Project Chat |
+| 48 | Final release and demo guide | Add final cross-module release evidence / Add sample demo guide for advisor walkthrough | All | AI Progress caveat, recommended demo flow |
 
-정확한 commit 수는 구현 중 달라질 수 있지만, 최종 history는 위 scenario category를 보존해야 합니다.
+정확한 day offset은 구현 중 달라질 수 있지만, 최종 history는 48개 commit 안에서 위 scenario category를 보존해야 합니다.
 
 ## 의도된 분석 포인트
 
@@ -167,6 +185,8 @@ Project Chat은 다음과 같은 질문에 current-source answer를 제공할 �
 - 일별 매출현황을 만드는 query는 무엇인가요?
 - 운영자 dashboard에는 어떤 indicator가 표시되나요?
 - 결제와 재고에 대해 문서화된 business rule은 무엇인가요?
+- 결제금액 한도는 어디에서 검증하나요?
+- 정산 내보내기는 왜 아직 완료로 보면 안 되나요?
 
 RAG Search는 다음 term을 지원해야 합니다.
 

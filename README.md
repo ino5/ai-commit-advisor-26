@@ -75,7 +75,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 .\.venv\Scripts\python.exe scripts\create_sample_target_repo.py
 ```
 
-기본 생성 위치는 `C:\dev\ai-advisor-sample-shop`입니다. 샘플 프로젝트는 8개 프로그램, 30개 commit, Spring MVC + MyBatis 예제 소스, 업로드용 Excel 3종을 포함합니다.
+기본 생성 위치는 `C:\dev\ai-advisor-sample-shop`입니다. 샘플 프로젝트는 8개 프로그램, 48개 commit, Spring MVC + MyBatis 예제 소스, 업로드용 Excel 3종을 포함합니다.
 
 전체 데모 흐름과 LLM/embedding 작업을 과도하게 실행하지 않는 방법은 [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md)를 먼저 확인하세요. 샘플 프로젝트 구성과 기능별 확인 포인트는 [샘플 프로젝트 설계](docs/sample-target-repo-demo-design.md)에서 관리합니다.
 

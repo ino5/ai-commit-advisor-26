@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Sample project commit history expansion
+
+- Expanded the generated 샘플 프로젝트 history from 30 to 48 commits while keeping the existing 8-program Spring MVC + MyBatis shape.
+- Added meaningful follow-up scenarios for payment audit and amount limits, inventory release, dashboard stale-payment warning, settlement export partial evidence, return backlog documentation, sales-report tax correction, coupon partial completion, operator audit evidence, QA checklists, and Project Chat citation prompts.
+- Updated sample design and walkthrough documentation to describe the new 35-50 commit target range and 48-commit generated dataset.
+- Regenerated the sibling sample project repository at `C:\dev\ai-advisor-sample-shop` with 48 commits and refreshed upload Excel files.
+- Important files: `scripts/create_sample_target_repo.py`, `tests/test_sample_data_generation.py`, `docs/sample-target-repo-demo-design.md`, `docs/rich-sample-demo-walkthrough.md`, `README.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m py_compile scripts\create_sample_target_repo.py` passed; `.\.venv\Scripts\python.exe -m pytest tests\test_sample_data_generation.py -q` passed with 12 tests; `.\.venv\Scripts\python.exe scripts\create_sample_target_repo.py --force` passed and regenerated `C:\dev\ai-advisor-sample-shop`; `git -C C:\dev\ai-advisor-sample-shop rev-list --count HEAD` returned `48`; `git -C C:\dev\ai-advisor-sample-shop status --short` returned no changes; upload files `sample_developers.xlsx`, `sample_development_plan.xlsx`, `sample_programs.xlsx`, and `sample_standard_terms.xlsx` exist; local Streamlit web verification on `http://localhost:8537` created `AAA Sample Shop 48 Web Test (97)`, Git full sync stored 48 commits and 105 changed files, the same import/save services used by the Excel upload screens stored 8 programs, 8 development-plan rows, and 10 standard terms, Home displayed 8 programs and 48 commits, Git History displayed 48 commits and 105 changed files, Program management displayed 8 programs, and Standard Terms displayed 10 rows; `.\.venv\Scripts\python.exe -m compileall scripts src app.py` passed; `.\.venv\Scripts\python.exe -m pytest -q` passed with 94 tests.
+
 ### Server repository status display
 
 - Added `src/services/git_repository_status_service.py` to read app-server Git repository branch, HEAD, upstream, ahead/behind, working tree changes, storage-root allowance, and DB sync mismatch status without mutating the repo.
