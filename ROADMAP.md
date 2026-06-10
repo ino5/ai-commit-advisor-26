@@ -26,6 +26,7 @@
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 | 704c7cf |
 | P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 | c42d847 |
 | P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 | fc87e29 |
+| P1 | Mapping / Ops | Commit-based mapping fallback and verified screenshots | Done | Commit-based mapping fallback and verified screenshots |  |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | a151133 |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
@@ -105,6 +106,25 @@ Checklist:
 - [x] Capture the Git History commit detail/diff preview state.
 - [x] Update `docs/application-preview.md`.
 - [x] Update `AI_CHANGELOG.md`.
+
+## P1 - Commit-Based Mapping Fallback And Verified Screenshots
+
+Status: Done
+
+Goal:
+Verify the 48-commit sample through the core analysis workflow before refreshing screenshots, and harden commit-based Mapping so one malformed LLM JSON response does not leave a demonstrably related commit in failed state.
+
+Checklist:
+
+- [x] Run commit-based Mapping on the 48-commit sample project.
+- [x] Add commit-based token-similarity fallback when the LLM response is not valid mapping JSON.
+- [x] Add focused Mapping fallback tests.
+- [x] Run Risk Analysis and verify AI Progress after Mapping.
+- [x] Run RAG indexing, embedding, retrieval, and Project Chat verification with local providers.
+- [x] Prevent concurrent Streamlit sessions from rerunning Alembic migrations in the same process.
+- [x] Extend screenshot automation for Mapping, Risk Analysis, AI Progress, and RAG Search.
+- [x] Refresh Home, Mapping, Risk Analysis, AI Progress, RAG Search, Project Chat, and Git History screenshots after analysis state is meaningful.
+- [x] Update `AI_CHANGELOG.md`, `docs/ai-technical-overview.md`, and `docs/failure-history.md`.
 
 ## P2 - Git History Viewer
 

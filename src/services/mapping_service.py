@@ -298,6 +298,28 @@ def _fallback_result(program: Program, commit: GitCommit) -> dict:
     }
 
 
+def _fallback_commit_based_results(commit: GitCommit, candidate_programs: list[Program], error: str) -> list[dict]:
+    fallback_results: list[dict] = []
+    for program in candidate_programs:
+        parsed = _fallback_result(program, commit)
+        if not parsed["is_related"]:
+            continue
+        parsed["reason"] = (
+            "LLM 응답을 commit-based JSON으로 구조화하지 못해 "
+            f"토큰 유사도 fallback을 사용했습니다. 오류: {error}"
+        )
+        fallback_results.append(
+            {
+                "program": program,
+                "program_id": _program_identifier(program),
+                "relevance_score": parsed["relevance_score"],
+                "implementation_status": parsed["implementation_status"],
+                "reason": parsed["reason"],
+            }
+        )
+    return fallback_results
+
+
 class MappingService:
     def __init__(self, llm_client: LLMClient | None = None) -> None:
         self.llm_client = llm_client or LLMClient()
@@ -321,24 +343,34 @@ class MappingService:
             return result
 
         prompt = _build_commit_based_prompt(commit, candidate_programs)
+        fallback_used = False
+        raw_response: dict
         try:
             response = self.llm_client.generate(prompt)
             related_programs = _parse_commit_based_result(response.text, candidate_programs)
             if related_programs is None:
                 raise ValueError("LLM response did not match commit-based mapping JSON format.")
         except Exception as exc:
-            commit.mapping_analysis_status = "failed"
-            commit.mapping_analyzed_at = now
-            result.failed_count = 1
-            result.errors.append(f"{commit.commit_hash[:12]}: {exc}")
-            return result
-
-        raw_response = {
-            "llm": response.raw,
-            "text": response.text,
-            "prompt_length": len(prompt),
-            "candidate_program_ids": [_program_identifier(program) for program in candidate_programs],
-        }
+            fallback_used = True
+            related_programs = _fallback_commit_based_results(commit, candidate_programs, str(exc))
+            raw_response = {
+                "llm_error": str(exc),
+                "fallback": "token_similarity",
+                "prompt_length": len(prompt),
+                "candidate_program_ids": [_program_identifier(program) for program in candidate_programs],
+            }
+            if not related_programs:
+                commit.mapping_analysis_status = "completed"
+                commit.mapping_analyzed_at = now
+                result.skipped_count = 1
+                return result
+        else:
+            raw_response = {
+                "llm": response.raw,
+                "text": response.text,
+                "prompt_length": len(prompt),
+                "candidate_program_ids": [_program_identifier(program) for program in candidate_programs],
+            }
 
         for related in related_programs:
             program = related["program"]
@@ -374,6 +406,7 @@ class MappingService:
                     "is_related": True,
                     "implementation_status": related["implementation_status"],
                     "reason": related["reason"],
+                    "fallback_used": fallback_used,
                 }
             )
 

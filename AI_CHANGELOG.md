@@ -2,6 +2,17 @@
 
 ## 2026-06-10
 
+### Commit-based mapping fallback and verified application screenshots
+
+- Ran the 48-commit sample project through the core demo pipeline before refreshing screenshots: Git sync data, commit-based Mapping, Risk Analysis, AI Progress, RAG indexing/retrieval, and Project Chat.
+- Added a commit-based Mapping fallback so malformed LLM JSON responses use conservative token-similarity evidence instead of leaving a single commit in failed state and blocking downstream verification.
+- Added a process-local DB initialization lock so concurrent Streamlit sessions do not run Alembic migrations at the same time during screenshot automation.
+- Extended screenshot automation with project selection, tab/action support, and realistic RAG search input.
+- Refreshed Application Preview screenshots for Home, Mapping, Risk Analysis, AI Progress, RAG Search, Project Chat, Git History, and Git History detail against `AAA Sample Shop Rich Demo 48`.
+- Updated AI behavior documentation, Application Preview context, roadmap tracking, and failure history for the verified demo flow and the two reusable failure lessons.
+- Important files: `src/services/mapping_service.py`, `src/db/init_db.py`, `scripts/capture_feature_screenshot.py`, `tests/test_mapping_service.py`, `docs/ai-technical-overview.md`, `docs/application-preview.md`, `docs/failure-history.md`, `docs/images/features/*.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m compileall src app.py scripts` passed; `.\.venv\Scripts\python.exe -m pytest tests\test_mapping_service.py -q` passed with 4 tests; `.\.venv\Scripts\python.exe -m pytest -q` passed with 95 tests; 48-commit Mapping verification completed 48 commits with 0 failed and 59 mappings; Risk Analysis produced 12 unresolved risks; AI Progress produced 8 implementation-status rows with plan average 90.6%, AI average 50.0%, and gap 40.6%; RAG indexing built and embedded 296 chunks with 0 failures; Project Chat answered `결제금액 검증은 어디에서 수행되나요?` with 8 sources including `PaymentService.java`; screenshot capture passed for `home`, `mapping`, `risk-analysis`, `ai-progress`, `rag-search`, `project-chat`, `git-history`, and `git-history-detail`; `git diff --check` passed with only Windows line-ending warnings.
+
 ### Sample project commit history expansion
 
 - Expanded the generated 샘플 프로젝트 history from 30 to 48 commits while keeping the existing 8-program Spring MVC + MyBatis shape.

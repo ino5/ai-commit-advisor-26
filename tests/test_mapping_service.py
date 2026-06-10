@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from src.services.mapping_service import (
     _candidate_score,
+    _fallback_commit_based_results,
     _normalize_implementation_status,
     _parse_commit_based_result,
 )
@@ -61,6 +62,43 @@ def test_parse_commit_based_result_accepts_only_known_candidates():
     assert parsed[0]["program"] is program
     assert parsed[0]["relevance_score"] == 100
     assert parsed[0]["implementation_status"] == "구현완료"
+
+
+def test_commit_based_fallback_uses_token_similarity_for_related_candidates():
+    payment = SimpleNamespace(
+        id=1,
+        program_id="SMP-PAY-001",
+        program_name="결제 승인",
+        module="payment",
+        screen_name="/payments/authorize",
+        description="payment authorization validates payment amount and updates order status.",
+    )
+    coupon = SimpleNamespace(
+        id=2,
+        program_id="SMP-CPN-001",
+        program_name="쿠폰 할인",
+        module="coupon",
+        screen_name="/coupons/apply",
+        description="쿠폰 할인 가능 여부와 할인 금액을 계산합니다.",
+    )
+    commit = SimpleNamespace(
+        message="Reject zero and negative payment amounts",
+        committed_at=None,
+        files=[
+            SimpleNamespace(
+                file_path="src/main/java/com/example/market/payment/service/PaymentService.java",
+                diff_text="+ if (amount <= 0) return REJECTED;",
+            )
+        ],
+    )
+
+    fallback = _fallback_commit_based_results(commit, [payment, coupon], "invalid json")
+
+    assert [item["program_id"] for item in fallback] == ["SMP-PAY-001"]
+    assert fallback[0]["relevance_score"] >= 30
+    assert fallback[0]["implementation_status"] in {"구현됨", "일부구현", "판단불가"}
+    assert "token" not in fallback[0]["reason"].lower()
+    assert "fallback" in fallback[0]["reason"]
 
 
 def test_normalize_implementation_status_falls_back_to_unknown():

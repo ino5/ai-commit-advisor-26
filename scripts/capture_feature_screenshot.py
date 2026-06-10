@@ -20,6 +20,11 @@ class FeatureScenario:
     verify_sidebar_stability: bool = False
     scroll_to_text: str | None = None
     full_page: bool = True
+    tab_label: str | None = None
+    fill_label: str | None = None
+    fill_value: str | None = None
+    click_label: str | None = None
+    action_wait_text: str | None = None
 
 
 SCENARIOS: dict[str, FeatureScenario] = {
@@ -91,6 +96,69 @@ SCENARIOS: dict[str, FeatureScenario] = {
         scroll_to_text="저장된 diff preview",
         full_page=False,
     ),
+    "mapping": FeatureScenario(
+        name="mapping",
+        sidebar_label="Mapping",
+        wait_text="커밋 기준 분석",
+        required_texts=(
+            "프로그램-커밋 매핑 분석",
+            "프로그램 수",
+            "Git 커밋 수",
+            "미완료 커밋",
+            "완료 커밋",
+            "실패 커밋",
+        ),
+        default_screenshot="docs/images/features/mapping.png",
+        description="Mapping 커밋 기준 분석 완료 화면",
+    ),
+    "risk-analysis": FeatureScenario(
+        name="risk-analysis",
+        sidebar_label="Risk Analysis",
+        wait_text="리스크 프로그램 목록",
+        required_texts=(
+            "Risk Analysis",
+            "전체 리스크",
+            "MEDIUM",
+            "Risk Type",
+            "PROGRESS_GAP",
+        ),
+        default_screenshot="docs/images/features/risk-analysis.png",
+        description="Risk Analysis 리스크 탐지 결과 화면",
+    ),
+    "ai-progress": FeatureScenario(
+        name="ai-progress",
+        sidebar_label="AI Progress",
+        wait_text="프로그램별 비교",
+        required_texts=(
+            "AI Progress",
+            "계획 진척도 평균",
+            "AI 진척도 평균",
+            "진척도 차이",
+            "프로그램 단위 구현상태 분석",
+        ),
+        default_screenshot="docs/images/features/ai-progress.png",
+        description="AI Progress 계획 대비 AI 진척도 비교 화면",
+    ),
+    "rag-search": FeatureScenario(
+        name="rag-search",
+        sidebar_label="RAG 검색",
+        wait_text="조회된 chunk 목록",
+        required_texts=(
+            "RAG 검색",
+            "Chunks",
+            "Vectors",
+            "검색 품질 확인",
+            "검색어:",
+            "조회된 chunk 목록",
+        ),
+        default_screenshot="docs/images/features/rag-search.png",
+        description="RAG 검색 결과 화면",
+        tab_label="Search",
+        fill_label="검색어",
+        fill_value="payment amount validation PaymentService",
+        click_label="검색",
+        action_wait_text="조회된 chunk 목록",
+    ),
 }
 
 
@@ -131,6 +199,10 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         choices=("local", "docker", "other"),
         help="Runtime surface used for this capture. Printed in the result for traceability.",
     )
+    parser.add_argument(
+        "--project-name",
+        help="Sidebar current project label text to select before navigating to the feature.",
+    )
     parser.add_argument("--width", type=int, default=1440, help="Browser viewport width.")
     parser.add_argument("--height", type=int, default=1000, help="Browser viewport height.")
     return parser.parse_args(argv)
@@ -145,6 +217,15 @@ def _navigate_to_sidebar_item(page: Page, label: str) -> None:
     item = sidebar.get_by_text(label, exact=True).last
     item.wait_for(timeout=15_000)
     item.click()
+
+
+def _select_sidebar_project(page: Page, project_name: str | None) -> None:
+    if not project_name:
+        return
+    sidebar = page.locator('section[data-testid="stSidebar"]')
+    sidebar.get_by_role("combobox").first.click()
+    page.get_by_text(project_name).last.click()
+    page.get_by_text(project_name).first.wait_for(timeout=15_000)
 
 
 def _page_text(page: Page, wait_text: str) -> str:
@@ -300,10 +381,22 @@ def _capture_scenario(
     screenshot_path: Path,
     extra_required_texts: tuple[str, ...],
     extra_forbidden_texts: tuple[str, ...],
+    project_name: str | None,
 ) -> str:
     _open_app(page, url)
+    _select_sidebar_project(page, project_name)
     if scenario.sidebar_label:
         _navigate_to_sidebar_item(page, scenario.sidebar_label)
+
+    if scenario.tab_label:
+        page.get_by_role("tab", name=scenario.tab_label).click()
+    if scenario.fill_label and scenario.fill_value is not None:
+        page.get_by_label(scenario.fill_label).fill(scenario.fill_value)
+        page.keyboard.press("Tab")
+    if scenario.click_label:
+        page.locator('[data-testid="stTabs"]').get_by_role("button", name=scenario.click_label).click()
+    if scenario.action_wait_text:
+        page.get_by_text(scenario.action_wait_text).first.wait_for(timeout=30_000)
 
     _wait_for_texts(page, scenario.required_texts + extra_required_texts)
     text = _page_text(page, scenario.wait_text)
@@ -371,6 +464,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                     path,
                     extra_required_texts,
                     extra_forbidden_texts,
+                    args.project_name,
                 )
                 preview = "\n".join(line for line in text.splitlines() if line.strip())[:1000]
                 print(

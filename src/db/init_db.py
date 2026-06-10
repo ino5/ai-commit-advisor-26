@@ -1,4 +1,5 @@
 from pathlib import Path
+from threading import Lock
 
 from alembic import command
 from alembic.config import Config
@@ -9,6 +10,8 @@ from src.db.database import engine
 
 BASELINE_REVISION = "20260608_0001"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_INIT_LOCK = Lock()
+_INITIALIZED = False
 
 
 def _alembic_config() -> Config:
@@ -40,7 +43,14 @@ def run_migrations() -> None:
 
 
 def init_db() -> None:
-    run_migrations()
+    global _INITIALIZED
+    if _INITIALIZED:
+        return
+    with _INIT_LOCK:
+        if _INITIALIZED:
+            return
+        run_migrations()
+        _INITIALIZED = True
 
 
 if __name__ == "__main__":

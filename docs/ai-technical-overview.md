@@ -150,6 +150,8 @@ AI output은 가능한 경우 raw 또는 structured evidence와 함께 저장됩
 
 Manual feedback도 `program_commit_mappings` feedback column에 저장되어 사람이 AI mapping result를 보정할 수 있습니다. Mapping 화면에는 missing feedback, unknown status, low relevance, unrelated decision, weak reason을 가진 mapping을 강조하는 review queue가 있어 reviewer가 human correction 우선순위를 정할 수 있습니다.
 
+Commit-based Mapping은 LLM이 요구한 JSON shape을 지키지 못하더라도 전체 batch를 실패로 끝내지 않습니다. 후보 프로그램과 commit message, changed file path, diff snippet의 token similarity로 보수적인 fallback mapping을 만들고, fallback 사용 사실을 `raw_response`와 reason에 남깁니다. 이 fallback은 AI 판단을 대체하는 확정 근거가 아니라 demo와 운영 검증에서 한 commit의 malformed response가 downstream Risk Analysis, AI Progress, screenshot verification 전체를 막지 않게 하는 안전장치입니다.
+
 ## 구현상태 분석 안전장치
 
 Program implementation status는 업무 검증을 위한 추정값으로 취급합니다. Prompt는 LLM에게 program plan, description, related commits, changed files, existing mapping evidence를 사용하라고 지시하지만, commit count만으로 판단하지 않도록 합니다.
@@ -160,7 +162,7 @@ AI Progress는 두 개념을 분리합니다. AI progress rate는 여전히 `pro
 
 ## 현재 한계
 
-- LLM JSON validation은 strict schema validation이 아니라 pragmatic parsing입니다.
+- LLM JSON validation은 strict schema validation이 아니라 pragmatic parsing이며, commit-based Mapping은 JSON 파싱 실패 시 token-similarity fallback을 사용합니다.
 - RAG 품질은 embedding model과 configured vector dimension에 크게 의존합니다.
 - Source verification과 re-index warning은 outdated source chunk가 current code evidence로 쓰이는 것을 막지만, LLM answer의 semantic correctness를 증명하지는 않습니다.
 - Commit diff는 historical evidence이며 deleted line을 포함할 수 있습니다.

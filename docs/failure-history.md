@@ -31,6 +31,107 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-10 - Commit-based Mapping malformed JSON blocked complete sample verification
+
+분류:
+
+- Mapping
+- LLM output robustness
+- Sample demo verification
+
+관련 기능 및 문서:
+
+- `src/services/mapping_service.py`
+- `tests/test_mapping_service.py`
+- `docs/ai-technical-overview.md`
+- `AI_CHANGELOG.md`
+
+### 증상
+
+48개 commit 샘플 프로젝트에서 commit-based Mapping을 실행했을 때 `Add QA checklist for Spring MyBatis flows` commit 1건이 `failed` 상태로 남았습니다. 재시도해도 `LLM response did not match commit-based mapping JSON format` 오류가 반복되어 Mapping 화면에 실패 커밋 1건이 보였고, 분석 완료 상태의 스크린샷을 찍기 어려웠습니다.
+
+### 직접 원인
+
+commit-based Mapping은 LLM에게 `{"related_programs": [...]}` shape을 요구했지만, local LLM이 해당 commit에서 요구 JSON shape을 지키지 않았습니다. 기존 commit-based 경로는 JSON 파싱 실패를 바로 commit failure로 처리했습니다.
+
+### 배경 또는 구조적 원인
+
+program-based Mapping에는 token similarity fallback이 있었지만 commit-based Mapping에는 같은 fallback이 없었습니다. 문서/QA/test-only commit처럼 여러 프로그램과 느슨하게 관련된 commit은 LLM이 설명형 응답으로 벗어날 가능성이 더 큽니다.
+
+### 사전 검증에서 놓친 이유
+
+샘플 데이터 확장 직후에는 Git sync, upload, count, focused unit test 중심으로 확인했고, 전체 48개 commit에 대한 real local LLM commit-based Mapping batch를 먼저 돌리지 않았습니다.
+
+### 수정 내용
+
+commit-based Mapping에서 LLM 응답을 요구 JSON으로 파싱하지 못하면 후보 프로그램과 commit message, changed file path, diff snippet의 token similarity로 보수적인 fallback mapping을 저장하도록 변경했습니다. fallback 사용 사실은 mapping reason과 `raw_response.fallback`에 남깁니다.
+
+### 재발 방지 규칙
+
+- 샘플 스크린샷 갱신 전에는 Git sync/upload뿐 아니라 Mapping, Risk Analysis, AI Progress, RAG, Project Chat까지 핵심 분석 상태를 먼저 검증합니다.
+- LLM batch 분석은 한 항목의 malformed response가 전체 downstream 검증을 막지 않도록 fallback 또는 부분 성공 처리를 갖춰야 합니다.
+- fallback은 완전한 AI 판단이 아니므로 reason/raw metadata에 사용 사실을 남깁니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+fallback은 token overlap 기반이므로 false positive 가능성이 있습니다. Mapping feedback review queue에서 낮은 관련도, weak reason, unrelated decision을 계속 검토해야 합니다.
+
+### 검증 명령과 결과
+
+- `.\.venv\Scripts\python.exe -m pytest tests\test_mapping_service.py -q` passed with 4 tests.
+- 48개 sample commit Mapping 재검증 결과: completed 48, failed 0, mappings 59.
+- Risk Analysis 재실행 결과: unresolved risk 12건.
+- AI Progress 확인 결과: 8개 program, plan average 90.6%, AI average 50.0%, implementation status 8건.
+
+## 2026-06-10 - Parallel screenshot capture triggered Alembic migration context collision
+
+분류:
+
+- Screenshot verification
+- Streamlit startup
+- Alembic migration concurrency
+
+관련 기능 및 문서:
+
+- `src/db/init_db.py`
+- `scripts/capture_feature_screenshot.py`
+- `AI_CHANGELOG.md`
+
+### 증상
+
+Application Preview 캡처를 병렬로 실행하던 중 새 Streamlit browser session에서 `KeyError: 'script'`가 표시됐습니다. traceback은 `init_db() -> run_migrations() -> alembic.command.upgrade()` 종료 시 Alembic `EnvironmentContext._remove_proxy()`에서 발생했습니다.
+
+### 직접 원인
+
+여러 Streamlit session이 거의 동시에 page load를 시작하면서 `load_projects()`가 각각 `init_db()`를 호출했고, 같은 Python process 안에서 Alembic migration command가 중복 실행됐습니다. Alembic proxy context는 이 동시 실행에 안전하지 않았습니다.
+
+### 배경 또는 구조적 원인
+
+`init_db()`는 앱 화면 진입마다 migration을 다시 호출했습니다. 단일 사용자의 순차 실행에서는 잘 드러나지 않았지만, screenshot automation을 병렬로 돌리면 같은 process에서 migration 초기화가 겹칠 수 있었습니다.
+
+### 사전 검증에서 놓친 이유
+
+기존 캡처 자동화는 feature를 순차 실행하는 전제를 주로 사용했습니다. 이번 작업에서 시간을 줄이려고 여러 screenshot command를 병렬 실행하면서 Streamlit startup path의 동시성 문제가 드러났습니다.
+
+### 수정 내용
+
+`init_db()`에 process-local lock과 initialized flag를 추가해 같은 process에서는 migration을 한 번만 실행하도록 했습니다. 캡처는 병렬 대신 순차 실행으로 진행했습니다.
+
+### 재발 방지 규칙
+
+- Streamlit app startup에서 migration 같은 global side effect는 process-local lock으로 보호합니다.
+- screenshot automation은 앱 초기화 경로를 건드리는 경우 병렬 실행을 피하거나, 각 worker가 독립 process/server를 쓰도록 합니다.
+- GitHub Actions warning이나 generic Playwright wrapper message보다 실제 traceback의 failed step을 기준으로 원인을 기록합니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+process-local lock은 같은 Python process 안의 중복 migration을 막습니다. 여러 app process가 동시에 시작되는 운영 배포에서는 DB migration을 app startup 밖의 deployment step으로 분리하는 정책을 별도로 검토할 수 있습니다.
+
+### 검증 명령과 결과
+
+- 확인용 Streamlit 서버 재시작 후 sequential screenshot capture가 성공했습니다.
+- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature rag-search --url http://localhost:8537 --surface local --project-name "AAA Sample Shop Rich Demo 48"` passed.
+
 ## 2026-06-10 - Sidebar active menu jitter returned after CSS-only stabilization
 
 분류:
