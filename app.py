@@ -9,6 +9,7 @@ from src.ui.dashboard_page import render_dashboard_page
 from src.ui.development_plan_upload_page import render_development_plan_upload_page
 from src.ui.developer_page import render_developer_page
 from src.ui.developer_upload_page import render_developer_upload_page
+from src.ui.git_history_page import render_git_history_page
 from src.ui.git_page import render_git_page
 from src.ui.home_page import render_home_page
 from src.ui.mapping_page import render_mapping_page
@@ -59,6 +60,7 @@ PAGE_GROUPS = {
     },
     "분석 결과": {
         "Program Detail": render_program_detail_page,
+        "Git History": render_git_history_page,
         "Commit Impact": render_commit_impact_page,
         "개발계획 대시보드": render_planning_dashboard_page,
     },

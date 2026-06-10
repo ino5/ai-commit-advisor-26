@@ -58,6 +58,7 @@
 | P2 | UX | Home current project focus | Done | Home current project focus | 6027d20 |
 | P1 | Ops / Architecture | App-server Git repository operating model | Done | App-server Git repository operating model |  |
 | P2 | Git Ops | Server repository update runbook/script | Done | Server repository update runbook and script |  |
+| P2 | Git UX | Git History viewer | Done | Git History viewer |  |
 
 ## Candidate Tasks
 
@@ -68,8 +69,25 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P2 | UX / State | Project-scoped UI state namespacing | The global project selector changes the data context, but Streamlit widget values with stable keys can remain in `st.session_state` across projects. Text search reuse can be useful, but project-specific selections such as program, commit, mapping, or filter state can feel stale or misleading after switching projects. | Keep intentional global state small (`current_project_id`, sidebar navigation). For project-dependent UI state, include `project_id` in widget keys or provide a shared helper for project-scoped keys. Avoid clearing all inputs blindly because cross-project keyword comparison can be useful. | Review RAG search, Mapping filters, Program Detail filters, Commit Impact filters, and any selected row/commit/program widgets before implementation. |
 | P2 | UX | Program management project flow cleanup | `프로그램 관리` now defaults to the global current project, but it still keeps an explicit `새 프로젝트명으로 저장` option for legacy upload/create flows. This preserves compatibility but makes the page slightly less direct than other project-scoped screens. | Consider making program management strictly current-project based and moving new project creation to `프로젝트/Git 설정`. If keeping the exception, make the create-new-project path visually secondary and explain when it should be used. | Check sample data and Excel upload workflows before removing the exception. |
 | P3 | UX / Data Model | Developer management scope decision | `개발자 목록` is currently closer to a global developer master, while `개발자 현황` is project-aware through Git author activity. As project context becomes more central, users may expect developer assignment and developer management to be project-specific. | Decide whether developers remain a global master with project-specific activity views, or whether a project-level developer membership/assignment screen is needed. | This may become a schema or workflow change if project-specific membership is introduced. Do not start without checking `docs/architecture.md` and migration impact. |
-| P2 | Git UX | Git History viewer | Users need to inspect project commit history, changed files, and saved or full diff details without leaving AI Commit Advisor. This depends on the app-server Git repository access model being clear first. | Add a project-scoped Git History screen with commit filters, changed-file details, saved diff preview, and optional full `git show` output from the app server repository path. | Keep this separate from the operating-model cleanup so UI history work does not hide repository access assumptions. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - Git History Viewer
+
+Status: Done
+
+Goal:
+Let users inspect project commit history, changed files, saved diff snippets, and optional full server-repo diff from inside AI Commit Advisor.
+
+Checklist:
+
+- [x] Add a Git history service for commit/file listing and full `git show` retrieval.
+- [x] Add a project-scoped Git History Streamlit page with message, author, file, and date filters.
+- [x] Show selected commit summary, changed files, saved diff preview, and optional full diff.
+- [x] Add navigation entry under analysis results.
+- [x] Add focused tests for filtering and full-diff safety behavior.
+- [x] Update README/feature/architecture documentation as needed.
+- [x] Run compile and tests.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Server Repository Update Runbook/Script
 

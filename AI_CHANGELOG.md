@@ -2,6 +2,16 @@
 
 ## 2026-06-10
 
+### Git History viewer
+
+- Added `src/services/git_history_service.py` for project-scoped commit listing, commit detail lookup, changed-file diff preview data, and safe full `git show` retrieval for DB-registered commits.
+- Added `src/ui/git_history_page.py` with message, author, file path, date, and limit filters; commit KPI summary; daily and author commit charts; selected commit details; changed file diff preview; and optional full diff lookup from the app-server Git repository.
+- Added the `Git History` navigation entry under `분석 결과`.
+- Added focused tests for message/author/file filtering, commit detail retrieval, full diff lookup, and missing-commit safety behavior.
+- Updated README, feature guide, architecture docs, and roadmap tracking for the new Git History screen.
+- Important files: `app.py`, `src/services/git_history_service.py`, `src/ui/git_history_page.py`, `tests/test_git_history_service.py`, `README.md`, `docs/feature-guide.md`, `docs/architecture.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m compileall src app.py scripts\update_server_repos.py` passed; `.\.venv\Scripts\python.exe -m pytest tests/test_git_history_service.py -q` passed with 2 tests; `.\.venv\Scripts\python.exe -m pytest -q` passed with 90 tests.
+
 ### Server repository update runbook and script
 
 - Added `scripts/update_server_repos.py` for internal server operators to update pre-cloned repositories under `REPO_STORAGE_ROOT`.

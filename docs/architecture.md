@@ -26,6 +26,7 @@ flowchart TB
     MappingUI --> MappingFeedbackService["mapping_feedback_service.py"]
     MappingUI --> RiskService["risk_service.py"]
     MappingUI --> ImpactService["commit_impact_service.py"]
+    MappingUI --> GitHistoryService["git_history_service.py"]
     MappingUI --> CodeReviewService["code_review_service.py"]
     RagUI --> RagLayer["RAG Layer"]
     RagUI --> ChatService["chat_service.py"]
@@ -60,6 +61,7 @@ flowchart TB
     MappingService --> DB
     RiskService --> DB
     ImpactService --> DB
+    GitHistoryService --> DB
     CodeReviewService --> DB
     ProgressService --> DB
     DeveloperService --> DB
@@ -87,6 +89,7 @@ flowchart LR
     RAG --> Mapping
     RAG --> ProjectChat["Project Chat<br/>검증형 소스 Q&A"]
     Mapping --> ProgramDetail["Program Detail<br/>프로그램 상세 분석"]
+    Git --> GitHistory["Git History<br/>커밋 이력/diff 탐색"]
     Mapping --> Risk["Risk Analysis<br/>리스크 탐지/저장"]
     Mapping --> Impact["Commit Impact<br/>커밋 영향도 분석"]
     Git --> CodeReview["AI Code Review<br/>staged/commit 리뷰"]
@@ -108,6 +111,7 @@ flowchart LR
 - `Git`: 앱 서버 Git 저장소에서 커밋, 변경 파일, diff 수집.
 - `Mapping`: 프로그램과 커밋의 관련성을 LLM으로 분석해 `program_commit_mappings`에 저장하고, 피드백 리뷰 큐로 검토가 필요한 매핑을 보정.
 - `Risk Analysis`: 계획, 매핑, 커밋 활동 기반 리스크를 탐지하고 `risk_findings`에 저장/해결 처리.
+- `Git History`: 현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff를 조회.
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
 - `AI Code Review`: staged 변경, 최근 커밋, 특정 커밋을 LLM으로 리뷰하고 결과를 저장.
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약.
@@ -359,6 +363,7 @@ erDiagram
 | `program_analysis_service.py` | 프로그램 상세 화면용 분석 데이터 구성. 관련 커밋, 파일 diff, 개발자 기여, 리스크 요약을 제공한다. |
 | `program_implementation_analyzer.py` | 프로그램별 관련 커밋을 LLM으로 재분석해 구현 상태와 근거를 `program_implementation_status`에 저장한다. |
 | `risk_service.py` | 계획 일정, 담당자, 커밋/매핑 상태를 기반으로 리스크를 탐지하고 `risk_findings`에 저장/해결 처리한다. |
+| `git_history_service.py` | 프로젝트별 커밋 이력, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff 조회를 처리한다. |
 | `commit_impact_service.py` | 특정 커밋이 영향을 줄 가능성이 있는 프로그램, 파일, 개발자 범위를 계산한다. |
 | `code_review_service.py` | staged 변경, 최근 커밋, 특정 커밋 diff를 LLM으로 리뷰하고 `code_review_results`에 저장한다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
@@ -523,6 +528,7 @@ LLM 출력 예시:
 - 커밋별 mapping 분석 상태 저장.
 - AI Progress 계산, 저장된 구현상태 분석 요약, 리스크 프로그램 표시.
 - Risk Analysis 실행, 리스크 저장, 미해결 리스크 조회 및 해결 처리.
+- Git History 커밋 이력과 diff 탐색.
 - Commit Impact 분석.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
@@ -566,7 +572,7 @@ LLM 출력 예시:
 - `프로젝트 설정`: 프로젝트/Git 설정, Git 동기화, 샘플 데이터 생성
 - `산출물 관리`: 개발자 현황, 개발자 목록, 프로그램 목록, 개발계획, 표준용어/표준단어
 - `분석 실행`: Mapping, Risk Analysis, RAG 검색, Project Chat, AI Code Review
-- `분석 결과`: Program Detail, Commit Impact, 개발계획 대시보드
+- `분석 결과`: Program Detail, Git History, Commit Impact, 개발계획 대시보드
 - `관리`: 설정
 
 ### 주요 UI 파일
@@ -584,6 +590,7 @@ LLM 출력 예시:
 | `src/ui/git_page.py` | Git 커밋 수집. |
 | `src/ui/mapping_page.py` | 프로그램-커밋 Mapping 분석 실행. |
 | `src/ui/risk_page.py` | 프로젝트 리스크 분석, 미해결 리스크 조회 및 해결 처리. |
+| `src/ui/git_history_page.py` | 프로젝트별 Git 커밋 이력, 변경 파일, diff 조회. |
 | `src/ui/commit_impact_page.py` | 특정 커밋의 영향도 분석. |
 | `src/ui/rag_page.py` | RAG chunk/embedding/search 관리. |
 | `src/ui/project_chat_page.py` | 검증된 현재 소스 RAG 기반 프로젝트 채팅. |
@@ -611,6 +618,7 @@ LLM 출력 예시:
 | `src/services/program_analysis_service.py` | `list_program_options`, `get_program_detail_analysis`, `get_commit_file_details` |
 | `src/services/program_implementation_analyzer.py` | `ProgramImplementationAnalyzer.analyze_program`, `ProgramImplementationAnalyzer.analyze_project` |
 | `src/services/risk_service.py` | `run_risk_analysis`, `get_unresolved_findings`, `resolve_findings` |
+| `src/services/git_history_service.py` | `list_git_history_commits`, `get_git_history_detail`, `get_commit_full_diff` |
 | `src/services/commit_impact_service.py` | `list_commit_options`, `get_commit_impact_analysis` |
 | `src/services/code_review_service.py` | `get_review_target`, `CodeReviewService.review_project`, `get_recent_code_reviews` |
 | `src/rag/chunker.py` | `build_project_chunks` |

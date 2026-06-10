@@ -12,6 +12,7 @@ AI Commit Advisor는 앱 서버에서 접근 가능한 Git 저장소의 커밋, 
 - 개발자, 프로그램 목록, 개발계획 Excel 업로드와 화면 기반 직접 관리
 - LLM 기반 프로그램-커밋 Mapping과 사용자 피드백 보정
 - Commit Impact, Program Detail, AI Progress 기반 구현 현황 추적
+- Git History 화면에서 프로젝트별 커밋 목록, 변경 파일, diff 탐색
 - 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
 - 현재 소스 검증형 RAG Search와 저장형 Project Chat
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
