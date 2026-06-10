@@ -105,6 +105,21 @@ Linux 사내 서버에서 컨테이너와 host가 같은 경로를 쓰도록 vol
 
 현재 Git Sync는 저장소에 이미 존재하는 commit, 변경 파일, diff를 DB에 수집하는 기능입니다. 원격 저장소에서 최신 변경을 받아오는 clone/fetch 자동화와는 다른 작업입니다.
 
+## 권장 운영 정책
+
+현재 권장 정책은 앱이 Git remote 인증과 clone/fetch를 직접 관리하지 않고, 앱 서버에 준비된 Git 저장소 경로를 분석 대상으로 등록하는 방식입니다.
+
+역할을 다음처럼 나눕니다.
+
+| 영역 | 담당 | 설명 |
+|---|---|---|
+| 저장소 clone/fetch/reset | 운영자 또는 배포/운영 스크립트 | 사내 서버의 `REPO_STORAGE_ROOT` 아래에 분석 대상 저장소를 준비하고 최신화합니다. |
+| 프로젝트 경로 등록/검증 | AI Commit Advisor | 앱 서버에서 접근 가능한 Git 저장소 경로인지 확인하고, `REPO_STORAGE_ROOT`가 있으면 root 하위만 허용합니다. |
+| Git Sync | AI Commit Advisor | 준비된 저장소에서 commit, 변경 파일, diff를 읽어 DB에 저장합니다. |
+| 분석 기능 | AI Commit Advisor | DB에 수집된 Git 이력과 현재 소스를 사용해 Mapping, Risk, RAG, Project Chat, Code Review를 실행합니다. |
+
+이 정책을 선택한 이유는 Git 인증 정보, SSH key, access token, branch 보호, 동시 fetch lock, 저장소 용량 관리 같은 운영 책임을 앱 분석 기능과 섞지 않기 위해서입니다. 초기 사내 운영에서는 서버에 이미 clone된 저장소 경로를 등록하는 방식이 가장 단순하고, 보안 검토 범위도 작습니다.
+
 운영 방식은 두 가지로 나눌 수 있습니다.
 
 1. 운영자가 서버 repo를 직접 갱신합니다.
@@ -114,7 +129,7 @@ Linux 사내 서버에서 컨테이너와 host가 같은 경로를 쓰도록 vol
 2. 향후 앱이 remote URL과 branch를 받아 clone/fetch를 관리합니다.
    - 이 방식은 인증 정보, 권한, sync lock, 저장소 용량 관리가 필요하므로 별도 설계가 필요합니다.
 
-초기 사내 운영은 1번처럼 서버에 이미 clone된 저장소 경로를 등록하는 방식이 가장 단순합니다.
+초기 사내 운영은 1번처럼 서버에 이미 clone된 저장소 경로를 등록하는 방식으로 고정합니다. 2번은 사용자가 앱 안에서 저장소 갱신까지 요구할 때 별도 보안/운영 설계 후 확장합니다.
 
 ## 가능한 구조와 불가능한 구조
 

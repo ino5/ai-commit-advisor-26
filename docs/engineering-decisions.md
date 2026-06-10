@@ -59,17 +59,21 @@
 
 `projects.git_repo_path` 컬럼명은 호환성을 위해 유지하되, 사용자-facing 문구와 문서는 앱 서버 기준 경로로 설명합니다. 운영 서버에서는 `REPO_STORAGE_ROOT`를 설정해 프로젝트 Git 경로를 승인된 저장소 root 하위로 제한할 수 있게 합니다.
 
+초기 사내 운영 정책은 앱이 Git remote URL, access token, SSH key를 받아 clone/fetch까지 관리하지 않는 것입니다. 운영자나 배포/운영 스크립트가 앱 서버의 저장소 root 아래에 repo를 준비하고 갱신하며, AI Commit Advisor는 준비된 경로를 검증하고 Git Sync로 commit/diff를 DB에 수집합니다.
+
 ### 이유
 
 - 개인 PC 실행과 사내 서버 실행을 같은 모델로 설명할 수 있습니다. 둘 다 앱 서버가 접근 가능한 경로를 읽는 구조입니다.
 - Git Sync, RAG, Project Chat, Code Review가 공유하는 핵심 전제를 문서와 UI에서 일관되게 표현할 수 있습니다.
 - 사내 서버에서는 `/srv/ai-commit-advisor/repos` 같은 저장소 root를 정하고 여러 사용자가 같은 분석 결과를 공유할 수 있습니다.
 - `REPO_STORAGE_ROOT`는 운영 서버에서 임의 서버 경로 입력을 줄이는 최소 안전장치입니다.
+- Git 인증 정보, SSH key, access token, branch 보호, 동시 fetch lock, 저장소 용량 관리를 분석 앱의 1차 책임에 섞지 않아 보안 검토 범위를 줄입니다.
 
 ### 검토한 대안
 
 - 사용자 PC 로컬 경로 모델 유지: 사내 서버 운영에서 사용자가 입력한 PC 경로를 서버가 읽을 수 없으므로 제품 설명이 틀려집니다.
 - 즉시 remote URL 기반 clone/fetch 모델로 전환: 장기적으로 유용하지만 인증 정보, branch 정책, sync lock, 저장소 용량 관리까지 함께 설계해야 하므로 현재 범위에 비해 큽니다.
+- 앱에 단순 `git pull` 버튼만 추가: 구현은 쉬워 보이지만 merge/rebase 동작, 충돌, 권한 실패, 장기 실행 lock 처리가 모호해 운영 장애를 만들 수 있습니다.
 - DB schema를 바로 변경해 `server_repo_path`로 rename: 의미는 더 정확하지만 migration과 전체 코드 변경량이 커집니다. 현재는 문구와 검증 정책을 먼저 정리하고, schema rename은 필요성이 커질 때 별도 작업으로 다룹니다.
 
 ### 영향과 tradeoff
@@ -77,11 +81,13 @@
 - README, feature guide, setup/operations, architecture 문서가 앱 서버 기준 Git 저장소 모델을 설명해야 합니다.
 - 화면 라벨은 더 정확해지지만 `git_repo_path` 내부 이름과 일부 과거 문서에는 이전 용어가 남을 수 있습니다.
 - `REPO_STORAGE_ROOT`를 설정하지 않으면 기존 PoC처럼 자유 경로를 사용할 수 있습니다. 이 유연성은 개발에는 편하지만 운영 서버에서는 반드시 제한값을 설정해야 합니다.
+- 저장소 최신화는 당분간 운영자나 외부 스크립트 책임입니다. 이 분리는 앱 보안을 단순하게 만들지만, 운영 절차 문서나 스크립트가 없으면 Git Sync 전에 서버 repo가 최신인지 사람이 확인해야 합니다.
 
 ### 후속 확인
 
 - Git History 화면을 추가할 때도 서버 repo path를 기준으로 `git show`와 `git log`를 실행해야 합니다.
 - 서버가 remote URL과 branch를 받아 clone/fetch를 관리하는 기능은 별도 보안/운영 결정 후 구현합니다.
+- 필요해지면 앱 내 clone/fetch보다 먼저 서버 repo 갱신 runbook 또는 운영 스크립트를 후보 작업으로 검토합니다.
 - 인증/권한 관리가 없으므로 내부망 운영에서도 reverse proxy 인증이나 사내 SSO를 검토해야 합니다.
 
 ### 관련 문서

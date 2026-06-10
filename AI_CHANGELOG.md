@@ -10,6 +10,8 @@
 - Added `docs/git-repository-operating-model.md` and linked it from README to explain the server-path model, recommended repo storage layout, Docker path mapping, Git Sync boundaries, and security notes.
 - Added the same app-server path clarification to README Quick Start and setup/operations local execution guidance so first-time local users understand that their PC is the app server.
 - Documented sample project path handling for local Python, default Windows Docker Compose, and internal-server demo runs.
+- Documented the recommended operating policy that repository clone/fetch/reset remains an operator or external script responsibility for now, while AI Commit Advisor analyzes pre-cloned app-server repository paths and performs DB Git Sync.
+- Added a roadmap candidate for a server repository update runbook/script before any app-managed clone/fetch workflow.
 - Updated setup/operations, feature guide, architecture, engineering decision, environment examples, Docker Compose, and roadmap documentation.
 - Preserved `git_repo_path` as the internal DB/model name for compatibility while clarifying its meaning in user-facing docs.
 - Important files: `src/utils/config.py`, `src/utils/repo_path.py`, `src/ui/project_page.py`, `src/ui/git_page.py`, `src/ui/code_review_page.py`, `src/ui/rag_page.py`, `src/ui/sample_data_page.py`, `tests/test_repo_path.py`, `README.md`, `docs/git-repository-operating-model.md`, `docs/setup-and-operations.md`, `docs/rich-sample-demo-walkthrough.md`, `docs/sample-target-repo-demo-design.md`, `docs/architecture.md`, `docs/feature-guide.md`, `docs/engineering-decisions.md`, `docker-compose.yml`, `.env.example`, `.env.local-llm.example`, `ROADMAP.md`, `AI_CHANGELOG.md`.
