@@ -31,6 +31,61 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-10 - Git default branch mismatch broke CI-only repository status test
+
+분류:
+
+- CI
+- Git test portability
+- Local/CI environment mismatch
+
+관련 기능 및 문서:
+
+- GitHub Actions run: `https://github.com/ino5/ai-commit-advisor-26/actions/runs/27279235820`
+- `tests/test_git_repository_status_service.py`
+- `ROADMAP.md`
+- `AI_CHANGELOG.md`
+
+### 증상
+
+GitHub Actions `Run tests` 단계가 exit code 1로 실패했습니다. 화면에는 Node.js 20 deprecation warning도 함께 보였지만, 실제 실패 단계는 `Run tests`였습니다.
+
+Linux 컨테이너에서 CI 환경을 재현했을 때 `test_repository_status_reports_upstream_ahead_behind`가 `git push -u origin main`에서 실패했습니다. 오류는 `src refspec main does not match any`였습니다.
+
+### 직접 원인
+
+테스트가 임시 Git repository의 기본 branch가 `main`이라고 가정했습니다. Windows 로컬 Git 설정에서는 기본 branch가 `main`이라 통과했지만, Linux/CI 쪽 Git 기본값은 `master`일 수 있어 local `main` ref가 없었습니다.
+
+### 배경 또는 구조적 원인
+
+Git-dependent test가 host Git 설정인 `init.defaultBranch`에 의존했습니다. repository status 기능 자체는 branch 이름을 읽는 기능인데, 테스트 fixture가 branch 이름을 명시하지 않아 환경별 차이가 테스트 실패로 드러났습니다.
+
+### 사전 검증에서 놓친 이유
+
+로컬 Windows `.venv` 전체 테스트와 CI 환경변수 재현은 통과했지만, 둘 다 로컬 Git 전역 설정의 영향을 받았습니다. Ubuntu/Linux runner의 Git 기본 branch 차이를 별도로 재현하지 않았습니다.
+
+### 수정 내용
+
+임시 repository 생성 시 `git init --initial-branch=main`을 사용하고, clone 기반 upstream 테스트에서는 첫 commit 뒤 `git branch -M main`으로 local branch를 명시적으로 맞춘 뒤 `origin/main`에 push하도록 수정했습니다.
+
+### 재발 방지 규칙
+
+- Git repository를 만드는 테스트는 host 전역 Git 설정에 의존하지 않고 branch 이름을 명시합니다.
+- CI 실패 원인을 볼 때 GitHub Actions warning은 별도로 분리하고, 실제 실패 step과 stderr를 기준으로 원인을 기록합니다.
+- Windows에서 통과한 Git 테스트라도 branch, path, executable availability처럼 Linux runner에서 달라질 수 있는 전제는 Linux 컨테이너로 확인합니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+GitHub API 로그 다운로드는 인증 권한이 없어 직접 내려받지 못했습니다. 이번 원인은 Linux 컨테이너 재현으로 확인했지만, 이후에는 GitHub 웹 UI의 failed test output도 함께 확인하면 더 빠르게 좁힐 수 있습니다.
+
+### 검증 명령과 결과
+
+- `docker run ... python -m pytest -q` with Git installed reproduced the failure before the fix: 1 failed, 94 passed.
+- `.\.venv\Scripts\python.exe -m compileall src app.py tests` passed.
+- `.\.venv\Scripts\python.exe -m pytest tests\test_git_repository_status_service.py -q` passed with 4 tests.
+- `.\.venv\Scripts\python.exe -m pytest -q` passed with 95 tests.
+- Linux container verification with Git installed and CI-like environment variables passed with 95 tests.
+
 ## 2026-06-10 - Commit-based Mapping malformed JSON blocked complete sample verification
 
 분류:

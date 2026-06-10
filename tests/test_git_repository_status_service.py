@@ -15,7 +15,7 @@ def _git(repo: Path, *args: str) -> str:
 def _create_repo(tmp_path: Path) -> tuple[Path, str]:
     repo = tmp_path / "repo"
     repo.mkdir()
-    _git(repo, "init")
+    _git(repo, "init", "--initial-branch=main")
     _git(repo, "config", "user.email", "status@example.local")
     _git(repo, "config", "user.name", "Status Tester")
     (repo / "README.md").write_text("initial\n", encoding="utf-8")
@@ -70,6 +70,7 @@ def test_repository_status_reports_upstream_ahead_behind(tmp_path: Path):
     (local / "README.md").write_text("initial\n", encoding="utf-8")
     _git(local, "add", ".")
     _git(local, "commit", "-m", "Initial commit")
+    _git(local, "branch", "-M", "main")
     _git(local, "push", "-u", "origin", "main")
 
     (local / "local.txt").write_text("local\n", encoding="utf-8")

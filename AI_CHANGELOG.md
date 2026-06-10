@@ -2,6 +2,13 @@
 
 ## 2026-06-10
 
+### CI Git default branch test fix
+
+- Made Git repository status tests deterministic on Linux CI by explicitly creating or renaming temporary test repositories to the `main` branch before pushing to `origin/main`.
+- Recorded the CI failure lesson that Git-dependent tests must not rely on each developer machine's global `init.defaultBranch`.
+- Important files: `tests/test_git_repository_status_service.py`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: Linux container reproduction with Git installed failed before the fix on `test_repository_status_reports_upstream_ahead_behind` because `git push -u origin main` had no local `main` ref; `.\.venv\Scripts\python.exe -m compileall src app.py tests` passed; `.\.venv\Scripts\python.exe -m pytest tests\test_git_repository_status_service.py -q` passed with 4 tests; `.\.venv\Scripts\python.exe -m pytest -q` passed with 95 tests; Linux container verification with Git installed and CI-like env passed with 95 tests.
+
 ### Commit-based mapping fallback and verified application screenshots
 
 - Ran the 48-commit sample project through the core demo pipeline before refreshing screenshots: Git sync data, commit-based Mapping, Risk Analysis, AI Progress, RAG indexing/retrieval, and Project Chat.

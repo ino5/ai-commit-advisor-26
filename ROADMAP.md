@@ -27,6 +27,7 @@
 | P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 | c42d847 |
 | P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 | fc87e29 |
 | P1 | Mapping / Ops | Commit-based mapping fallback and verified screenshots | Done | Commit-based mapping fallback and verified screenshots | bcfbf0c, 06ab07c, 93e202c |
+| P1 | CI | Git default branch deterministic tests | Done | CI Git default branch test fix |  |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | a151133 |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
@@ -125,6 +126,20 @@ Checklist:
 - [x] Extend screenshot automation for Mapping, Risk Analysis, AI Progress, and RAG Search.
 - [x] Refresh Home, Mapping, Risk Analysis, AI Progress, RAG Search, Project Chat, and Git History screenshots after analysis state is meaningful.
 - [x] Update `AI_CHANGELOG.md`, `docs/ai-technical-overview.md`, and `docs/failure-history.md`.
+
+## P1 - Git Default Branch Deterministic Tests
+
+Status: Done
+
+Goal:
+Keep Git-dependent tests portable across Windows local machines and Ubuntu CI runners by making temporary repository branch names explicit.
+
+Checklist:
+
+- [x] Reproduce the CI failure in a Linux container.
+- [x] Make Git repository status tests independent of the host Git default branch.
+- [x] Run focused and full test verification.
+- [x] Update `AI_CHANGELOG.md` and `docs/failure-history.md`.
 
 ## P2 - Git History Viewer
 
