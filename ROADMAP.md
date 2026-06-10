@@ -48,6 +48,7 @@
 | P2 | Docs | Sample project wording cleanup | Done | Sample project wording cleanup | 5abe51c |
 | P2 | Docs | Natural wording policy generalization | Done | Natural wording policy generalization | 6e946e4 |
 | P2 | Docs | Reader-facing wording policy simplification | Done | Reader-facing wording policy simplification | fe093bc |
+| P2 | UX | Sidebar menu hierarchy sizing | Done | Sidebar 메뉴 계층 크기 조정 |  |
 
 ## P0 - Program Management UX Improvement
 
@@ -444,6 +445,21 @@ Checklist:
 - [x] Normalize active and inactive menu item box sizing.
 - [x] Keep active and inactive menu item spacing consistent.
 - [x] Run compileall and focused UI verification.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Sidebar Menu Hierarchy Sizing
+
+Status: Done
+
+Goal:
+Make sidebar group labels read as section headers by sizing them slightly larger than their child menu items while preserving stable menu positions.
+
+Checklist:
+
+- [x] Adjust sidebar group and child menu text sizes.
+- [x] Refresh the Home application preview screenshot.
+- [x] Update user-facing Markdown documentation.
+- [x] Run compileall and focused UI screenshot verification.
 - [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Synthetic Target Project Repository

@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Sidebar 메뉴 계층 크기 조정
+
+- Sidebar 중메뉴가 하위 메뉴보다 살짝 크게 보이도록 그룹 제목은 `0.9rem`, 하위 메뉴와 선택 메뉴는 `0.86rem`으로 조정했습니다.
+- Streamlit button 내부 텍스트에도 같은 크기와 line-height를 적용해 메뉴 클릭 전후 글자 크기가 달라 보이지 않도록 했습니다.
+- Home Application Preview screenshot을 새 사이드바 계층 스타일이 보이도록 다시 캡처했습니다.
+- 기능 가이드와 Application Preview 문서에 사이드바 중메뉴/하위 메뉴 계층 의도를 반영했습니다.
+- Important files: `app.py`, `docs/images/features/home.png`, `docs/feature-guide.md`, `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m compileall app.py src` passed; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature home --url http://localhost:8511 --screenshot docs\images\features\home.png --surface local` passed; browser inspection on local port 8511 confirmed group labels render at 14.4px and child menu items render at 13.76px; clicking `Dashboard` confirmed active and inactive child menu text both render at 13.76px with 18.576px line-height before and after selection.
+
 ### Reader-facing wording policy simplification
 
 - Simplified the `AGENTS.md` natural Korean documentation wording policy by removing preferred phrase examples.

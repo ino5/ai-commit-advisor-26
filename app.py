@@ -85,7 +85,9 @@ def _inject_sidebar_styles() -> None:
             border-radius: 6px;
             box-sizing: border-box;
             display: flex;
+            font-size: 0.86rem;
             justify-content: flex-start;
+            line-height: 1.35;
             min-height: 2.35rem;
             padding: 0.42rem 0.62rem;
             text-align: left;
@@ -96,6 +98,11 @@ def _inject_sidebar_styles() -> None:
         section[data-testid="stSidebar"] .stButton > button:hover {
             background: rgba(49, 51, 63, 0.08);
         }
+        section[data-testid="stSidebar"] .stButton > button p,
+        section[data-testid="stSidebar"] .nav-active p {
+            font-size: 0.86rem;
+            line-height: 1.35;
+        }
         section[data-testid="stSidebar"] .nav-active {
             border-left: 3px solid #2563eb;
             background: rgba(37, 99, 235, 0.10);
@@ -103,7 +110,9 @@ def _inject_sidebar_styles() -> None:
             box-sizing: border-box;
             display: flex;
             align-items: center;
+            font-size: 0.86rem;
             font-weight: 600;
+            line-height: 1.35;
             min-height: 2.35rem;
             padding: 0.42rem 0.62rem;
             margin: 0.1rem 0 0.35rem 0;
@@ -111,10 +120,10 @@ def _inject_sidebar_styles() -> None:
         }
         section[data-testid="stSidebar"] .nav-group {
             color: #64748b;
-            font-size: 0.78rem;
+            font-size: 0.9rem;
             font-weight: 700;
             letter-spacing: 0;
-            margin: 0.7rem 0 0.15rem 0;
+            margin: 0.8rem 0 0.18rem 0;
         }
         section[data-testid="stSidebar"] .nav-current {
             border-top: 1px solid rgba(49, 51, 63, 0.14);
