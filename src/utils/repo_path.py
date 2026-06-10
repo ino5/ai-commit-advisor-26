@@ -9,6 +9,25 @@ def _normalize(value: str) -> str:
     return value.replace("\\", "/").rstrip("/")
 
 
+def is_repo_path_allowed(repo_path: str | Path) -> bool:
+    """Return whether a project repository path stays inside the configured root.
+
+    If REPO_STORAGE_ROOT is not set, repository path registration remains
+    unrestricted for local PoC and existing demo workflows.
+    """
+    storage_root = settings.repo_storage_root
+    if not storage_root:
+        return True
+
+    normalized_path = _normalize(str(repo_path))
+    normalized_root = _normalize(storage_root)
+    return normalized_path == normalized_root or normalized_path.startswith(f"{normalized_root}/")
+
+
+def repo_storage_root_label() -> str | None:
+    return settings.repo_storage_root
+
+
 def resolve_repo_path(repo_path: str | Path) -> Path:
     """Resolve a stored repository path for the current runtime.
 

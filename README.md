@@ -1,6 +1,6 @@
 # AI Commit Advisor
 
-AI Commit Advisor는 로컬 Git 저장소의 커밋, 변경 파일, diff, 개발계획 데이터를 연결해 프로그램-커밋 매핑, 영향도 분석, 리스크 탐지, RAG 검색, Project Chat, AI 코드리뷰를 지원하는 Streamlit 기반 PoC입니다.
+AI Commit Advisor는 앱 서버에서 접근 가능한 Git 저장소의 커밋, 변경 파일, diff, 개발계획 데이터를 연결해 프로그램-커밋 매핑, 영향도 분석, 리스크 탐지, RAG 검색, Project Chat, AI 코드리뷰를 지원하는 Streamlit 기반 PoC입니다.
 
 기본값은 mock 분석이며, LM Studio 같은 OpenAI-compatible 로컬 LLM/embedding 서버를 연결하면 Mapping, AI Code Review, Project Chat, RAG 검색에서 실제 AI 기반 분석을 실행할 수 있습니다.
 
@@ -8,7 +8,7 @@ AI Commit Advisor는 로컬 Git 저장소의 커밋, 변경 파일, diff, 개발
 
 ## 주요 기능
 
-- 로컬 Git 저장소 커밋, 변경 파일, diff 수집과 증분 동기화
+- 앱 서버 Git 저장소 커밋, 변경 파일, diff 수집과 증분 동기화
 - 개발자, 프로그램 목록, 개발계획 Excel 업로드와 화면 기반 직접 관리
 - LLM 기반 프로그램-커밋 Mapping과 사용자 피드백 보정
 - Commit Impact, Program Detail, AI Progress 기반 구현 현황 추적
@@ -18,9 +18,19 @@ AI Commit Advisor는 로컬 Git 저장소의 커밋, 변경 파일, diff, 개발
 - 작업트리, staged 변경, 최신/특정 커밋 대상 AI Code Review
 - 데모용 샘플 프로젝트와 Excel 데이터 생성으로 전체 기능 확인 가능
 
+## Git 저장소 접근 모델
+
+AI Commit Advisor는 브라우저 사용자 PC의 Git 저장소를 직접 읽지 않습니다. 앱이 실행 중인 서버에서 접근 가능한 Git 저장소 경로를 기준으로 커밋, 변경 파일, diff, 현재 소스 파일을 분석합니다.
+
+사내 서버에서 앱을 실행한다면 분석 대상 저장소는 사내 서버의 `/srv/ai-commit-advisor/repos/...` 같은 경로에 clone되어 있어야 합니다. 팀원들은 브라우저로 앱에 접속해 서버가 수집한 Git 이력과 분석 결과를 함께 사용합니다.
+
+자세한 사내 서버 운영 방식과 경로 제한 정책은 [Git 저장소 운영 모델](docs/git-repository-operating-model.md)을 참고하세요.
+
 ## 빠른 시작
 
 가볍게 앱 흐름만 확인하려면 mock 설정을 사용합니다.
+
+로컬 Python으로 실행할 때는 내 PC가 앱 서버입니다. 따라서 프로젝트/Git 설정에 입력하는 Git 저장소 경로도 내 PC에서 접근 가능한 경로입니다. 같은 앱을 사내 서버에서 실행하면 사내 서버에 clone된 저장소 경로를 입력해야 합니다.
 
 ```powershell
 Copy-Item .env.example .env
@@ -78,6 +88,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 
 - [AI Agent 작업 안내](docs/agent-onboarding.md): 이 프로젝트에서 Agent로 작업할 때 참고할 흐름, 문서 규칙, 프롬프트 예시를 정리합니다.
 - [기능 가이드](docs/feature-guide.md): 주요 화면, 기능 흐름, 분석 결과가 무엇을 의미하는지 설명합니다.
+- [Git 저장소 운영 모델](docs/git-repository-operating-model.md): 앱 서버 기준 Git 저장소 접근 방식, 사내 서버 운영 구조, 경로 제한 정책을 설명합니다.
 - [Application Preview](docs/application-preview.md): 샘플 프로젝트 기준 주요 화면과 기능 상태를 미리 확인할 수 있습니다.
 - [설치와 운영](docs/setup-and-operations.md): 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 가이드입니다.
 - [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md): 샘플 프로젝트로 주요 기능을 확인할 때 참고하는 권장 실행 흐름입니다.

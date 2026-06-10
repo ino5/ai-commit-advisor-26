@@ -52,7 +52,7 @@ flowchart TB
 
     LLMClient --> LocalLLM["LM Studio / OpenAI-compatible Chat API"]
     EmbeddingClient --> EmbeddingAPI["Mock / OpenAI / Local Embedding API"]
-    GitService --> LocalGit["Local Git Repository"]
+    GitService --> ServerGit["App-server Git Repository"]
     ExcelService --> ExcelFiles["Excel Files"]
 
     ExcelService --> DB[(PostgreSQL + pgvector)]
@@ -99,13 +99,13 @@ flowchart LR
 ### 주요 화면 역할
 
 - `Home`: 사이드바에서 선택한 현재 프로젝트의 KPI, AI 진척도, 리스크 프로그램, 다음 작업 요약.
-- `Project`: 프로젝트 이름, 설명, 로컬 Git 저장소 경로 관리. 프로젝트 저장 후 사이드바 현재 프로젝트 선택과 동기화.
+- `Project`: 프로젝트 이름, 설명, 앱 서버에서 접근 가능한 Git 저장소 경로 관리. 프로젝트 저장 후 사이드바 현재 프로젝트 선택과 동기화.
 - `개발자 현황`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리.
 - `개발자 목록`: 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - `Program`: 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, 저장.
 - `개발계획`: 개발계획 현재 데이터 조회, 직접 수정, 일괄 업데이트, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - `Program Detail`: 특정 프로그램의 계획, AI 구현상태, 관련 커밋, 파일 diff, 리스크를 상세 조회.
-- `Git`: 로컬 Git 저장소에서 커밋, 변경 파일, diff 수집.
+- `Git`: 앱 서버 Git 저장소에서 커밋, 변경 파일, diff 수집.
 - `Mapping`: 프로그램과 커밋의 관련성을 LLM으로 분석해 `program_commit_mappings`에 저장하고, 피드백 리뷰 큐로 검토가 필요한 매핑을 보정.
 - `Risk Analysis`: 계획, 매핑, 커밋 활동 기반 리스크를 탐지하고 `risk_findings`에 저장/해결 처리.
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
@@ -117,6 +117,17 @@ flowchart LR
 - `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답하고, 답변 전 현재 소스 인덱스 상태를 확인하며, 프로젝트별 대화 session/message와 근거를 저장.
 
 대부분의 프로젝트 단위 화면은 각 화면 안에서 프로젝트를 다시 고르지 않고, 사이드바의 현재 프로젝트 컨텍스트를 사용합니다. `프로젝트/Git 설정`은 프로젝트 생성과 수정을 담당하므로 자체 선택 UI를 유지하고, `프로그램 목록`은 기존 프로젝트에 데이터를 넣는 흐름과 새 프로젝트명으로 저장하는 예외 흐름을 분리합니다.
+
+## 2.1 Git 저장소 접근 모델
+
+AI Commit Advisor는 브라우저 사용자 PC의 Git 저장소를 직접 읽지 않습니다. `projects.git_repo_path`는 앱 서버 프로세스가 접근 가능한 Git 저장소 경로를 의미합니다.
+
+- 개인 PC에서 앱을 실행하면 개인 PC 경로가 앱 서버 기준 경로입니다.
+- 사내 서버에서 앱을 실행하면 사내 서버에 clone된 저장소 경로가 앱 서버 기준 경로입니다.
+- Docker 실행에서 host 경로와 container 경로가 다르면 `REPO_PATH_HOST_PREFIX`, `REPO_PATH_CONTAINER_PREFIX`로 실제 접근 경로를 변환합니다.
+- 운영 서버에서는 `REPO_STORAGE_ROOT`를 설정해 프로젝트 Git 경로를 승인된 저장소 root 하위로 제한할 수 있습니다.
+
+Git Sync, RAG source_file 인덱싱, Project Chat 현재 소스 검증, AI Code Review는 모두 이 앱 서버 기준 경로를 사용합니다. 사내 서버 운영의 자세한 기준은 [Git 저장소 운영 모델](git-repository-operating-model.md)을 참고합니다.
 
 ## 3. DB ERD
 
@@ -339,7 +350,7 @@ erDiagram
 | 서비스 | 역할 |
 |---|---|
 | `excel_service.py` | 프로그램/개발자 Excel 파일 읽기, 컬럼 매핑, 정규화, DB 저장. |
-| `git_service.py` | 로컬 Git 저장소에서 commit hash, message, author, changed files, diff 수집 및 DB 저장. |
+| `git_service.py` | 앱 서버 Git 저장소에서 commit hash, message, author, changed files, diff 수집 및 DB 저장. |
 | `developer_service.py` | Git author 기반 개발자 자동 추출, role/skills 추정, 개발자 통계 생성. |
 | `llm_client.py` | mock 또는 OpenAI-compatible local LLM 호출. `/chat/completions` 기반. |
 | `mapping_service.py` | 프로그램-커밋 매핑 분석의 핵심 서비스. 프로그램 기준 분석과 커밋 기준 분석을 모두 지원한다. |
@@ -494,7 +505,7 @@ LLM 출력 예시:
 ## 9. 현재 구현된 기능
 
 - Streamlit 기반 업무 흐름형 메뉴.
-- 프로젝트 등록 및 Git 저장소 경로 관리.
+- 프로젝트 등록 및 앱 서버 Git 저장소 경로 관리.
 - 프로그램 관리: 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, DB 저장/업데이트.
 - 개발자 관리: 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, DB 저장/업데이트.
 - 개발계획 관리: 현재 계획 조회, 직접 수정, 일괄 업데이트, Excel 양식 다운로드, 업로드 전 검증/미리보기.
@@ -646,7 +657,7 @@ flowchart LR
 - 컨테이너 시작 command는 앱 실행 전에 `python -m src.db.init_db`를 호출해 DB 초기화와 Alembic migration을 적용합니다.
 - `docker-compose.yml`의 `postgres` service는 `pgvector/pgvector:pg16` image를 사용하고, `app` service는 PostgreSQL healthcheck 통과 후 시작됩니다.
 - Docker 내부 DB 접속 주소는 Compose service 이름인 `postgres`를 사용합니다. 로컬 Python 실행의 `127.0.0.1` DB 주소와 다릅니다.
-- Docker 앱이 DB에 저장된 Windows Git 경로를 읽을 수 있도록 `C:/dev`를 `/host-dev`에 mount하고 `REPO_PATH_HOST_PREFIX`, `REPO_PATH_CONTAINER_PREFIX`로 경로를 변환합니다.
+- Docker 앱이 DB에 저장된 Windows Git 경로를 읽을 수 있도록 `C:/dev`를 `/host-dev`에 mount하고 `REPO_STORAGE_ROOT`, `REPO_PATH_HOST_PREFIX`, `REPO_PATH_CONTAINER_PREFIX`로 경로 제한과 변환을 적용합니다.
 - 로컬 LM Studio를 컨테이너에서 호출할 때는 `host.docker.internal:1234/v1`을 사용합니다.
 - 기본 provider는 `mock`이므로 외부 LLM 없이도 앱 기동과 DB 연결을 먼저 검증할 수 있습니다.
 

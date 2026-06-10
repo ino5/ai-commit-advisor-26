@@ -261,7 +261,7 @@ def _render_index_controls(project: Project) -> None:
     _, pending_count = _embedding_workload(project.id, source_types)
     _render_runtime_notice("embedding", pending_count, int(limit))
     if "source_file" in source_types and not project.git_repo_path:
-        st.warning("현재 소스 파일을 인덱싱하려면 프로젝트에 Git 저장소 경로가 필요합니다.")
+        st.warning("현재 소스 파일을 인덱싱하려면 프로젝트에 앱 서버 Git 저장소 경로가 필요합니다.")
 
     if st.button("RAG 인덱싱 실행", type="primary"):
         with st.spinner("현재 소스, 프로그램, 커밋, 변경 파일/diff를 chunk로 만들고 누락 embedding을 저장합니다."):
@@ -287,7 +287,7 @@ def _render_chunk_controls(project: Project) -> None:
     overlap = col2.number_input("Overlap", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50, key="overlap_only")
     source_types = _selected_source_types("Chunk 대상", SOURCE_TYPE_OPTIONS)
     if "source_file" in source_types and not project.git_repo_path:
-        st.warning("현재 소스 파일을 chunk로 만들려면 프로젝트에 Git 저장소 경로가 필요합니다.")
+        st.warning("현재 소스 파일을 chunk로 만들려면 프로젝트에 앱 서버 Git 저장소 경로가 필요합니다.")
 
     if not st.button("Chunk 생성", type="primary"):
         return

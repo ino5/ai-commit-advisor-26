@@ -11,6 +11,8 @@
 - 생성 스크립트: `scripts/create_sample_target_repo.py`
 - 생성된 upload 파일: `C:\dev\ai-advisor-sample-shop\advisor_uploads`
 
+위 경로는 기본 Windows 개발 환경 기준입니다. 사내 서버에서 시연할 때는 샘플 프로젝트를 앱 서버가 접근 가능한 저장소 root 아래에 생성하거나 복사한 뒤 서버 기준 경로를 등록합니다. 실행 환경별 경로 설정은 [설치와 운영](setup-and-operations.md)의 샘플 프로젝트 경로 설정을 따릅니다.
+
 ## 현재 상태
 
 현재 샘플 프로젝트는 데모용 Spring MVC + MyBatis retail operations project입니다.

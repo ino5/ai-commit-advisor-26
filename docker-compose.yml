@@ -17,6 +17,7 @@ services:
       EMBEDDING_BASE_URL: http://host.docker.internal:1234/v1
       EMBEDDING_API_KEY: ""
       EMBEDDING_MODEL: text-embedding-nomic-embed-text-v1
+      REPO_STORAGE_ROOT: "C:\\dev"
       REPO_PATH_HOST_PREFIX: "C:\\dev"
       REPO_PATH_CONTAINER_PREFIX: /host-dev
     ports:

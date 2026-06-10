@@ -130,7 +130,7 @@ def _pipeline_status_rows(overview: dict) -> list[dict]:
 
 def _next_actions(overview: dict) -> list[str]:
     if not overview["git_repo_path"]:
-        return ["프로젝트/Git 설정에서 현재 프로젝트의 Git 경로 등록"]
+        return ["프로젝트/Git 설정에서 현재 프로젝트의 앱 서버 Git 경로 등록"]
     if overview["program_count"] == 0:
         return ["프로그램 목록에서 현재 프로젝트의 프로그램 목록 등록"]
     if overview["commit_count"] == 0:

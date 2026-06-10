@@ -186,7 +186,7 @@ class CodeReviewService:
         started_at = datetime.now(timezone.utc)
 
         if not project.git_repo_path:
-            result.errors.append("프로젝트에 Git 저장소 경로가 설정되어 있지 않습니다.")
+            result.errors.append("프로젝트에 앱 서버 Git 저장소 경로가 설정되어 있지 않습니다.")
             return result
 
         try:

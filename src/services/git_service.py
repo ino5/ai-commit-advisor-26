@@ -197,10 +197,10 @@ def collect_commits(repo_path: str | Path, since_commit_hash: str | None = None)
 def sync_git_repository(db: Session, project: Project, full: bool = False) -> GitSyncResult:
     result = GitSyncResult()
     if not project.git_repo_path:
-        result.errors.append("프로젝트에 Git 저장소 경로가 등록되어 있지 않습니다.")
+        result.errors.append("프로젝트에 앱 서버 Git 저장소 경로가 등록되어 있지 않습니다.")
         return result
     if not is_git_repository(project.git_repo_path):
-        result.errors.append("등록된 경로가 Git 저장소가 아닙니다.")
+        result.errors.append("앱 서버에서 등록된 경로를 Git 저장소로 확인할 수 없습니다.")
         return result
 
     latest_head = get_head_commit_hash(project.git_repo_path)

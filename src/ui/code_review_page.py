@@ -68,7 +68,7 @@ def _render_review_history(project_id: int) -> None:
 
 def render_code_review_page() -> None:
     st.title("AI Code Review")
-    st.caption("로컬 Git 변경 또는 커밋을 LLM으로 분석해 커밋 요약, 버그 후보, 리팩토링 제안을 기록합니다.")
+    st.caption("앱 서버 Git 저장소의 변경 또는 커밋을 LLM으로 분석해 커밋 요약, 버그 후보, 리팩토링 제안을 기록합니다.")
 
     context = require_project_context("먼저 프로젝트를 등록해 주세요.")
     if context is None:
@@ -79,10 +79,10 @@ def render_code_review_page() -> None:
         project = db.query(Project).filter(Project.id == project_id).one()
 
     if not project.git_repo_path:
-        st.warning("선택한 프로젝트에 Git 저장소 경로가 없습니다. 프로젝트/Git 설정에서 경로를 먼저 설정하세요.")
+        st.warning("선택한 프로젝트에 앱 서버 Git 저장소 경로가 없습니다. 프로젝트/Git 설정에서 경로를 먼저 설정하세요.")
         return
 
-    st.write({"git_repo_path": project.git_repo_path})
+    st.write({"app_server_git_repo_path": project.git_repo_path})
     st.divider()
 
     target_label = st.radio("리뷰 대상", list(TARGET_OPTIONS.keys()), horizontal=True)

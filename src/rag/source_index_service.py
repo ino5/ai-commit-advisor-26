@@ -149,7 +149,7 @@ def get_source_index_status(db: Session, project: Project) -> SourceIndexStatus:
         except Exception as exc:
             errors.append(f"Git HEAD 확인 실패: {exc}")
     else:
-        errors.append("프로젝트에 Git 저장소 경로가 등록되지 않았습니다.")
+        errors.append("프로젝트에 앱 서버 Git 저장소 경로가 등록되지 않았습니다.")
 
     chunks = (
         db.query(DocumentChunk)
@@ -323,7 +323,7 @@ def refresh_changed_source_files(
     embedding_limit: int = 100,
 ) -> IncrementalSourceIndexResult:
     if not project.git_repo_path:
-        raise ValueError("Git 저장소 경로가 등록된 프로젝트만 source_file 증분 인덱싱을 실행할 수 있습니다.")
+        raise ValueError("앱 서버 Git 저장소 경로가 등록된 프로젝트만 source_file 증분 인덱싱을 실행할 수 있습니다.")
 
     result = IncrementalSourceIndexResult(changed_file_count=len(changed_files))
     paths_to_delete: set[str] = set()
@@ -415,7 +415,7 @@ def refresh_source_file_index(
     embedding_limit: int = 100,
 ) -> SourceIndexRefreshResult:
     if not project.git_repo_path:
-        raise ValueError("Git 저장소 경로가 등록된 프로젝트만 source_file 인덱스를 갱신할 수 있습니다.")
+        raise ValueError("앱 서버 Git 저장소 경로가 등록된 프로젝트만 source_file 인덱스를 갱신할 수 있습니다.")
 
     current_head_hash = get_head_commit_hash(resolve_repo_path(project.git_repo_path))
     chunk_result = build_source_file_chunks(

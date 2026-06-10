@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     embedding_api_key: str | None = Field(default=None, alias="EMBEDDING_API_KEY")
     embedding_model: str | None = Field(default=None, alias="EMBEDDING_MODEL")
     embedding_base_url: str | None = Field(default=None, alias="EMBEDDING_BASE_URL")
+    repo_storage_root: str | None = Field(default=None, alias="REPO_STORAGE_ROOT")
     repo_path_host_prefix: str | None = Field(default=None, alias="REPO_PATH_HOST_PREFIX")
     repo_path_container_prefix: str | None = Field(default=None, alias="REPO_PATH_CONTAINER_PREFIX")
 

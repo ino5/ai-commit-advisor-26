@@ -28,9 +28,9 @@ def _render_sync_result(result) -> None:
 
 def render_git_page() -> None:
     st.title("Git")
-    st.caption("프로젝트에 등록된 로컬 Git 저장소의 전체 커밋을 수집하고 이후 새 커밋만 증분 동기화합니다.")
+    st.caption("프로젝트에 등록된 앱 서버 Git 저장소의 전체 커밋을 수집하고 이후 새 커밋만 증분 동기화합니다.")
 
-    context = require_project_context("먼저 프로젝트/Git 설정에서 프로젝트와 로컬 Git 저장소 경로를 등록해 주세요.")
+    context = require_project_context("먼저 프로젝트/Git 설정에서 프로젝트와 앱 서버 Git 저장소 경로를 등록해 주세요.")
     if context is None:
         return
 
@@ -40,15 +40,15 @@ def render_git_page() -> None:
             st.error("선택한 프로젝트를 찾을 수 없습니다.")
             return
 
-        st.text_input("로컬 Git 저장소 경로", value=project.git_repo_path or "", disabled=True)
+        st.text_input("앱 서버 Git 저장소 경로", value=project.git_repo_path or "", disabled=True)
         st.write("마지막 동기화 커밋:", project.last_synced_commit_hash or "-")
         st.write("마지막 동기화 시각:", project.last_synced_at or "-")
 
         if not project.git_repo_path:
-            st.warning("이 프로젝트에는 Git 저장소 경로가 등록되어 있지 않습니다.")
+            st.warning("이 프로젝트에는 앱 서버 Git 저장소 경로가 등록되어 있지 않습니다.")
             return
         if not is_git_repository(project.git_repo_path):
-            st.error("등록된 경로가 실제 Git 저장소가 아닙니다. 프로젝트/Git 설정에서 경로를 수정해 주세요.")
+            st.error("앱 서버에서 등록된 경로를 실제 Git 저장소로 확인할 수 없습니다. 프로젝트/Git 설정에서 경로를 수정해 주세요.")
             return
 
         full_col, incremental_col = st.columns(2)

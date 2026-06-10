@@ -45,6 +45,12 @@ AAA Sample Shop Rich Demo
 C:\dev\ai-advisor-sample-shop
 ```
 
+이 경로는 로컬 Python 또는 기본 Windows Docker Compose 실행 기준입니다. 사내 서버에서 검증할 때는 사용자 PC 경로가 아니라 사내 서버에 생성하거나 복사한 샘플 프로젝트 경로를 등록합니다.
+
+```text
+/srv/ai-commit-advisor/repos/ai-advisor-sample-shop
+```
+
 3. Git sync를 실행합니다.
 
 깨끗한 demo project에서는 full sync를 사용합니다. 예상 샘플 commit 수는 30입니다.

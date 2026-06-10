@@ -45,6 +45,53 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-10 - App-server Git repository operating model
+
+### 배경
+
+프로젝트/Git 설정과 Git Sync, RAG source indexing, Project Chat, AI Code Review는 모두 Git 저장소의 실제 파일과 `git` 명령에 의존합니다. 기존 문구는 `로컬 Git 저장소`라고 표현되어 개인 PC 실행에는 자연스러웠지만, 사내 서버에서 앱을 실행하고 여러 사용자가 브라우저로 접속하는 운영 모델에서는 오해를 만들 수 있었습니다.
+
+브라우저 사용자의 PC 경로는 앱 서버가 직접 읽을 수 없습니다. 반면 사내 서버에 clone된 저장소는 앱 서버 프로세스가 접근할 수 있으므로 Git 분석 기능이 정상 동작합니다.
+
+### 결정
+
+제품의 공식 Git 접근 모델을 "앱 서버에서 접근 가능한 Git 저장소"로 정의합니다.
+
+`projects.git_repo_path` 컬럼명은 호환성을 위해 유지하되, 사용자-facing 문구와 문서는 앱 서버 기준 경로로 설명합니다. 운영 서버에서는 `REPO_STORAGE_ROOT`를 설정해 프로젝트 Git 경로를 승인된 저장소 root 하위로 제한할 수 있게 합니다.
+
+### 이유
+
+- 개인 PC 실행과 사내 서버 실행을 같은 모델로 설명할 수 있습니다. 둘 다 앱 서버가 접근 가능한 경로를 읽는 구조입니다.
+- Git Sync, RAG, Project Chat, Code Review가 공유하는 핵심 전제를 문서와 UI에서 일관되게 표현할 수 있습니다.
+- 사내 서버에서는 `/srv/ai-commit-advisor/repos` 같은 저장소 root를 정하고 여러 사용자가 같은 분석 결과를 공유할 수 있습니다.
+- `REPO_STORAGE_ROOT`는 운영 서버에서 임의 서버 경로 입력을 줄이는 최소 안전장치입니다.
+
+### 검토한 대안
+
+- 사용자 PC 로컬 경로 모델 유지: 사내 서버 운영에서 사용자가 입력한 PC 경로를 서버가 읽을 수 없으므로 제품 설명이 틀려집니다.
+- 즉시 remote URL 기반 clone/fetch 모델로 전환: 장기적으로 유용하지만 인증 정보, branch 정책, sync lock, 저장소 용량 관리까지 함께 설계해야 하므로 현재 범위에 비해 큽니다.
+- DB schema를 바로 변경해 `server_repo_path`로 rename: 의미는 더 정확하지만 migration과 전체 코드 변경량이 커집니다. 현재는 문구와 검증 정책을 먼저 정리하고, schema rename은 필요성이 커질 때 별도 작업으로 다룹니다.
+
+### 영향과 tradeoff
+
+- README, feature guide, setup/operations, architecture 문서가 앱 서버 기준 Git 저장소 모델을 설명해야 합니다.
+- 화면 라벨은 더 정확해지지만 `git_repo_path` 내부 이름과 일부 과거 문서에는 이전 용어가 남을 수 있습니다.
+- `REPO_STORAGE_ROOT`를 설정하지 않으면 기존 PoC처럼 자유 경로를 사용할 수 있습니다. 이 유연성은 개발에는 편하지만 운영 서버에서는 반드시 제한값을 설정해야 합니다.
+
+### 후속 확인
+
+- Git History 화면을 추가할 때도 서버 repo path를 기준으로 `git show`와 `git log`를 실행해야 합니다.
+- 서버가 remote URL과 branch를 받아 clone/fetch를 관리하는 기능은 별도 보안/운영 결정 후 구현합니다.
+- 인증/권한 관리가 없으므로 내부망 운영에서도 reverse proxy 인증이나 사내 SSO를 검토해야 합니다.
+
+### 관련 문서
+
+- `docs/git-repository-operating-model.md`
+- `docs/setup-and-operations.md`
+- `docs/architecture.md`
+- `README.md`
+- `AI_CHANGELOG.md`의 `App-server Git repository operating model`
+
 ## 2026-06-10 - Roadmap candidate tasks preserve unresolved product concerns
 
 ### 배경

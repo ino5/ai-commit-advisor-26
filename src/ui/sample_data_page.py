@@ -24,11 +24,11 @@ def _prepare_downloads(developers: pd.DataFrame, programs: pd.DataFrame, plan: p
 def render_sample_data_page() -> None:
     st.title("샘플 데이터 생성")
     st.caption(
-        "로컬 Git 저장소의 commit author, commit date, 변경 파일 경로를 분석해 업로드 테스트용 가상 Excel 데이터를 생성합니다. "
+        "앱 서버에서 접근 가능한 Git 저장소의 commit author, commit date, 변경 파일 경로를 분석해 업로드 테스트용 가상 Excel 데이터를 생성합니다. "
         f"실제 업무 데이터가 아니며 랜덤성은 고정 seed({SEED})로 재현 가능합니다."
     )
 
-    repo_path = st.text_input("로컬 Git 저장소 경로", value=r"C:\dev\ai-advisor-sample-shop")
+    repo_path = st.text_input("앱 서버 Git 저장소 경로", value=r"C:\dev\ai-advisor-sample-shop")
     repo_path_obj = Path(repo_path).expanduser()
     use_existing_program_csv = st.checkbox(
         "저장소의 기존 프로그램목록 CSV를 우선 사용",
@@ -60,10 +60,10 @@ def render_sample_data_page() -> None:
     if st.button("샘플 데이터 생성", type="primary"):
         path = Path(repo_path).expanduser().resolve()
         if not path.exists():
-            st.error("입력한 경로가 존재하지 않습니다.")
+            st.error("앱 서버에서 입력한 경로를 찾을 수 없습니다.")
             return
         if not (path / ".git").exists():
-            st.error("입력한 경로가 Git 저장소가 아닙니다.")
+            st.error("앱 서버에서 입력한 경로를 Git 저장소로 확인할 수 없습니다.")
             return
         if use_existing_program_csv and program_csv_path is not None and not program_csv_path.exists():
             st.error("입력한 프로그램목록 CSV 경로가 존재하지 않습니다.")

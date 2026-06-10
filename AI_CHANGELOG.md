@@ -2,6 +2,19 @@
 
 ## 2026-06-10
 
+### App-server Git repository operating model
+
+- Reframed Git repository access from browser-user local paths to app-server-accessible repository paths for internal-network server operation.
+- Added optional `REPO_STORAGE_ROOT` configuration and project path validation so server deployments can restrict registered Git repositories to an approved storage root.
+- Updated Git/project UI labels and messages to use app-server Git repository wording.
+- Added `docs/git-repository-operating-model.md` and linked it from README to explain the server-path model, recommended repo storage layout, Docker path mapping, Git Sync boundaries, and security notes.
+- Added the same app-server path clarification to README Quick Start and setup/operations local execution guidance so first-time local users understand that their PC is the app server.
+- Documented sample project path handling for local Python, default Windows Docker Compose, and internal-server demo runs.
+- Updated setup/operations, feature guide, architecture, engineering decision, environment examples, Docker Compose, and roadmap documentation.
+- Preserved `git_repo_path` as the internal DB/model name for compatibility while clarifying its meaning in user-facing docs.
+- Important files: `src/utils/config.py`, `src/utils/repo_path.py`, `src/ui/project_page.py`, `src/ui/git_page.py`, `src/ui/code_review_page.py`, `src/ui/rag_page.py`, `src/ui/sample_data_page.py`, `tests/test_repo_path.py`, `README.md`, `docs/git-repository-operating-model.md`, `docs/setup-and-operations.md`, `docs/rich-sample-demo-walkthrough.md`, `docs/sample-target-repo-demo-design.md`, `docs/architecture.md`, `docs/feature-guide.md`, `docs/engineering-decisions.md`, `docker-compose.yml`, `.env.example`, `.env.local-llm.example`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m compileall src app.py` passed; `.\.venv\Scripts\python.exe -m pytest tests/test_repo_path.py -q` passed with 5 tests; `.\.venv\Scripts\python.exe -m pytest -q` passed with 88 tests.
+
 ### Roadmap candidate task tracking
 
 - Added a `Candidate Tasks` section to `ROADMAP.md` for unresolved product, UX, state-management, and architecture concerns that should be preserved without marking them active.
