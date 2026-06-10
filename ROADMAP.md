@@ -38,7 +38,7 @@
 | P2 | Sample Data | Synthetic target project repository | Done | 가상 샘플 대상 프로젝트 생성 스크립트 추가 | fa7fcbb |
 | P2 | Sample Data | Rich demo target repository scenario design | Done | 샘플 대상 repo 데모 시나리오 설계 문서 추가 | 7038ac5 |
 | P2 | Sample Data | Rich demo target repository implementation | Done | 확장 샘플 대상 repo 구현 | fd1940d |
-| P2 | Sample Data | Sample project commit history expansion | Done | Sample project commit history expansion | fd4c892 |
+| P2 | Sample Data | Sample project commit history expansion | Done | Sample project commit history expansion | eeb81df |
 | P2 | Docs | Rich sample demo walkthrough and screenshots | Done | 샘플 프로젝트 검증과 화면 캡처 갱신 | dd8fd5e |
 | P2 | Docs | README documentation hub restructure | Done | README 문서 허브 개편 | 6b27b35 |
 | P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 | 02f2b14 |
