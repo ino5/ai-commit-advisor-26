@@ -52,7 +52,7 @@
 | P2 | Docs | Documentation impact gate policy | Done | Documentation impact gate policy | 88ef1cb |
 | P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization | 5094ebb |
 | P2 | Docs | AI Agent onboarding guide | Done | AI Agent onboarding guide |  |
-| P2 | UX | Global project context | Done | Global project context |  |
+| P2 | UX | Global project context | Done | Global project context | 17b281d |
 
 ## P0 - Program Management UX Improvement
 
