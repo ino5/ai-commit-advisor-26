@@ -18,6 +18,8 @@ class FeatureScenario:
     default_screenshot: str = ""
     description: str = ""
     verify_sidebar_stability: bool = False
+    scroll_to_text: str | None = None
+    full_page: bool = True
 
 
 SCENARIOS: dict[str, FeatureScenario] = {
@@ -55,6 +57,39 @@ SCENARIOS: dict[str, FeatureScenario] = {
         forbidden_texts=(),
         default_screenshot="docs/images/features/project-chat.png",
         description="Project Chat 질문/근거 화면",
+    ),
+    "git-history": FeatureScenario(
+        name="git-history",
+        sidebar_label="Git History",
+        wait_text="현재 프로젝트의 Git 커밋 이력",
+        required_texts=(
+            "Git History",
+            "현재 프로젝트의 Git 커밋 이력",
+            "커밋 목록",
+            "조회 커밋",
+            "변경 파일",
+            "전체 diff",
+        ),
+        forbidden_texts=(),
+        default_screenshot="docs/images/features/git-history.png",
+        description="Git History 커밋 이력/diff 탐색 화면",
+    ),
+    "git-history-detail": FeatureScenario(
+        name="git-history-detail",
+        sidebar_label="Git History",
+        wait_text="현재 프로젝트의 Git 커밋 이력",
+        required_texts=(
+            "Git History",
+            "커밋 상세",
+            "변경 파일",
+            "저장된 diff preview",
+            "전체 diff",
+        ),
+        forbidden_texts=(),
+        default_screenshot="docs/images/features/git-history-detail.png",
+        description="Git History 커밋 상세/diff preview 화면",
+        scroll_to_text="저장된 diff preview",
+        full_page=False,
     ),
 }
 
@@ -289,8 +324,11 @@ def _capture_scenario(
             scenario.forbidden_texts + extra_forbidden_texts,
         )
 
+    if scenario.scroll_to_text:
+        page.get_by_text(scenario.scroll_to_text).first.scroll_into_view_if_needed(timeout=10_000)
+
     screenshot_path.parent.mkdir(parents=True, exist_ok=True)
-    page.screenshot(path=str(screenshot_path), full_page=True)
+    page.screenshot(path=str(screenshot_path), full_page=scenario.full_page)
     return text
 
 

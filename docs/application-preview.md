@@ -81,6 +81,21 @@
 </details>
 
 <details>
+<summary>Git History</summary>
+
+현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장된 diff preview를 한 화면에서 확인하는 Git History 상태입니다.
+
+커밋 목록과 활동 그래프
+
+![Git History](images/features/git-history.png)
+
+커밋 상세와 diff preview
+
+![Git History Detail](images/features/git-history-detail.png)
+
+</details>
+
+<details>
 <summary>샘플 데이터 생성</summary>
 
 ![Sample Data](images/features/sample-data.png)

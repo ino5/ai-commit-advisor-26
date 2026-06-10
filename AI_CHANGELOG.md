@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Git History Application Preview screenshot
+
+- Added Git History scenarios to `scripts/capture_feature_screenshot.py` so the commit list/activity graph state and commit detail/diff preview state can be recaptured.
+- Captured `docs/images/features/git-history.png` against the local Streamlit app using the `AAA Sample Shop Rich Demo` project with 30 commits and 77 changed files.
+- Captured `docs/images/features/git-history-detail.png` to show selected commit metadata, changed files, saved diff preview, and full-diff control.
+- Updated `docs/application-preview.md` to include both Git History screenshots.
+- Important files: `scripts/capture_feature_screenshot.py`, `docs/application-preview.md`, `docs/images/features/git-history.png`, `docs/images/features/git-history-detail.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature git-history --url http://127.0.0.1:8531 --screenshot docs\images\features\git-history.png --surface local --height 1700 --expect-text "AAA Sample Shop Rich Demo" --expect-text "변경 파일" --expect-text "저장된 diff preview"` passed; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature git-history-detail --url http://127.0.0.1:8531 --screenshot docs\images\features\git-history-detail.png --surface local --height 1000 --expect-text "AAA Sample Shop Rich Demo" --expect-text "저장된 diff preview" --expect-text "전체 diff"` passed; visual inspection confirmed the screenshots show meaningful Git History states.
+
 ### Git History viewer
 
 - Added `src/services/git_history_service.py` for project-scoped commit listing, commit detail lookup, changed-file diff preview data, and safe full `git show` retrieval for DB-registered commits.
