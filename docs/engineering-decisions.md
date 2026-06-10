@@ -93,6 +93,7 @@
 ### 관련 문서
 
 - `docs/git-repository-operating-model.md`
+- `docs/server-repository-update-runbook.md`
 - `docs/setup-and-operations.md`
 - `docs/architecture.md`
 - `README.md`

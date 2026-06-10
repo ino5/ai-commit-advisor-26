@@ -131,6 +131,8 @@ Linux 사내 서버에서 컨테이너와 host가 같은 경로를 쓰도록 vol
 
 초기 사내 운영은 1번처럼 서버에 이미 clone된 저장소 경로를 등록하는 방식으로 고정합니다. 2번은 사용자가 앱 안에서 저장소 갱신까지 요구할 때 별도 보안/운영 설계 후 확장합니다.
 
+구체적인 수동 명령과 `scripts/update_server_repos.py` 사용법은 [서버 Git 저장소 갱신 Runbook](server-repository-update-runbook.md)을 따릅니다.
+
 ## 가능한 구조와 불가능한 구조
 
 가능한 구조:

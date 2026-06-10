@@ -57,6 +57,7 @@
 | P2 | UX | Global project context | Done | Global project context | 17b281d |
 | P2 | UX | Home current project focus | Done | Home current project focus | 6027d20 |
 | P1 | Ops / Architecture | App-server Git repository operating model | Done | App-server Git repository operating model |  |
+| P2 | Git Ops | Server repository update runbook/script | Done | Server repository update runbook and script |  |
 
 ## Candidate Tasks
 
@@ -68,8 +69,23 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P2 | UX | Program management project flow cleanup | `프로그램 관리` now defaults to the global current project, but it still keeps an explicit `새 프로젝트명으로 저장` option for legacy upload/create flows. This preserves compatibility but makes the page slightly less direct than other project-scoped screens. | Consider making program management strictly current-project based and moving new project creation to `프로젝트/Git 설정`. If keeping the exception, make the create-new-project path visually secondary and explain when it should be used. | Check sample data and Excel upload workflows before removing the exception. |
 | P3 | UX / Data Model | Developer management scope decision | `개발자 목록` is currently closer to a global developer master, while `개발자 현황` is project-aware through Git author activity. As project context becomes more central, users may expect developer assignment and developer management to be project-specific. | Decide whether developers remain a global master with project-specific activity views, or whether a project-level developer membership/assignment screen is needed. | This may become a schema or workflow change if project-specific membership is introduced. Do not start without checking `docs/architecture.md` and migration impact. |
 | P2 | Git UX | Git History viewer | Users need to inspect project commit history, changed files, and saved or full diff details without leaving AI Commit Advisor. This depends on the app-server Git repository access model being clear first. | Add a project-scoped Git History screen with commit filters, changed-file details, saved diff preview, and optional full `git show` output from the app server repository path. | Keep this separate from the operating-model cleanup so UI history work does not hide repository access assumptions. |
-| P2 | Git Ops | Server repository update runbook/script | The current operating policy keeps clone/fetch/reset outside the app, but internal server operators still need a repeatable way to keep pre-cloned repositories current before Git Sync. | Add a documented runbook and optional PowerShell/Bash script examples for `git fetch --prune` and branch reset under `REPO_STORAGE_ROOT`. | This should not store credentials in the app. Keep it separate from the later server-managed clone/fetch workflow. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - Server Repository Update Runbook/Script
+
+Status: Done
+
+Goal:
+Make the current operating policy usable by giving internal server operators a repeatable way to update pre-cloned repositories under `REPO_STORAGE_ROOT` before running app Git Sync.
+
+Checklist:
+
+- [x] Add a repository update script with safe defaults for pre-cloned repositories.
+- [x] Keep clone/fetch credentials outside the app and avoid storing secrets.
+- [x] Document the recommended fetch/reset workflow and examples.
+- [x] Link the runbook from setup/operations and Git repository operating model docs.
+- [x] Add focused script verification.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P1 - App-Server Git Repository Operating Model
 

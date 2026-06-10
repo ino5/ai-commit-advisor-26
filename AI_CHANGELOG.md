@@ -2,6 +2,17 @@
 
 ## 2026-06-10
 
+### Server repository update runbook and script
+
+- Added `scripts/update_server_repos.py` for internal server operators to update pre-cloned repositories under `REPO_STORAGE_ROOT`.
+- Kept the script credential-free: it does not clone repositories or store Git secrets, and defaults to `git fetch --prune` without hard reset.
+- Added explicit `--reset`, `--branch`, `--force`, `--dry-run`, and `--repo` options so branch reset is deliberate and dirty working trees are not reset unless forced.
+- Added `docs/server-repository-update-runbook.md` with manual commands, script usage, dry-run examples, and the recommended sequence before app Git Sync.
+- Linked the runbook from README, setup/operations, Git repository operating model, and engineering decision docs.
+- Promoted and completed the roadmap task for the server repository update runbook/script.
+- Important files: `scripts/update_server_repos.py`, `docs/server-repository-update-runbook.md`, `README.md`, `docs/git-repository-operating-model.md`, `docs/setup-and-operations.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m py_compile scripts\update_server_repos.py` passed; `.\.venv\Scripts\python.exe scripts\update_server_repos.py --help` passed; dry-run against a temporary Git repository under `.tmp\server-repo-update-check` passed; `git diff --check` passed with only line-ending warnings.
+
 ### App-server Git repository operating model
 
 - Reframed Git repository access from browser-user local paths to app-server-accessible repository paths for internal-network server operation.

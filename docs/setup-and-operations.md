@@ -211,6 +211,8 @@ environment:
 
 현재 권장 운영 정책은 앱이 remote URL, access token, SSH key를 받아 직접 clone/fetch하지 않는 것입니다. 운영자 또는 배포 스크립트가 위 저장소 root 아래에 repo를 준비하고 갱신한 뒤, 앱의 Git 동기화는 준비된 저장소에서 commit과 diff를 DB에 수집합니다. 앱 내 clone/fetch 자동화는 인증 정보와 동시 실행 lock 정책이 필요하므로 별도 후속 작업으로 다룹니다.
 
+반복 가능한 저장소 갱신 절차와 `scripts/update_server_repos.py` 사용법은 [서버 Git 저장소 갱신 Runbook](server-repository-update-runbook.md)을 참고하세요.
+
 Windows 개발 PC의 Docker 실행에서는 `C:\dev\ai-advisor-sample-shop` 같은 host 경로가 컨테이너 안에 그대로 존재하지 않습니다.
 
 `docker-compose.yml`은 기본적으로 Windows host의 `C:/dev`를 app 컨테이너의 `/host-dev`에 읽기 전용으로 mount합니다.
