@@ -2,6 +2,17 @@
 
 ## 2026-06-10
 
+### Server repository status display
+
+- Added `src/services/git_repository_status_service.py` to read app-server Git repository branch, HEAD, upstream, ahead/behind, working tree changes, storage-root allowance, and DB sync mismatch status without mutating the repo.
+- Added a shared `src/ui/git_status_panel.py` status panel.
+- Updated `Git 동기화` to show full repository status before sync actions, including Repo HEAD, DB sync commit, branch, upstream, ahead/behind, dirty file count, and guidance when DB sync is stale.
+- Updated `프로젝트/Git 설정` to show a compact repository status summary for the selected project.
+- Added focused tests for clean repo status, dirty working tree detection, missing path handling, and upstream ahead/behind detection.
+- Updated feature, setup/operations, architecture, and roadmap documentation.
+- Important files: `src/services/git_repository_status_service.py`, `src/ui/git_status_panel.py`, `src/ui/git_page.py`, `src/ui/project_page.py`, `tests/test_git_repository_status_service.py`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `docs/architecture.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m compileall src app.py` passed; `.\.venv\Scripts\python.exe -m pytest tests/test_git_repository_status_service.py -q` passed with 4 tests; `.\.venv\Scripts\python.exe -m pytest -q` passed with 94 tests.
+
 ### Git History Application Preview screenshot
 
 - Added Git History scenarios to `scripts/capture_feature_screenshot.py` so the commit list/activity graph state and commit detail/diff preview state can be recaptured.

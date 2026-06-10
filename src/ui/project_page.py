@@ -4,6 +4,7 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import Project
 from src.services.git_service import is_git_repository
+from src.ui.git_status_panel import render_repository_status
 from src.ui.project_context import CURRENT_PROJECT_ID_KEY, load_projects, set_current_project_id
 from src.utils.repo_path import is_repo_path_allowed, repo_storage_root_label
 
@@ -47,6 +48,8 @@ def render_project_page() -> None:
         if selected_project:
             st.write("마지막 동기화 커밋:", selected_project.last_synced_commit_hash or "-")
             st.write("마지막 동기화 시각:", selected_project.last_synced_at or "-")
+            if selected_project.git_repo_path:
+                render_repository_status(selected_project, compact=True)
         return
 
     if not name.strip():

@@ -213,6 +213,8 @@ environment:
 
 반복 가능한 저장소 갱신 절차와 `scripts/update_server_repos.py` 사용법은 [서버 Git 저장소 갱신 Runbook](server-repository-update-runbook.md)을 참고하세요.
 
+Git 동기화 화면은 Repo HEAD, DB sync commit, branch, upstream, ahead/behind, working tree 변경 여부를 함께 보여줍니다. Repo HEAD와 DB sync commit이 다르면 서버 저장소에는 앱 DB가 아직 수집하지 않은 commit이 있는 상태이므로 Git 동기화를 실행하세요. working tree에 local 변경이 있으면 먼저 운영자가 분석용 clone 상태를 확인해야 합니다.
+
 Windows 개발 PC의 Docker 실행에서는 `C:\dev\ai-advisor-sample-shop` 같은 host 경로가 컨테이너 안에 그대로 존재하지 않습니다.
 
 `docker-compose.yml`은 기본적으로 Windows host의 `C:/dev`를 app 컨테이너의 `/host-dev`에 읽기 전용으로 mount합니다.

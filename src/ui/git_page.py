@@ -4,6 +4,7 @@ import streamlit as st
 from src.db.database import SessionLocal
 from src.db.models import Project
 from src.services.git_service import is_git_repository, sync_git_repository
+from src.ui.git_status_panel import render_repository_status
 from src.ui.project_context import require_project_context
 
 
@@ -43,6 +44,7 @@ def render_git_page() -> None:
         st.text_input("앱 서버 Git 저장소 경로", value=project.git_repo_path or "", disabled=True)
         st.write("마지막 동기화 커밋:", project.last_synced_commit_hash or "-")
         st.write("마지막 동기화 시각:", project.last_synced_at or "-")
+        render_repository_status(project)
 
         if not project.git_repo_path:
             st.warning("이 프로젝트에는 앱 서버 Git 저장소 경로가 등록되어 있지 않습니다.")

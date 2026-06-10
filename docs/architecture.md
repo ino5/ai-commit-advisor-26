@@ -22,6 +22,7 @@ flowchart TB
     ProjectUI --> ExcelService["excel_service.py"]
     ArtifactUI --> ExcelService
     GitUI --> GitService["git_service.py"]
+    GitUI --> GitStatusService["git_repository_status_service.py"]
     MappingUI --> MappingService["mapping_service.py"]
     MappingUI --> MappingFeedbackService["mapping_feedback_service.py"]
     MappingUI --> RiskService["risk_service.py"]
@@ -54,6 +55,7 @@ flowchart TB
     LLMClient --> LocalLLM["LM Studio / OpenAI-compatible Chat API"]
     EmbeddingClient --> EmbeddingAPI["Mock / OpenAI / Local Embedding API"]
     GitService --> ServerGit["App-server Git Repository"]
+    GitStatusService --> ServerGit
     ExcelService --> ExcelFiles["Excel Files"]
 
     ExcelService --> DB[(PostgreSQL + pgvector)]
@@ -355,6 +357,7 @@ erDiagram
 |---|---|
 | `excel_service.py` | 프로그램/개발자 Excel 파일 읽기, 컬럼 매핑, 정규화, DB 저장. |
 | `git_service.py` | 앱 서버 Git 저장소에서 commit hash, message, author, changed files, diff 수집 및 DB 저장. |
+| `git_repository_status_service.py` | 앱 서버 Git 저장소의 branch, HEAD, upstream, ahead/behind, working tree 변경, DB sync mismatch 상태를 읽기 전용으로 조회한다. |
 | `developer_service.py` | Git author 기반 개발자 자동 추출, role/skills 추정, 개발자 통계 생성. |
 | `llm_client.py` | mock 또는 OpenAI-compatible local LLM 호출. `/chat/completions` 기반. |
 | `mapping_service.py` | 프로그램-커밋 매핑 분석의 핵심 서비스. 프로그램 기준 분석과 커밋 기준 분석을 모두 지원한다. |
@@ -515,6 +518,7 @@ LLM 출력 예시:
 - 개발자 관리: 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, DB 저장/업데이트.
 - 개발계획 관리: 현재 계획 조회, 직접 수정, 일괄 업데이트, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - Git 커밋 전체 수집 및 증분 동기화.
+- 앱 서버 Git 저장소 branch/HEAD/upstream/working tree/DB sync mismatch 상태 표시.
 - 커밋별 변경 파일과 diff 저장.
 - Git author 기반 개발자 자동 추출 및 개발자 통계.
 - 프로그램 상세 분석 화면.
@@ -587,7 +591,7 @@ LLM 출력 예시:
 | `src/ui/upload_page.py` | 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/development_plan_upload_page.py` | 개발계획 조회, 직접 수정, 일괄 업데이트, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/program_detail_page.py` | 프로그램별 계획, AI 구현상태, 관련 커밋, diff, 리스크 상세 조회. |
-| `src/ui/git_page.py` | Git 커밋 수집. |
+| `src/ui/git_page.py` | 앱 서버 Git 저장소 상태 확인과 Git 커밋 수집. |
 | `src/ui/mapping_page.py` | 프로그램-커밋 Mapping 분석 실행. |
 | `src/ui/risk_page.py` | 프로젝트 리스크 분석, 미해결 리스크 조회 및 해결 처리. |
 | `src/ui/git_history_page.py` | 프로젝트별 Git 커밋 이력, 변경 파일, diff 조회. |
@@ -609,6 +613,7 @@ LLM 출력 예시:
 | `src/services/program_management_service.py` | `save_manual_program`, `update_program`, `delete_program`, `get_program_delete_impact` |
 | `src/services/development_plan_management_service.py` | `update_program_plan`, `save_plan_rows`, `bulk_update_plan`, `validate_plan_import` |
 | `src/services/git_service.py` | `sync_git_repository`, `collect_commits` |
+| `src/services/git_repository_status_service.py` | `get_repository_status` |
 | `src/services/developer_service.py` | `extract_developers_from_git_commits`, `get_developer_stats` |
 | `src/services/developer_management_service.py` | `save_manual_developer`, `update_developer`, `delete_developer`, `validate_developer_import` |
 | `src/services/llm_client.py` | `LLMClient.generate` |
