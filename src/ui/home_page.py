@@ -6,34 +6,55 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import Developer, GitCommit, Program, ProgramImplementationStatus, Project, RiskFinding
 from src.services.progress_service import get_ai_progress_summary
+from src.ui.project_context import ProjectContext, require_project_context
 
 
 def _format_datetime(value) -> str:
     return value.strftime("%Y-%m-%d %H:%M") if value else "-"
 
 
-def _collect_overview() -> dict:
+def _collect_overview(context: ProjectContext) -> dict:
     init_db()
     with SessionLocal() as db:
-        projects = db.query(Project).order_by(Project.name).all()
-        project_count = len(projects)
-        developer_count = db.query(Developer).count()
-        program_count = db.query(Program).count()
-        commit_count = db.query(GitCommit).count()
-        mapping_analyzed_commit_count = db.query(GitCommit).filter(GitCommit.mapping_analyzed_at.isnot(None)).count()
-        implementation_status_count = db.query(ProgramImplementationStatus).count()
-        risk_finding_count = db.query(RiskFinding).count()
-        unresolved_risk_count = db.query(RiskFinding).filter(RiskFinding.resolved_yn == "N").count()
-        last_synced_at = max((project.last_synced_at for project in projects if project.last_synced_at), default=None)
+        project = db.get(Project, context.project_id)
+        if project is None:
+            return {"project_missing": True}
 
-        summaries = [get_ai_progress_summary(db, project.id) for project in projects]
-        rows = [row for summary in summaries for row in summary.rows]
-        ai_average = round(sum(row.ai_progress_rate for row in rows) / len(rows), 1) if rows else 0.0
-        risk_count = sum(1 for row in rows if row.is_risk)
+        project_count = db.query(Project).count()
+        developer_count = db.query(Developer).count()
+        program_count = db.query(Program).filter(Program.project_id == context.project_id).count()
+        commit_count = db.query(GitCommit).filter(GitCommit.project_id == context.project_id).count()
+        mapping_analyzed_commit_count = (
+            db.query(GitCommit)
+            .filter(GitCommit.project_id == context.project_id, GitCommit.mapping_analyzed_at.isnot(None))
+            .count()
+        )
+        implementation_status_count = (
+            db.query(ProgramImplementationStatus)
+            .join(Program, ProgramImplementationStatus.program_id == Program.id)
+            .filter(Program.project_id == context.project_id)
+            .count()
+        )
+        risk_finding_count = db.query(RiskFinding).filter(RiskFinding.project_id == context.project_id).count()
+        unresolved_risk_count = (
+            db.query(RiskFinding)
+            .filter(RiskFinding.project_id == context.project_id, RiskFinding.resolved_yn == "N")
+            .count()
+        )
+        summary = get_ai_progress_summary(db, context.project_id)
+        rows = summary.rows
+        ai_average = summary.ai_average
+        plan_average = summary.plan_average
+        progress_gap_average = summary.progress_gap_average
+        risk_count = summary.risk_count
         done_count = sum(1 for row in rows if row.plan_progress_rate >= 100)
         in_progress_count = sum(1 for row in rows if 0 < row.plan_progress_rate < 100)
 
     return {
+        "project_missing": False,
+        "project_id": context.project_id,
+        "project_name": context.project_name,
+        "git_repo_path": context.git_repo_path,
         "project_count": project_count,
         "developer_count": developer_count,
         "program_count": program_count,
@@ -42,13 +63,14 @@ def _collect_overview() -> dict:
         "implementation_status_count": implementation_status_count,
         "risk_finding_count": risk_finding_count,
         "unresolved_risk_count": unresolved_risk_count,
-        "last_synced_at": last_synced_at,
+        "last_synced_at": project.last_synced_at,
+        "plan_average": plan_average,
         "ai_average": ai_average,
+        "progress_gap_average": progress_gap_average,
         "risk_count": risk_count,
         "done_count": done_count,
         "in_progress_count": in_progress_count,
         "program_rows": rows,
-        "projects": projects,
     }
 
 
@@ -60,9 +82,9 @@ def _pipeline_status_rows(overview: dict) -> list[dict]:
     return [
         {
             "항목": "프로젝트",
-            "상태": _status_label(overview["project_count"] > 0),
-            "현재 값": f"{overview['project_count']}건",
-            "메모": "기준 프로젝트",
+            "상태": "확인됨",
+            "현재 값": overview["project_name"],
+            "메모": f"ID {overview['project_id']}",
         },
         {
             "항목": "프로그램",
@@ -74,7 +96,7 @@ def _pipeline_status_rows(overview: dict) -> list[dict]:
             "항목": "개발자",
             "상태": _status_label(overview["developer_count"] > 0),
             "현재 값": f"{overview['developer_count']}명",
-            "메모": "담당자 기준",
+            "메모": "등록 개발자",
         },
         {
             "항목": "Git 커밋",
@@ -107,12 +129,12 @@ def _pipeline_status_rows(overview: dict) -> list[dict]:
 
 
 def _next_actions(overview: dict) -> list[str]:
-    if overview["project_count"] == 0:
-        return ["프로젝트/Git 설정에서 프로젝트와 Git 경로 등록"]
+    if not overview["git_repo_path"]:
+        return ["프로젝트/Git 설정에서 현재 프로젝트의 Git 경로 등록"]
     if overview["program_count"] == 0:
-        return ["프로그램 목록에서 프로그램 목록 등록"]
+        return ["프로그램 목록에서 현재 프로젝트의 프로그램 목록 등록"]
     if overview["commit_count"] == 0:
-        return ["Git 동기화에서 커밋 동기화"]
+        return ["Git 동기화에서 현재 프로젝트 커밋 동기화"]
     if overview["mapping_analyzed_commit_count"] < overview["commit_count"]:
         return ["Mapping에서 미분석 커밋 처리"]
     if overview["implementation_status_count"] == 0:
@@ -136,10 +158,14 @@ def _render_kpis(overview: dict) -> None:
     cols[4].metric("총 커밋 수", overview["commit_count"])
 
     cols = st.columns(4)
-    cols[0].metric("프로젝트 수", overview["project_count"])
+    cols[0].metric("전체 프로젝트", overview["project_count"])
     cols[1].metric("개발자 수", overview["developer_count"])
-    cols[2].metric("추정 진척도", f"{overview['ai_average']}%")
-    cols[3].metric("마지막 Git 동기화", _format_datetime(overview["last_synced_at"]))
+    cols[2].metric("계획 진척도", f"{overview['plan_average']}%")
+    cols[3].metric("추정 진척도", f"{overview['ai_average']}%")
+
+    cols = st.columns(2)
+    cols[0].metric("진척도 차이", f"{overview['progress_gap_average']}%")
+    cols[1].metric("마지막 Git 동기화", _format_datetime(overview["last_synced_at"]))
 
 
 def _render_charts(overview: dict) -> None:
@@ -216,9 +242,17 @@ def _render_next_actions(overview: dict) -> None:
 
 def render_home_page() -> None:
     st.title("AI Commit Advisor")
-    st.caption("계획, 커밋, 진척도, 리스크 현황")
+    st.caption("현재 프로젝트의 계획, 커밋, 진척도, 리스크 현황")
 
-    overview = _collect_overview()
+    context = require_project_context("먼저 프로젝트/Git 설정에서 프로젝트를 등록해 주세요.")
+    if context is None:
+        return
+
+    overview = _collect_overview(context)
+    if overview.get("project_missing"):
+        st.error("현재 프로젝트를 찾을 수 없습니다. 사이드바에서 다시 선택해 주세요.")
+        return
+
     _render_pipeline_status(overview)
     _render_next_actions(overview)
 

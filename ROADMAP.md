@@ -53,6 +53,7 @@
 | P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization | 5094ebb |
 | P2 | Docs | AI Agent onboarding guide | Done | AI Agent onboarding guide |  |
 | P2 | UX | Global project context | Done | Global project context | 17b281d |
+| P2 | UX | Home current project focus | Done | Home current project focus |  |
 
 ## P0 - Program Management UX Improvement
 
@@ -780,5 +781,22 @@ Checklist:
 - [x] Keep project creation, sample data generation, and global settings outside forced project context where appropriate.
 - [x] Record the maintainability decision in `docs/engineering-decisions.md`.
 - [x] Update related user-facing and architecture documentation where the navigation/project-selection flow changes.
+- [x] Run compile, tests, and focused UI verification.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Home Current Project Focus
+
+Status: Done
+
+Goal:
+Align Home with the global current project selector so the first screen reads as the selected project's command center instead of an all-project aggregate.
+
+Checklist:
+
+- [x] Make Home use the shared current project context.
+- [x] Scope Home KPIs, pipeline status, next actions, and charts to the current project.
+- [x] Keep app-level counts only as secondary context where useful.
+- [x] Update user-facing and architecture documentation as needed.
+- [x] Refresh the Home Application Preview screenshot.
 - [x] Run compile, tests, and focused UI verification.
 - [x] Update `AI_CHANGELOG.md`.

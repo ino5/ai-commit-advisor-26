@@ -2,6 +2,15 @@
 
 ## 2026-06-10
 
+### Home current project focus
+
+- Changed Home from an all-project aggregate into a current-project command screen that uses the shared sidebar project context.
+- Scoped Home pipeline status, next actions, KPIs, progress charts, and risk program table to the selected project.
+- Kept app-level project count and developer count as secondary context while project-specific program, commit, mapping, implementation status, and risk counts use the current project.
+- Updated feature and architecture documentation, refreshed the Home Application Preview screenshot, and tracked the UX task in `ROADMAP.md`.
+- Important files: `src/ui/home_page.py`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/images/features/home.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `.\.venv\Scripts\python.exe -m compileall src app.py` passed; `.\.venv\Scripts\python.exe -m pytest -q` passed with 85 tests; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature home --url http://localhost:8524 --screenshot docs\images\features\home.png --surface local --expect-text "현재 프로젝트: AAA Sample Shop Rich Demo (4)" --expect-text "현재 프로젝트의 계획, 커밋, 진척도, 리스크 현황"` passed and confirmed Home shows current-project counts such as 8 programs and 30 commits for the sample project.
+
 ### Global project context
 
 - Added `src/ui/project_context.py` as the shared UI helper for current project selection, validation, deleted-selection recovery, and sidebar rendering.

@@ -74,7 +74,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    Home["Home<br/>전체 현황 요약"] --> Project["Project<br/>프로젝트 등록/관리"]
+    Home["Home<br/>현재 프로젝트 요약"] --> Project["Project<br/>프로젝트 등록/관리"]
     Project --> Developer["개발자 현황<br/>Git author 기반 현황"]
     Project --> Program["프로그램 목록<br/>산출물 관리"]
     Project --> PlanUpload["개발계획<br/>산출물 관리"]
@@ -98,7 +98,7 @@ flowchart LR
 
 ### 주요 화면 역할
 
-- `Home`: 전체 프로젝트 현황, KPI, AI 진척도, 리스크 프로그램 요약.
+- `Home`: 사이드바에서 선택한 현재 프로젝트의 KPI, AI 진척도, 리스크 프로그램, 다음 작업 요약.
 - `Project`: 프로젝트 이름, 설명, 로컬 Git 저장소 경로 관리. 프로젝트 저장 후 사이드바 현재 프로젝트 선택과 동기화.
 - `개발자 현황`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리.
 - `개발자 목록`: 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기.
@@ -562,7 +562,7 @@ LLM 출력 예시:
 
 | 파일 | 역할 |
 |---|---|
-| `src/ui/home_page.py` | 전체 현황 KPI와 리스크 요약. |
+| `src/ui/home_page.py` | 현재 프로젝트 기준 KPI, 분석 상태, 다음 작업, 리스크 요약. |
 | `src/ui/project_context.py` | 현재 프로젝트 선택값 저장/조회, 삭제된 선택 복구, 사이드바 전역 프로젝트 selector. |
 | `src/ui/project_page.py` | 프로젝트 등록/수정. |
 | `src/ui/developer_page.py` | Git author 기반 개발자 현황, 자동 추출, 개발자 통계. |
