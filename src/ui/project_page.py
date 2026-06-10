@@ -13,7 +13,7 @@ def _load_projects() -> list[Project]:
 
 
 def render_project_page() -> None:
-    st.title("Project")
+    st.title("프로젝트/Git 설정")
     st.caption("프로젝트와 로컬 Git 저장소 경로를 등록합니다.")
 
     projects = _load_projects()

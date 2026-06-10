@@ -91,7 +91,7 @@ def render_code_review_page() -> None:
         project = db.query(Project).filter(Project.id == project_id).one()
 
     if not project.git_repo_path:
-        st.warning("선택한 프로젝트에 Git 저장소 경로가 없습니다. Project 화면에서 경로를 먼저 설정하세요.")
+        st.warning("선택한 프로젝트에 Git 저장소 경로가 없습니다. 프로젝트/Git 설정에서 경로를 먼저 설정하세요.")
         return
 
     st.write({"git_repo_path": project.git_repo_path})

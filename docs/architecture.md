@@ -9,7 +9,7 @@ flowchart TB
     User["회사 관리자 / PL / 개발 리더"] --> Streamlit["Streamlit App<br/>app.py"]
 
     Streamlit --> Home["Home"]
-    Streamlit --> ProjectUI["프로젝트 / 개발자 현황 / Program Detail"]
+    Streamlit --> ProjectUI["프로젝트/Git 설정 / 개발자 현황"]
     Streamlit --> ArtifactUI["산출물 관리"]
     Streamlit --> GitUI["Git 동기화"]
     Streamlit --> MappingUI["Mapping / Risk / Impact / Code Review"]
@@ -546,12 +546,11 @@ LLM 출력 예시:
 
 주요 메뉴 그룹:
 
-- `개요`: Home
-- `프로젝트 관리`: Project, 개발자 현황, Program Detail
-- `산출물 관리`: 개발자 목록, 프로그램 목록, 개발계획, 표준용어/표준단어
-- `데이터 수집`: Git, Sample Data
-- `AI 분석`: Mapping, Risk Analysis, Commit Impact, RAG, Project Chat, AI Code Review
-- `분석 결과`: Dashboard, 개발계획 대시보드, AI Progress
+- `개요`: Home, Dashboard, AI Progress
+- `프로젝트 설정`: 프로젝트/Git 설정, Git 동기화, 샘플 데이터 생성
+- `산출물 관리`: 개발자 현황, 개발자 목록, 프로그램 목록, 개발계획, 표준용어/표준단어
+- `분석 실행`: Mapping, Risk Analysis, RAG 검색, Project Chat, AI Code Review
+- `분석 결과`: Program Detail, Commit Impact, 개발계획 대시보드
 - `관리`: 설정
 
 ### 주요 UI 파일

@@ -28,6 +28,9 @@ SCENARIOS: dict[str, FeatureScenario] = {
         required_texts=(
             "AI Commit Advisor",
             "계획, 커밋, 진척도, 리스크 현황",
+            "Dashboard",
+            "AI Progress",
+            "프로젝트/Git 설정",
             "분석 상태",
             "다음 작업",
             "추정 진척도",
@@ -114,6 +117,11 @@ def _page_text(page: Page, wait_text: str) -> str:
     return page.locator("body").inner_text(timeout=10_000)
 
 
+def _wait_for_texts(page: Page, texts: tuple[str, ...]) -> None:
+    for text in texts:
+        page.get_by_text(text).first.wait_for(timeout=20_000)
+
+
 def _assert_texts(
     text: str,
     required_texts: tuple[str, ...],
@@ -139,7 +147,7 @@ def _sidebar_item_box(page: Page, label: str) -> dict[str, float]:
 
 def _verify_sidebar_layout_stability(page: Page) -> None:
     before = _sidebar_item_box(page, "Mapping")
-    _navigate_to_sidebar_item(page, "프로젝트")
+    _navigate_to_sidebar_item(page, "프로젝트/Git 설정")
     page.get_by_text("프로젝트 저장").wait_for(timeout=15_000)
     after = _sidebar_item_box(page, "Mapping")
 
@@ -172,6 +180,7 @@ def _capture_scenario(
     if scenario.sidebar_label:
         _navigate_to_sidebar_item(page, scenario.sidebar_label)
 
+    _wait_for_texts(page, scenario.required_texts + extra_required_texts)
     text = _page_text(page, scenario.wait_text)
     _assert_texts(
         text,
@@ -182,6 +191,7 @@ def _capture_scenario(
     if scenario.verify_sidebar_stability:
         _verify_sidebar_layout_stability(page)
         _navigate_to_sidebar_item(page, scenario.sidebar_label or "Home")
+        _wait_for_texts(page, scenario.required_texts + extra_required_texts)
         text = _page_text(page, scenario.wait_text)
         _assert_texts(
             text,

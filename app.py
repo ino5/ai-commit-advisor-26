@@ -34,34 +34,32 @@ st.set_page_config(
 PAGE_GROUPS = {
     "개요": {
         "Home": render_home_page,
+        "Dashboard": render_dashboard_page,
+        "AI Progress": render_ai_progress_page,
     },
-    "프로젝트 관리": {
-        "프로젝트": render_project_page,
-        "개발자 현황": render_developer_page,
-        "Program Detail": render_program_detail_page,
+    "프로젝트 설정": {
+        "프로젝트/Git 설정": render_project_page,
+        "Git 동기화": render_git_page,
+        "샘플 데이터 생성": render_sample_data_page,
     },
     "산출물 관리": {
+        "개발자 현황": render_developer_page,
         "개발자 목록": render_developer_upload_page,
         "프로그램 목록": render_upload_page,
         "개발계획": render_development_plan_upload_page,
         "표준용어/표준단어": render_standard_terms_page,
     },
-    "데이터 수집": {
-        "Git 동기화": render_git_page,
-        "샘플 데이터 생성": render_sample_data_page,
-    },
-    "AI 분석": {
+    "분석 실행": {
         "Mapping": render_mapping_page,
         "Risk Analysis": render_risk_page,
-        "Commit Impact": render_commit_impact_page,
         "RAG 검색": render_rag_page,
         "Project Chat": render_project_chat_page,
         "AI Code Review": render_code_review_page,
     },
     "분석 결과": {
-        "Dashboard": render_dashboard_page,
+        "Program Detail": render_program_detail_page,
+        "Commit Impact": render_commit_impact_page,
         "개발계획 대시보드": render_planning_dashboard_page,
-        "AI Progress": render_ai_progress_page,
     },
     "관리": {
         "설정": render_settings_page,

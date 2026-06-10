@@ -38,7 +38,7 @@ def render_git_page() -> None:
 
     projects = _load_projects()
     if not projects:
-        st.info("먼저 Project 메뉴에서 프로젝트와 로컬 Git 저장소 경로를 등록해 주세요.")
+        st.info("먼저 프로젝트/Git 설정에서 프로젝트와 로컬 Git 저장소 경로를 등록해 주세요.")
         return
 
     options = {f"{project.name} ({project.id})": project.id for project in projects}
@@ -60,7 +60,7 @@ def render_git_page() -> None:
             st.warning("이 프로젝트에는 Git 저장소 경로가 등록되어 있지 않습니다.")
             return
         if not is_git_repository(project.git_repo_path):
-            st.error("등록된 경로가 실제 Git 저장소가 아닙니다. Project 메뉴에서 경로를 수정해 주세요.")
+            st.error("등록된 경로가 실제 Git 저장소가 아닙니다. 프로젝트/Git 설정에서 경로를 수정해 주세요.")
             return
 
         full_col, incremental_col = st.columns(2)

@@ -108,11 +108,11 @@ def _pipeline_status_rows(overview: dict) -> list[dict]:
 
 def _next_actions(overview: dict) -> list[str]:
     if overview["project_count"] == 0:
-        return ["Project에서 프로젝트와 Git 경로 등록"]
+        return ["프로젝트/Git 설정에서 프로젝트와 Git 경로 등록"]
     if overview["program_count"] == 0:
-        return ["Program에서 프로그램 목록 등록"]
+        return ["프로그램 목록에서 프로그램 목록 등록"]
     if overview["commit_count"] == 0:
-        return ["Git에서 커밋 동기화"]
+        return ["Git 동기화에서 커밋 동기화"]
     if overview["mapping_analyzed_commit_count"] < overview["commit_count"]:
         return ["Mapping에서 미분석 커밋 처리"]
     if overview["implementation_status_count"] == 0:

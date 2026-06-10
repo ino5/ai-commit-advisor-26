@@ -25,7 +25,7 @@ def render_developer_page() -> None:
 
     projects = _load_projects()
     if not projects:
-        st.info("먼저 Project 메뉴에서 프로젝트를 등록하고 Git 메뉴에서 커밋을 수집해 주세요.")
+        st.info("먼저 프로젝트/Git 설정에서 프로젝트를 등록하고 Git 동기화에서 커밋을 수집해 주세요.")
         return
 
     project_options = {f"{project.name} ({project.id})": project.id for project in projects}
@@ -50,7 +50,7 @@ def render_developer_page() -> None:
         stats = get_developer_stats(db, project.id)
 
     if not stats:
-        st.info("표시할 Git author 데이터가 없습니다. Git 메뉴에서 전체 수집 또는 증분 동기화를 먼저 실행해 주세요.")
+        st.info("표시할 Git author 데이터가 없습니다. Git 동기화에서 전체 수집 또는 증분 동기화를 먼저 실행해 주세요.")
         return
 
     df = pd.DataFrame(stats)
