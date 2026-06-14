@@ -111,12 +111,301 @@
 | P2 | UX / Product Wording | AI validation menu purpose cleanup | Done | AI 검증 메뉴 목적과 제품 용어 정리 |
 | P2 | UX / AI Ops | AI operations status menu | Done | AI 운영 현황 메뉴와 연결 상태 요약 |
 | P1 | Graph / AI | Neo4j knowledge graph foundation | Done | Neo4j Knowledge Graph 기반 추가 |
+| P1 | Graph / AI | Project Chat GraphRAG context injection | Done | Project Chat GraphRAG context injection |
+
+## P1 - Project Chat GraphRAG Context Injection
+
+Status: Done
+
+Goal:
+Project Chat이 vector/RAG 근거뿐 아니라 Neo4j graph path를 답변 context와 저장 근거로 사용하게 한다.
+
+Checklist:
+
+- [x] 질문, 확장 쿼리, 검색된 source_file/commit 근거에서 graph seed 후보를 추출한다.
+- [x] Neo4j에서 program-commit-file-class 영향 경로, class import 관계, domain summary를 조회한다.
+- [x] Project Chat prompt에 graph context를 별도 섹션으로 넣고 current source 검증 정책을 유지한다.
+- [x] Project Chat UI와 citation export에서 소스 근거와 그래프 관계 근거를 분리 표시한다.
+- [x] Project Chat 저장 message와 AI 운영 현황 근거 추적에서 graph evidence를 확인하게 한다.
+- [x] Focused tests를 추가한다.
+- [x] 관련 AI/사용자-facing/architecture/decision documentation을 갱신한다.
+- [x] Compile/test verification을 실행한다.
+- [x] `AI_CHANGELOG.md`를 갱신한다.
 
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
 
-현재 승인 대기 중인 후보 작업은 없습니다. AX 검증 후보 6개는 priority overview의 활성 작업으로 승격했습니다.
+아래 항목은 아직 승인된 구현 작업이 아니라, 다음 세션에서 바로 범위를 고를 수 있도록 보관하는 후보입니다. 작업을 시작할 때는 해당 후보를 `Priority Overview`로 승격하고, 별도 `P* - ...` 작업 섹션을 만든 뒤 `In Progress`로 바꿉니다.
+
+| Priority | Area | Candidate | Why It Matters |
+|---|---|---|---|
+| P1 | Graph Ops | Knowledge Graph freshness and incremental Neo4j sync | Git 변경 이후 graph가 최신인지 보여주고, 변경 파일만 반영해 대형 프로젝트에서도 Neo4j read model을 운영 가능하게 만든다. |
+| P1 | AI Ops | AI operations graph status | `AI 운영 현황`에서 LLM, embedding, pgvector뿐 아니라 Neo4j graph 상태도 함께 확인하게 한다. |
+| P2 | Graph UX | Knowledge Graph exploration UI | 프로그램, class, domain, commit 기준으로 관계 경로를 탐색해 Neo4j 적용 가치를 화면에서 더 직접 보여준다. |
+| P2 | AI Quality | Project-level AI quality scorecard | sample project 전용 점검을 넘어 실제 프로젝트별 AI 결과 품질과 근거 충분성을 확인한다. |
+| P2 | AI Verification | Local LLM verification routine | mock/fallback이 아닌 실제 local LLM 실행 증거를 반복 가능하게 남긴다. |
+| P2 | Workflow | Git Sync follow-up action orchestrator | Git Sync 이후 RAG, embedding, Mapping, Neo4j 갱신 같은 다음 작업을 한 흐름으로 안내한다. |
+| P2 | Graph Ops | Neo4j production hardening | 대형 저장소에서 batch, transaction, health check, 복구 동작을 안정화한다. |
+| P3 | Source Analysis | Source parser accuracy expansion | 정규식 기반 Java class/import 추출 한계를 줄이고 graph 품질을 높인다. |
+| P3 | Project Chat UX | Graph-aware question templates | 사용자가 graph/RAG가 잘 답할 수 있는 질문을 쉽게 시작하게 한다. |
+| P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
+| P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
+
+### Candidate - Knowledge Graph Freshness And Incremental Neo4j Sync
+
+Goal:
+Neo4j graph read model이 어떤 Git HEAD와 분석 데이터 기준으로 만들어졌는지 표시하고, Git 변경 이후 바뀐 파일/매핑만 반영하는 증분 동기화를 제공한다.
+
+Rationale:
+현재 `Neo4j 동기화`는 정확하지만 프로젝트 단위 전체 graph를 다시 만들기 때문에 대형 저장소에서는 비용이 커질 수 있다. 또한 Git Sync 이후 graph가 최신인지 사용자가 바로 알기 어렵다. 이 후보는 "한 번 만든 그림"이 아니라 실제 Git 변경 흐름을 따라가는 graph read model로 발전시키는 작업이다.
+
+Important design split:
+
+- `current source graph`: 현재 checkout 기준 파일, class, import, domain 관계. 소스가 바뀌면 관계를 끊고 다시 만든다.
+- `historical git graph`: 과거 commit, commit file, diff 이력. 현재 파일이 삭제되어도 Git 이력 근거로 보존한다.
+- `analysis graph`: program mapping, risk, AI evidence처럼 PostgreSQL 분석 결과에서 온 관계. DB 상태에 맞춰 upsert/delete한다.
+
+Freshness model:
+
+- 프로젝트별 graph sync metadata를 저장한다.
+- 최소 metadata 후보: `project_id`, `repo_head_hash`, `db_sync_head_hash`, `synced_at`, `sync_mode`, `status`, `node_count`, `edge_count`, `error_summary`.
+- persistent table이 필요하면 Alembic migration을 추가한다. `src/db/init_db.py`에 schema 변경을 직접 넣지 않는다.
+- Knowledge Graph 화면에 현재 Repo HEAD, DB sync commit, Neo4j graph sync HEAD, stale 여부를 표시한다.
+- Git Sync 이후 `graph stale` 상태가 되면 `최신 변경분만 Neo4j 반영`과 `전체 재동기화`를 구분해 보여준다.
+
+Incremental sync flow:
+
+1. Git Sync가 새 `GitCommit`과 `CommitFile` row를 저장한다.
+2. graph metadata의 last synced HEAD 이후 변경된 `CommitFile` 목록을 찾는다.
+3. 변경 파일을 `Added`, `Modified`, `Copied`, `Deleted`, `Renamed`, non-source로 분류한다.
+4. source-like `Added`/`Modified`/`Copied`:
+   - 해당 file path의 current source 관계를 먼저 제거한다.
+   - 현재 파일을 다시 읽고 Java package/class/import/domain을 파싱한다.
+   - source file node, class node, `CONTAINS_CLASS`, `IMPORTS_CLASS`, `HAS_FILE`, domain 관계를 upsert한다.
+   - 새 commit이 해당 file을 건드렸다는 historical `TOUCHES_FILE` 관계는 보존 또는 upsert한다.
+5. `Deleted`:
+   - 해당 file path의 current source class/import/domain 관계를 제거한다.
+   - 과거 commit이 그 file을 건드렸다는 `commit -> file` historical edge는 삭제하지 않는다.
+   - file node를 삭제할지는 historical edge가 없는 경우로 제한하거나, current/historical node type을 분리한다.
+6. `Renamed`:
+   - old path의 current source 관계를 제거한다.
+   - new path가 source-like이면 new path 기준으로 다시 파싱해 upsert한다.
+   - rename commit의 historical file evidence는 보존한다.
+7. non-source 변경:
+   - current source graph에서는 무시하되, commit/file historical evidence는 유지한다.
+8. program mapping 변경:
+   - 새 mapping은 `MAPPED_TO_COMMIT` upsert.
+   - mapping 삭제 또는 `is_related=false` 전환은 해당 `MAPPED_TO_COMMIT` edge 제거.
+9. sync가 성공하면 graph metadata의 HEAD, timestamp, node/edge count를 갱신한다.
+10. 증분 sync가 실패하면 실패 메시지와 fallback action으로 `전체 재동기화`를 안내한다.
+
+Relationship removal rules:
+
+- 제거해야 하는 current 관계:
+  - 현재 source 기준 `file -> class`
+  - 현재 source 기준 `domain -> class`
+  - 현재 source 기준 `class -> class import`
+  - 삭제/rename된 file의 current source 관계
+  - DB에서 제거되거나 무관 처리된 `program -> commit` mapping edge
+- 보존해야 하는 historical 관계:
+  - 과거 commit이 어떤 file을 건드렸다는 사실
+  - 삭제된 file이라도 과거 diff/commit에 남아 있는 이력
+  - Git commit node와 commit metadata
+  - 과거 분석 결과를 설명하는 데 필요한 stored evidence
+
+Implementation notes:
+
+- 기존 `KnowledgeNode` + `RELATED.edge_type` 구조를 유지할지, `node_type`을 `source_file`/`commit_file`처럼 분리할지 먼저 결정한다.
+- 같은 file node를 current source와 historical git이 공유하면 deletion이 위험하므로, 최소한 edge-level scope 또는 node property로 `graph_scope=current_source|historical_git|analysis`를 둔다.
+- Cypher query에서는 node 변수명과 `RETURN AS` alias 이름을 겹치지 않게 한다.
+- graph sync service는 full sync와 incremental sync를 같은 payload builder로 억지로 합치지 말고, shared parser/helper와 별도 orchestration으로 나눈다.
+
+UI expectations:
+
+- `Knowledge Graph` 상단에 `Graph 상태: 최신 / 갱신 필요 / 실패 / Neo4j 미연결`을 표시한다.
+- `마지막 graph sync HEAD`, `현재 Repo HEAD`, `DB Git Sync HEAD`, `마지막 동기화 시각`, `sync mode`를 표시한다.
+- stale 상태에서는 `최신 변경분만 Neo4j 반영`을 primary action으로, `전체 재동기화`를 secondary action으로 둔다.
+- 증분 반영 결과는 added/modified/deleted/renamed/non-source count와 node/edge upsert/delete count를 보여준다.
+
+Tests to add:
+
+- modified Java file: old `IMPORTS_CLASS` edge가 제거되고 new import edge가 추가된다.
+- deleted Java file: current `CONTAINS_CLASS`/`IMPORTS_CLASS` 관계는 제거되지만 historical `TOUCHES_FILE` edge는 보존된다.
+- renamed Java file: old path current 관계가 제거되고 new path class 관계가 생성된다.
+- non-source file: current source graph는 바뀌지 않고 historical commit/file evidence는 유지된다.
+- mapping `is_related=false`: `MAPPED_TO_COMMIT` edge가 제거된다.
+- stale detector: Repo HEAD와 graph sync HEAD가 다르면 stale로 표시된다.
+- 실패 시: incremental sync 실패가 full sync 안내와 오류 메시지로 노출된다.
+
+Documentation impact:
+
+- `docs/architecture.md`: graph scope와 full/incremental sync flow.
+- `docs/ai-technical-overview.md`: graph freshness와 GraphRAG 전 단계 설명.
+- `docs/setup-and-operations.md`: stale 복구, full sync/fresh sync 사용 기준.
+- `docs/feature-guide.md`: 사용자가 언제 증분/전체 동기화를 누르는지.
+- `docs/failure-history.md`: 증분 sync 중 실제 실패가 재사용 가치가 있으면 기록.
+
+### Candidate - AI Operations Graph Status
+
+Goal:
+`AI 운영 현황`에서 Neo4j graph 상태를 LLM/embedding/source/vector 상태와 함께 보여준다.
+
+Expected scope:
+
+- Neo4j 연결 상태, database, enabled 여부 표시.
+- graph node/edge count, 마지막 sync 시각, stale 여부 표시.
+- Project Chat GraphRAG 보조 근거 사용 가능 여부와 최근 graph evidence 조회 상태 표시.
+- graph readback 실패가 있으면 최근 오류를 보여준다.
+- Knowledge Graph 동기화 화면으로 이동할 수 있는 shortcut action을 제공한다.
+
+Boundaries:
+
+- 이 후보는 graph sync 자체를 구현하지 않는다.
+- GraphRAG가 graph 미동기화 또는 Neo4j 미연결 때문에 비활성인 경우 `준비 필요/미연결`처럼 상태를 명확히 구분한다.
+
+### Candidate - Knowledge Graph Exploration UI
+
+Goal:
+사용자가 프로그램, class, domain, commit을 기준으로 Neo4j 관계를 탐색할 수 있게 한다.
+
+Expected scope:
+
+- 프로그램 선택 -> 관련 commit/file/class/domain path 표시.
+- class 선택 -> import 관계, 포함 file, 연결 program 표시.
+- domain 선택 -> 관련 program/file/class/commit/risk 묶음 표시.
+- commit 선택 -> mapping program, touched file, impacted class 표시.
+- node detail panel: node type, label, source properties, related count.
+- path depth 또는 relationship type filter 제공.
+
+Boundaries:
+
+- 대형 graph 전체를 한 번에 그리지 않는다.
+- 기본은 table/path 중심, graph visualization은 제한된 subgraph에만 사용한다.
+
+### Candidate - Project-Level AI Quality Scorecard
+
+Goal:
+sample project 전용 점검을 실제 프로젝트에서도 쓸 수 있는 AI 품질 상태판으로 확장한다.
+
+Expected scope:
+
+- Mapping: 판단불가 비율, low relevance 비율, 짧은 reason, feedback pending count.
+- Project Chat: verified source 사용률, insufficient-evidence 비율, stale/invalid excluded count.
+- PL Briefing: fallback/repair 발생률, 최근 provider/model, validation status.
+- Code Review: 최근 리뷰 대상 commit, risk level 분포, 저장 결과 count.
+- Knowledge Graph: class/import 추출 수, impact path 수, graph stale 여부.
+- 품질 상태를 pass/warn/fail로 표시하고, 다음 조치 링크를 제공한다.
+
+### Candidate - Local LLM Verification Routine
+
+Goal:
+mock이 아닌 local LLM/embedding provider로 주요 AI 기능을 실제 실행했다는 증거를 반복 가능하게 만든다.
+
+Expected scope:
+
+- LM Studio 또는 OpenAI-compatible local endpoint 기준 점검 절차.
+- Mapping, Project Chat, PL Briefing, Code Review 중 최소 2~3개 기능의 live result 확인.
+- provider/model/base URL, invocation telemetry, fallback 여부 기록.
+- `AI 운영 현황` 또는 별도 verification 문서에 최근 live verification 결과 요약.
+- Application Preview가 필요하면 실제 provider/model이 보이는 화면을 캡처.
+
+Boundaries:
+
+- 외부 유료 API를 CI에서 호출하지 않는다.
+- local LLM이 없으면 mock/fallback 검증과 live 검증을 분리해서 표시한다.
+
+### Candidate - Git Sync Follow-Up Action Orchestrator
+
+Goal:
+Git Sync 이후 사용자가 실행해야 할 RAG, embedding, Mapping, Neo4j 갱신 작업을 한 흐름으로 안내한다.
+
+Expected scope:
+
+- Git Sync 완료 후 changed commit/file count 요약.
+- 다음 작업 후보: source incremental indexing, embedding missing chunks, Mapping, Risk Analysis, Neo4j sync.
+- 각 작업의 준비 상태, 예상 소요, 비용/부하 주의 표시.
+- "권장 순서"와 "나중에 하기"를 구분한다.
+- 실패/부분 완료 상태에서 재시작 가능한 action을 보여준다.
+
+Boundaries:
+
+- 모든 후속 작업을 자동으로 한 번에 실행하지 않는다.
+- embedding/LLM 호출은 사용자가 명시적으로 실행하도록 한다.
+
+### Candidate - Neo4j Production Hardening
+
+Goal:
+대형 프로젝트와 장시간 운영에서 Neo4j 동기화가 안정적으로 동작하도록 보강한다.
+
+Expected scope:
+
+- node/edge write batch size 조절.
+- transaction memory와 timeout에 대한 분할 write.
+- sync progress와 partial failure reporting.
+- Neo4j health check와 retry/backoff.
+- cleanup 실패 시 PostgreSQL 작업을 막지 않는 best-effort 정책 유지.
+- backup/restore 또는 volume reset 운영 안내.
+- 대형 sample 또는 synthetic stress dataset으로 smoke test.
+
+### Candidate - Source Parser Accuracy Expansion
+
+Goal:
+정규식 기반 Java class/import 추출의 한계를 줄이고 Knowledge Graph 품질을 높인다.
+
+Expected scope:
+
+- Java annotation, static import, nested class, record/interface/enum edge case 보강.
+- generated source, build output, test fixture 제외 규칙 정리.
+- parser 실패/skip count를 Knowledge Graph warning으로 표시.
+- Kotlin, TypeScript, Python 같은 추가 언어를 후보로 검토하되, 한 번에 모두 넣지 않는다.
+
+Boundaries:
+
+- compiler-level semantic analysis는 별도 대형 작업으로 본다.
+- 우선은 sample/typical SI Java project에서 누락을 줄이는 수준으로 시작한다.
+
+### Candidate - Graph-Aware Project Chat Question Templates
+
+Goal:
+사용자가 RAG와 GraphRAG가 잘 답할 수 있는 질문을 쉽게 시작하도록 질문 템플릿을 제공한다.
+
+Example templates:
+
+- "이 프로그램 구현 근거를 commit/file/class 기준으로 설명해줘."
+- "이 commit이 어떤 프로그램과 class에 영향을 줬어?"
+- "이 class 변경이 어떤 domain이나 프로그램과 연결돼?"
+- "최근 리스크가 높은 프로그램의 근거 commit과 파일을 알려줘."
+- "결제 도메인과 주문 도메인의 연결 근거를 찾아줘."
+
+Boundaries:
+
+- 템플릿은 질문 작성 보조이며, 답변 품질을 보장하지 않는다.
+- GraphRAG가 구현되기 전에는 graph 관련 템플릿을 숨기거나 비활성 안내를 붙인다.
+
+### Candidate - Graph-Aware Weekly Report
+
+Goal:
+주간 점검 보고서에 Neo4j impact path와 AI 근거 관계를 포함한다.
+
+Expected scope:
+
+- Radar/PL Briefing, Risk, AI Progress, AI invocation telemetry에 graph impact summary 추가.
+- 주요 변경 commit -> program -> file -> class path를 요약.
+- 위험 프로그램별 graph evidence section 추가.
+- provider/model/fallback/GraphRAG 사용 여부를 report metadata로 남긴다.
+
+### Candidate - First-Run And Empty-State Polish
+
+Goal:
+기능이 많아진 앱을 처음 보는 사람이 다음 행동을 잃지 않도록 빈 상태와 복구 안내를 정리한다.
+
+Expected scope:
+
+- 프로젝트 없음, Git 없음, 프로그램 없음, mapping 없음, vector 없음, Neo4j 미연결 상태별 안내.
+- Home과 AI 운영 현황에서 다음 recommended action을 더 구체적으로 표시.
+- Application Preview와 실제 메뉴 상태가 어긋나지 않도록 screenshot 후보를 주기적으로 점검.
+- 설정 문제 발생 시 관련 setup 문서/화면/action으로 연결한다.
 
 ## P1 - AI 검증 Trace View
 

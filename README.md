@@ -64,7 +64,7 @@ flowchart TB
 - Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, 고객가치 참고 지표와 저장형 추세 확인
 - AI 운영 현황에서 LLM/embedding 연결 상태, AI 분석 준비 상태, 근거 추적, 품질 점검, 주간 보고서, 호출 기록 확인
 - Neo4j Knowledge Graph에서 프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인 관계를 저장하고 영향 경로 탐색
-- 현재 소스 검증형 RAG Search와 저장형 Project Chat
+- 현재 소스 검증형 RAG Search와 Neo4j graph 관계 근거를 보조로 쓰는 저장형 Project Chat
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
 - 앱 서버 Git 저장소의 최신/특정 커밋 중심 AI Code Review
 - 데모용 샘플 프로젝트와 Excel 데이터 생성으로 전체 기능 확인 가능
@@ -178,6 +178,6 @@ requirements.txt
 ## 참고 사항
 
 - RAG/embedding은 mock과 OpenAI-compatible 서버를 모두 지원합니다. 실제 검색 품질 평가는 embedding 모델과 `PGVECTOR_DIMENSION` 설정이 맞아야 합니다.
-- Project Chat은 현재 소스 검증을 통과한 `source_file` chunk만 기본 답변 근거로 사용하며, 프로젝트별 대화 이력과 답변 근거를 저장합니다.
+- Project Chat은 현재 소스 검증을 통과한 `source_file` chunk만 기본 답변 근거로 사용하며, Neo4j graph가 준비된 경우 관계 근거를 보조로 붙이고 프로젝트별 대화 이력과 답변 근거를 저장합니다.
 - 현재 소스 파일을 수정하거나 브랜치/HEAD가 바뀐 뒤에는 RAG 또는 Project Chat 화면의 인덱스 상태를 확인하고 필요 시 현재 소스를 다시 인덱싱하세요.
 - LLM 매핑 분석과 AI 코드리뷰는 `.env`의 `LLM_PROVIDER` 설정에 따라 mock 또는 로컬 LLM을 사용합니다.

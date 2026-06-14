@@ -535,7 +535,7 @@ erDiagram
 | `ai_invocation_logs` | Mapping, Project Chat, AI Code Review, PL Briefing 같은 AI 호출의 provider/model, latency, prompt/response length, validation/fallback/error metadata를 저장한다. |
 | `risk_findings` | 리스크 분석 결과. 리스크 유형/등급, 설명, 근거, 해결 여부를 저장한다. |
 | `project_chat_sessions` | Project Chat의 프로젝트별 대화 session 제목, 상태, 마지막 메시지 시각을 저장한다. |
-| `project_chat_messages` | Project Chat user/assistant message와 검색 근거, 확장 쿼리, 근거 부족 여부, 복사용 citation metadata를 저장한다. |
+| `project_chat_messages` | Project Chat user/assistant message와 검색 근거, 확장 쿼리, 근거 부족 여부, graph evidence raw metadata, 복사용 citation metadata를 저장한다. |
 | `document_chunks` | RAG 검색용 chunk 저장소. source_file, program, commit, commit_file 원문을 검색 가능한 텍스트 단위로 저장한다. |
 | `vector_items` | `document_chunks`의 embedding vector를 저장한다. pgvector cosine 검색에 사용된다. |
 
@@ -568,7 +568,7 @@ erDiagram
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
 | `vector_store.py` | embedding 저장, 중복 방지, embedding 실패 기록, pgvector cosine 검색. |
 | `retriever.py` | query embedding 생성 후 vector 검색 결과를 반환한다. Mapping 후보 프로그램 검색에도 사용된다. |
-| `chat_history_service.py` | Project Chat session/message 저장, 조회, UI 변환, 답변 근거 Markdown export를 담당한다. |
+| `chat_history_service.py` | Project Chat session/message 저장, 조회, UI 변환, source/graph 답변 근거 Markdown export를 담당한다. |
 
 ## 6. 프로그램 업로드부터 AI 진척도 계산까지의 처리 흐름
 
@@ -647,7 +647,8 @@ flowchart TD
     K --> L["query embedding"]
     L --> M["pgvector cosine TOP K"]
     M --> N["source_file 현재 파일 검증<br/>verified/stale/invalid"]
-    N --> O["검증된 source chunk만 답변 근거로 사용"]
+    N --> O["검증된 source chunk를 답변 근거로 사용"]
+    R["Neo4j graph evidence<br/>program/commit/file/class/domain"] --> O
     C --> P["소스 인덱스 상태 확인<br/>Current HEAD vs Indexed HEAD"]
     P --> Q["전체 소스 다시 읽기<br/>chunk 갱신 후 검증 불가 chunk/vector 정리"]
 ```
@@ -659,6 +660,8 @@ flowchart TD
 - `commit_files.diff_text`는 길이를 잘라 chunk로 만든다.
 - `source_file` chunk에는 `file_path`, `line_start`, `line_end`, `content_hash`, `chunk_content_hash`, `indexed_head_hash`를 저장한다.
 - Project Chat은 기본적으로 현재 파일 검증을 통과한 `source_file` chunk만 답변 근거로 사용한다.
+- Neo4j가 활성화되고 graph가 동기화되어 있으면 Project Chat은 질문, 확장 쿼리, 검색된 source evidence에서 seed를 뽑아 graph relationship evidence를 보조 context로 붙인다.
+- Graph evidence는 프로그램-커밋-파일-class-domain 관계 설명용이며, verified `source_file` evidence 없이 현재 코드 사실을 답변하게 만들지 않는다.
 - Git HEAD가 바뀌었거나 line range hash가 달라진 chunk는 stale/invalid로 분류하고 현재 코드 근거에서 제외한다.
 - RAG와 Project Chat 화면은 현재 HEAD와 인덱싱 HEAD, 불일치/검증 불가 chunk 수를 표시한다.
 - `전체 소스 다시 읽기`는 현재 HEAD 기준 chunk를 먼저 갱신한 뒤 검증 불가 chunk/vector만 정리해 삭제된 파일의 근거도 제거한다.
@@ -738,6 +741,7 @@ LLM 출력 예시:
 - pgvector vector 저장 및 cosine 검색.
 - RAG 검색 테스트 화면.
 - Project Chat 대화형 프로젝트 질의응답.
+- Project Chat GraphRAG 보조 근거: Neo4j 저장 graph에서 영향 경로, class import, domain summary를 조회해 source 근거와 분리 저장/표시.
 - source_file 검색 결과 현재 파일 검증.
 - source_file 인덱스 상태 표시와 원클릭 재인덱싱.
 - Alembic 기반 DB migration.
@@ -752,7 +756,7 @@ LLM 출력 예시:
 - RAG 검색 품질은 embedding 모델에 크게 의존하며, mock embedding은 테스트용이다.
 - local/openai embedding은 OpenAI-compatible `/embeddings` 형식을 가정하지만 실제 모델별 검증은 별도 필요하다.
 - PL Briefing은 구조화 validation과 1회 repair retry를 사용하지만, Mapping 등 일부 LLM 응답 처리는 여전히 pragmatic parsing과 fallback 중심이다.
-- Neo4j Knowledge Graph는 현재 PostgreSQL 분석 데이터와 Java source structure의 read model이며, Project Chat 답변 context에 graph path를 자동 주입하는 GraphRAG는 아직 없다.
+- Project Chat GraphRAG는 Neo4j 저장 graph가 최신이라고 가정하고 조회한다. Graph freshness/stale 표시와 증분 Neo4j sync는 별도 후속 작업이다.
 - Mapping 실패 재처리 정책은 기본 상태 기록 수준이며 상세 재시도 큐는 없다.
 - 테스트는 핵심 순수 로직 중심이며, Streamlit UI/DB 통합 테스트는 아직 부족하다.
 - 배포 설정, CI, 환경별 설정 분리는 제한적이다. AI 호출 telemetry는 앱 내부 관측용이며 외부 로그/모니터링 시스템 연계는 아직 없다.
@@ -799,7 +803,7 @@ LLM 출력 예시:
 | `src/ui/commit_impact_page.py` | 특정 커밋의 영향도 분석. |
 | `src/ui/knowledge_graph_page.py` | Neo4j Knowledge Graph preview, 동기화, 저장 그래프 기준 도메인/클래스/영향 경로/node-edge 조회. |
 | `src/ui/rag_page.py` | RAG chunk/embedding/search 관리. |
-| `src/ui/project_chat_page.py` | 검증된 현재 소스 RAG 기반 프로젝트 채팅. |
+| `src/ui/project_chat_page.py` | 검증된 현재 소스와 Neo4j graph evidence를 분리 표시하는 프로젝트 채팅. |
 | `src/ui/code_review_page.py` | AI 코드 리뷰 실행 및 이력 조회. |
 | `src/ui/dashboard_page.py` | 프로젝트 운영 요약. |
 | `src/ui/planning_dashboard_page.py` | 개발계획 기준 일정/진척 현황. |
@@ -828,7 +832,7 @@ LLM 출력 예시:
 | `src/services/risk_service.py` | `run_risk_analysis`, `get_unresolved_findings`, `resolve_findings` |
 | `src/services/git_history_service.py` | `list_git_history_commits`, `get_git_history_detail`, `get_commit_full_diff` |
 | `src/services/commit_impact_service.py` | `list_commit_options`, `get_commit_impact_analysis` |
-| `src/services/neo4j_graph_service.py` | `build_project_graph_payload`, `sync_project_graph_to_neo4j`, `get_neo4j_connection_status` |
+| `src/services/neo4j_graph_service.py` | `build_project_graph_payload`, `sync_project_graph_to_neo4j`, `find_project_graph_evidence`, `get_neo4j_connection_status` |
 | `src/services/code_review_service.py` | `get_review_target`, `CodeReviewService.review_project`, `get_recent_code_reviews` |
 | `src/services/resource_metrics_service.py` | `get_resource_metrics_summary` |
 | `src/services/ai_resource_radar_service.py` | `build_ai_resource_radar`, `generate_pl_briefing` |
@@ -838,7 +842,7 @@ LLM 출력 예시:
 | `src/rag/retriever.py` | `retrieve`, `retrieve_program_ids` |
 | `src/rag/source_verifier.py` | `verify_source_file_chunk`, `annotate_retrieval_result` |
 | `src/rag/source_index_service.py` | `get_source_index_status`, `refresh_source_file_index` |
-| `src/rag/chat_service.py` | `answer_source_question` |
+| `src/rag/chat_service.py` | `answer_source_question`, Project Chat prompt 구성과 GraphRAG 보조 context 결합 |
 
 ### 주요 DB 모델
 

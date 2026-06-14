@@ -2,6 +2,22 @@
 
 ## 2026-06-15
 
+### Project Chat GraphRAG context injection
+
+- `Project Chat`이 verified `source_file` 근거를 확보한 뒤 Neo4j graph read model에서 `program -> commit -> file -> class` 영향 경로, `class -> imports -> class` 관계, domain summary를 보조 근거로 조회하도록 추가했습니다. Graph evidence는 현재 코드 사실을 대체하지 않으며, verified source가 없으면 기존 insufficient-evidence 정책을 유지합니다.
+- 질문, 표준용어 확장 쿼리, 검색된 파일/class/commit metadata에서 graph seed를 추출하고, Project Chat prompt에는 graph context를 별도 섹션으로 넣었습니다. Mock/LLM 호출 telemetry에도 graph evidence count/status/error metadata를 남깁니다.
+- Project Chat 화면, RAG 소스 Q&A, citation export, 저장 대화 재열람, `AI 운영 현황 > 근거 추적`에서 source evidence와 graph evidence를 분리해 확인할 수 있게 했습니다. Graph evidence는 `project_chat_messages.raw_metadata`에 저장하므로 PostgreSQL schema migration은 추가하지 않았습니다.
+- GraphRAG 보조 근거의 안전 정책과 사용자 흐름을 README, 기능 가이드, AI 기술 개요, 아키텍처, 운영 가이드, DB migration guidance, Application Preview 설명, engineering decision에 반영했습니다.
+- 주요 파일: `src/services/neo4j_graph_service.py`, `src/rag/chat_service.py`, `src/rag/chat_history_service.py`, `src/ui/project_chat_page.py`, `src/ui/rag_page.py`, `src/services/ai_evidence_service.py`, `src/ui/ai_evidence_page.py`, `tests/test_neo4j_graph_service.py`, `tests/test_project_chat_service.py`, `tests/test_project_chat_history_service.py`, `tests/test_ai_evidence_service.py`, `README.md`, `docs/ai-technical-overview.md`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `docs/db-migrations.md`, `docs/application-preview.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\neo4j_graph_service.py src\rag\chat_service.py src\rag\chat_history_service.py src\ui\project_chat_page.py src\ui\rag_page.py src\services\ai_evidence_service.py src\ui\ai_evidence_page.py tests\test_neo4j_graph_service.py tests\test_project_chat_service.py tests\test_project_chat_history_service.py tests\test_ai_evidence_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_service.py tests\test_project_chat_history_service.py tests\test_neo4j_graph_service.py tests\test_ai_evidence_service.py -q` 16개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 134개 테스트 통과; `.\.venv\Scripts\python.exe -c "import inspect, streamlit as st; print(inspect.signature(st.json))"`에서 `expanded` 인자 지원 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
+### Graph/AI 후속 개선 후보 Roadmap 정리
+
+- 새 세션에서 바로 후속 작업을 고를 수 있도록 `ROADMAP.md` `Candidate Tasks`에 GraphRAG, Knowledge Graph 신선도/증분 Neo4j 동기화, AI 운영 현황 graph 상태, 그래프 탐색 UI, AI 품질 점검, local LLM 검증 루틴, Git Sync 후속 작업 흐름, Neo4j 운영 안정화, source parser 정확도, 질문 템플릿, graph-aware 보고서, 첫 사용/빈 상태 개선 후보를 정리했습니다.
+- 특히 `Knowledge Graph freshness and incremental Neo4j sync` 후보에는 current source graph, historical git graph, analysis graph를 구분하는 설계, 변경 파일별 증분 반영 흐름, 삭제/rename 시 끊어야 하는 관계와 보존해야 하는 이력 관계, stale 표시 UI, 테스트 항목을 상세히 기록했습니다.
+- 주요 파일: `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "Project Chat GraphRAG context injection|Knowledge Graph freshness and incremental Neo4j sync|current source graph|historical git graph|최신 변경분만 Neo4j 반영|Graph-Aware Weekly Report" ROADMAP.md`로 후보 섹션 반영 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Knowledge Graph 저장 그래프 조회와 탭별 screenshot 보강
 
 - `Knowledge Graph` 화면의 클래스 관계도, 영향 경로, 노드/엣지 탭이 Neo4j에 저장된 graph read model을 우선 조회하도록 변경했습니다. 저장된 graph가 없을 때만 기존 동기화 대상 preview를 fallback으로 보여줍니다.

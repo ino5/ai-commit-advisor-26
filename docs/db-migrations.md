@@ -69,7 +69,7 @@ Neo4j에 저장하는 node, edge, property, constraint를 바꿀 때는 Alembic 
 - 프로젝트 분석 데이터 초기화나 프로젝트 삭제는 `NEO4J_ENABLED=true`인 경우 선택 프로젝트의 Neo4j node를 best-effort로 정리합니다.
 - 운영 환경에서 Neo4j 비밀번호, database, volume 정책을 바꾸는 작업은 migration이 아니라 배포/운영 변경으로 기록합니다.
 
-이 분리는 PostgreSQL을 source of truth로 유지하고, Neo4j를 관계 탐색과 이후 GraphRAG 확장을 위한 재생성 가능한 read model로 다루기 위한 결정입니다.
+이 분리는 PostgreSQL을 source of truth로 유지하고, Neo4j를 관계 탐색과 Project Chat GraphRAG 보조 근거를 위한 재생성 가능한 read model로 다루기 위한 결정입니다.
 
 ## 현재 Revision 확인
 

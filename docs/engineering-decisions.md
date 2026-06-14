@@ -45,6 +45,45 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - Project Chat GraphRAG는 verified source를 대체하지 않는 보조 근거로 적용한다
+
+### 배경
+
+Neo4j Knowledge Graph가 추가되면서 Project Chat이 vector/RAG 근거뿐 아니라 프로그램, 커밋, 파일, class, domain 관계도 답변에 사용할 수 있게 되었습니다. 다만 graph path는 관계를 잘 설명하지만 현재 checkout의 실제 코드 내용을 직접 검증하지는 않습니다. GraphRAG를 무조건 답변 근거로 승격하면 오래된 graph나 Java parser 누락이 현재 코드 사실처럼 보일 위험이 있습니다.
+
+### 결정
+
+Project Chat은 먼저 기존처럼 verified `source_file` evidence를 확보합니다. 검증된 현재 소스 근거가 있을 때만 질문, 확장 쿼리, 검색된 source/commit 근거에서 seed를 추출해 Neo4j의 `program -> commit -> file -> class`, `class -> imports -> class`, domain summary를 보조 context로 조회합니다. Graph evidence는 답변, UI, Markdown export, AI 운영 현황에서 source evidence와 분리해 저장/표시합니다.
+
+### 이유
+
+- Source verification은 현재 코드 사실을 말하기 위한 핵심 안전장치입니다.
+- Graph path는 프로그램과 코드 구조 사이의 관계 설명에는 강하지만, 현재 파일 line/hash 검증을 대신하지 못합니다.
+- Source evidence와 graph evidence를 분리하면 PL이 "현재 코드 근거"와 "관계 경로 근거"를 따로 검토할 수 있습니다.
+- Neo4j가 꺼져 있거나 graph가 아직 동기화되지 않은 프로젝트도 기존 RAG-only 흐름으로 계속 사용할 수 있습니다.
+
+### 검토한 대안
+
+- Graph evidence만으로도 답변 허용: GraphRAG 가치는 커지지만 stale graph나 parser 한계가 현재 코드 사실처럼 보일 수 있어 채택하지 않았습니다.
+- Project Chat이 매번 graph full preview를 재구성: Neo4j 동기화 없이도 동작하지만 질문마다 Git/DB/소스 scan 비용이 커지고, 저장 graph read model을 검증 표면으로 쓰는 설계와 어긋납니다.
+- 별도 Graph Chat 화면 신설: scope가 커지고 사용자가 source RAG와 graph 질문을 구분해야 해서 현재 작업의 목표인 Project Chat 답변 품질 개선에는 과합니다.
+
+### 영향과 tradeoff
+
+Graph evidence는 `project_chat_messages.raw_metadata`에 저장해 PostgreSQL schema migration 없이 확장했습니다. 대신 graph evidence를 강하게 query/filter하는 기능은 아직 제한적입니다. Graph seed 추출은 질문, 확장 쿼리, 검색된 파일/class 이름 기반의 deterministic 방식이라 LLM 추가 호출 비용은 없지만, 질문이 너무 추상적이고 source retrieval도 부족하면 graph evidence를 찾지 못할 수 있습니다.
+
+### 후속 확인
+
+Knowledge Graph freshness와 incremental Neo4j sync가 구현되기 전까지는 사용자가 `Knowledge Graph` 화면에서 graph를 다시 동기화해야 최신 관계 근거가 반영됩니다. Java 외 언어, XML mapper, SQL 관계까지 graph 범위를 넓히는 작업은 별도 parser 정확도 개선과 함께 다룹니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `Project Chat GraphRAG context injection`
+- `ROADMAP.md`의 `P1 - Project Chat GraphRAG Context Injection`
+- `docs/ai-technical-overview.md`
+- `docs/feature-guide.md`
+- `docs/architecture.md`
+
 ## 2026-06-15 - Neo4j는 프로젝트 관계 그래프 read model로 적용한다
 
 ### 배경
