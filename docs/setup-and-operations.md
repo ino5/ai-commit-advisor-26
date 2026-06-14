@@ -223,7 +223,7 @@ environment:
   REPO_STORAGE_ROOT: /srv/ai-commit-advisor/repos
 ```
 
-현재 권장 운영 정책은 앱이 remote URL, access token, SSH key를 받아 직접 clone/fetch하지 않는 것입니다. 운영자 또는 배포 스크립트가 위 저장소 root 아래에 repo를 준비하고 갱신한 뒤, 앱의 Git 동기화는 준비된 저장소에서 commit과 diff를 DB에 수집합니다. 앱 내 clone/fetch 자동화는 인증 정보와 동시 실행 lock 정책이 필요하므로 별도 후속 작업으로 다룹니다.
+AI Commit Advisor는 프로젝트/Git 설정에 저장한 `Git remote URL`과 branch로 앱 서버 저장소를 clone/fetch/reset할 수 있습니다. 단, 앱은 access token, SSH key, password를 저장하지 않습니다. private repository는 서버 OS의 SSH key, credential helper, 배포 계정 등 앱 밖의 인증 방식을 먼저 준비하세요. 운영자 또는 배포 스크립트가 저장소를 직접 준비하는 방식도 계속 사용할 수 있습니다.
 
 반복 가능한 저장소 갱신 절차와 `scripts/update_server_repos.py` 사용법은 [서버 Git 저장소 갱신 Runbook](server-repository-update-runbook.md)을 참고하세요.
 

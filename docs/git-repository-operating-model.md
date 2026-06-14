@@ -57,7 +57,7 @@ sudo chown -R ai-advisor:ai-advisor /srv/ai-commit-advisor
 sudo chmod 750 /srv/ai-commit-advisor/repos
 ```
 
-분석 대상 저장소는 운영자가 이 경로 아래에 clone해 둡니다.
+분석 대상 저장소는 운영자가 이 경로 아래에 clone해 둘 수 있습니다. 또는 프로젝트/Git 설정에 `Git remote URL`, `Git branch`, 앱 서버 저장소 경로를 저장한 뒤 앱의 `서버 저장소 clone/fetch` action으로 준비할 수 있습니다.
 
 ```bash
 git clone <remote-url> /srv/ai-commit-advisor/repos/order-system
@@ -103,22 +103,22 @@ Linux 사내 서버에서 컨테이너와 host가 같은 경로를 쓰도록 vol
 
 ## Git Sync와 저장소 갱신
 
-현재 Git Sync는 저장소에 이미 존재하는 commit, 변경 파일, diff를 DB에 수집하는 기능입니다. 원격 저장소에서 최신 변경을 받아오는 clone/fetch 자동화와는 다른 작업입니다.
+Git Sync는 앱 서버 저장소에 존재하는 commit, 변경 파일, diff를 DB에 수집하는 기능입니다. `서버 저장소 clone/fetch`는 원격 저장소를 앱 서버 경로에 준비하거나 갱신하는 작업이고, Git Sync는 그 결과를 DB에 수집하는 별도 단계입니다.
 
 ## 권장 운영 정책
 
-현재 권장 정책은 앱이 Git remote 인증과 clone/fetch를 직접 관리하지 않고, 앱 서버에 준비된 Git 저장소 경로를 분석 대상으로 등록하는 방식입니다.
+권장 정책은 앱이 Git 인증 정보를 저장하지 않는 것입니다. 저장소 준비 방식은 두 가지를 지원합니다.
 
 역할을 다음처럼 나눕니다.
 
 | 영역 | 담당 | 설명 |
 |---|---|---|
-| 저장소 clone/fetch/reset | 운영자 또는 배포/운영 스크립트 | 사내 서버의 `REPO_STORAGE_ROOT` 아래에 분석 대상 저장소를 준비하고 최신화합니다. |
-| 프로젝트 경로 등록/검증 | AI Commit Advisor | 앱 서버에서 접근 가능한 Git 저장소 경로인지 확인하고, `REPO_STORAGE_ROOT`가 있으면 root 하위만 허용합니다. |
+| 저장소 clone/fetch/reset | 운영자, 배포/운영 스크립트, 또는 AI Commit Advisor | 사내 서버의 `REPO_STORAGE_ROOT` 아래에 분석 대상 저장소를 준비하고 최신화합니다. 앱 UI를 사용할 때도 access token, SSH key, password는 저장하지 않습니다. |
+| 프로젝트 경로/remote 등록/검증 | AI Commit Advisor | 앱 서버에서 접근 가능한 Git 저장소 경로인지 확인하고, `REPO_STORAGE_ROOT`가 있으면 root 하위만 허용합니다. remote URL과 branch는 서버 clone/fetch에 사용합니다. |
 | Git Sync | AI Commit Advisor | 준비된 저장소에서 commit, 변경 파일, diff를 읽어 DB에 저장합니다. |
 | 분석 기능 | AI Commit Advisor | DB에 수집된 Git 이력과 현재 소스를 사용해 Mapping, Risk, RAG, Project Chat, Code Review를 실행합니다. |
 
-이 정책을 선택한 이유는 Git 인증 정보, SSH key, access token, branch 보호, 동시 fetch lock, 저장소 용량 관리 같은 운영 책임을 앱 분석 기능과 섞지 않기 위해서입니다. 초기 사내 운영에서는 서버에 이미 clone된 저장소 경로를 등록하는 방식이 가장 단순하고, 보안 검토 범위도 작습니다.
+이 정책을 선택한 이유는 Git 인증 정보, SSH key, access token, branch 보호, 저장소 용량 관리 같은 운영 책임을 앱 분석 기능과 섞지 않기 위해서입니다. 앱의 clone/fetch action은 서버 OS의 SSH agent, credential helper, 배포 계정 권한처럼 앱 밖에서 준비된 인증 방식을 사용합니다.
 
 운영 방식은 두 가지로 나눌 수 있습니다.
 
@@ -126,10 +126,10 @@ Linux 사내 서버에서 컨테이너와 host가 같은 경로를 쓰도록 vol
    - 예: `git fetch --prune`, `git reset --hard origin/main`
    - 이후 앱의 Git 동기화에서 DB 수집을 실행합니다.
 
-2. 향후 앱이 remote URL과 branch를 받아 clone/fetch를 관리합니다.
-   - 이 방식은 인증 정보, 권한, sync lock, 저장소 용량 관리가 필요하므로 별도 설계가 필요합니다.
+2. 앱이 remote URL과 branch를 받아 clone/fetch/reset을 실행합니다.
+   - 이 방식은 앱에 인증 정보를 저장하지 않고, 동시 실행을 lock 파일로 막으며, working tree local 변경이 있으면 기본적으로 reset을 건너뜁니다.
 
-초기 사내 운영은 1번처럼 서버에 이미 clone된 저장소 경로를 등록하는 방식으로 고정합니다. 2번은 사용자가 앱 안에서 저장소 갱신까지 요구할 때 별도 보안/운영 설계 후 확장합니다.
+private repository는 서버 계정의 SSH key 또는 credential helper로 인증을 미리 준비해야 합니다. 앱 입력창에는 token, password, private key를 넣지 않습니다.
 
 구체적인 수동 명령과 `scripts/update_server_repos.py` 사용법은 [서버 Git 저장소 갱신 Runbook](server-repository-update-runbook.md)을 따릅니다.
 
@@ -159,4 +159,4 @@ Linux 사내 서버에서 컨테이너와 host가 같은 경로를 쓰도록 vol
 
 Git History 화면은 이 운영 모델 위에 붙이는 것이 안전합니다. 커밋 목록과 저장된 diff는 DB에서 보여주고, 전체 diff나 commit graph는 앱 서버 Git 저장소에서 `git show`, `git log --parents`를 읽어 보강할 수 있습니다.
 
-서버가 remote URL을 받아 직접 clone/fetch하는 기능은 별도 단계로 다루는 것이 좋습니다. 이 기능은 Git 인증 정보 저장, branch 정책, 동시 실행 lock, 저장소 정리 정책까지 함께 결정해야 합니다.
+서버가 remote URL을 받아 직접 clone/fetch하는 기능은 인증 정보를 저장하지 않는 범위에서 지원합니다. 향후 앱이 credential vault, 사용자별 권한, 저장소 자동 정리까지 맡아야 한다면 별도 보안 설계가 필요합니다.

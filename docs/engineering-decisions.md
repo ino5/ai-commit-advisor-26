@@ -45,6 +45,43 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-14 - 서버 저장소 clone/fetch는 인증정보 저장 없이 지원한다
+
+### 배경
+
+기존 운영 모델은 운영자가 앱 서버에 Git 저장소를 미리 clone하고, AI Commit Advisor는 그 경로만 읽는 방식이었습니다. 이 모델은 안전하지만 프로젝트를 자주 만들거나 반복 시연하는 환경에서는 remote URL과 branch를 앱에 저장한 뒤 서버 clone을 준비하는 흐름이 더 편합니다.
+
+### 결정
+
+프로젝트에 `git_remote_url`, `git_branch`를 저장하고, 프로젝트/Git 설정에서 `서버 저장소 clone/fetch` action을 제공합니다. 대상 경로가 없으면 clone하고, 이미 Git 저장소면 `origin`을 fetch한 뒤 branch를 `origin/<branch>`로 reset합니다. 동시 실행은 repository별 lock 파일로 막고, working tree에 local 변경이 있으면 기본적으로 reset을 건너뜁니다. 앱은 access token, SSH key, password를 저장하지 않습니다.
+
+### 이유
+
+- 운영자가 매번 서버 shell에서 clone/fetch를 실행하지 않아도 앱 안에서 저장소 준비를 시작할 수 있습니다.
+- 인증정보를 앱 DB에 넣지 않으면 보안 검토 범위와 유출 위험을 줄일 수 있습니다.
+- `REPO_STORAGE_ROOT` 경로 제한을 그대로 사용해 앱이 준비할 수 있는 저장소 위치를 제한합니다.
+- dirty working tree guard와 lock 파일은 분석용 clone을 무심코 덮어쓰는 위험을 낮춥니다.
+
+### 검토한 대안
+
+- 기존 pre-cloned 방식만 유지: 안전하지만 반복 등록과 운영 자동화가 불편합니다.
+- 앱이 token/SSH key를 저장: 편하지만 credential encryption, rotation, 접근권한, 감사 로그 설계가 필요해 현재 범위보다 큽니다.
+- 별도 운영 스크립트만 확장: 서버 운영에는 좋지만 앱 사용자에게 현재 프로젝트의 remote/branch 상태를 보여주기 어렵습니다.
+
+### 영향과 tradeoff
+
+- private repository는 서버 OS의 SSH agent, credential helper, 배포 계정 권한을 먼저 준비해야 합니다.
+- 앱은 저장소 용량 정리, credential rotation, 사용자별 Git 권한을 관리하지 않습니다.
+- reset은 `origin/<branch>` 기준으로 working tree를 맞추므로 분석용 clone에 local 변경을 남기는 운영과는 맞지 않습니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Server-Managed Clone/Fetch Workflow`
+- `docs/git-repository-operating-model.md`
+- `docs/server-repository-update-runbook.md`
+- `docs/setup-and-operations.md`
+- `AI_CHANGELOG.md`의 `Server-managed clone/fetch workflow`
+
 ## 2026-06-14 - 프로젝트 초기화는 산출물을 보존하고 분석 데이터만 지운다
 
 ### 배경

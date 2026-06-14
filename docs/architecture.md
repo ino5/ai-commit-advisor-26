@@ -195,7 +195,7 @@ flowchart LR
 ### 주요 화면 역할
 
 - `Home`: 사이드바에서 선택한 현재 프로젝트의 핵심 지표, AI 진척도, 리스크 프로그램, 다음 작업 요약.
-- `Project`: 프로젝트 이름, 설명, 앱 서버에서 접근 가능한 Git 저장소 경로 관리, 분석 데이터 초기화, 프로젝트 삭제. 프로젝트 저장 후 사이드바 현재 프로젝트 선택과 동기화하고, 프로젝트 삭제 후에는 남은 프로젝트로 현재 선택을 복구한다.
+- `Project`: 프로젝트 이름, 설명, 앱 서버에서 접근 가능한 Git 저장소 경로, Git remote URL/branch 관리, 서버 저장소 clone/fetch, 분석 데이터 초기화, 프로젝트 삭제. 프로젝트 저장 후 사이드바 현재 프로젝트 선택과 동기화하고, 프로젝트 삭제 후에는 남은 프로젝트로 현재 선택을 복구한다.
 - `개발자 현황`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리. 자동 추출된 author는 전역 개발자 마스터에 저장하고 현재 프로젝트 연결도 함께 생성한다.
 - `개발자 목록`: 현재 프로젝트에 연결된 개발자 조회를 기본으로 제공하고, 전역 개발자 마스터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기를 지원한다.
 - `Program`: 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, 저장.
@@ -732,6 +732,7 @@ LLM 출력 예시:
 | `src/services/program_management_service.py` | `save_manual_program`, `update_program`, `delete_program`, `get_program_delete_impact` |
 | `src/services/development_plan_management_service.py` | `update_program_plan`, `save_plan_rows`, `bulk_update_plan`, `validate_plan_import` |
 | `src/services/git_service.py` | `sync_git_repository`, `collect_commits` |
+| `src/services/git_remote_service.py` | `clone_or_update_project_repository`, `RepositorySyncLock` |
 | `src/services/git_repository_status_service.py` | `get_repository_status` |
 | `src/services/developer_service.py` | `extract_developers_from_git_commits`, `get_developer_stats` |
 | `src/services/developer_management_service.py` | `save_manual_developer`, `update_developer`, `delete_developer`, `validate_developer_import` |

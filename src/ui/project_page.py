@@ -4,6 +4,7 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import Project
 from src.services.git_service import is_git_repository
+from src.services.git_remote_service import clone_or_update_project_repository
 from src.services.project_management_service import (
     delete_project,
     get_project_delete_impact,
@@ -139,6 +140,49 @@ def _render_project_reset_section(project: Project) -> None:
     st.rerun()
 
 
+def _render_remote_repository_section(project: Project) -> None:
+    st.divider()
+    st.subheader("서버 저장소 clone/fetch")
+    st.caption(
+        "Git remote URL과 branch가 저장된 프로젝트는 앱 서버가 저장소 경로에 clone하거나 origin을 fetch/reset할 수 있습니다. "
+        "access token, SSH key, password는 앱에 저장하지 않으며 서버 OS의 Git 인증 설정을 사용합니다."
+    )
+    if not project.git_remote_url:
+        st.info("Git remote URL을 저장하면 서버 저장소 clone/fetch를 사용할 수 있습니다.")
+        return
+    if not project.git_repo_path:
+        st.info("앱 서버 Git 저장소 경로를 저장하면 서버 저장소 clone/fetch를 사용할 수 있습니다.")
+        return
+
+    force_reset = st.checkbox(
+        "working tree local 변경이 있어도 reset",
+        value=False,
+        help="분석용 clone의 local 변경을 버려도 되는 운영 정책이 확실할 때만 선택하세요.",
+        key=f"project_remote_force_reset_{project.id}",
+    )
+    if not st.button("서버 저장소 clone/fetch", type="secondary", key=f"project_remote_sync_{project.id}"):
+        return
+
+    with st.spinner("앱 서버 Git 저장소를 clone/fetch/reset하는 중입니다."):
+        result = clone_or_update_project_repository(project, force_reset=force_reset)
+
+    for message in result.messages:
+        st.info(message)
+    if result.status in {"cloned", "updated"}:
+        st.success(
+            f"서버 저장소 준비 완료: {result.status}, "
+            f"HEAD {result.head_before[:12] if result.head_before else '-'} -> "
+            f"{result.head_after[:12] if result.head_after else '-'}"
+        )
+        st.rerun()
+    elif result.status == "skipped":
+        for error in result.errors:
+            st.warning(error)
+    else:
+        for error in result.errors:
+            st.error(error)
+
+
 def render_project_page() -> None:
     st.title("프로젝트/Git 설정")
     st.caption("프로젝트와 앱 서버에서 접근 가능한 Git 저장소 경로를 등록합니다.")
@@ -171,6 +215,16 @@ def render_project_page() -> None:
             value=selected_project.git_repo_path if selected_project else "",
             help="사용자 PC 경로가 아니라 Streamlit 앱이 실행 중인 서버에서 접근 가능한 Git 저장소 경로입니다.",
         )
+        remote_url = st.text_input(
+            "Git remote URL",
+            value=selected_project.git_remote_url if selected_project else "",
+            help="선택 사항입니다. 저장하면 앱 서버가 이 URL을 사용해 저장소를 clone/fetch할 수 있습니다. 인증 정보는 저장하지 마세요.",
+        )
+        branch = st.text_input(
+            "Git branch",
+            value=selected_project.git_branch if selected_project and selected_project.git_branch else "main",
+            help="서버 저장소 clone/fetch/reset에 사용할 branch입니다.",
+        )
         description = st.text_area("설명", value=selected_project.description if selected_project else "")
         submitted = st.form_submit_button("프로젝트 저장", type="primary")
 
@@ -180,6 +234,7 @@ def render_project_page() -> None:
             st.write("마지막 동기화 시각:", selected_project.last_synced_at or "-")
             if selected_project.git_repo_path:
                 render_repository_status(selected_project, compact=True)
+            _render_remote_repository_section(selected_project)
             _render_project_reset_section(selected_project)
             _render_project_delete_section(selected_project)
         return
@@ -190,7 +245,8 @@ def render_project_page() -> None:
     if repo_path.strip() and not is_repo_path_allowed(repo_path.strip()):
         st.error("입력한 Git 저장소 경로가 허용된 저장소 루트 밖에 있습니다.")
         return
-    if repo_path.strip() and not is_git_repository(repo_path.strip()):
+    remote_url_value = remote_url.strip()
+    if repo_path.strip() and not remote_url_value and not is_git_repository(repo_path.strip()):
         st.error("앱 서버에서 입력한 경로를 실제 Git 저장소로 확인할 수 없습니다.")
         return
 
@@ -204,6 +260,8 @@ def render_project_page() -> None:
 
         project.name = name.strip()
         project.git_repo_path = repo_path.strip() or None
+        project.git_remote_url = remote_url_value or None
+        project.git_branch = branch.strip() or None
         project.description = description.strip() or None
         db.commit()
         db.refresh(project)

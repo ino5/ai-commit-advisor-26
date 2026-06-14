@@ -94,6 +94,7 @@
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Demo / Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
+| P3 | Git Ops | Server-managed clone/fetch workflow | Done | Server-managed clone/fetch workflow |
 
 ## Candidate Tasks
 
@@ -101,7 +102,26 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters | Possible Direction | Notes |
 |---|---|---|---|---|---|
-| P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+## P3 - Server-Managed Clone/Fetch Workflow
+
+Status: Done
+
+Goal:
+Allow the app server to clone or fetch/reset a configured Git remote into an approved server repository path without storing Git credentials in AI Commit Advisor.
+
+Rationale:
+The previous operating model required repositories to be pre-cloned before project registration. Some deployments need a lighter operator flow where project settings include the remote URL and branch, and the app server prepares or refreshes the local clone itself while still keeping credential handling outside the app.
+
+Checklist:
+
+- [x] Add project schema fields for Git remote URL and branch through Alembic.
+- [x] Add a service that clones missing repositories and fetch/resets existing repositories under the configured repository path.
+- [x] Add a sync lock and dirty working tree guard.
+- [x] Add guarded Project/Git settings UI controls for remote clone/fetch.
+- [x] Add focused local Git tests for clone, fetch/reset, dirty skip, and force reset.
+- [x] Update operating model, runbook, setup, architecture, DB migration, and engineering decision docs.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile/tests and documentation diff verification.
 
 ## P2 - Project Reset Action After Delete Flow
 

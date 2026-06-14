@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Server-managed clone/fetch workflow
+
+- `projects`에 `git_remote_url`, `git_branch`를 추가하는 Alembic migration을 만들고, 프로젝트/Git 설정에서 Git remote URL과 branch를 저장할 수 있게 했습니다.
+- `clone_or_update_project_repository` service를 추가해 앱 서버 저장소 경로가 없으면 clone하고, 기존 Git 저장소가 있으면 `origin` fetch 후 branch를 `origin/<branch>`로 reset할 수 있게 했습니다.
+- repository별 lock 파일과 dirty working tree guard를 추가했습니다. access token, SSH key, password는 앱에 저장하지 않고 서버 OS의 Git 인증 설정을 사용한다는 운영 경계를 문서화했습니다.
+- 주요 파일: `migrations/versions/20260614_0007_add_project_git_remote_fields.py`, `src/db/models.py`, `src/services/git_remote_service.py`, `src/ui/project_page.py`, `tests/test_git_remote_service.py`, `docs/git-repository-operating-model.md`, `docs/server-repository-update-runbook.md`, `docs/setup-and-operations.md`, `docs/architecture.md`, `docs/db-migrations.md`, `docs/engineering-decisions.md`, `docs/demo-user-guide.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m compileall src app.py tests migrations\versions\20260614_0007_add_project_git_remote_fields.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_git_remote_service.py -q` 3개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 117개 테스트 통과; stale clone/fetch 정책 문구 검색 결과 현재 변경과 무관한 후속 작업 문맥만 남음; `git diff --check` 통과.
+
 ### Project reset action after delete flow
 
 - `프로젝트/Git 설정`에 `분석 데이터 초기화` action을 추가해 프로젝트명, Git 저장소 경로, 프로그램/개발계획, 표준용어/표준단어, 프로젝트 개발자 연결은 유지하고 분석/수집 결과만 삭제할 수 있게 했습니다.

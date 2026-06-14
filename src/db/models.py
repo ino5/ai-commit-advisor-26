@@ -26,6 +26,8 @@ class Project(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     git_repo_path: Mapped[str | None] = mapped_column(Text)
+    git_remote_url: Mapped[str | None] = mapped_column(Text)
+    git_branch: Mapped[str | None] = mapped_column(String(255))
     last_synced_commit_hash: Mapped[str | None] = mapped_column(String(64))
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

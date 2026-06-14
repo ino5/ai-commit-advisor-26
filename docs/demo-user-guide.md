@@ -385,7 +385,7 @@ Extract shared order status constants
 
 ### GitHub와 직접 연결하나요?
 
-현재는 앱이 GitHub API나 remote URL을 직접 관리하지 않습니다. 운영자나 사용자가 앱 서버에서 접근 가능한 위치에 Git 저장소를 clone해 두고, 앱은 그 경로에서 commit, 변경 파일, diff, 현재 소스를 읽습니다.
+앱은 GitHub API credential이나 Git password를 저장하지 않습니다. 운영자나 사용자가 앱 서버에서 접근 가능한 위치에 Git 저장소를 미리 clone해 둘 수 있고, 프로젝트/Git 설정의 `Git remote URL`과 branch를 저장해 앱 서버가 clone/fetch/reset을 실행하게 할 수도 있습니다. private repository는 서버 OS의 SSH key나 credential helper처럼 앱 밖의 인증 설정을 사용합니다.
 
 ### mock 모드와 실제 LLM 모드는 무엇이 다른가요?
 
