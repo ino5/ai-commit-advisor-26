@@ -34,6 +34,7 @@
 | P1 | Forecast / Risk | Forecasted completion and proactive delay risk | Done | 예상 종료일과 자원관리 Dashboard |
 | P1 | Resource UX | Developer workload and difficulty dashboard | Done | 예상 종료일과 자원관리 Dashboard |
 | P2 | Docs / Business Value | AX customer value KPI documentation | Done | 예상 종료일과 자원관리 Dashboard |
+| P2 | Docs / AI Positioning | AI technology application summary | Done | AI 기술 적용 요약 문서화 |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 |
 | P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping |
 | P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 |
@@ -101,6 +102,24 @@
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
 
 현재 승인 대기 중인 후보 작업은 없습니다. 새 concern이나 tradeoff를 보존해야 할 때 이 섹션에 후보 작업을 추가합니다.
+
+## P2 - AI Technology Application Summary
+
+Status: Done
+
+Goal:
+Make it clear which AI technologies are already applied in the AX Use Case and how each one contributes to project resource management, risk detection, source-grounded answers, and traceable decision support.
+
+Rationale:
+The app already uses LLM, embedding/RAG, source verification, AI-derived mapping/progress evidence, and rule-based analytics. However, the value can look like a general project dashboard unless the documentation explains the AI stack and its AX resource-management role in one place.
+
+Checklist:
+
+- [x] Add an AX-oriented AI technology summary to `docs/ai-technical-overview.md`.
+- [x] Distinguish real LLM/embedding/RAG usage from rule-based analytics that consume AI-derived evidence.
+- [x] Update README document navigation so readers can find the summary.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run documentation verification.
 
 ## P3 - Server-Managed Clone/Fetch Workflow
 

@@ -8,6 +8,33 @@ AI Commit Advisor는 개발계획 데이터와 실제 Git 활동을 연결합니
 
 이 프로젝트는 AI를 통제되지 않은 truth source가 아니라 분석과 검색을 보조하는 assistant로 사용합니다. 핵심 데이터는 program, commit, file, diff, source chunk, 저장된 analysis record로 추적 가능해야 합니다.
 
+## AX Use Case 기준 AI 적용 요약
+
+AI Commit Advisor의 AX Use Case는 "AI로 프로젝트 자원관리 판단을 보조한다"는 데 초점을 둡니다. 단일 chatbot이나 단순 코드리뷰 도구가 아니라, 개발계획과 Git 실행 데이터를 연결해 프로그램 구현상태, 일정 리스크, 개발자별 업무량, 코드 변경 위험, 현재 소스 근거를 함께 보는 구조입니다.
+
+이 프로젝트에 접목된 AI 기술은 아래처럼 나눠 설명할 수 있습니다.
+
+| AI 기술 | 실제 적용 위치 | 동작 방식 | AX 자원관리 의미 |
+|---|---|---|---|
+| LLM 기반 프로그램-커밋 매핑 | Mapping | commit message, changed files, diff, program metadata, RAG 후보를 함께 보고 commit이 어떤 program과 관련 있는지 판단합니다. | Git 이력을 업무 프로그램 단위로 연결해 AI Progress, Risk Analysis, Dashboard 자원관리 지표의 근거를 만듭니다. |
+| LLM 기반 구현상태 분석 | Program Detail, AI Progress | 프로그램 계획과 관련 commit/mapping evidence를 보고 NOT_STARTED, IN_PROGRESS, COMPLETED, UNKNOWN과 검증 필요 항목을 보수적으로 산출합니다. | 계획 진척률과 실제 구현 근거의 차이를 PL이 검토할 수 있게 합니다. |
+| LLM 기반 코드리뷰 | AI Code Review | 최신 commit, 특정 commit, 서버 clone local diff를 대상으로 변경 의도, 위험도, 버그 후보, 리팩토링 제안을 생성합니다. | 리뷰 부담을 줄이고 위험 변경을 자원관리 지표와 고객가치 참고 지표에 연결합니다. |
+| Embedding/vector search | RAG Search, Project Chat, Mapping 후보 검색 | current source, program, commit, commit_file diff를 chunk로 만들고 embedding/vector search로 유사 근거를 찾습니다. | 한글 업무 질문과 코드 식별자, 변경 이력, 프로그램 정보를 이어 주어 근거 탐색 시간을 줄입니다. |
+| Source-grounded RAG | Project Chat | 검색된 source_file chunk가 현재 checkout의 file/line/hash와 일치하는지 검증한 뒤 LLM 답변 근거로 사용합니다. | 오래된 코드나 삭제된 diff를 현재 사실처럼 말하는 위험을 줄이고, 회의/리뷰에 붙일 수 있는 citation을 제공합니다. |
+| 한국어 업무용어 확장 | RAG Search, Project Chat | 표준용어/표준단어의 한글명, 영문명, 약어에서 camelCase, snake_case, compact form 등을 파생해 검색 질의를 확장합니다. | SI 산출물의 한글 업무 용어와 실제 코드/DB 식별자 사이의 검색 간극을 줄입니다. |
+| AI-derived risk analytics | Risk Analysis | LLM mapping, AI progress, 프로그램 계획, commit 활동을 규칙 기반 리스크 조건과 결합합니다. | LLM이 임의로 위험을 단정하지 않고, 추적 가능한 근거로 누락/지연/불확실성 리스크를 저장합니다. |
+| AI-derived resource metrics | Dashboard | AI mapping/progress evidence, diff 규모, unresolved risk, AI Code Review 실행 기록을 계산형 지표로 집계합니다. | 개발자별 업무량, 난이도, 예상 지연, 리뷰 시간 절감 가능성, 추가 투입 예방 가능성을 PL 의사결정 신호로 보여줍니다. |
+| Human-in-the-loop 보정 | Mapping feedback review queue | AI mapping 결과의 낮은 관련도, 판단불가, 근거 부족 항목을 사람이 검토하고 feedback으로 보정합니다. | AI 결과를 확정값으로 쓰지 않고, PL/리뷰어의 보정이 downstream 분석에 반영되게 합니다. |
+| Local LLM/embedding 운영 제어 | Settings, RAG Search | mock provider와 OpenAI-compatible local provider를 지원하고, embedding batch limit과 예상 실행 시간을 보여줍니다. | 외부 AI service 없이도 PoC를 검증할 수 있고, 로컬 LLM/embedding 서버 과부하를 사용자가 통제할 수 있습니다. |
+
+따라서 이 프로젝트의 AI 적용은 세 층으로 나뉩니다.
+
+1. **생성/판단형 AI**: LLM이 mapping, 구현상태 분석, 코드리뷰, Project Chat 답변을 생성합니다.
+2. **검색/근거형 AI**: embedding과 pgvector가 source, program, commit, diff 근거를 검색하고 Project Chat/RAG가 citation을 제공합니다.
+3. **의사결정 보조 AI**: LLM과 embedding이 만든 evidence를 Risk Analysis, AI Progress, Dashboard 자원관리 지표가 다시 조합해 PL이 볼 우선순위와 병목 신호를 만듭니다.
+
+AX 시연에서는 "AI가 프로젝트를 자동으로 단정한다"보다 "AI가 Git 실행 데이터와 계획 산출물을 연결해 PL이 빨리 확인할 근거와 위험 신호를 만든다"는 관점으로 설명하는 것이 안전합니다.
+
 ## AI 기능 맵
 
 | 영역 | AI 사용 방식 | 사용하는 근거 | 출력 |

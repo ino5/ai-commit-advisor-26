@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### AI 기술 적용 요약 문서화
+
+- `docs/ai-technical-overview.md`에 AX Use Case 기준 AI 적용 요약을 추가해 LLM, embedding/vector search, source-grounded RAG, 한국어 업무용어 확장, AI-derived risk/resource analytics, human-in-the-loop 보정, local provider 운영 제어를 한눈에 볼 수 있게 했습니다.
+- 실제 LLM/embedding/RAG 호출이 일어나는 영역과, 그 AI-derived evidence를 활용하는 규칙/계산형 분석 영역을 구분해 설명했습니다.
+- README의 `AI 기술 개요` 링크 설명을 보강해 AI 기술 정리 문서로 바로 이어지게 했습니다.
+- 주요 파일: `docs/ai-technical-overview.md`, `README.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "AX Use Case 기준 AI 적용 요약|LLM 기반 프로그램-커밋 매핑|Embedding/vector search|Source-grounded RAG|AI-derived risk analytics|AI-derived resource metrics|AI technology application summary|AI 기술 적용 요약 문서화" docs\ai-technical-overview.md README.md ROADMAP.md AI_CHANGELOG.md`로 핵심 요약/로드맵/변경이력 반영 확인; `git diff --check` 통과.
+
 ### Roadmap 빈 후보 작업 표 정리
 
 - `ROADMAP.md`의 `Candidate Tasks` 섹션에서 행 없는 빈 표를 제거하고, 현재 승인 대기 중인 후보 작업이 없다는 문장으로 대체했습니다.
