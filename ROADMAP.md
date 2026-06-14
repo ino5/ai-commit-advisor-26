@@ -90,6 +90,7 @@
 | P2 | Docs / Screenshot UX | Application Preview current sidebar screenshots | Done | Application Preview 현재 메뉴 screenshot 갱신 |  |
 | P2 | Docs UX | Sidebar menu map documentation | Done | Sidebar 메뉴 구조 문서화 |  |
 | P2 | Docs / Screenshot UX | Application Preview lower-section coverage | Done | Application Preview 하단 기능 screenshot 보강 |  |
+| P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 |  |
 
 ## Candidate Tasks
 
@@ -212,6 +213,27 @@ Checklist:
 - [x] Update Application Preview captions and image references.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run screenshot/reference/diff verification.
+
+## P2 - README Representative Screenshot Source Cleanup
+
+Status: Done
+
+Goal:
+Make the README top screenshot use the same current Home screenshot as Application Preview.
+
+Rationale:
+README is the first user-facing entry point. Keeping a separate top screenshot file from Application Preview made the first image stale even after the preview screenshots were refreshed. The representative screenshot needs one source of truth so future visual updates do not miss the README again.
+
+Checklist:
+
+- [x] Point the README top screenshot at `docs/images/features/home.png`.
+- [x] Remove the duplicate README screenshot image lower in the document.
+- [x] Delete legacy representative screenshot files that are no longer referenced.
+- [x] Add a regression test preventing README from using `ai-commit-advisor-home*.png`.
+- [x] Record the root cause in `docs/failure-history.md`.
+- [x] Update screenshot convention in `docs/engineering-decisions.md`.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run documentation image reference and test verification.
 
 ## P2 - Sidebar Group Collapse Cleanup
 

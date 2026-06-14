@@ -31,6 +31,56 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-14 - README top screenshot stayed stale after Application Preview refresh
+
+분류:
+
+- Documentation screenshot drift
+- Verification gap
+- README entry-point UX
+
+관련 기능 및 문서:
+
+- `README.md`
+- `docs/application-preview.md`
+- `docs/images/features/home.png`
+- `docs/images/ai-commit-advisor-home-48.png`
+- `tests/test_documentation_images.py`
+
+### 증상
+
+Application Preview screenshot과 하단 기능 screenshot을 여러 차례 갱신했지만, README 최상단에 보이는 대표 화면은 예전 sidebar/menu 상태로 남아 있었습니다. 사용자가 README 첫 화면이 바뀌지 않았다고 지적했습니다.
+
+### 직접 원인
+
+README에는 Home screenshot이 두 군데 있었습니다. 최상단 이미지는 `docs/images/ai-commit-advisor-home-48.png`를 참조했고, `스크린샷` 섹션은 `docs/images/features/home.png`를 참조했습니다. 최근 캡처 작업은 Application Preview와 `docs/images/features/home.png`만 갱신했기 때문에 README 최상단의 별도 대표 이미지가 stale 상태로 남았습니다.
+
+### 배경 또는 구조적 원인
+
+과거 GitHub/browser image cache를 피하려고 versioned filename인 `ai-commit-advisor-home-48.png`를 추가한 뒤, README 대표 이미지와 Application Preview Home 이미지의 source of truth가 갈라졌습니다. 이후 작업에서는 "Application Preview screenshot 갱신"을 README 최상단 screenshot 갱신과 같은 일로 착각했습니다.
+
+### 사전 검증에서 놓친 이유
+
+검증은 `docs/application-preview.md`의 image reference와 `docs/images/features/*.png` 중심이었습니다. README의 모든 image reference를 점검하거나, README 최상단 대표 이미지가 Application Preview Home과 같은 파일을 쓰는지 확인하는 테스트가 없었습니다.
+
+### 수정 내용
+
+README 최상단 대표 이미지를 `docs/images/features/home.png`로 통일하고, 중복 `스크린샷` 섹션 이미지는 제거했습니다. 더 이상 사용하지 않는 legacy 대표 이미지 파일은 삭제합니다. README가 legacy `ai-commit-advisor-home*.png`를 다시 참조하지 않도록 문서 테스트를 추가했습니다.
+
+### 재발 방지 규칙
+
+README 대표 screenshot은 Application Preview의 Home screenshot과 같은 `docs/images/features/home.png`를 사용합니다. README에 별도 versioned representative screenshot 파일을 만들지 않습니다. Application Preview나 Home screenshot을 갱신할 때는 README image reference도 함께 확인합니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+GitHub 캐시 문제를 다시 만나면 파일명을 바꾸기보다 query/cache 정책이나 release note 안내를 검토합니다. 같은 이미지를 두 파일로 복제하는 방식은 사용하지 않습니다.
+
+### 검증 명령과 결과
+
+- `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 테스트 통과.
+- `rg -n "ai-commit-advisor-home" README.md docs\application-preview.md docs\feature-guide.md docs\setup-and-operations.md` 결과 없음.
+- `Test-Path docs\images\ai-commit-advisor-home.png`, `Test-Path docs\images\ai-commit-advisor-home-48.png` 모두 `False` 확인.
+
 ## 2026-06-14 - Risk Analysis screenshot verification exposed Streamlit `rename()` error
 
 분류:

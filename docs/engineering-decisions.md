@@ -709,6 +709,7 @@ README와 Application Preview의 화면 캡처는 단순한 장식이 아니라,
 - `docs/setup-and-operations.md`에 실행 명령, `--expect-text`/`--forbid-text` 검증 옵션, `--surface local|docker` 기록 방식을 남겼습니다.
 - Application Preview Screenshot Guidance와 같은 원칙을 유지해 빈 화면보다 기능 가치가 드러나는 상태를 캡처합니다.
 - 새 기능의 캡처 시나리오를 추가할 때는 해당 기능의 sample data 전제와 검증 text를 함께 남깁니다.
+- README 최상단 대표 screenshot은 Application Preview Home과 같은 `docs/images/features/home.png`를 사용합니다. 캐시 회피를 위해 별도 versioned 대표 이미지 파일을 만들면 source of truth가 갈라지므로 사용하지 않습니다.
 
 ### 관련 문서
 

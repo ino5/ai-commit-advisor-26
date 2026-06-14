@@ -4,7 +4,7 @@ AI Commit Advisor는 앱 서버에서 접근 가능한 Git 저장소의 커밋, 
 
 기본값은 mock 분석이며, LM Studio 같은 OpenAI-compatible 로컬 LLM/embedding 서버를 연결하면 Mapping, AI Code Review, Project Chat, RAG 검색에서 실제 AI 기반 분석을 실행할 수 있습니다.
 
-![AI Commit Advisor dashboard](docs/images/ai-commit-advisor-home-48.png)
+![AI Commit Advisor dashboard](docs/images/features/home.png)
 
 ## 아키텍처 요약
 
@@ -128,9 +128,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 
 ## 스크린샷
 
-대표 화면은 아래와 같습니다. 주요 화면 미리보기는 [Application Preview](docs/application-preview.md)에서 확인할 수 있습니다.
-
-![Home](docs/images/features/home.png)
+대표 화면은 README 상단에서 바로 확인할 수 있습니다. 주요 화면과 상세 workflow 상태는 [Application Preview](docs/application-preview.md)에서 확인할 수 있습니다.
 
 ## 문서
 

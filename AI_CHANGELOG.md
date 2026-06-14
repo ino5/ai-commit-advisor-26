@@ -2,6 +2,16 @@
 
 ## 2026-06-14
 
+### README 대표 screenshot source 통합
+
+- README 최상단 대표 screenshot이 stale 상태로 남던 원인을 확인하고, `docs/images/features/home.png`를 단일 source로 사용하도록 정리했습니다.
+- README 중간 `스크린샷` 섹션의 중복 Home 이미지를 제거하고, 상세 화면은 Application Preview로 안내하게 했습니다.
+- 더 이상 참조하지 않는 `docs/images/ai-commit-advisor-home.png`, `docs/images/ai-commit-advisor-home-48.png`를 삭제했습니다.
+- README가 legacy `ai-commit-advisor-home*.png`를 다시 참조하지 않도록 `tests/test_documentation_images.py`를 추가했습니다.
+- 원인과 재발 방지 기준을 `docs/failure-history.md`, `docs/engineering-decisions.md`에 기록했습니다.
+- 주요 파일: `README.md`, `tests/test_documentation_images.py`, `docs/failure-history.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 테스트 통과; `rg -n "ai-commit-advisor-home" README.md docs\application-preview.md docs\feature-guide.md docs\setup-and-operations.md` 결과 없음; legacy 대표 이미지 파일 2개 삭제 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 111개 테스트 통과; `git diff --check` 통과.
+
 ### Application Preview 하단 기능 screenshot 보강
 
 - 긴 화면에서 한 장의 screenshot만으로 하단 기능이 덜 보이는 문제를 줄이기 위해 Program Detail, Risk Analysis, RAG 검색, Project Chat, Dashboard, AI Progress에 보강 screenshot을 추가했습니다.
