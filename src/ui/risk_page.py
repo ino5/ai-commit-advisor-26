@@ -4,7 +4,7 @@ import streamlit as st
 
 from src.db.database import SessionLocal
 from src.services.risk_service import get_unresolved_findings, resolve_findings, run_risk_analysis, summarize_findings
-from src.ui.project_context import require_project_context
+from src.ui.project_context import project_scoped_key, require_project_context
 
 
 LEVEL_ORDER = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
@@ -110,14 +110,29 @@ def _render_findings(project_id: int, findings) -> None:
     col1, col2, col3 = st.columns(3)
     levels = sorted(df["risk_level"].dropna().unique().tolist(), key=lambda value: -LEVEL_ORDER.get(value, 0))
     level_options = {_level_label(level): level for level in levels}
-    selected_level_labels = col1.multiselect("리스크 수준", list(level_options.keys()), default=list(level_options.keys()))
+    selected_level_labels = col1.multiselect(
+        "리스크 수준",
+        list(level_options.keys()),
+        default=list(level_options.keys()),
+        key=project_scoped_key(project_id, "risk_level_filter"),
+    )
     selected_levels = [level_options[label] for label in selected_level_labels]
     risk_types = sorted(df["risk_type"].dropna().unique().tolist())
     type_options = {_risk_type_label(risk_type): risk_type for risk_type in risk_types}
-    selected_type_labels = col2.multiselect("리스크 유형", list(type_options.keys()), default=list(type_options.keys()))
+    selected_type_labels = col2.multiselect(
+        "리스크 유형",
+        list(type_options.keys()),
+        default=list(type_options.keys()),
+        key=project_scoped_key(project_id, "risk_type_filter"),
+    )
     selected_types = [type_options[label] for label in selected_type_labels]
     developers = sorted(df["developer"].fillna("미지정").unique().tolist())
-    selected_developers = col3.multiselect("담당자", developers, default=developers)
+    selected_developers = col3.multiselect(
+        "담당자",
+        developers,
+        default=developers,
+        key=project_scoped_key(project_id, "risk_developer_filter"),
+    )
 
     filtered = df[
         df["risk_level"].isin(selected_levels)
@@ -164,7 +179,11 @@ def _render_findings(project_id: int, findings) -> None:
         f"{row.id} | {_level_label(row.risk_level)} | {row.program_id or '-'} | {row.title}": int(row.id)
         for row in filtered.itertuples()
     }
-    selected = st.multiselect("resolved 처리할 리스크", list(resolve_options.keys()))
+    selected = st.multiselect(
+        "resolved 처리할 리스크",
+        list(resolve_options.keys()),
+        key=project_scoped_key(project_id, "risk_resolve_select"),
+    )
     if st.button("선택 항목 resolved 처리", disabled=not selected):
         ids = [resolve_options[label] for label in selected]
         with SessionLocal() as db:

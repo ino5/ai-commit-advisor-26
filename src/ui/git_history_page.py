@@ -13,7 +13,7 @@ from src.services.git_history_service import (
     list_git_history_commits,
 )
 from src.ui.display_utils import format_datetime, key_value_dataframe
-from src.ui.project_context import require_project_context
+from src.ui.project_context import project_scoped_key, require_project_context
 
 
 def _render_history_charts(rows: pd.DataFrame) -> None:
@@ -44,21 +44,53 @@ def _render_history_charts(rows: pd.DataFrame) -> None:
 def _select_commit(project_id: int) -> int | None:
     st.subheader("커밋 목록")
     col1, col2, col3 = st.columns([1.5, 1.2, 1.2])
-    message_keyword = col1.text_input("메시지 검색", key="git_history_message")
-    author_keyword = col2.text_input("작성자 검색", key="git_history_author")
-    file_keyword = col3.text_input("파일 경로 검색", key="git_history_file")
+    message_keyword = col1.text_input(
+        "메시지 검색",
+        key=project_scoped_key(project_id, "git_history_message"),
+    )
+    author_keyword = col2.text_input(
+        "작성자 검색",
+        key=project_scoped_key(project_id, "git_history_author"),
+    )
+    file_keyword = col3.text_input(
+        "파일 경로 검색",
+        key=project_scoped_key(project_id, "git_history_file"),
+    )
 
     option_col1, option_col2, option_col3 = st.columns([1, 1, 1])
-    use_date_filter = option_col1.checkbox("날짜 필터", value=False, key="git_history_use_date")
-    limit = option_col2.number_input("최대 표시", min_value=20, max_value=1000, value=300, step=20)
-    include_full_hash = option_col3.checkbox("전체 hash 표시", value=False)
+    use_date_filter = option_col1.checkbox(
+        "날짜 필터",
+        value=False,
+        key=project_scoped_key(project_id, "git_history_use_date"),
+    )
+    limit = option_col2.number_input(
+        "최대 표시",
+        min_value=20,
+        max_value=1000,
+        value=300,
+        step=20,
+        key=project_scoped_key(project_id, "git_history_limit"),
+    )
+    include_full_hash = option_col3.checkbox(
+        "전체 hash 표시",
+        value=False,
+        key=project_scoped_key(project_id, "git_history_include_full_hash"),
+    )
 
     start_date = None
     end_date = None
     if use_date_filter:
         date_col1, date_col2 = st.columns(2)
-        start_date = date_col1.date_input("시작일", value=date.today() - timedelta(days=90))
-        end_date = date_col2.date_input("종료일", value=date.today())
+        start_date = date_col1.date_input(
+            "시작일",
+            value=date.today() - timedelta(days=90),
+            key=project_scoped_key(project_id, "git_history_start_date"),
+        )
+        end_date = date_col2.date_input(
+            "종료일",
+            value=date.today(),
+            key=project_scoped_key(project_id, "git_history_end_date"),
+        )
 
     with SessionLocal() as db:
         commits = list_git_history_commits(
@@ -108,7 +140,11 @@ def _select_commit(project_id: int) -> int | None:
         )
         for row in rows.itertuples()
     }
-    selected_label = st.selectbox("상세 조회할 커밋", list(labels.keys()))
+    selected_label = st.selectbox(
+        "상세 조회할 커밋",
+        list(labels.keys()),
+        key=project_scoped_key(project_id, "git_history_commit_select"),
+    )
     return labels[selected_label]
 
 
@@ -151,12 +187,20 @@ def _render_commit_detail(project_id: int, commit_db_id: int) -> None:
         st.subheader("변경 파일")
         st.dataframe(file_rows[["file_path", "change_type"]], use_container_width=True, hide_index=True)
 
-        selected_file = st.selectbox("저장된 diff preview", file_rows["file_path"].tolist())
+        selected_file = st.selectbox(
+            "저장된 diff preview",
+            file_rows["file_path"].tolist(),
+            key=project_scoped_key(project_id, f"git_history_file_select_{commit_db_id}"),
+        )
         selected = file_rows[file_rows["file_path"] == selected_file].iloc[0]
         st.code(selected.diff_text or "저장된 diff가 없습니다.", language="diff")
 
     st.subheader("전체 diff")
-    if st.checkbox("앱 서버 Git 저장소에서 전체 git show diff 조회", value=False):
+    if st.checkbox(
+        "앱 서버 Git 저장소에서 전체 git show diff 조회",
+        value=False,
+        key=project_scoped_key(project_id, f"git_history_full_diff_{commit_db_id}"),
+    ):
         with SessionLocal() as db:
             full_diff = get_commit_full_diff(db, project_id=project_id, commit_db_id=commit_db_id)
         if full_diff.errors:

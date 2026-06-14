@@ -87,3 +87,8 @@ def test_get_current_project_context_clears_selection_when_no_projects(monkeypat
     assert context is None
     assert project_context.CURRENT_PROJECT_ID_KEY not in fake_st.session_state
     assert project_context.CURRENT_PROJECT_QUERY_PARAM not in fake_st.query_params
+
+
+def test_project_scoped_key_includes_project_id():
+    assert project_context.project_scoped_key(7, "program_select") == "project_7_program_select"
+    assert project_context.project_scoped_key("8", "commit_filter") == "project_8_commit_filter"

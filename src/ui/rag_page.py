@@ -15,7 +15,7 @@ from src.rag.source_index_service import (
 )
 from src.rag.source_verifier import annotate_retrieval_result
 from src.rag.vector_store import VectorStore
-from src.ui.project_context import require_project_context
+from src.ui.project_context import project_scoped_key, require_project_context
 from src.utils.config import settings
 from src.utils.runtime_estimator import estimate_runtime
 
@@ -110,13 +110,19 @@ def _render_index_stats(project_id: int) -> None:
         st.caption(", ".join(f"{_source_label(key)}: {value}" for key, value in source_counts.items()))
 
 
-def _selected_source_types(label: str, default: list[str] | None = None, help_text: str | None = None) -> list[str]:
+def _selected_source_types(
+    label: str,
+    default: list[str] | None = None,
+    help_text: str | None = None,
+    key: str | None = None,
+) -> list[str]:
     labels = {SOURCE_TYPE_LABELS[value]: value for value in SOURCE_TYPE_OPTIONS}
     selected = st.multiselect(
         label,
         list(labels.keys()),
         default=[SOURCE_TYPE_LABELS[v] for v in (default or SOURCE_TYPE_OPTIONS)],
         help=help_text,
+        key=key,
     )
     return [labels[item] for item in selected]
 
@@ -216,6 +222,7 @@ def _render_source_index_status(project: Project) -> None:
         type="primary" if status.needs_reindex else "secondary",
         disabled=not bool(project.git_repo_path),
         help=RAG_HELP["refresh_changed"],
+        key=project_scoped_key(project.id, "rag_refresh_changed"),
     ):
         with SessionLocal() as db:
             current_project = db.get(Project, project.id)
@@ -255,6 +262,7 @@ def _render_source_index_status(project: Project) -> None:
         "전체 소스 다시 읽은 뒤 검색 준비도 실행",
         value=False,
         help=RAG_HELP["search_after_refresh"],
+        key=project_scoped_key(project.id, "rag_embed_after_refresh"),
     )
     refresh_embedding_limit = 0
     if embed_after_refresh:
@@ -265,10 +273,17 @@ def _render_source_index_status(project: Project) -> None:
             value=50,
             step=25,
             help="큰 저장소에서 PC가 느려지는 것을 막기 위해 한 번에 처리할 수를 제한합니다.",
+            key=project_scoped_key(project.id, "rag_refresh_embedding_limit"),
         )
         _render_runtime_notice("embedding", status.source_chunk_count, int(refresh_embedding_limit))
 
-    if st.button("전체 소스 다시 읽기", type="secondary", disabled=not bool(project.git_repo_path), help=RAG_HELP["refresh_all"]):
+    if st.button(
+        "전체 소스 다시 읽기",
+        type="secondary",
+        disabled=not bool(project.git_repo_path),
+        help=RAG_HELP["refresh_all"],
+        key=project_scoped_key(project.id, "rag_refresh_all"),
+    ):
         with SessionLocal() as db:
             current_project = db.get(Project, project.id)
             if current_project is None:
@@ -300,10 +315,39 @@ def _render_index_controls(project: Project) -> None:
     _render_source_index_status(project)
     st.divider()
     col1, col2, col3 = st.columns(3)
-    chunk_size = col1.number_input("근거 조각 크기", min_value=300, max_value=4000, value=DEFAULT_CHUNK_SIZE, step=100, help=RAG_HELP["chunk_size"])
-    overlap = col2.number_input("겹치는 글자 수", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50, help=RAG_HELP["overlap"])
-    limit = col3.number_input("검색 준비 최대 처리 수", min_value=1, max_value=10000, value=50, step=25, help=RAG_HELP["limit"])
-    source_types = _selected_source_types("준비할 근거 종류", SOURCE_TYPE_OPTIONS, help_text=RAG_HELP["source_filter"])
+    chunk_size = col1.number_input(
+        "근거 조각 크기",
+        min_value=300,
+        max_value=4000,
+        value=DEFAULT_CHUNK_SIZE,
+        step=100,
+        help=RAG_HELP["chunk_size"],
+        key=project_scoped_key(project.id, "rag_all_chunk_size"),
+    )
+    overlap = col2.number_input(
+        "겹치는 글자 수",
+        min_value=0,
+        max_value=500,
+        value=DEFAULT_CHUNK_OVERLAP,
+        step=50,
+        help=RAG_HELP["overlap"],
+        key=project_scoped_key(project.id, "rag_all_overlap"),
+    )
+    limit = col3.number_input(
+        "검색 준비 최대 처리 수",
+        min_value=1,
+        max_value=10000,
+        value=50,
+        step=25,
+        help=RAG_HELP["limit"],
+        key=project_scoped_key(project.id, "rag_all_embedding_limit"),
+    )
+    source_types = _selected_source_types(
+        "준비할 근거 종류",
+        SOURCE_TYPE_OPTIONS,
+        help_text=RAG_HELP["source_filter"],
+        key=project_scoped_key(project.id, "rag_all_source_types"),
+    )
     _, pending_count = _embedding_workload(project.id, source_types)
     _render_runtime_notice("embedding", pending_count, int(limit))
     if pending_count == 0:
@@ -315,6 +359,7 @@ def _render_index_controls(project: Project) -> None:
         "근거 만들고 검색 준비 실행",
         type="secondary" if pending_count == 0 else "primary",
         help=RAG_HELP["run_all"],
+        key=project_scoped_key(project.id, "rag_run_all"),
     ):
         with st.spinner("현재 소스, 프로그램, 커밋, 변경 파일/diff를 질문 검색에 사용할 근거로 준비하는 중입니다."):
             chunk_result = _run_chunking(project, source_types, int(chunk_size), int(overlap))
@@ -335,13 +380,39 @@ def _render_index_controls(project: Project) -> None:
 def _render_chunk_controls(project: Project) -> None:
     st.subheader("근거 만들기")
     col1, col2 = st.columns(2)
-    chunk_size = col1.number_input("근거 조각 크기", min_value=300, max_value=4000, value=DEFAULT_CHUNK_SIZE, step=100, key="chunk_size_only", help=RAG_HELP["chunk_size"])
-    overlap = col2.number_input("겹치는 글자 수", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50, key="overlap_only", help=RAG_HELP["overlap"])
-    source_types = _selected_source_types("근거 대상", SOURCE_TYPE_OPTIONS, help_text=RAG_HELP["source_filter"])
+    chunk_size = col1.number_input(
+        "근거 조각 크기",
+        min_value=300,
+        max_value=4000,
+        value=DEFAULT_CHUNK_SIZE,
+        step=100,
+        key=project_scoped_key(project.id, "rag_chunk_size_only"),
+        help=RAG_HELP["chunk_size"],
+    )
+    overlap = col2.number_input(
+        "겹치는 글자 수",
+        min_value=0,
+        max_value=500,
+        value=DEFAULT_CHUNK_OVERLAP,
+        step=50,
+        key=project_scoped_key(project.id, "rag_overlap_only"),
+        help=RAG_HELP["overlap"],
+    )
+    source_types = _selected_source_types(
+        "근거 대상",
+        SOURCE_TYPE_OPTIONS,
+        help_text=RAG_HELP["source_filter"],
+        key=project_scoped_key(project.id, "rag_chunk_source_types"),
+    )
     if "source_file" in source_types and not project.git_repo_path:
         st.warning("현재 소스 파일을 근거로 만들려면 프로젝트에 앱 서버 Git 저장소 경로가 필요합니다.")
 
-    if not st.button("근거 만들기", type="primary", help=RAG_HELP["run_evidence"]):
+    if not st.button(
+        "근거 만들기",
+        type="primary",
+        help=RAG_HELP["run_evidence"],
+        key=project_scoped_key(project.id, "rag_run_chunking"),
+    ):
         return
 
     result = _run_chunking(project, source_types, int(chunk_size), int(overlap))
@@ -355,14 +426,31 @@ def _render_embedding_controls(project_id: int) -> None:
         f"base_url={settings.embedding_base_url or settings.llm_base_url or '미설정'}, "
         f"model={settings.embedding_model or '미설정'}, dimension={settings.pgvector_dimension}"
     )
-    source_types = _selected_source_types("검색 준비 대상", SOURCE_TYPE_OPTIONS, help_text=RAG_HELP["source_filter"])
-    limit = st.number_input("이번 실행에서 처리할 최대 근거 수", min_value=1, max_value=10000, value=50, step=25, help=RAG_HELP["limit"])
+    source_types = _selected_source_types(
+        "검색 준비 대상",
+        SOURCE_TYPE_OPTIONS,
+        help_text=RAG_HELP["source_filter"],
+        key=project_scoped_key(project_id, "rag_embedding_source_types"),
+    )
+    limit = st.number_input(
+        "이번 실행에서 처리할 최대 근거 수",
+        min_value=1,
+        max_value=10000,
+        value=50,
+        step=25,
+        help=RAG_HELP["limit"],
+        key=project_scoped_key(project_id, "rag_embedding_limit"),
+    )
     client_preview, pending_count = _embedding_workload(project_id, source_types)
     _render_runtime_notice("embedding", pending_count, int(limit))
     st.caption(f"검색 준비 모델: {client_preview.embedding_model_name}")
 
     col1, col2 = st.columns([1, 2])
-    if col1.button("검색 준비 연결 테스트", help=RAG_HELP["connection_test"]):
+    if col1.button(
+        "검색 준비 연결 테스트",
+        help=RAG_HELP["connection_test"],
+        key=project_scoped_key(project_id, "rag_embedding_connection_test"),
+    ):
         client = EmbeddingClient()
         ok, message = client.test_connection()
         if ok:
@@ -370,7 +458,12 @@ def _render_embedding_controls(project_id: int) -> None:
         else:
             st.error(message)
 
-    if not col2.button("검색 준비 실행", type="primary", help=RAG_HELP["run_search_ready"]):
+    if not col2.button(
+        "검색 준비 실행",
+        type="primary",
+        help=RAG_HELP["run_search_ready"],
+        key=project_scoped_key(project_id, "rag_run_embedding"),
+    ):
         return
 
     with st.spinner("아직 검색 준비가 안 된 근거를 처리하는 중입니다."):
@@ -388,20 +481,33 @@ def _render_embedding_controls(project_id: int) -> None:
 
 def _render_search(project: Project) -> None:
     st.subheader("검색 품질 확인")
-    if "rag_search_query" not in st.session_state:
-        st.session_state["rag_search_query"] = ""
+    query_key = project_scoped_key(project.id, "rag_search_query")
+    if query_key not in st.session_state:
+        st.session_state[query_key] = ""
     query = st.text_area(
         "검색어",
         placeholder="커밋 메시지, 파일 경로, diff 일부 또는 프로그램 설명을 입력하세요.",
-        key="rag_search_query",
+        key=query_key,
     )
     col1, col2 = st.columns(2)
-    top_k = col1.slider("TOP K", min_value=1, max_value=50, value=10, help=RAG_HELP["top_k"])
-    source_types = _selected_source_types("근거 종류 필터", ["source_file"], help_text=RAG_HELP["source_filter"])
+    top_k = col1.slider(
+        "TOP K",
+        min_value=1,
+        max_value=50,
+        value=10,
+        help=RAG_HELP["top_k"],
+        key=project_scoped_key(project.id, "rag_search_top_k"),
+    )
+    source_types = _selected_source_types(
+        "근거 종류 필터",
+        ["source_file"],
+        help_text=RAG_HELP["source_filter"],
+        key=project_scoped_key(project.id, "rag_search_source_types"),
+    )
 
-    if not st.button("검색", type="primary"):
+    if not st.button("검색", type="primary", key=project_scoped_key(project.id, "rag_search_button")):
         return
-    query_text = st.session_state.get("rag_search_query", query).strip()
+    query_text = st.session_state.get(query_key, query).strip()
     if not query_text:
         st.warning("검색어를 입력하세요.")
         return
@@ -464,7 +570,13 @@ def _render_search(project: Project) -> None:
                     "metadata": result["metadata"],
                 }
             )
-            st.text_area("원문 일부", value=result["text"][:2000], height=220, disabled=True, key=f"chunk_text_{result['id']}")
+            st.text_area(
+                "원문 일부",
+                value=result["text"][:2000],
+                height=220,
+                disabled=True,
+                key=project_scoped_key(project.id, f"chunk_text_{result['id']}"),
+            )
 
 
 def _render_chat(project: Project) -> None:
@@ -473,13 +585,25 @@ def _render_chat(project: Project) -> None:
     question = st.text_area(
         "질문",
         placeholder="예: 매핑 피드백 저장 흐름이 어디에서 처리되는지 알려줘.",
-        key="rag_chat_question",
+        key=project_scoped_key(project.id, "rag_chat_question"),
     )
     col1, col2 = st.columns([1, 1])
-    top_k = col1.slider("검색 TOP K", min_value=3, max_value=30, value=8, key="rag_chat_top_k", help=RAG_HELP["chat_top_k"])
-    include_history = col2.checkbox("커밋 이력도 검색 후보에 포함", value=False, help=RAG_HELP["include_history"])
+    top_k = col1.slider(
+        "검색 TOP K",
+        min_value=3,
+        max_value=30,
+        value=8,
+        key=project_scoped_key(project.id, "rag_chat_top_k"),
+        help=RAG_HELP["chat_top_k"],
+    )
+    include_history = col2.checkbox(
+        "커밋 이력도 검색 후보에 포함",
+        value=False,
+        help=RAG_HELP["include_history"],
+        key=project_scoped_key(project.id, "rag_chat_include_history"),
+    )
 
-    if not st.button("질문하기", type="primary"):
+    if not st.button("질문하기", type="primary", key=project_scoped_key(project.id, "rag_chat_submit")):
         return
     if not question.strip():
         st.warning("질문을 입력하세요.")

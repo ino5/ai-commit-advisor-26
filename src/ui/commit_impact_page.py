@@ -6,21 +6,39 @@ from datetime import date, timedelta
 from src.db.database import SessionLocal
 from src.services.commit_impact_service import get_commit_impact_analysis, list_commit_options
 from src.ui.display_utils import format_datetime, key_value_dataframe
-from src.ui.project_context import require_project_context
+from src.ui.project_context import project_scoped_key, require_project_context
 
 
 def _select_commit(project_id: int) -> int | None:
     st.subheader("커밋 선택")
     col1, col2, col3 = st.columns([2, 1.5, 1])
-    message_keyword = col1.text_input("commit message 검색")
-    author_keyword = col2.text_input("author 검색")
-    use_date_filter = col3.checkbox("날짜 필터 사용", value=False)
+    message_keyword = col1.text_input(
+        "commit message 검색",
+        key=project_scoped_key(project_id, "commit_impact_message"),
+    )
+    author_keyword = col2.text_input(
+        "author 검색",
+        key=project_scoped_key(project_id, "commit_impact_author"),
+    )
+    use_date_filter = col3.checkbox(
+        "날짜 필터 사용",
+        value=False,
+        key=project_scoped_key(project_id, "commit_impact_use_date"),
+    )
     start_date = None
     end_date = None
     if use_date_filter:
         date_col1, date_col2 = st.columns(2)
-        start_date = date_col1.date_input("시작일", value=date.today() - timedelta(days=90))
-        end_date = date_col2.date_input("종료일", value=date.today())
+        start_date = date_col1.date_input(
+            "시작일",
+            value=date.today() - timedelta(days=90),
+            key=project_scoped_key(project_id, "commit_impact_start_date"),
+        )
+        end_date = date_col2.date_input(
+            "종료일",
+            value=date.today(),
+            key=project_scoped_key(project_id, "commit_impact_end_date"),
+        )
 
     with SessionLocal() as db:
         commits = list_commit_options(
@@ -52,7 +70,11 @@ def _select_commit(project_id: int) -> int | None:
         f"{row.commit_hash} | {row.author_name} | {format_datetime(row.committed_at)} | {row.message[:90]}": int(row.commit_db_id)
         for row in rows.itertuples()
     }
-    selected_label = st.selectbox("분석할 커밋", list(labels.keys()))
+    selected_label = st.selectbox(
+        "분석할 커밋",
+        list(labels.keys()),
+        key=project_scoped_key(project_id, "commit_impact_commit_select"),
+    )
     st.dataframe(rows[["commit_hash", "message", "author_name", "committed_at"]], use_container_width=True, hide_index=True)
     return labels[selected_label]
 
@@ -116,7 +138,7 @@ def _render_programs(analysis) -> None:
     )
 
 
-def _render_files(analysis) -> None:
+def _render_files(project_id: int, commit_db_id: int, analysis) -> None:
     st.subheader("영향 파일 분석")
     if not analysis.files:
         st.info("변경 파일 정보가 없습니다.")
@@ -127,7 +149,11 @@ def _render_files(analysis) -> None:
     )
     st.dataframe(file_df[["file_path", "change_type"]], use_container_width=True, hide_index=True)
 
-    selected_file = st.selectbox("diff snippet 보기", file_df["file_path"].tolist())
+    selected_file = st.selectbox(
+        "diff snippet 보기",
+        file_df["file_path"].tolist(),
+        key=project_scoped_key(project_id, f"commit_impact_file_select_{commit_db_id}"),
+    )
     selected = file_df[file_df["file_path"] == selected_file].iloc[0]
     st.code(selected.diff_snippet or "diff 없음", language="diff")
 
@@ -182,4 +208,4 @@ def render_commit_impact_page() -> None:
     with top_right:
         _render_developers(analysis)
     st.divider()
-    _render_files(analysis)
+    _render_files(project_id, commit_db_id, analysis)

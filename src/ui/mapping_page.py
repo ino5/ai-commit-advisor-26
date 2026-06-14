@@ -16,7 +16,7 @@ from src.services.mapping_feedback_service import (
     list_mapping_review_queue_rows,
     summarize_mapping_feedback_quality,
 )
-from src.ui.project_context import require_project_context
+from src.ui.project_context import project_scoped_key, require_project_context
 
 
 def _commit_status(commit: GitCommit) -> str:
@@ -126,13 +126,18 @@ def _render_commit_based_mode(project_id: int) -> None:
             min_value=3,
             max_value=30,
             value=DEFAULT_CANDIDATES_PER_COMMIT,
+            key=project_scoped_key(project_id, "mapping_candidates_per_commit"),
             help="커밋 1개마다 규칙/토큰 유사도로 후보 프로그램만 추린 뒤, 이 후보만 LLM에 전달합니다.",
         )
 
         st.markdown("**일괄 분석**")
         batch_col1, batch_col2 = st.columns([1, 2])
         run_pending = batch_col1.button("미완료 커밋 전체 분석", type="primary", disabled=pending_count == 0)
-        retry_failed = batch_col2.checkbox("실패 커밋도 다시 시도", value=True)
+        retry_failed = batch_col2.checkbox(
+            "실패 커밋도 다시 시도",
+            value=True,
+            key=project_scoped_key(project_id, "mapping_retry_failed"),
+        )
 
         if run_pending:
             retryable_statuses = {"not_analyzed", "failed"} if retry_failed else {"not_analyzed"}
@@ -150,6 +155,7 @@ def _render_commit_based_mode(project_id: int) -> None:
             "목록에 표시할 상태",
             ["not_analyzed", "failed", "completed"],
             default=["not_analyzed", "failed"],
+            key=project_scoped_key(project_id, "mapping_status_filter"),
         )
         filtered_commits = [commit for commit in commits if _commit_status(commit) in set(status_filter)]
 
@@ -160,13 +166,18 @@ def _render_commit_based_mode(project_id: int) -> None:
             "분석할 커밋 여러 개 선택",
             list(commit_options.keys()),
             default=default_labels,
+            key=project_scoped_key(project_id, "mapping_selected_commits"),
             help="필요한 커밋을 여러 개 고른 뒤 한 번에 분석할 수 있습니다.",
         )
 
         selected_commit_ids = [commit_options[label] for label in selected_commit_labels]
         selected_col1, selected_col2, selected_col3 = st.columns([1, 1, 2])
         run_selected = selected_col1.button("선택한 커밋 분석", disabled=not selected_commit_ids)
-        force_reanalyze = selected_col2.checkbox("완료 커밋도 재분석", value=False)
+        force_reanalyze = selected_col2.checkbox(
+            "완료 커밋도 재분석",
+            value=False,
+            key=project_scoped_key(project_id, "mapping_force_reanalyze"),
+        )
         selected_col3.caption(f"선택: {len(selected_commit_ids)}건 / 표시: {len(filtered_commits)}건")
 
         if run_selected:
@@ -184,9 +195,14 @@ def _render_program_based_mode(project_id: int) -> None:
         min_value=1,
         max_value=30,
         value=min(DEFAULT_CANDIDATES_PER_PROGRAM, 5),
+        key=project_scoped_key(project_id, "mapping_candidates_per_program"),
         help="기존 방식입니다. 프로그램별로 후보 커밋을 추리고 각 조합을 LLM으로 분석합니다.",
     )
-    related_only = st.checkbox("관련 커밋으로 판단된 결과만 저장", value=False)
+    related_only = st.checkbox(
+        "관련 커밋으로 판단된 결과만 저장",
+        value=False,
+        key=project_scoped_key(project_id, "mapping_related_only"),
+    )
 
     if not st.button("프로그램 기준 매핑 분석 실행", type="primary"):
         return
@@ -249,11 +265,12 @@ def _render_mapping_feedback(project_id: int) -> None:
         "리뷰 큐 필터",
         ["전체", "리뷰 필요만", "피드백 미완료", "판단불가", "낮은 관련도", "비관련 판정"],
         index=1,
+        key=project_scoped_key(project_id, "mapping_review_queue_filter"),
     )
     queue_keyword = queue_col2.text_input(
         "리뷰 큐 검색어",
         placeholder="프로그램명, program_id, commit message, commit hash",
-        key="mapping_review_queue_keyword",
+        key=project_scoped_key(project_id, "mapping_review_queue_keyword"),
     )
 
     with SessionLocal() as db:
@@ -290,7 +307,7 @@ def _render_mapping_feedback(project_id: int) -> None:
         selected_queue_label = st.selectbox(
             "리뷰 큐에서 보정할 매핑 선택",
             ["선택 안 함", *list(queue_labels.keys())],
-            key="mapping_review_queue_select",
+            key=project_scoped_key(project_id, "mapping_review_queue_select"),
         )
         if selected_queue_label != "선택 안 함":
             selected_queue_row = queue_labels[selected_queue_label]
@@ -300,9 +317,20 @@ def _render_mapping_feedback(project_id: int) -> None:
     st.divider()
     st.markdown("#### 매핑 목록 / 보정")
     filter_col1, filter_col2, filter_col3 = st.columns([2, 1, 1])
-    keyword = filter_col1.text_input("프로그램/커밋 검색", key="mapping_feedback_keyword")
-    only_feedback = filter_col2.checkbox("피드백 완료만", value=False)
-    relation_filter_label = filter_col3.selectbox("관련 여부", ["전체", "관련", "비관련"])
+    keyword = filter_col1.text_input(
+        "프로그램/커밋 검색",
+        key=project_scoped_key(project_id, "mapping_feedback_keyword"),
+    )
+    only_feedback = filter_col2.checkbox(
+        "피드백 완료만",
+        value=False,
+        key=project_scoped_key(project_id, "mapping_feedback_only"),
+    )
+    relation_filter_label = filter_col3.selectbox(
+        "관련 여부",
+        ["전체", "관련", "비관련"],
+        key=project_scoped_key(project_id, "mapping_feedback_relation"),
+    )
     related_filter = {"관련": True, "비관련": False}.get(relation_filter_label)
 
     with SessionLocal() as db:
@@ -348,27 +376,45 @@ def _render_mapping_feedback(project_id: int) -> None:
             if labels[label].mapping_id == selected_queue_row.mapping_id:
                 default_index = index
                 break
-    selected_label = st.selectbox("보정할 매핑 선택", label_keys, index=default_index, key="mapping_feedback_select")
+    selected_label = st.selectbox(
+        "보정할 매핑 선택",
+        label_keys,
+        index=default_index,
+        key=project_scoped_key(project_id, "mapping_feedback_select"),
+    )
     selected = labels[selected_label]
 
     status_index = IMPLEMENTATION_STATUS_OPTIONS.index(selected.implementation_status)
     relation_index = 0 if selected.is_related is not False else 1
     with st.form("mapping_feedback_form"):
         form_col1, form_col2, form_col3 = st.columns([1, 1, 1])
-        relation_label = form_col1.radio("관련 여부", ["관련", "비관련"], index=relation_index, horizontal=True)
+        relation_label = form_col1.radio(
+            "관련 여부",
+            ["관련", "비관련"],
+            index=relation_index,
+            horizontal=True,
+            key=project_scoped_key(project_id, f"mapping_feedback_relation_input_{selected.mapping_id}"),
+        )
         relevance_score = form_col2.slider(
             "관련도 점수",
             min_value=0.0,
             max_value=100.0,
             value=float(selected.relevance_score),
             step=1.0,
+            key=project_scoped_key(project_id, f"mapping_feedback_score_{selected.mapping_id}"),
         )
         implementation_status = form_col3.selectbox(
             "구현상태",
             IMPLEMENTATION_STATUS_OPTIONS,
             index=status_index,
+            key=project_scoped_key(project_id, f"mapping_feedback_status_{selected.mapping_id}"),
         )
-        reason = st.text_area("보정 근거", value=selected.reason, height=120)
+        reason = st.text_area(
+            "보정 근거",
+            value=selected.reason,
+            height=120,
+            key=project_scoped_key(project_id, f"mapping_feedback_reason_{selected.mapping_id}"),
+        )
         submitted = st.form_submit_button("피드백 저장", type="primary")
 
     if submitted:
@@ -411,6 +457,7 @@ def render_mapping_page() -> None:
         ["커밋 기준 분석", "프로그램 기준 분석", "매핑 피드백"],
         index=0,
         horizontal=True,
+        key=project_scoped_key(project_id, "mapping_mode"),
     )
 
     if mode == "커밋 기준 분석":

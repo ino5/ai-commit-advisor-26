@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Project-scoped UI state namespacing
+
+- `project_scoped_key(project_id, name)` helper를 추가해 프로젝트별 Streamlit widget state key를 일관되게 만들 수 있게 했습니다.
+- Mapping, Program Detail, Commit Impact, Git History, Risk Analysis, AI Progress, RAG 검색 화면의 프로그램/커밋/필터/검색/질문 선택값을 프로젝트별 key로 분리했습니다.
+- 프로젝트 전환 시 이전 프로젝트의 프로그램, 커밋, 리스크, RAG 조건이 새 프로젝트 화면에 남아 보이지 않도록 feature guide, architecture, engineering decision에 UI state 정책을 기록했습니다.
+- 주요 파일: `src/ui/project_context.py`, `src/ui/mapping_page.py`, `src/ui/program_detail_page.py`, `src/ui/commit_impact_page.py`, `src/ui/git_history_page.py`, `src/ui/risk_page.py`, `src/ui/ai_progress_page.py`, `src/ui/rag_page.py`, `tests/test_project_context.py`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_context.py src\ui\mapping_page.py src\ui\program_detail_page.py src\ui\commit_impact_page.py src\ui\risk_page.py src\ui\ai_progress_page.py src\ui\git_history_page.py src\ui\rag_page.py tests\test_project_context.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_context.py -q` 6개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 112개 테스트 통과; `git diff --check` 통과.
+
 ### Roadmap commit hash tracking cleanup
 
 - `ROADMAP.md` Priority Overview에서 `Commit` 컬럼을 제거하고, Roadmap은 작업 상태와 관련 `AI_CHANGELOG.md` heading만 추적하도록 정리했습니다.

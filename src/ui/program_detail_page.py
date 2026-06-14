@@ -14,7 +14,7 @@ from src.services.program_implementation_analyzer import (
 )
 from src.services.risk_service import get_unresolved_findings
 from src.ui.display_utils import key_value_dataframe
-from src.ui.project_context import require_project_context
+from src.ui.project_context import project_scoped_key, require_project_context
 
 
 def _format_date(value) -> str:
@@ -72,11 +72,25 @@ def _render_program_selector(project_id: int) -> int | None:
 
     df = _option_dataframe(options)
     filter_col1, filter_col2, filter_col3 = st.columns([2, 1, 1])
-    keyword = filter_col1.text_input("프로그램명 검색", placeholder="프로그램명 일부를 입력하세요.")
+    keyword = filter_col1.text_input(
+        "프로그램명 검색",
+        placeholder="프로그램명 일부를 입력하세요.",
+        key=project_scoped_key(project_id, "program_detail_keyword"),
+    )
     statuses = sorted(df["status"].dropna().unique().tolist())
     developers = sorted(df["developer"].dropna().unique().tolist())
-    selected_statuses = filter_col2.multiselect("상태 필터", statuses, default=statuses)
-    selected_developers = filter_col3.multiselect("담당자 필터", developers, default=developers)
+    selected_statuses = filter_col2.multiselect(
+        "상태 필터",
+        statuses,
+        default=statuses,
+        key=project_scoped_key(project_id, "program_detail_statuses"),
+    )
+    selected_developers = filter_col3.multiselect(
+        "담당자 필터",
+        developers,
+        default=developers,
+        key=project_scoped_key(project_id, "program_detail_developers"),
+    )
 
     filtered = df[df["status"].isin(selected_statuses) & df["developer"].isin(selected_developers)].copy()
     if keyword:
@@ -90,7 +104,11 @@ def _render_program_selector(project_id: int) -> int | None:
         f"{row.program_id or '-'} | {row.program_name} | {row.developer} | {row.status}": int(row.program_db_id)
         for row in filtered.itertuples()
     }
-    selected_label = st.selectbox("프로그램 선택", list(labels.keys()))
+    selected_label = st.selectbox(
+        "프로그램 선택",
+        list(labels.keys()),
+        key=project_scoped_key(project_id, "program_detail_program_select"),
+    )
 
     st.dataframe(
         filtered[["program_id", "program_name", "module", "screen_name", "developer", "status"]],
@@ -342,8 +360,18 @@ def _render_commits(project_id: int, program_db_id: int, analysis) -> None:
     filter_col1, filter_col2 = st.columns(2)
     statuses = sorted(commit_df["implementation_status"].dropna().unique().tolist())
     authors = sorted(commit_df["author_name"].dropna().unique().tolist())
-    selected_statuses = filter_col1.multiselect("구현상태 필터", statuses, default=statuses)
-    selected_authors = filter_col2.multiselect("개발자 필터", authors, default=authors)
+    selected_statuses = filter_col1.multiselect(
+        "구현상태 필터",
+        statuses,
+        default=statuses,
+        key=project_scoped_key(project_id, f"program_detail_commit_statuses_{program_db_id}"),
+    )
+    selected_authors = filter_col2.multiselect(
+        "개발자 필터",
+        authors,
+        default=authors,
+        key=project_scoped_key(project_id, f"program_detail_commit_authors_{program_db_id}"),
+    )
     filtered = commit_df[
         commit_df["implementation_status"].isin(selected_statuses) & commit_df["author_name"].isin(selected_authors)
     ].sort_values("relevance_score", ascending=False)
@@ -372,7 +400,11 @@ def _render_commits(project_id: int, program_db_id: int, analysis) -> None:
         f"{row.commit_hash} | {row.implementation_status} | {row.relevance_score:.1f} | {row.commit_message[:80]}": row.commit_hash
         for row in filtered.itertuples()
     }
-    selected_label = st.selectbox("커밋 선택", list(labels.keys()))
+    selected_label = st.selectbox(
+        "커밋 선택",
+        list(labels.keys()),
+        key=project_scoped_key(project_id, f"program_detail_commit_select_{program_db_id}"),
+    )
     selected_hash = labels[selected_label]
 
     with SessionLocal() as db:

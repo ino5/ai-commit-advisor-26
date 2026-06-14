@@ -6,7 +6,7 @@ from src.db.database import SessionLocal
 from src.services.progress_service import get_ai_progress_summary, get_program_commit_details
 from src.services.risk_service import get_unresolved_findings
 from src.ui.display_utils import format_datetime, key_value_dataframe
-from src.ui.project_context import require_project_context
+from src.ui.project_context import project_scoped_key, require_project_context
 
 
 def _format_date(value) -> str:
@@ -161,13 +161,28 @@ def _render_charts(df: pd.DataFrame) -> None:
     )
 
 
-def _render_program_table(df: pd.DataFrame) -> None:
+def _render_program_table(project_id: int, df: pd.DataFrame) -> None:
     st.subheader("프로그램별 비교")
     col1, col2, col3 = st.columns(3)
-    risk_only = col1.checkbox("리스크만 보기", value=False)
+    risk_only = col1.checkbox(
+        "리스크만 보기",
+        value=False,
+        key=project_scoped_key(project_id, "ai_progress_risk_only"),
+    )
     developers = sorted(df["developer"].dropna().unique().tolist())
-    selected_developers = col2.multiselect("개발자 필터", developers, default=developers)
-    min_gap = col3.slider("최소 진척도 차이", min_value=-100, max_value=100, value=-100)
+    selected_developers = col2.multiselect(
+        "개발자 필터",
+        developers,
+        default=developers,
+        key=project_scoped_key(project_id, "ai_progress_developer_filter"),
+    )
+    min_gap = col3.slider(
+        "최소 진척도 차이",
+        min_value=-100,
+        max_value=100,
+        value=-100,
+        key=project_scoped_key(project_id, "ai_progress_min_gap"),
+    )
 
     filtered = df[df["developer"].isin(selected_developers) & (df["progress_gap"] >= min_gap)].copy()
     if risk_only:
@@ -204,13 +219,17 @@ def _render_program_table(df: pd.DataFrame) -> None:
     st.dataframe(display_df, use_container_width=True, hide_index=True)
 
 
-def _render_program_detail(df: pd.DataFrame) -> None:
+def _render_program_detail(project_id: int, df: pd.DataFrame) -> None:
     st.subheader("관련 커밋 상세")
     labels = {
         f"{row.program_id or '-'} | {row.program_name} | gap {row.progress_gap}% | {row.risk_reasons or '정상'}": row.program_db_id
         for row in df.itertuples()
     }
-    selected_label = st.selectbox("프로그램 선택", list(labels.keys()))
+    selected_label = st.selectbox(
+        "프로그램 선택",
+        list(labels.keys()),
+        key=project_scoped_key(project_id, "ai_progress_program_select"),
+    )
     selected_program_id = labels[selected_label]
     selected = df[df["program_db_id"] == selected_program_id].iloc[0]
 
@@ -296,6 +315,6 @@ def render_ai_progress_page() -> None:
     st.divider()
     _render_charts(df)
     st.divider()
-    _render_program_table(df)
+    _render_program_table(project_id, df)
     st.divider()
-    _render_program_detail(df)
+    _render_program_detail(project_id, df)

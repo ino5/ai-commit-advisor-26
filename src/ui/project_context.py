@@ -21,6 +21,10 @@ class ProjectContext:
     description: str | None = None
 
 
+def project_scoped_key(project_id: int, name: str) -> str:
+    return f"project_{int(project_id)}_{name}"
+
+
 def load_projects() -> list[Project]:
     init_db()
     with SessionLocal() as db:

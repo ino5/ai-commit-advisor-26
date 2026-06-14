@@ -142,7 +142,7 @@ Program Detail, AI Progress, Git History, Commit Impact, Risk Analysis, AI Code 
 
 - URL에 `project_id`가 노출됩니다. 민감한 값은 아니지만, 사용자는 URL을 공유할 때 특정 프로젝트 컨텍스트도 함께 공유한다는 점을 이해해야 합니다.
 - 삭제되거나 잘못된 `project_id`는 자동으로 복구되므로, 공유된 오래된 URL이 항상 같은 프로젝트를 보장하지는 않습니다.
-- 프로젝트별 widget key namespacing 문제는 별도 후보 작업으로 남아 있습니다.
+- 프로젝트별 widget key namespacing은 별도 결정으로 분리해 관리합니다.
 
 ### 관련 문서
 
@@ -150,6 +150,44 @@ Program Detail, AI Progress, Git History, Commit Impact, Risk Analysis, AI Code 
 - `docs/feature-guide.md`
 - `docs/architecture.md`
 - `AI_CHANGELOG.md`의 `현재 프로젝트 선택 유지`
+
+## 2026-06-14 - 프로젝트별 UI 상태는 key namespacing으로 분리한다
+
+### 배경
+
+전역 현재 프로젝트 selector가 생기면서 대부분의 분석 화면은 같은 sidebar 프로젝트를 기준으로 동작합니다. 하지만 Streamlit widget state는 key가 같으면 프로젝트를 바꿔도 남을 수 있습니다. 예를 들어 A 프로젝트에서 선택한 프로그램, 커밋, 리스크 필터, RAG 검색 조건이 B 프로젝트 화면에 그대로 남으면 사용자는 다른 프로젝트 데이터를 보고 있다는 사실을 놓칠 수 있습니다.
+
+반대로 모든 입력값을 프로젝트 전환 때마다 지우면, 사용자가 여러 프로젝트에서 같은 검색어를 비교하거나 같은 분석 조건을 반복 확인하는 흐름까지 끊을 수 있습니다.
+
+### 결정
+
+`src/ui/project_context.py`에 `project_scoped_key(project_id, name)` helper를 두고, 프로젝트 데이터에 직접 묶인 widget state는 이 helper로 key를 만듭니다. Mapping, Program Detail, Commit Impact, Git History, Risk Analysis, AI Progress, RAG 검색/준비/질문 화면의 프로그램·커밋·필터·선택값은 프로젝트별 key를 사용합니다.
+
+### 이유
+
+- 프로젝트 전환 시 stale 프로그램/커밋 선택이 다른 프로젝트 화면에 남아 보이는 문제를 줄입니다.
+- `st.session_state` 전체를 지우지 않아 navigation, 현재 프로젝트, 같은 프로젝트 안의 작업 흐름은 유지됩니다.
+- helper 이름이 명시적이라 새 프로젝트 단위 화면을 만들 때 어떤 key가 프로젝트 범위인지 판단하기 쉽습니다.
+- 프로젝트별 state 분리는 UI 동작 변화라 DB schema나 서비스 계층 변경 없이 위험을 낮출 수 있습니다.
+
+### 검토한 대안
+
+- 프로젝트 전환 때 모든 session state 삭제: stale state는 줄지만 navigation, 임시 입력, 비교 검색 흐름까지 사라집니다.
+- 각 화면에서 ad hoc prefix 사용: 빠르게 고칠 수 있지만 key 규칙이 흩어지고 누락을 찾기 어렵습니다.
+- 프로젝트별 state를 별도 dict에 저장: 구조는 명확하지만 Streamlit widget key와 별도 동기화가 필요해 구현이 커집니다.
+
+### 영향과 tradeoff
+
+- 같은 검색어를 여러 프로젝트에 그대로 유지하려면 사용자가 다시 입력해야 하는 화면이 있습니다. 혼동 방지를 우선해 Git/RAG/분석 화면의 검색 조건은 프로젝트별로 분리했습니다.
+- 프로젝트별 key가 늘어나므로 오래 실행한 session의 state 항목 수는 증가할 수 있습니다. 현재는 lightweight widget 값 중심이라 별도 cleanup은 두지 않습니다.
+- 프로젝트 단위 새 화면을 추가할 때는 선택한 프로그램, 커밋, row, 필터가 다른 프로젝트에서 의미를 잃는지 먼저 보고 `project_scoped_key()` 적용 여부를 결정합니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Project-Scoped UI State Namespacing`
+- `docs/feature-guide.md`
+- `docs/architecture.md`
+- `AI_CHANGELOG.md`의 `Project-scoped UI state namespacing`
 
 ## 2026-06-14 - 자원관리 추세 분석은 수동 snapshot부터 시작한다
 

@@ -92,6 +92,7 @@
 | P2 | Docs / Screenshot UX | Application Preview lower-section coverage | Done | Application Preview 하단 기능 screenshot 보강 |
 | P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
+| P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 
 ## Candidate Tasks
 
@@ -99,9 +100,28 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters | Possible Direction | Notes |
 |---|---|---|---|---|---|
-| P2 | UX / State | Project-scoped UI state namespacing | The global project selector changes the data context, but Streamlit widget values with stable keys can remain in `st.session_state` across projects. Text search reuse can be useful, but project-specific selections such as program, commit, mapping, or filter state can feel stale or misleading after switching projects. | Keep intentional global state small (`current_project_id`, sidebar navigation). For project-dependent UI state, include `project_id` in widget keys or provide a shared helper for project-scoped keys. Avoid clearing all inputs blindly because cross-project keyword comparison can be useful. | Review RAG search, Mapping filters, Program Detail filters, Commit Impact filters, and any selected row/commit/program widgets before implementation. |
 | P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - Project-Scoped UI State Namespacing
+
+Status: Done
+
+Goal:
+Prevent project-specific Streamlit widget state from carrying stale selections across projects when the global current project changes.
+
+Rationale:
+The global project selector intentionally keeps the selected project across pages, but Streamlit widget keys can keep page-level selections such as selected program, selected commit, filters, or mapping rows after the project changes. Search text can sometimes be useful across projects, so the fix should namespace project-dependent choices instead of clearing all UI state.
+
+Checklist:
+
+- [x] Add a shared helper for project-scoped widget keys.
+- [x] Apply project-scoped keys to RAG search, Mapping filters/selections, Program Detail filters/selections, Commit Impact filters/selections, Git History selections, Risk filters, and AI Progress selections where state belongs to one project.
+- [x] Keep intentionally reusable text search behavior where cross-project reuse is useful and not misleading.
+- [x] Add focused tests for the helper and project isolation behavior that can be verified without a browser.
+- [x] Update user-facing or architecture documentation if visible behavior or UI state policy changes.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile/tests and documentation diff verification.
 
 ## P2 - Roadmap Commit Hash Tracking Cleanup
 
