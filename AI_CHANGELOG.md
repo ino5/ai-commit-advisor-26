@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### Dashboard 가치 지표 용어 정리
+
+- Dashboard 자원관리 영역의 `PoC 가정값`, `자원관리 KPI 추세` 표현을 `현재 계산 기준의 참고 추정값`, `자원관리 참고 지표 추세`로 정리했습니다.
+- README, Application Preview, 사용 가이드, feature guide, architecture, AI technical overview, DB migration guide에서 Dashboard 가치 지표를 `PoC 고객가치 KPI`보다 사용자에게 가까운 `고객가치 참고 지표`/`핵심 지표` 중심으로 설명하게 했습니다.
+- 앱 화면과 사용자-facing 문서에서는 `PoC`, `KPI`, `planning signal` 같은 내부자 용어를 줄이고, 기술 문서에서는 계산 기준과 한계를 유지한다는 engineering decision을 추가했습니다.
+- `BusinessValueMetric.assumption`에 `PoC`가 다시 노출되지 않도록 회귀 테스트를 추가했습니다.
+- 주요 파일: `src/ui/dashboard_page.py`, `src/services/resource_metrics_service.py`, `tests/test_resource_metrics_service.py`, `README.md`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/demo-user-guide.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\dashboard_page.py src\services\resource_metrics_service.py tests\test_resource_metrics_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py -q` 4개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 110개 테스트 통과; Chrome headless로 Dashboard에서 `현재 계산 기준` 표시와 기존 `PoC 가정값`, `PoC 고객가치 KPI`, `자원관리 KPI 추세` 미노출 확인; `git diff --check` 통과.
+
 ### Application Preview Dashboard 설명 문구 정리
 
 - `docs/application-preview.md`의 Dashboard 설명을 짧은 문장 중심으로 바꿔 첫 독자가 화면 목적을 먼저 이해할 수 있게 했습니다.

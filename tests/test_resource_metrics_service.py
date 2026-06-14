@@ -200,6 +200,8 @@ def test_resource_metrics_summary_aggregates_workload_difficulty_and_value_kpis(
             assert summary.business_value.ai_code_review_count == 1
             assert summary.business_value.estimated_review_hours_saved == 0.5
             assert summary.business_value.estimated_extra_mm_avoidance == 0.4
+            assert "현재 계산 기준" in summary.business_value.assumption
+            assert "PoC" not in summary.business_value.assumption
         finally:
             _cleanup_project_graph(db, project.id, developer.id)
 

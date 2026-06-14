@@ -86,6 +86,7 @@
 | P2 | Navigation UX | Sidebar group collapse cleanup | Done | Sidebar 접이식 그룹 정리 | b594b13 |
 | P2 | Sample Data UX | Sample commit date normalization | Done | 샘플 프로젝트 commit 날짜 정규화 |  |
 | P2 | Docs UX | Application Preview Dashboard wording cleanup | Done | Application Preview Dashboard 설명 문구 정리 |  |
+| P2 | Dashboard UX | Dashboard value terminology cleanup | Done | Dashboard 가치 지표 용어 정리 |  |
 
 ## Candidate Tasks
 
@@ -131,6 +132,25 @@ Checklist:
 - [x] Preserve the boundary that resource metrics are planning signals, not personal evaluation or confirmed savings.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run documentation diff verification.
+
+## P2 - Dashboard Value Terminology Cleanup
+
+Status: Done
+
+Goal:
+Make Dashboard resource value metrics read like operational reference signals instead of internal PoC/KPI terminology.
+
+Rationale:
+The Dashboard values are useful because they help PLs spot workload concentration, schedule risk, review burden, and possible extra effort earlier. Labels such as `PoC 가정값`, `PoC 고객가치 KPI`, and `planning signal` explain internal caution but can make the screen feel experimental or like audited performance management. The UI should say what the value helps decide, while documentation keeps the calculation boundary clear.
+
+Checklist:
+
+- [x] Replace Dashboard-facing `PoC 가정값` and `KPI` wording with reference-estimate wording.
+- [x] Update README, Application Preview, feature guide, demo user guide, architecture, AI technical overview, and DB migration wording where the old Dashboard value terms appeared.
+- [x] Add an engineering decision for UI/reference-metric terminology.
+- [x] Add a regression assertion that the Dashboard value assumption does not expose `PoC`.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile/tests and diff verification.
 
 ## P2 - Sidebar Group Collapse Cleanup
 

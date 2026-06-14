@@ -19,7 +19,7 @@ AI Commit Advisor는 개발계획 데이터와 실제 Git 활동을 연결합니
 | RAG Search | Embedding으로 관련 chunk 검색 | Current source, programs, commits, commit_file diffs | Metadata와 verification status가 있는 similar chunks |
 | AI Progress | 계획 진척도와 mapping-derived AI progress, 저장된 implementation analysis 비교 | Program plan, program_commit_mappings, program_implementation_status | Progress gap, risk flags, implementation analysis summary |
 | Risk Analysis | AI-derived mapping/progress evidence를 사용하는 rule-based analysis | Program plan, related mappings, commits, AI progress | Risk findings and evidence |
-| Resource Metrics | AI-derived mapping/progress evidence와 Git/Risk/Review record를 계산형 지표로 집계 | Program plan, mappings, commits, diff metadata, risk findings, code review results | Forecast end date, workload score, difficulty score, developer aggregation, PoC value KPI |
+| Resource Metrics | AI-derived mapping/progress evidence와 Git/Risk/Review record를 계산형 지표로 집계 | Program plan, mappings, commits, diff metadata, risk findings, code review results | Forecast end date, workload score, difficulty score, developer aggregation, value reference metrics |
 
 ## 전체 AI 흐름
 
@@ -171,10 +171,10 @@ AI Progress는 두 개념을 분리합니다. AI progress rate는 여전히 `pro
 - 프로그램별 업무량 근거: 미완료 여부, 계획 대비 AI 진척도 차이, unresolved risk, 난이도 점수를 사용합니다.
 - 프로그램별 예상 종료 상태: 계획 시작/종료일, AI 진척도, 관련 commit 수를 사용해 예상 종료일, 예상 지연일, 신뢰도를 계산합니다. 예상 지연일이 7일 이상이면 `DELAY_EXPECTED`로 표시하고 Risk Analysis는 `FORECAST_DELAY` 리스크를 저장합니다.
 - 개발자별 집계: 담당 프로그램 기준으로 업무량, 미완료 프로그램 수, 리스크 프로그램 수, 평균 계획/AI 진척도, 평균 난이도를 계산합니다.
-- PoC 고객가치 KPI: HIGH risk 노출, 예상 지연 프로그램, AI Code Review 실행 기록을 기반으로 리뷰 시간 절감 가능성과 추가 투입 예방 가능성을 계산합니다. 이 값은 확정 비용 절감액이 아니라 PoC 가정으로 산출한 의사결정 보조 추정값입니다.
-- 저장형 snapshot: PL이 Dashboard에서 현재 지표를 저장하면 핵심 KPI와 raw summary를 함께 보관해 이후 추세 차트와 테이블에서 비교합니다.
+- 고객가치 참고 지표: HIGH risk 노출, 예상 지연 프로그램, AI Code Review 실행 기록을 기반으로 리뷰 시간 절감 가능성과 추가 투입 예방 가능성을 계산합니다. 이 값은 확정 비용 절감액이 아니라 현재 계산 기준으로 산출한 의사결정 보조 추정값입니다.
+- 저장형 snapshot: PL이 Dashboard에서 현재 지표를 저장하면 핵심 지표와 raw summary를 함께 보관해 이후 추세 차트와 테이블에서 비교합니다.
 
-이 지표는 planning signal입니다. 현재 화면의 값은 조회 시점 계산 결과이고, 저장된 snapshot은 사용자가 기준 시점을 남긴 기록입니다. 따라서 "업무 난이도"나 "업무량"은 코드와 산출물에서 관측 가능한 신호를 요약한 값이지, 개발자 개인의 실제 역량이나 성과를 확정하는 AI 판단이 아닙니다. 예상 종료일도 일정 관리 보조 신호이며, 계획 변경·배포 범위·테스트 완료 여부는 PL이 함께 검토해야 합니다.
+이 지표는 일정과 병목을 보는 참고 신호입니다. 현재 화면의 값은 조회 시점 계산 결과이고, 저장된 snapshot은 사용자가 기준 시점을 남긴 기록입니다. 따라서 "업무 난이도"나 "업무량"은 코드와 산출물에서 관측 가능한 신호를 요약한 값이지, 개발자 개인의 실제 역량이나 성과를 확정하는 AI 판단이 아닙니다. 예상 종료일도 일정 관리 보조 신호이며, 계획 변경·배포 범위·테스트 완료 여부는 PL이 함께 검토해야 합니다.
 
 ## 현재 한계
 

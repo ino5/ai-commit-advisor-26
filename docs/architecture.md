@@ -194,7 +194,7 @@ flowchart LR
 
 ### 주요 화면 역할
 
-- `Home`: 사이드바에서 선택한 현재 프로젝트의 KPI, AI 진척도, 리스크 프로그램, 다음 작업 요약.
+- `Home`: 사이드바에서 선택한 현재 프로젝트의 핵심 지표, AI 진척도, 리스크 프로그램, 다음 작업 요약.
 - `Project`: 프로젝트 이름, 설명, 앱 서버에서 접근 가능한 Git 저장소 경로 관리, 프로젝트 삭제. 프로젝트 저장 후 사이드바 현재 프로젝트 선택과 동기화하고, 프로젝트 삭제 후에는 남은 프로젝트로 현재 선택을 복구한다.
 - `개발자 현황`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리. 자동 추출된 author는 전역 개발자 마스터에 저장하고 현재 프로젝트 연결도 함께 생성한다.
 - `개발자 목록`: 현재 프로젝트에 연결된 개발자 조회를 기본으로 제공하고, 전역 개발자 마스터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기를 지원한다.
@@ -207,7 +207,7 @@ flowchart LR
 - `Git History`: 현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff를 조회.
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
 - `AI Code Review`: 앱 서버 Git 저장소의 최근 커밋과 특정 커밋을 중심으로 LLM 리뷰를 실행하고 결과를 저장. 서버 clone에 local 변경이 남아 있을 때만 서버 작업트리/staged 변경 리뷰를 보조 옵션으로 사용.
-- `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, 개발자별 업무량·난이도, 예상 지연 프로그램, PoC 고객가치 KPI 표시.
+- `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, 개발자별 업무량·난이도, 예상 지연 프로그램, 고객가치 참고 지표 표시.
 - `개발계획 대시보드`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
 - `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
@@ -452,7 +452,7 @@ erDiagram
 | `program_implementation_status` | 프로그램별 관련 커밋 묶음을 기반으로 LLM이 판단한 구현 상태, 완료/미완료 기능, 근거 커밋을 저장한다. |
 | `analysis_runs` | Mapping 분석 실행 이력. 실행 상태, 처리 수, 실패 수, 파라미터, 요약을 저장한다. |
 | `code_review_results` | AI Code Review 실행 결과. 리뷰 대상, 요약, 커밋 분석, 버그 발견, 리팩토링 제안을 저장한다. |
-| `resource_metric_snapshots` | Dashboard 자원관리 지표의 수동 저장 snapshot. 핵심 KPI, 평균 업무량/난이도, raw summary를 저장해 추세 분석에 사용한다. |
+| `resource_metric_snapshots` | Dashboard 자원관리 지표의 수동 저장 snapshot. 핵심 지표, 평균 업무량/난이도, raw summary를 저장해 추세 분석에 사용한다. |
 | `risk_findings` | 리스크 분석 결과. 리스크 유형/등급, 설명, 근거, 해결 여부를 저장한다. |
 | `project_chat_sessions` | Project Chat의 프로젝트별 대화 session 제목, 상태, 마지막 메시지 시각을 저장한다. |
 | `project_chat_messages` | Project Chat user/assistant message와 검색 근거, 확장 쿼리, 근거 부족 여부, 복사용 citation metadata를 저장한다. |
@@ -480,7 +480,7 @@ erDiagram
 | `git_history_service.py` | 프로젝트별 커밋 이력, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff 조회를 처리한다. |
 | `commit_impact_service.py` | 특정 커밋이 영향을 줄 가능성이 있는 프로그램, 파일, 개발자 범위를 계산한다. |
 | `code_review_service.py` | 앱 서버 Git 저장소의 최근 커밋, 특정 커밋 diff를 중심으로 LLM 리뷰를 실행하고 `code_review_results`에 저장한다. 서버 clone local 변경 점검용으로 working tree/staged diff 리뷰도 지원한다. |
-| `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI를 계산하고, 사용자가 요청한 기준 시점 snapshot을 저장/조회한다. |
+| `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 고객가치 참고 지표를 계산하고, 사용자가 요청한 기준 시점 snapshot을 저장/조회한다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
 | `vector_store.py` | embedding 저장, 중복 방지, embedding 실패 기록, pgvector cosine 검색. |
@@ -648,7 +648,7 @@ LLM 출력 예시:
 - Commit Impact 분석.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
-- Dashboard 자원관리 지표: 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, PoC 고객가치 KPI 표시, 수동 snapshot 저장과 추세 분석.
+- Dashboard 자원관리 지표: 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, 고객가치 참고 지표 표시, 수동 snapshot 저장과 추세 분석.
 - RAG chunk 생성: source_file, program, commit, commit_file.
 - mock/openai/local embedding client 구조.
 - pgvector vector 저장 및 cosine 검색.

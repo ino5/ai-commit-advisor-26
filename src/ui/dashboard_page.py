@@ -19,12 +19,12 @@ RESOURCE_VALUE_HELP = {
     "high_risk": "미해결 리스크 중 영향도가 HIGH인 건수입니다. 일정과 품질에 직접 영향을 줄 수 있는 항목입니다.",
     "forecast_delay": "AI 진척도와 계획 종료일 기준으로 7일 이상 지연이 예상되는 프로그램 수입니다.",
     "review_time": (
-        "완료된 AI 코드리뷰 1건당 약 0.5시간의 사전 리뷰 시간을 줄일 수 있다고 보는 PoC 가정값입니다. "
-        "실제 확정 절감 시간이 아니라 리뷰 부담 완화 가능성을 보는 지표입니다."
+        "완료된 AI 코드리뷰 1건당 약 0.5시간의 사전 리뷰 부담을 줄일 수 있다고 보는 참고 추정값입니다. "
+        "실제 확정 절감 시간이 아니라 조기 검토 효과를 가늠하기 위한 지표입니다."
     ),
     "extra_mm": (
         "HIGH 리스크와 예상 지연 프로그램을 조기에 대응했을 때 줄일 수 있다고 보는 추가 투입 규모입니다. "
-        "HIGH 리스크 1건=0.25MM, 예상 지연 프로그램 1건=0.15MM으로 계산한 PoC 가정값입니다."
+        "현재 계산 기준은 HIGH 리스크 1건=0.25MM, 예상 지연 프로그램 1건=0.15MM입니다."
     ),
     "trend_metrics": "저장된 snapshot을 기준으로 시간에 따른 변화만 비교합니다. 값의 단위가 다른 지표를 함께 고르면 추세 방향 위주로 해석하세요.",
 }
@@ -199,7 +199,7 @@ def _render_resource_metric_trends(project_id: int) -> None:
         label_by_column = {column: label for label, column in metric_options.items()}
         chart_df["metric"] = chart_df["metric"].map(label_by_column)
         st.plotly_chart(
-            px.line(chart_df, x="captured_label", y="value", color="metric", markers=True, title="자원관리 KPI 추세"),
+            px.line(chart_df, x="captured_label", y="value", color="metric", markers=True, title="자원관리 참고 지표 추세"),
             use_container_width=True,
         )
 
