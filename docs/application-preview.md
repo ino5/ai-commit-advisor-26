@@ -30,7 +30,13 @@
 <details>
 <summary>Program Detail</summary>
 
+기본 정보와 관련 커밋 요약
+
 ![Program Detail](images/features/program-detail.png)
+
+저장된 리스크와 구현상태 분석 상세
+
+![Program Detail Analysis](images/features/program-detail-analysis.png)
 
 </details>
 
@@ -107,7 +113,13 @@
 <details>
 <summary>Risk Analysis</summary>
 
+리스크 요약과 유형별 현황
+
 ![Risk Analysis](images/features/risk-analysis.png)
+
+리스크 목록과 resolved 처리
+
+![Risk Analysis List](images/features/risk-analysis-list.png)
 
 </details>
 
@@ -125,7 +137,13 @@
 
 근거 조각과 검색 데이터 준비 상태, 검색 품질 확인 결과, 조회된 근거 목록을 함께 보여주는 RAG 검색 상태입니다. `TOP K`, 근거 조각 크기, 검색 준비 수량처럼 판단이 필요한 control은 물음표 도움말로 의미와 사용 기준을 확인할 수 있습니다.
 
+검색 준비와 품질 확인
+
 ![RAG Search](images/features/rag-search.png)
+
+조회된 근거 목록
+
+![RAG Search Results](images/features/rag-search-results.png)
 
 </details>
 
@@ -134,7 +152,13 @@
 
 답변 근거 상태에서 소스 근거, 검색 준비, 코드 반영 상태를 확인하고, 최신 변경분 반영과 전체 소스 다시 읽기 중 필요한 작업을 바로 선택할 수 있는 Project Chat 상태입니다. `TOP K`, 커밋 이력 참고, 저장된 대화, 새 대화 시작은 물음표 도움말로 동작을 확인할 수 있습니다.
 
+답변 근거 상태와 대화 관리
+
 ![Project Chat](images/features/project-chat.png)
+
+답변과 근거 파일
+
+![Project Chat Answer](images/features/project-chat-answer.png)
 
 </details>
 
@@ -152,6 +176,12 @@
 
 Dashboard는 프로젝트 진행 상황을 한눈에 보는 화면입니다. 계획, AI 분석, Git 활동을 모아 지연 가능성이 있는 프로그램과 개발자별 업무 부담 신호를 보여줍니다. 이 값은 개인 평가나 확정 절감액이 아니라 PL이 병목과 일정 리스크를 빨리 찾기 위한 참고 지표입니다. 필요하면 현재 상태를 snapshot으로 저장해 추세를 비교할 수 있습니다.
 
+프로젝트 현황과 Git 활동
+
+![Dashboard Overview](images/features/dashboard-overview.png)
+
+자원관리 참고 지표
+
 ![Dashboard](images/features/dashboard.png)
 
 </details>
@@ -166,7 +196,13 @@ Dashboard는 프로젝트 진행 상황을 한눈에 보는 화면입니다. 계
 <details>
 <summary>AI Progress</summary>
 
+진척도 요약과 리스크 프로그램
+
 ![AI Progress](images/features/ai-progress.png)
+
+프로그램별 비교와 관련 커밋 상세
+
+![AI Progress Detail](images/features/ai-progress-detail.png)
 
 </details>
 

@@ -89,6 +89,7 @@
 | P2 | Dashboard UX | Dashboard value terminology cleanup | Done | Dashboard 가치 지표 용어 정리 |  |
 | P2 | Docs / Screenshot UX | Application Preview current sidebar screenshots | Done | Application Preview 현재 메뉴 screenshot 갱신 |  |
 | P2 | Docs UX | Sidebar menu map documentation | Done | Sidebar 메뉴 구조 문서화 |  |
+| P2 | Docs / Screenshot UX | Application Preview lower-section coverage | Done | Application Preview 하단 기능 screenshot 보강 |  |
 
 ## Candidate Tasks
 
@@ -192,6 +193,25 @@ Checklist:
 - [x] Update README document link wording.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run documentation diff verification.
+
+## P2 - Application Preview Lower-Section Coverage
+
+Status: Done
+
+Goal:
+Make Application Preview show important lower-page feature areas that can be missed in a single viewport screenshot.
+
+Rationale:
+Several Streamlit pages contain useful controls or results below the first visible area. A single screenshot can make those features look absent even though they are available after scrolling. Application Preview should split long workflows into representative sections instead of relying on one cropped image.
+
+Checklist:
+
+- [x] Review current Application Preview screenshots for long pages where key areas can be hidden below the fold.
+- [x] Add screenshot scenarios for lower/result sections.
+- [x] Capture additional images for Program Detail, Risk Analysis, RAG Search, Project Chat, Dashboard, and AI Progress.
+- [x] Update Application Preview captions and image references.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run screenshot/reference/diff verification.
 
 ## P2 - Sidebar Group Collapse Cleanup
 

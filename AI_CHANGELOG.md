@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Application Preview 하단 기능 screenshot 보강
+
+- 긴 화면에서 한 장의 screenshot만으로 하단 기능이 덜 보이는 문제를 줄이기 위해 Program Detail, Risk Analysis, RAG 검색, Project Chat, Dashboard, AI Progress에 보강 screenshot을 추가했습니다.
+- `scripts/capture_feature_screenshot.py`에 하단/결과 구간 캡처 시나리오를 추가했습니다.
+- `docs/application-preview.md`에서 긴 화면은 요약/결과/상세 구간을 나눠 보여주도록 caption과 image reference를 보강했습니다.
+- 주요 파일: `scripts/capture_feature_screenshot.py`, `docs/application-preview.md`, `docs/images/features/program-detail-analysis.png`, `docs/images/features/risk-analysis-list.png`, `docs/images/features/rag-search-results.png`, `docs/images/features/project-chat-answer.png`, `docs/images/features/dashboard-overview.png`, `docs/images/features/ai-progress-detail.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: 추가 screenshot 시나리오 7개 캡처 통과; Application Preview image reference가 실제 파일과 일치하는지 확인; 보강 screenshot contact sheet 육안 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 110개 테스트 통과; `git diff --check` 통과.
+
 ### Sidebar 메뉴 구조 문서화
 
 - `docs/feature-guide.md`에 현재 `app.py`의 sidebar group 기준 메뉴 목록과 각 화면의 사용 목적을 표로 추가했습니다.
