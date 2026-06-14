@@ -2,6 +2,16 @@
 
 ## 2026-06-14
 
+### 예상 종료일과 자원관리 Dashboard
+
+- `resource_metrics_service.py`에 프로그램별 예상 종료일, 예상 지연일, forecast confidence, forecast level 계산을 추가했습니다.
+- Risk Analysis가 예상 지연일 7일 이상인 프로그램을 `FORECAST_DELAY` 리스크로 저장하도록 확장했습니다.
+- Dashboard에 자원관리 지표 영역을 추가해 미해결/HIGH 리스크, 예상 지연 프로그램, AI 리뷰 절감 추정, 추가 MM 회피 노출, 개발자별 업무량·난이도, 예상 지연/난이도 프로그램 목록을 볼 수 있게 했습니다.
+- 사용 가이드, README, feature guide, architecture, AI technical overview, Application Preview 설명을 새 Dashboard와 예상 종료 지표 기준으로 갱신했습니다.
+- 관련 로드맵 항목 `Forecasted completion and proactive delay risk`, `Developer workload and difficulty dashboard`, `AX customer value KPI documentation`을 완료 처리했습니다.
+- 주요 파일: `src/services/resource_metrics_service.py`, `src/services/risk_service.py`, `src/ui/dashboard_page.py`, `tests/test_resource_metrics_service.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/dashboard.png`, `README.md`, `docs/demo-user-guide.md`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\resource_metrics_service.py src\services\risk_service.py src\ui\dashboard_page.py tests\test_resource_metrics_service.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py -q` 3개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 105개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature dashboard --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local` 통과; Browser에서 Dashboard의 `자원관리 지표`, `예상 지연 프로그램`, `개발자별 부하` 렌더링 확인.
+
 ### 사용 가이드 제목 정리
 
 - `docs/demo-user-guide.md`의 제목을 `AI Commit Advisor 사용 가이드`로 바꾸고, 샘플 프로젝트는 가이드의 대상이 아니라 설명 예시임을 첫 문단에 명확히 했습니다.

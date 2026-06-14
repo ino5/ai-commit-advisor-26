@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy.orm import Session, joinedload
 
 from src.db.models import GitCommit, Program, ProgramCommitMapping, RiskFinding
+from src.services.resource_metrics_service import get_resource_metrics_summary
 
 
 RISK_NO_RELATED_COMMITS = "NO_RELATED_COMMITS"
@@ -15,6 +16,7 @@ RISK_PROGRESS_GAP = "PROGRESS_GAP"
 RISK_ALL_UNKNOWN = "ALL_UNKNOWN"
 RISK_NO_RECENT_COMMITS = "NO_RECENT_COMMITS_14D"
 RISK_ASSIGNEE_MISSING = "ASSIGNEE_MISSING"
+RISK_FORECAST_DELAY = "FORECAST_DELAY"
 
 
 @dataclass
@@ -226,6 +228,37 @@ def detect_project_risks(db: Session, project_id: int) -> list[DetectedRisk]:
                     evidence,
                 )
             )
+
+    resource_summary = get_resource_metrics_summary(db, project_id)
+    for metric in resource_summary.program_metrics:
+        if metric.forecast_level != "DELAY_EXPECTED" or metric.forecast_delay_days is None:
+            continue
+        program = next((item for item in programs if item.id == metric.program_db_id), None)
+        if program is None:
+            continue
+        evidence = {
+            "program_id": metric.program_id,
+            "program_name": metric.program_name,
+            "developer": metric.developer,
+            "planned_end_date": program.planned_end_date.isoformat() if program.planned_end_date else None,
+            "forecast_end_date": metric.forecast_end_date.isoformat() if metric.forecast_end_date else None,
+            "forecast_delay_days": metric.forecast_delay_days,
+            "forecast_confidence": metric.forecast_confidence,
+            "forecast_confidence_label": metric.forecast_confidence_label,
+            "ai_progress_rate": metric.ai_progress_rate,
+            "plan_progress_rate": metric.plan_progress_rate,
+            "related_commit_count": metric.related_commit_count,
+        }
+        risks.append(
+            _risk(
+                program,
+                RISK_FORECAST_DELAY,
+                "HIGH" if metric.forecast_delay_days >= 14 else "MEDIUM",
+                "예상 종료일 기준 지연 가능성",
+                "현재 AI 진척도와 관련 커밋 활동을 기준으로 계획 종료일 이후 완료될 가능성이 있습니다.",
+                evidence,
+            )
+        )
 
     return risks
 

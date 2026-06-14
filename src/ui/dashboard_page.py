@@ -6,6 +6,7 @@ from src.db.database import SessionLocal
 from src.db.models import AnalysisRun, GitCommit, Project
 from src.services.developer_service import get_developer_stats
 from src.services.progress_service import get_ai_progress_summary
+from src.services.resource_metrics_service import get_resource_metrics_summary
 from src.ui.project_context import require_project_context
 
 
@@ -41,6 +42,7 @@ def _render_project_summary(project_id: int) -> None:
             .all()
         )
         developer_stats = get_developer_stats(db, project_id)
+        resource_summary = get_resource_metrics_summary(db, project_id)
 
     st.subheader("프로젝트 현황")
     cols = st.columns(5)
@@ -135,6 +137,133 @@ def _render_project_summary(project_id: int) -> None:
             )
         else:
             st.info("개발자 Git 통계가 없습니다.")
+
+    st.divider()
+    _render_resource_metrics(resource_summary)
+
+
+def _render_resource_metrics(resource_summary) -> None:
+    st.subheader("자원관리 지표")
+    st.caption(resource_summary.interpretation_note)
+
+    value = resource_summary.business_value
+    value_cols = st.columns(5)
+    value_cols[0].metric("미해결 리스크", value.unresolved_risk_count)
+    value_cols[1].metric("HIGH 리스크", value.high_risk_count)
+    value_cols[2].metric("예상 지연 프로그램", value.forecasted_delay_program_count)
+    value_cols[3].metric("AI 리뷰 절감 추정", f"{value.estimated_review_hours_saved}h")
+    value_cols[4].metric("추가 MM 회피 노출", f"{value.estimated_extra_mm_avoidance}MM")
+
+    developer_tab, program_tab = st.tabs(["개발자별 부하", "예상 지연/난이도"])
+
+    with developer_tab:
+        if not resource_summary.developer_metrics:
+            st.info("개발자별 자원관리 지표를 계산할 프로그램 데이터가 없습니다.")
+        else:
+            developer_df = pd.DataFrame([row.__dict__ for row in resource_summary.developer_metrics])
+            chart_left, chart_right = st.columns(2)
+            with chart_left:
+                st.plotly_chart(
+                    px.bar(
+                        developer_df,
+                        x="developer",
+                        y="workload_score",
+                        color="workload_label",
+                        text="workload_score",
+                        title="개발자별 업무량 점수",
+                        range_y=[0, 100],
+                    ),
+                    use_container_width=True,
+                )
+            with chart_right:
+                st.plotly_chart(
+                    px.bar(
+                        developer_df,
+                        x="developer",
+                        y="average_difficulty_score",
+                        color="difficulty_label",
+                        text="average_difficulty_score",
+                        title="개발자별 평균 난이도",
+                        range_y=[0, 100],
+                    ),
+                    use_container_width=True,
+                )
+            st.dataframe(
+                developer_df[
+                    [
+                        "developer",
+                        "assigned_program_count",
+                        "unfinished_program_count",
+                        "risk_program_count",
+                        "average_ai_progress_rate",
+                        "average_progress_gap",
+                        "workload_score",
+                        "workload_label",
+                        "average_difficulty_score",
+                        "difficulty_label",
+                    ]
+                ].rename(
+                    columns={
+                        "developer": "개발자",
+                        "assigned_program_count": "담당 프로그램",
+                        "unfinished_program_count": "미완료 프로그램",
+                        "risk_program_count": "리스크 프로그램",
+                        "average_ai_progress_rate": "평균 AI 진척도",
+                        "average_progress_gap": "평균 진척도 차이",
+                        "workload_score": "업무량 점수",
+                        "workload_label": "업무량 등급",
+                        "average_difficulty_score": "평균 난이도",
+                        "difficulty_label": "난이도 등급",
+                    }
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+    with program_tab:
+        if not resource_summary.program_metrics:
+            st.info("프로그램별 자원관리 지표가 없습니다.")
+        else:
+            program_df = pd.DataFrame([row.__dict__ for row in resource_summary.program_metrics])
+            delay_df = program_df[program_df["forecast_level"].isin(["DELAY_EXPECTED", "AT_RISK"])].copy()
+            if delay_df.empty:
+                st.success("예상 종료일 기준 지연 주의 프로그램이 없습니다.")
+            else:
+                st.dataframe(
+                    delay_df[
+                        [
+                            "program_id",
+                            "program_name",
+                            "developer",
+                            "ai_progress_rate",
+                            "progress_gap",
+                            "forecast_end_date",
+                            "forecast_delay_days",
+                            "forecast_label",
+                            "forecast_confidence_label",
+                            "difficulty_score",
+                            "difficulty_label",
+                            "unresolved_risk_count",
+                        ]
+                    ].rename(
+                        columns={
+                            "program_id": "프로그램 ID",
+                            "program_name": "프로그램명",
+                            "developer": "담당자",
+                            "ai_progress_rate": "AI 진척도",
+                            "progress_gap": "진척도 차이",
+                            "forecast_end_date": "예상 종료일",
+                            "forecast_delay_days": "예상 지연일",
+                            "forecast_label": "예상 상태",
+                            "forecast_confidence_label": "신뢰도",
+                            "difficulty_score": "난이도 점수",
+                            "difficulty_label": "난이도",
+                            "unresolved_risk_count": "미해결 리스크",
+                        }
+                    ),
+                    use_container_width=True,
+                    hide_index=True,
+                )
 
 
 def render_dashboard_page() -> None:

@@ -31,9 +31,9 @@
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | a151133 |
 | P1 | AX / Resource Planning | AX resource management metrics foundation | Done | AX 자원관리 metric foundation | 455e18d |
-| P1 | Forecast / Risk | Forecasted completion and proactive delay risk | Pending |  |  |
-| P1 | Resource UX | Developer workload and difficulty dashboard | Pending |  |  |
-| P2 | Docs / Business Value | AX customer value KPI documentation | Pending |  |  |
+| P1 | Forecast / Risk | Forecasted completion and proactive delay risk | Done | 예상 종료일과 자원관리 Dashboard |  |
+| P1 | Resource UX | Developer workload and difficulty dashboard | Done | 예상 종료일과 자원관리 Dashboard |  |
+| P2 | Docs / Business Value | AX customer value KPI documentation | Done | 예상 종료일과 자원관리 Dashboard |  |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
 | P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping | 60dd64c |
 | P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | 562da8a |
@@ -108,50 +108,50 @@ Checklist:
 
 ## P1 - Forecasted Completion And Proactive Delay Risk
 
-Status: Pending
+Status: Done
 
 Goal:
 Estimate program-level completion outlook and surface likely schedule delay before the planned end date is missed.
 
 Checklist:
 
-- [ ] Calculate `forecast_end_date`, expected delay days, confidence, and evidence from plan dates, AI progress, mapping evidence, and recent commit activity.
-- [ ] Add a proactive delay risk type to Risk Analysis without replacing the existing overdue/progress-gap rules.
-- [ ] Show forecast evidence in AI Progress, Program Detail, and Home/Risk summaries where useful.
-- [ ] Add tests for no-activity, partial-progress, completed, overdue, and low-confidence cases.
-- [ ] Update user-facing docs and screenshots when the UI is added.
-- [ ] Update `AI_CHANGELOG.md`.
+- [x] Calculate `forecast_end_date`, expected delay days, confidence, and evidence from plan dates, AI progress, mapping evidence, and recent commit activity.
+- [x] Add a proactive delay risk type to Risk Analysis without replacing the existing overdue/progress-gap rules.
+- [x] Show forecast evidence in Dashboard and Risk Analysis summaries where useful.
+- [x] Add tests for no-activity, partial-progress, completed, overdue, and low-confidence cases.
+- [x] Update user-facing docs and screenshots when the UI is added.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P1 - Developer Workload And Difficulty Dashboard
 
-Status: Pending
+Status: Done
 
 Goal:
 Give PLs a developer-level view of assigned workload, implementation progress, difficulty, and risk concentration.
 
 Checklist:
 
-- [ ] Define workload score from assigned programs, unfinished programs, progress gap, unresolved risks, and recent Git activity.
-- [ ] Define difficulty score from changed files, diff size, touched module breadth, DB/API/UI impact, cross-program impact, and risk evidence.
-- [ ] Add a dashboard view or extend Dashboard with developer-level workload, progress, difficulty, and risk charts.
-- [ ] Keep metric labels clear that scores are planning indicators, not personnel evaluation truth.
-- [ ] Add tests for aggregation by assigned developer and Git author fallback behavior.
-- [ ] Update feature guide, architecture, Application Preview, and `AI_CHANGELOG.md`.
+- [x] Define workload score from assigned programs, unfinished programs, progress gap, unresolved risks, and recent Git activity.
+- [x] Define difficulty score from changed files, diff size, touched module breadth, DB/API/UI impact, cross-program impact, and risk evidence.
+- [x] Add a dashboard view or extend Dashboard with developer-level workload, progress, difficulty, and risk charts.
+- [x] Keep metric labels clear that scores are planning indicators, not personnel evaluation truth.
+- [x] Add tests for aggregation by assigned developer and Git author fallback behavior.
+- [x] Update feature guide, architecture, Application Preview, and `AI_CHANGELOG.md`.
 
 ## P2 - AX Customer Value KPI Documentation
 
-Status: Pending
+Status: Done
 
 Goal:
 Document how the PoC expresses AX customer value such as risk reduction, workload visibility, review productivity, and estimated resource savings.
 
 Checklist:
 
-- [ ] Define PoC-safe formulas for early risk count, estimated review time saved, forecasted delay count, and estimated extra MM avoided.
-- [ ] Add user-facing explanation that these are decision-support estimates, not contractual financial measurements.
-- [ ] Link the value KPIs to the relevant screens and sample project evidence.
-- [ ] Update README or feature guide if the value KPI becomes visible in the app.
-- [ ] Update `AI_CHANGELOG.md`.
+- [x] Define PoC-safe formulas for early risk count, estimated review time saved, forecasted delay count, and estimated extra MM avoided.
+- [x] Add user-facing explanation that these are decision-support estimates, not contractual financial measurements.
+- [x] Link the value KPIs to the relevant screens and sample project evidence.
+- [x] Update README or feature guide if the value KPI becomes visible in the app.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Demo User Guide
 

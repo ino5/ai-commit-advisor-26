@@ -203,11 +203,11 @@ flowchart LR
 - `Program Detail`: 특정 프로그램의 계획, AI 구현상태, 관련 커밋, 파일 diff, 리스크를 상세 조회.
 - `Git`: 앱 서버 Git 저장소에서 커밋, 변경 파일, diff 수집.
 - `Mapping`: 프로그램과 커밋의 관련성을 LLM으로 분석해 `program_commit_mappings`에 저장하고, 피드백 리뷰 큐로 검토가 필요한 매핑을 보정.
-- `Risk Analysis`: 계획, 매핑, 커밋 활동 기반 리스크를 탐지하고 `risk_findings`에 저장/해결 처리.
+- `Risk Analysis`: 계획, 매핑, 커밋 활동, 예상 종료일 기반 리스크를 탐지하고 `risk_findings`에 저장/해결 처리.
 - `Git History`: 현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff를 조회.
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
 - `AI Code Review`: staged 변경, 최근 커밋, 특정 커밋을 LLM으로 리뷰하고 결과를 저장.
-- `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약.
+- `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, 개발자별 업무량·난이도, 예상 지연 프로그램, PoC 고객가치 KPI 표시.
 - `개발계획 대시보드`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
 - `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
@@ -479,7 +479,7 @@ erDiagram
 | `git_history_service.py` | 프로젝트별 커밋 이력, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff 조회를 처리한다. |
 | `commit_impact_service.py` | 특정 커밋이 영향을 줄 가능성이 있는 프로그램, 파일, 개발자 범위를 계산한다. |
 | `code_review_service.py` | staged 변경, 최근 커밋, 특정 커밋 diff를 LLM으로 리뷰하고 `code_review_results`에 저장한다. |
-| `resource_metrics_service.py` | AX 자원관리 foundation. 프로그램별 난이도/업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI를 계산한다. 현재는 저장형 snapshot이 아니라 조회 시점 계산 결과를 반환한다. |
+| `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI를 계산한다. 현재는 저장형 snapshot이 아니라 조회 시점 계산 결과를 반환한다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
 | `vector_store.py` | embedding 저장, 중복 방지, embedding 실패 기록, pgvector cosine 검색. |
@@ -642,12 +642,12 @@ LLM 출력 예시:
 - Mapping 실행 이력 저장.
 - 커밋별 mapping 분석 상태 저장.
 - AI Progress 계산, 저장된 구현상태 분석 요약, 리스크 프로그램 표시.
-- Risk Analysis 실행, 리스크 저장, 미해결 리스크 조회 및 해결 처리.
+- Risk Analysis 실행, 리스크 저장, 미해결 리스크 조회 및 해결 처리. 예상 종료일 기준 지연 가능성은 `FORECAST_DELAY` 리스크로 저장한다.
 - Git History 커밋 이력과 diff 탐색.
 - Commit Impact 분석.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
-- AX 자원관리 metric foundation: 프로그램별 난이도/업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI 계산.
+- Dashboard 자원관리 지표: 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, PoC 고객가치 KPI 표시.
 - RAG chunk 생성: source_file, program, commit, commit_file.
 - mock/openai/local embedding client 구조.
 - pgvector vector 저장 및 cosine 검색.

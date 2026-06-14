@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import CodeReviewResult, CommitFile, Developer, GitCommit, Program, ProgramCommitMapping, Project, RiskFinding
 from src.services.resource_metrics_service import get_resource_metrics_summary
+from src.services.risk_service import RISK_FORECAST_DELAY, run_risk_analysis
 
 
 def _unique(prefix: str) -> str:
@@ -45,6 +46,8 @@ def test_resource_metrics_summary_aggregates_workload_difficulty_and_value_kpis(
             developer=developer.developer_name,
             status="진행중",
             progress_rate=80,
+            planned_start_date=date.today() - timedelta(days=30),
+            planned_end_date=date.today() + timedelta(days=10),
         )
         program_b = Program(
             project_id=project.id,
@@ -54,6 +57,8 @@ def test_resource_metrics_summary_aggregates_workload_difficulty_and_value_kpis(
             developer=developer.developer_name,
             status="완료",
             progress_rate=100,
+            planned_start_date=date.today() - timedelta(days=30),
+            planned_end_date=date.today() + timedelta(days=1),
         )
         commit_a = GitCommit(
             project_id=project.id,
@@ -155,9 +160,16 @@ def test_resource_metrics_summary_aggregates_workload_difficulty_and_value_kpis(
             assert risky.diff_line_count == 7
             assert risky.cross_program_commit_count == 1
             assert risky.unresolved_risk_count == 1
+            assert risky.forecast_level == "DELAY_EXPECTED"
+            assert risky.forecast_delay_days is not None
+            assert risky.forecast_delay_days >= 7
+            assert risky.forecast_confidence == "HIGH"
             assert risky.difficulty_score > complete.difficulty_score
             assert risky.workload_points > complete.workload_points
             assert risky.evidence["unfinished"] is True
+
+            assert complete.forecast_level == "COMPLETED"
+            assert complete.forecast_delay_days == 0
 
             developer_metric = summary.developer_metrics[0]
             assert developer_metric.developer == "Alice"
@@ -169,9 +181,10 @@ def test_resource_metrics_summary_aggregates_workload_difficulty_and_value_kpis(
 
             assert summary.business_value.unresolved_risk_count == 1
             assert summary.business_value.high_risk_count == 1
+            assert summary.business_value.forecasted_delay_program_count == 1
             assert summary.business_value.ai_code_review_count == 1
             assert summary.business_value.estimated_review_hours_saved == 0.5
-            assert summary.business_value.estimated_extra_mm_avoidance == 0.25
+            assert summary.business_value.estimated_extra_mm_avoidance == 0.4
         finally:
             _cleanup_project_graph(db, project.id, developer.id)
 
@@ -189,7 +202,77 @@ def test_resource_metrics_summary_handles_empty_project():
             assert summary.program_metrics == []
             assert summary.developer_metrics == []
             assert summary.business_value.unresolved_risk_count == 0
+            assert summary.business_value.forecasted_delay_program_count == 0
             assert summary.business_value.estimated_review_hours_saved == 0.0
             assert summary.business_value.estimated_extra_mm_avoidance == 0.0
         finally:
             _cleanup_project_graph(db, project.id)
+
+
+def test_risk_analysis_records_forecast_delay_risk():
+    init_db()
+    with SessionLocal() as db:
+        developer = Developer(
+            developer_key=_unique("forecast-key"),
+            developer_id=_unique("forecast-id"),
+            developer_name="Forecast Owner",
+            email=f"{uuid.uuid4()}@example.local",
+        )
+        project = Project(name=_unique("forecast-project"), git_repo_path=None)
+        db.add_all([developer, project])
+        db.flush()
+
+        program = Program(
+            project_id=project.id,
+            program_id=_unique("P-F"),
+            program_name="Forecast Delay Program",
+            developer_id=developer.developer_id,
+            developer=developer.developer_name,
+            status="진행중",
+            progress_rate=90,
+            planned_start_date=date.today() - timedelta(days=40),
+            planned_end_date=date.today() + timedelta(days=5),
+        )
+        commit = GitCommit(
+            project_id=project.id,
+            commit_hash=uuid.uuid4().hex,
+            message="Partial forecast implementation",
+            author_name="Forecast Owner",
+            committed_at=datetime.now(timezone.utc),
+        )
+        db.add_all([program, commit])
+        db.flush()
+        db.add_all(
+            [
+                CommitFile(
+                    commit_id=commit.id,
+                    git_commit_id=commit.id,
+                    file_path="src/forecast/ForecastService.java",
+                    change_type="Modified",
+                    diff_text="+partial",
+                ),
+                ProgramCommitMapping(
+                    program_id=program.id,
+                    commit_id=commit.id,
+                    relevance_score=80,
+                    is_related=True,
+                    implementation_status="일부구현",
+                    reason="partial",
+                ),
+            ]
+        )
+        db.commit()
+
+        try:
+            result = run_risk_analysis(db, project.id)
+            forecast_findings = [
+                finding for finding in result.findings if finding.risk_type == RISK_FORECAST_DELAY
+            ]
+
+            assert forecast_findings
+            finding = forecast_findings[0]
+            assert finding.risk_level in {"MEDIUM", "HIGH"}
+            assert finding.evidence["forecast_delay_days"] >= 7
+            assert finding.evidence["forecast_end_date"]
+        finally:
+            _cleanup_project_graph(db, project.id, developer.id)

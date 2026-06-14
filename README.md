@@ -59,6 +59,7 @@ flowchart TB
 - Commit Impact, Program Detail, AI Progress 기반 구현 현황 추적
 - Git History 화면에서 프로젝트별 커밋 목록, 변경 파일, diff 탐색
 - 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
+- Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, PoC 고객가치 KPI 확인
 - 현재 소스 검증형 RAG Search와 저장형 Project Chat
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
 - 작업트리, staged 변경, 최신/특정 커밋 대상 AI Code Review

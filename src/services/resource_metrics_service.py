@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
+from math import ceil
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -22,6 +23,20 @@ WORKLOAD_LABELS = {
     "HIGH": "집중관리",
 }
 
+FORECAST_LABELS = {
+    "COMPLETED": "완료 추정",
+    "ON_TRACK": "정상 범위",
+    "AT_RISK": "주의",
+    "DELAY_EXPECTED": "지연 예상",
+    "UNKNOWN": "판단 보류",
+}
+
+CONFIDENCE_LABELS = {
+    "HIGH": "높음",
+    "MEDIUM": "보통",
+    "LOW": "낮음",
+}
+
 
 @dataclass
 class ProgramResourceMetric:
@@ -38,6 +53,12 @@ class ProgramResourceMetric:
     touched_area_count: int
     cross_program_commit_count: int
     unresolved_risk_count: int
+    forecast_end_date: date | None
+    forecast_delay_days: int | None
+    forecast_level: str
+    forecast_label: str
+    forecast_confidence: str
+    forecast_confidence_label: str
     difficulty_score: float
     difficulty_level: str
     difficulty_label: str
@@ -68,6 +89,7 @@ class DeveloperResourceMetric:
 class BusinessValueMetric:
     unresolved_risk_count: int
     high_risk_count: int
+    forecasted_delay_program_count: int
     ai_code_review_count: int
     estimated_review_hours_saved: float
     estimated_extra_mm_avoidance: float
@@ -129,6 +151,42 @@ def _score_level(score: float) -> str:
     if score >= 35:
         return "MEDIUM"
     return "LOW"
+
+
+def _forecast_completion(
+    program: Program,
+    ai_progress_rate: float,
+    related_commit_count: int,
+    today: date | None = None,
+) -> tuple[date | None, int | None, str, str]:
+    today = today or date.today()
+    planned_end = program.planned_end_date
+    if ai_progress_rate >= 100:
+        return today, 0 if planned_end else None, "COMPLETED", "HIGH" if related_commit_count else "MEDIUM"
+    if planned_end is None:
+        return None, None, "UNKNOWN", "LOW"
+
+    forecast_end: date
+    confidence: str
+    if ai_progress_rate > 0 and program.planned_start_date:
+        elapsed_days = max((today - program.planned_start_date).days, 1)
+        daily_progress = ai_progress_rate / elapsed_days
+        remaining_days = ceil((100 - ai_progress_rate) / daily_progress) if daily_progress > 0 else 14
+        forecast_end = today + timedelta(days=max(remaining_days, 1))
+        confidence = "HIGH" if related_commit_count >= 2 else "MEDIUM"
+    else:
+        anchor = max(today, planned_end)
+        forecast_end = anchor + timedelta(days=14)
+        confidence = "LOW"
+
+    delay_days = max((forecast_end - planned_end).days, 0)
+    if delay_days >= 7:
+        level = "DELAY_EXPECTED"
+    elif delay_days > 0 or ((planned_end - today).days <= 7 and ai_progress_rate < 80):
+        level = "AT_RISK"
+    else:
+        level = "ON_TRACK"
+    return forecast_end, delay_days, level, confidence
 
 
 def _difficulty_score(
@@ -205,6 +263,11 @@ def _program_metric(
         1 for commit_id in commit_ids if related_mapping_counts_by_commit.get(commit_id, 0) >= 2
     )
     unresolved_risk_count = int(unresolved_risks_by_program.get(program.id, 0))
+    forecast_end_date, forecast_delay_days, forecast_level, forecast_confidence = _forecast_completion(
+        program,
+        ai_progress_rate=ai_progress_rate,
+        related_commit_count=len(commit_ids),
+    )
     difficulty_score = _difficulty_score(
         related_commit_count=len(commit_ids),
         touched_file_count=len(touched_files),
@@ -237,6 +300,12 @@ def _program_metric(
         touched_area_count=len(touched_areas),
         cross_program_commit_count=cross_program_commit_count,
         unresolved_risk_count=unresolved_risk_count,
+        forecast_end_date=forecast_end_date,
+        forecast_delay_days=forecast_delay_days,
+        forecast_level=forecast_level,
+        forecast_label=FORECAST_LABELS[forecast_level],
+        forecast_confidence=forecast_confidence,
+        forecast_confidence_label=CONFIDENCE_LABELS[forecast_confidence],
         difficulty_score=difficulty_score,
         difficulty_level=difficulty_level,
         difficulty_label=DIFFICULTY_LABELS[difficulty_level],
@@ -244,6 +313,7 @@ def _program_metric(
         evidence={
             "metric_basis": "program_assignments_commits_diffs_risks",
             "unfinished": unfinished,
+            "forecast_basis": "planned_dates_ai_progress_related_commit_activity",
             "touched_areas": sorted(touched_areas),
         },
     )
@@ -294,20 +364,30 @@ def _developer_metrics(program_metrics: list[ProgramResourceMetric]) -> list[Dev
     return sorted(developer_rows, key=lambda row: (row.workload_score, row.assigned_program_count), reverse=True)
 
 
-def _business_value_metric(db: Session, project_id: int, unresolved_findings: list[RiskFinding]) -> BusinessValueMetric:
+def _business_value_metric(
+    db: Session,
+    project_id: int,
+    unresolved_findings: list[RiskFinding],
+    program_metrics: list[ProgramResourceMetric],
+) -> BusinessValueMetric:
     code_review_count = db.query(CodeReviewResult).filter(CodeReviewResult.project_id == project_id).count()
     high_risk_count = sum(1 for finding in unresolved_findings if finding.risk_level == "HIGH")
+    forecasted_delay_program_count = sum(
+        1 for metric in program_metrics if metric.forecast_level == "DELAY_EXPECTED"
+    )
     estimated_review_hours_saved = round(code_review_count * 0.5, 1)
-    estimated_extra_mm_avoidance = round(high_risk_count * 0.25, 2)
+    estimated_extra_mm_avoidance = round((high_risk_count * 0.25) + (forecasted_delay_program_count * 0.15), 2)
     return BusinessValueMetric(
         unresolved_risk_count=len(unresolved_findings),
         high_risk_count=high_risk_count,
+        forecasted_delay_program_count=forecasted_delay_program_count,
         ai_code_review_count=code_review_count,
         estimated_review_hours_saved=estimated_review_hours_saved,
         estimated_extra_mm_avoidance=estimated_extra_mm_avoidance,
         assumption=(
             "PoC planning estimate: AI review saves 0.5h per completed review, "
-            "and each unresolved HIGH risk represents up to 0.25MM avoidable rework exposure."
+            "each unresolved HIGH risk represents up to 0.25MM avoidable rework exposure, "
+            "and each forecasted delay program adds up to 0.15MM schedule-risk exposure."
         ),
     )
 
@@ -338,7 +418,7 @@ def get_resource_metrics_summary(db: Session, project_id: int) -> ResourceMetric
         project_id=project_id,
         program_metrics=program_metrics,
         developer_metrics=_developer_metrics(program_metrics),
-        business_value=_business_value_metric(db, project_id, unresolved_findings),
+        business_value=_business_value_metric(db, project_id, unresolved_findings, program_metrics),
         interpretation_note=(
             "자원관리 지표는 커밋, diff, 매핑, 계획, 리스크를 조합한 의사결정 보조 신호입니다. "
             "개인 성과를 확정 평가하는 값이 아니며 PL 검토와 함께 사용해야 합니다."
