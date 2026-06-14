@@ -102,8 +102,6 @@
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
 
-| Priority | Area | Candidate | Why It Matters | Possible Direction | Notes |
-|---|---|---|---|---|---|
 현재 승인 대기 중인 후보 작업은 없습니다. 새 concern이나 tradeoff를 보존해야 할 때 이 섹션에 후보 작업을 추가합니다.
 
 ## P1 - AI Resource Radar And PL Briefing

@@ -325,6 +325,21 @@ SCENARIOS: dict[str, FeatureScenario] = {
         description="Dashboard 프로젝트 현황 화면",
         full_page=False,
     ),
+    "dashboard-radar": FeatureScenario(
+        name="dashboard-radar",
+        sidebar_label="Dashboard",
+        wait_text="AI Resource Radar",
+        required_texts=(
+            "Dashboard",
+            "AI Resource Radar",
+            "PL Briefing 생성",
+            "Radar 근거 상세",
+        ),
+        default_screenshot="docs/images/features/dashboard-radar.png",
+        description="Dashboard AI Resource Radar 화면",
+        scroll_to_text="AI Resource Radar",
+        full_page=False,
+    ),
     "dashboard": FeatureScenario(
         name="dashboard",
         sidebar_label="Dashboard",

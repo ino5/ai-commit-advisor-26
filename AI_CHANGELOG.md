@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Application Preview AI Resource Radar screenshot 보강
+
+- `AI Resource Radar`가 Application Preview에서 바로 보이도록 전용 `dashboard-radar` screenshot 시나리오와 이미지를 추가했습니다.
+- `docs/application-preview.md` Dashboard 섹션에 `Dashboard AI Resource Radar` 이미지를 추가해 PL 우선순위 표와 `PL Briefing 생성` action을 바로 확인할 수 있게 했습니다.
+- `ROADMAP.md` Candidate Tasks 섹션에 남아 있던 빈 표 머리를 제거하고 후보 없음 문장만 남겼습니다.
+- 주요 파일: `scripts/capture_feature_screenshot.py`, `docs/application-preview.md`, `docs/images/features/dashboard-radar.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature dashboard-radar --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --expect-text "AI Resource Radar" --expect-text "PL Briefing 생성"` 통과; `.\.venv\Scripts\python.exe -m py_compile scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 테스트 통과; `rg -n "dashboard-radar|Dashboard AI Resource Radar|AI Resource Radar screenshot 보강|\| Priority \| Area \| Candidate \|" docs\application-preview.md scripts\capture_feature_screenshot.py AI_CHANGELOG.md ROADMAP.md`로 새 이미지 참조와 빈 후보 표 제거 확인; `git diff --check` 통과.
+
 ### AI Resource Radar와 PL Briefing 추가
 
 - Dashboard에 `AI Resource Radar`를 추가해 AI 매핑/진척도, 미해결 리스크, 예상 지연, 난이도, cross-program commit, 관련 commit 부재, workload 신호를 설명 가능한 우선순위 점수로 보여주게 했습니다.

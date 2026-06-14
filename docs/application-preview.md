@@ -186,6 +186,10 @@ Dashboard는 프로젝트 진행 상황을 한눈에 보는 화면입니다. 계
 
 ![Dashboard Overview](images/features/dashboard-overview.png)
 
+AI Resource Radar 우선순위와 PL Briefing action
+
+![Dashboard AI Resource Radar](images/features/dashboard-radar.png)
+
 자원관리 참고 지표
 
 ![Dashboard](images/features/dashboard.png)
