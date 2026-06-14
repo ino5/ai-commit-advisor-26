@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Home 요약 우선순위 정리
+
+- Home 화면에서 현재 프로젝트 KPI를 분석 상태 표보다 먼저 표시하도록 렌더링 순서를 바꿨습니다.
+- 상단 흐름을 `KPI -> 다음 작업 -> 분석 상태 -> 차트/리스크 상세` 순서로 정리해 첫 화면에서 운영 요약과 다음 행동을 먼저 확인하게 했습니다.
+- feature guide와 Application Preview 설명을 새 정보 우선순위에 맞게 갱신했습니다.
+- 주요 파일: `src/ui/home_page.py`, `docs/feature-guide.md`, `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\home_page.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 109개 테스트 통과; Browser에서 Home 본문 순서가 `총 프로그램` KPI, `다음 작업`, `분석 상태` 순서로 렌더링되는지 확인; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### 프로그램 관리 현재 프로젝트 저장 흐름 정리
 
 - 프로그램 관리 화면에서 `새 프로젝트명으로 저장` 옵션을 제거하고, 현재 프로젝트가 없으면 `프로젝트/Git 설정`에서 먼저 프로젝트를 등록하도록 안내하게 했습니다.

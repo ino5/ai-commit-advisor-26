@@ -253,11 +253,11 @@ def render_home_page() -> None:
         st.error("현재 프로젝트를 찾을 수 없습니다. 사이드바에서 다시 선택해 주세요.")
         return
 
-    _render_pipeline_status(overview)
-    _render_next_actions(overview)
+    _render_kpis(overview)
 
     st.divider()
-    _render_kpis(overview)
+    _render_next_actions(overview)
+    _render_pipeline_status(overview)
 
     st.divider()
     _render_charts(overview)
