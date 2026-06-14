@@ -77,7 +77,7 @@
 | P2 | Project Chat UX | Project Chat conversation controls cleanup | Done | Project Chat 대화 관리 UX 정리 | 0acd0c6 |
 | P2 | Project Chat UX | Project Chat source refresh wording cleanup | Done | Project Chat 근거 갱신 안내 UX 정리 | 692fa95 |
 | P2 | UX Help | Contextual help tooltips for Project/RAG controls | Done | Project/RAG 컨텍스트 도움말 툴팁 추가 | 692fa95 |
-| P2 | Resource UX | Resource value metric wording cleanup | Done | 자원관리 가치 지표 문구 정리 |  |
+| P2 | Resource UX | Resource value metric wording cleanup | Done | 자원관리 가치 지표 문구 정리 | 85c9106 |
 
 ## Candidate Tasks
 
