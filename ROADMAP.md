@@ -64,6 +64,7 @@
 | P2 | Git UX | Git History viewer | Done | Git History viewer |  |
 | P2 | Docs | Git History Application Preview screenshot | Done | Git History Application Preview screenshot |  |
 | P2 | Git Ops | Server repository status display | Done | Server repository status display |  |
+| P2 | Docs | Demo user guide | Done | Demo user guide |  |
 
 ## Candidate Tasks
 
@@ -75,6 +76,22 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P2 | UX | Program management project flow cleanup | `프로그램 관리` now defaults to the global current project, but it still keeps an explicit `새 프로젝트명으로 저장` option for legacy upload/create flows. This preserves compatibility but makes the page slightly less direct than other project-scoped screens. | Consider making program management strictly current-project based and moving new project creation to `프로젝트/Git 설정`. If keeping the exception, make the create-new-project path visually secondary and explain when it should be used. | Check sample data and Excel upload workflows before removing the exception. |
 | P3 | UX / Data Model | Developer management scope decision | `개발자 목록` is currently closer to a global developer master, while `개발자 현황` is project-aware through Git author activity. As project context becomes more central, users may expect developer assignment and developer management to be project-specific. | Decide whether developers remain a global master with project-specific activity views, or whether a project-level developer membership/assignment screen is needed. | This may become a schema or workflow change if project-specific membership is introduced. Do not start without checking `docs/architecture.md` and migration impact. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - Demo User Guide
+
+Status: Done
+
+Goal:
+Create a user-facing guide for demonstrating AI Commit Advisor with the sample project, focused on product workflow rather than internal verification details.
+
+Checklist:
+
+- [x] Add a 시연 사용 가이드 for the sample-project demo flow.
+- [x] Explain project registration, Git sync, artifact upload, Mapping, Risk Analysis, AI Progress, Program Detail, Git History, Commit Impact, RAG, Project Chat, and AI Code Review in demo order.
+- [x] Link the guide from README.
+- [x] Fix the stale sample walkthrough commit-count wording.
+- [x] Run documentation link and whitespace checks.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Server Repository Status Display
 

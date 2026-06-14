@@ -53,7 +53,7 @@ C:\dev\ai-advisor-sample-shop
 
 3. Git sync를 실행합니다.
 
-깨끗한 demo project에서는 full sync를 사용합니다. 예상 샘플 commit 수는 30입니다.
+깨끗한 demo project에서는 full sync를 사용합니다. 예상 샘플 commit 수는 48입니다.
 
 4. 샘플 프로젝트에서 생성된 Excel file을 업로드합니다.
 

@@ -1,5 +1,15 @@
 # AI Change Log
 
+## 2026-06-14
+
+### Demo user guide
+
+- Added a user-facing 시연 사용 가이드 that walks through the sample-project demonstration flow from project registration and Git sync through Mapping, Risk Analysis, AI Progress, Program Detail, Git History, Commit Impact, RAG, Project Chat, and AI Code Review.
+- Linked the guide from README so presenters can find it directly from the documentation hub.
+- Corrected the stale sample walkthrough wording that still described the expected sample commit count as 30 instead of 48.
+- Important files: `docs/demo-user-guide.md`, `README.md`, `docs/rich-sample-demo-walkthrough.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `rg -n "demo-user-guide|시연 사용 가이드|예상 샘플 commit 수|30입니다|48입니다" README.md docs\demo-user-guide.md docs\rich-sample-demo-walkthrough.md` found the README link, new guide title, and 48-commit wording with no stale 30-commit wording; `git diff --check` reported only Windows line-ending warnings and no whitespace errors.
+
 ## 2026-06-10
 
 ### CI Git default branch test fix
