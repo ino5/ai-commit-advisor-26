@@ -45,6 +45,41 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-14 - 현재 프로젝트 선택은 URL query parameter로도 보존한다
+
+### 배경
+
+전역 현재 프로젝트 selector는 Home, Mapping, RAG, Project Chat, Git History, AI Code Review 등 대부분의 프로젝트 단위 화면을 결정합니다. 선택값이 Streamlit session state에만 있으면 브라우저 새로고침이나 새 tab 진입 후 첫 프로젝트로 되돌아갈 수 있습니다. 샘플·검증 프로젝트처럼 이름이 비슷한 프로젝트가 여러 개 있으면 사용자는 같은 화면을 보고 있다고 생각하지만 실제로는 다른 프로젝트 지표를 보게 됩니다.
+
+### 결정
+
+`src/ui/project_context.py`가 현재 프로젝트 ID를 Streamlit session state와 URL `project_id` query parameter에 함께 저장합니다. 화면 진입 시에는 유효한 `project_id` query parameter를 먼저 복원하고, 값이 없거나 삭제된 프로젝트를 가리키면 기존 session state 또는 첫 프로젝트로 복구합니다.
+
+### 이유
+
+- 새로고침 후에도 사용자가 보고 있던 프로젝트 컨텍스트를 유지할 수 있습니다.
+- URL만으로 특정 프로젝트 화면을 다시 열 수 있어 검증과 협업이 쉬워집니다.
+- 각 페이지가 별도 저장 규칙을 갖지 않고 기존 `project_context.py` 진입점을 계속 사용합니다.
+
+### 검토한 대안
+
+- Session state만 유지: 구현은 가장 단순하지만 reload에서 같은 문제가 반복됩니다.
+- 브라우저 local storage 사용: URL 공유에는 도움이 되지 않고 Streamlit 공식 API보다 구현 부담이 큽니다.
+- DB에 사용자별 마지막 프로젝트 저장: 로그인/사용자 식별 정책이 없는 현재 PoC 범위보다 무겁습니다.
+
+### 영향과 tradeoff
+
+- URL에 `project_id`가 노출됩니다. 민감한 값은 아니지만, 사용자는 URL을 공유할 때 특정 프로젝트 컨텍스트도 함께 공유한다는 점을 이해해야 합니다.
+- 삭제되거나 잘못된 `project_id`는 자동으로 복구되므로, 공유된 오래된 URL이 항상 같은 프로젝트를 보장하지는 않습니다.
+- 프로젝트별 widget key namespacing 문제는 별도 후보 작업으로 남아 있습니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Current Project Selection Persistence`
+- `docs/feature-guide.md`
+- `docs/architecture.md`
+- `AI_CHANGELOG.md`의 `현재 프로젝트 선택 유지`
+
 ## 2026-06-14 - 자원관리 추세 분석은 수동 snapshot부터 시작한다
 
 ### 배경

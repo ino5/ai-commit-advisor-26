@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### 현재 프로젝트 선택 유지
+
+- 사이드바의 `현재 프로젝트` 선택값을 Streamlit session state뿐 아니라 URL `project_id` query parameter에도 저장하도록 변경했습니다.
+- 브라우저 새로고침이나 `?project_id=...` URL 재진입 시 해당 프로젝트가 유효하면 먼저 복원하고, 삭제되었거나 잘못된 값이면 기존 session state 또는 첫 프로젝트로 복구하도록 했습니다.
+- 현재 프로젝트 복원 정책을 feature guide, architecture, engineering decisions, roadmap에 문서화했습니다.
+- 주요 파일: `src/ui/project_context.py`, `tests/test_project_context.py`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_context.py tests\test_project_context.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_context.py -q` 5개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 108개 테스트 통과; Browser에서 `http://localhost:8501/?project_id=197` 진입 및 reload 후 `AAA Sample Shop Usage Verification 20260614 (197)` 유지 확인; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### 자원관리 가치 지표 문구 정리
 
 - Dashboard 자원관리 지표의 `AI 리뷰 절감 추정`, `추가 MM 회피 노출` 표현을 `리뷰 시간 절감 가능성`, `추가 투입 예방 가능성`으로 정리했습니다.
