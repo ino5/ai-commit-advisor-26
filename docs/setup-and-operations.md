@@ -7,6 +7,7 @@
 - Python 3.11 이상
 - Docker Desktop
 - PostgreSQL + pgvector
+- 선택: Neo4j Community Edition
 - 선택: LM Studio 또는 OpenAI-compatible 로컬 LLM/embedding 서버
 
 Git 저장소 분석은 브라우저 사용자 PC가 아니라 앱 서버에서 접근 가능한 저장소 경로를 기준으로 동작합니다. 사내 서버 운영 모델은 [Git 저장소 운영 모델](git-repository-operating-model.md)을 먼저 확인하세요.
@@ -31,10 +32,18 @@ Copy-Item .env.local-llm.example .env
 
 local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼저 로드해야 합니다. `.env`를 바꾼 뒤에는 Streamlit 앱을 재시작해야 합니다.
 
-### 2. PostgreSQL + pgvector 실행
+### 2. PostgreSQL + pgvector + Neo4j 실행
 
 ```powershell
-docker compose up -d
+docker compose up -d postgres neo4j
+```
+
+Neo4j는 `Knowledge Graph` 화면의 graph read model에 사용합니다. 첫 실행에서 image를 내려받을 때는 시간이 더 걸릴 수 있지만, 이후에는 기존 image와 volume을 재사용합니다.
+
+Neo4j 없이 PostgreSQL만 켜고 싶을 때는 `.env`에서 `NEO4J_ENABLED=false`로 바꾼 뒤 PostgreSQL만 실행합니다.
+
+```powershell
+docker compose up -d postgres
 ```
 
 ### 3. Python 가상환경 준비
@@ -130,7 +139,7 @@ REPO_STORAGE_ROOT=/srv/ai-commit-advisor/repos
 
 앱 Dockerfile과 Compose `app` service는 이 차이를 줄이기 위해 추가했습니다. 목표는 다음과 같습니다.
 
-- 처음 실행하는 사람도 `docker compose up`만으로 PostgreSQL + Streamlit 앱 조합을 재현합니다.
+- 처음 실행하는 사람도 `docker compose up`만으로 PostgreSQL + Neo4j + Streamlit 앱 조합을 재현합니다.
 - 서버 배포 시 앱 시작 전에 DB schema 초기화와 Alembic migration을 같은 방식으로 실행합니다.
 - mock LLM/embedding 기본값으로 먼저 화면과 DB 연결을 확인한 뒤, 필요할 때 local/OpenAI-compatible provider로 전환합니다.
 - 배포 후 health endpoint로 최소 기동 상태를 빠르게 확인합니다.
@@ -139,13 +148,13 @@ REPO_STORAGE_ROOT=/srv/ai-commit-advisor/repos
 
 ### Compose 전체 실행
 
-기본 Compose 실행은 PostgreSQL과 Streamlit 앱을 함께 띄웁니다.
+기본 Compose 실행은 PostgreSQL, Neo4j, Streamlit 앱을 함께 띄웁니다.
 
 ```powershell
 docker compose up -d --build
 ```
 
-앱은 `http://localhost:8501`에서 열립니다. Compose의 `app` service는 `postgres` healthcheck가 통과한 뒤 시작됩니다.
+앱은 `http://localhost:8501`에서 열립니다. Compose의 `app` service는 `postgres` healthcheck가 통과하고 `neo4j` service가 시작된 뒤 기동합니다.
 
 실행 상태 확인:
 
@@ -198,6 +207,11 @@ docker build -t ai-commit-advisor:local .
 | `REPO_STORAGE_ROOT` | Compose: `C:\dev`, `.env`: 빈 값 | 프로젝트 Git 저장소 경로를 이 앱 서버 기준 root 하위로 제한합니다. 비워 두면 제한하지 않습니다. |
 | `REPO_PATH_HOST_PREFIX` | `C:\dev` | DB와 화면에 저장되는 host 기준 Git 저장소 경로 prefix입니다. |
 | `REPO_PATH_CONTAINER_PREFIX` | `/host-dev` | app 컨테이너가 같은 저장소를 읽을 때 사용하는 mount 경로 prefix입니다. |
+| `NEO4J_ENABLED` | `true` | Knowledge Graph 동기화를 켤지 정합니다. `.env.example`과 Compose 앱 모두 기본 `true`입니다. Neo4j 없이 실행할 때만 `false`로 바꿉니다. |
+| `NEO4J_URI` | `bolt://neo4j:7687` | 앱 컨테이너가 Compose Neo4j에 접속하는 Bolt URI입니다. 로컬 Python에서는 보통 `bolt://localhost:7687`을 사용합니다. |
+| `NEO4J_USER` | `neo4j` | Neo4j 접속 사용자입니다. |
+| `NEO4J_PASSWORD` | `ai_commit_advisor` | Compose Neo4j 기본 비밀번호입니다. 운영 환경에서는 반드시 변경하세요. |
+| `NEO4J_DATABASE` | `neo4j` | 사용할 Neo4j database입니다. Community Edition에서는 기본값 `neo4j`를 사용합니다. |
 | `PORT` | `8501` | Dockerfile의 Streamlit 실행 port입니다. Compose는 host `8501`을 container `8501`에 연결합니다. |
 
 실제 LM Studio를 Compose 앱에서 사용하려면 provider를 바꿉니다.
@@ -262,6 +276,39 @@ environment:
 
 Docker image에는 Git Sync와 현재 HEAD 확인에 필요한 `git` binary가 포함되어 있습니다. Dockerfile을 수정해 base image를 바꾸는 경우에도 `git` 설치는 유지해야 합니다.
 
+### Neo4j Knowledge Graph 운영
+
+Knowledge Graph는 PostgreSQL 원본 데이터를 대체하지 않습니다. 앱은 PostgreSQL에 저장된 프로젝트, 프로그램, 커밋, 파일, 매핑 결과와 앱 서버 Git 저장소의 Java class/import 구조를 읽고, Neo4j에는 탐색용 read model을 동기화합니다.
+
+로컬 Python 실행에서 기본 권장 순서는 다음과 같습니다.
+
+```powershell
+Copy-Item .env.example .env
+docker compose up -d postgres neo4j
+```
+
+`.env.example`은 Neo4j를 기본으로 켜 둡니다.
+
+```env
+NEO4J_ENABLED=true
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=ai_commit_advisor
+NEO4J_DATABASE=neo4j
+```
+
+그다음 Streamlit 앱을 재시작하고 `분석 결과 > Knowledge Graph`에서 `Neo4j 동기화`를 실행합니다. Neo4j Browser는 `http://localhost:7474`에서 열 수 있습니다.
+
+Neo4j를 끄고 싶을 때만 `.env`를 아래처럼 바꿉니다.
+
+```env
+NEO4J_ENABLED=false
+```
+
+Neo4j를 켜지 않아도 Knowledge Graph 화면은 PostgreSQL과 현재 소스 기준으로 동기화 대상 preview를 보여줍니다. 이 상태에서는 `Neo4j 동기화`가 건너뛰기 상태로 끝나며, 앱의 다른 AI/RAG/분석 기능은 PostgreSQL과 pgvector만으로 계속 동작합니다.
+
+프로젝트 분석 데이터 초기화나 프로젝트 삭제를 실행하면, `NEO4J_ENABLED=true`인 경우 해당 프로젝트의 Neo4j node도 정리합니다. Neo4j가 꺼져 있거나 연결되지 않아도 PostgreSQL 초기화/삭제가 실패하지 않도록 외부 graph cleanup은 best-effort로 처리합니다.
+
 ### Migration 시작 동작
 
 Dockerfile의 기본 command는 앱 시작 전에 다음 순서로 실행됩니다.
@@ -288,6 +335,12 @@ PostgreSQL healthcheck:
 
 ```powershell
 docker exec ai_commit_advisor_postgres pg_isready -U ai_user -d ai_commit_advisor
+```
+
+Neo4j 실행 확인:
+
+```powershell
+docker compose ps neo4j
 ```
 
 Streamlit health endpoint:

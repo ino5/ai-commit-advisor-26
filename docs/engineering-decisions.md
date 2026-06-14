@@ -45,6 +45,51 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - Neo4j는 프로젝트 관계 그래프 read model로 적용한다
+
+### 배경
+
+AX Use Case에서 AI Commit Advisor는 LLM 호출 자체뿐 아니라 개발계획, Git 실행 이력, 코드 구조, 도메인 영향 범위를 연결해서 설명해야 합니다. 기존 PostgreSQL + pgvector 구조는 원본 데이터 저장, vector 검색, 규칙 기반 분석에는 적합하지만, 커밋-프로그램-파일-클래스-도메인으로 이어지는 관계 경로를 시각적으로 탐색하거나 이후 GraphRAG 근거로 확장하기에는 표현력이 부족했습니다.
+
+### 결정
+
+Neo4j를 선택적 graph read model로 추가합니다. PostgreSQL은 계속 source of truth로 유지하고, `Knowledge Graph` 화면에서 현재 프로젝트의 프로그램, 커밋, 파일, Java class, domain 관계를 Neo4j에 동기화합니다. Neo4j가 꺼져 있어도 화면은 PostgreSQL과 앱 서버 Git 저장소 기준 preview를 보여주며, 실제 graph 저장만 건너뜁니다.
+
+### 이유
+
+- Neo4j는 node/edge/path 탐색과 graph visualization 도구가 성숙해 AX 설명에서 관계형 AI 기반을 드러내기 좋습니다.
+- PostgreSQL 원본 schema를 크게 흔들지 않고도 graph 기능을 바로 실험할 수 있습니다.
+- `program_commit_mappings`, `commit_files`, Java class/import 관계를 graph로 투영하면 Commit Impact보다 넓은 프로젝트 전체 관계망을 보여줄 수 있습니다.
+- 이후 Project Chat이 vector retrieval뿐 아니라 graph path를 근거로 사용하는 GraphRAG 확장으로 이어질 수 있습니다.
+
+### 검토한 대안
+
+- PostgreSQL 재귀 CTE와 JSONB만 사용: 추가 인프라는 줄지만 graph path 탐색, class/domain 관계 시각화, Neo4j Browser 기반 검토 장점이 약합니다.
+- Apache AGE 같은 PostgreSQL graph 확장: 단일 DB 운영에는 유리하지만 Docker/Windows 개발 환경과 Python ecosystem 검증 범위가 커지고, Neo4j만큼 익숙한 graph 운영/시각화 경험을 바로 얻기 어렵습니다.
+- Neo4j를 source of truth로 사용: graph 질의는 강하지만 기존 업무/AI/RAG 데이터 모델을 이중 원본으로 나누게 되어 동기화 충돌과 운영 복잡도가 커집니다.
+- GraphRAG까지 즉시 구현: AI 활용감은 강하지만 retrieval 품질, prompt safety, 테스트 범위가 커져 첫 Neo4j 적용의 안정성을 떨어뜨립니다.
+
+### 영향과 tradeoff
+
+Neo4j Docker service, Python driver, 환경 변수가 추가되어 실행 구성은 조금 무거워집니다. 로컬 Quick Start는 Neo4j를 기본으로 켜지만, `NEO4J_ENABLED=false`에서는 기존 앱 기능이 그대로 동작합니다. 현재 Java 구조 추출은 정규식 기반 경량 parser라 compiler 수준의 완전성을 보장하지 않습니다. graph edge는 `RELATED` relationship에 `edge_type` property를 두는 방식으로 저장해 동적 relationship type 관리 복잡도를 줄였지만, Neo4j Browser에서 관계 type이 모두 `RELATED`로 보이는 tradeoff가 있습니다.
+
+### 후속 확인
+
+- GraphRAG로 확장할 때는 Project Chat prompt에 graph path를 어떻게 넣을지, vector 근거와 graph 근거의 우선순위를 어떻게 표시할지 별도 결정이 필요합니다.
+- Java 외 언어 또는 MyBatis XML, SQL mapper 관계까지 확장할 때는 parser 전략과 테스트 fixture를 보강해야 합니다.
+- 운영 환경에서는 Neo4j 비밀번호와 volume backup 정책을 기본값에서 분리해야 합니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `Neo4j Knowledge Graph foundation`
+- `ROADMAP.md`의 `P1 - Neo4j Knowledge Graph Foundation`
+- `docs/architecture.md`
+- `docs/ai-technical-overview.md`
+- `docs/feature-guide.md`
+- `docs/setup-and-operations.md`
+- `docs/db-migrations.md`
+- `docs/failure-history.md`의 `Neo4j schema 변경과 graph write를 같은 transaction에서 실행했다`
+
 ## 2026-06-15 - AI 근거 화면은 운영 현황으로 보이게 한다
 
 ### 배경

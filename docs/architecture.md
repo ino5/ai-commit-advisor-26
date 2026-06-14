@@ -4,7 +4,7 @@
 
 ## 0. Architecture at a glance
 
-AI Commit Advisor는 Streamlit 앱을 중심으로 업무 산출물과 대상 프로젝트 Git 저장소를 모으고, DB/RAG/LLM 계층을 거쳐 분석 결과를 보여주는 구조입니다. 처음 볼 때는 아래 다섯 영역만 잡으면 됩니다.
+AI Commit Advisor는 Streamlit 앱을 중심으로 업무 산출물과 대상 프로젝트 Git 저장소를 모으고, DB/RAG/Graph/LLM 계층을 거쳐 분석 결과를 보여주는 구조입니다. 처음 볼 때는 아래 여섯 영역만 잡으면 됩니다.
 
 ```mermaid
 flowchart TB
@@ -21,6 +21,7 @@ flowchart TB
 
     subgraph Storage["저장소"]
         DB[(PostgreSQL + pgvector<br/>업무 데이터 / Git 데이터 / vector / 분석 결과)]
+        GraphDB[(Neo4j<br/>Knowledge Graph read model)]
     end
 
     subgraph TargetProject["분석 대상 프로젝트"]
@@ -43,6 +44,7 @@ flowchart TB
     Artifacts --> Services
     Services <--> DB
     RAG <--> DB
+    Services -. graph sync .-> GraphDB
     Services <--> LLM
     RAG <--> LLM
 ```
@@ -52,7 +54,7 @@ flowchart TB
 - 사용자는 브라우저에서 Python App의 `화면단`을 사용합니다.
 - `화면단`은 Streamlit page 묶음이고, 실제 수집·분석·저장은 `백단` Python service가 처리합니다.
 - `분석 대상 프로젝트`는 이 앱이 분석하는 별도 업무 시스템입니다. GitHub/사내 Git에서 앱 서버 clone으로 내려온 source와 업무 산출물이 입력이 됩니다.
-- `저장소`는 PostgreSQL + pgvector이며, 업무 데이터, Git 수집 데이터, RAG vector, 분석 결과를 보관합니다.
+- `저장소`는 PostgreSQL + pgvector와 선택적 Neo4j로 나뉩니다. PostgreSQL은 업무 데이터, Git 수집 데이터, RAG vector, 분석 결과의 source of truth이고, Neo4j는 프로젝트 관계 탐색용 read model입니다.
 - `AI Provider`는 LLM 판단과 embedding 생성을 담당하고, 백단 service와 RAG가 필요할 때 호출합니다.
 
 ## 0.1 우리 프로젝트와 대상 프로젝트의 관계
@@ -67,15 +69,19 @@ flowchart LR
     GitHub --> ServerClone["앱 서버의 대상 프로젝트 clone<br/>projects.git_repo_path"]
     ServerClone --> GitSync["Git 동기화<br/>commit / file / diff 수집"]
     ServerClone --> SourceIndex["RAG source_file 인덱싱<br/>현재 HEAD source chunk"]
+    ServerClone --> GraphSync["Knowledge Graph 동기화<br/>Java class / import / domain"]
 
     AdvisorRepo["우리 프로젝트<br/>ai-commit-advisor source"] --> App["AI Commit Advisor App<br/>Streamlit + services"]
     App --> GitSync
     App --> SourceIndex
+    App --> GraphSync
     App --> Rag["RAG Layer<br/>chunk / embedding / retrieval"]
     App --> LLM["LLM / Embedding provider"]
 
     GitSync --> DB[(PostgreSQL + pgvector)]
     SourceIndex --> DB
+    GraphSync --> Neo4j[(Neo4j<br/>graph read model)]
+    DB --> GraphSync
     Rag --> DB
     DB --> Rag
     Rag --> App
@@ -104,6 +110,7 @@ flowchart TB
     Streamlit --> GitUI["Git 동기화"]
     Streamlit --> MappingUI["Mapping / Risk / Impact / Code Review"]
     Streamlit --> RagUI["RAG 검색 / Project Chat"]
+    Streamlit --> GraphUI["Knowledge Graph"]
     Streamlit --> DashboardUI["Dashboard / 개발계획 / AI Progress"]
     Streamlit --> SettingsUI["설정"]
 
@@ -118,6 +125,7 @@ flowchart TB
     MappingUI --> ImpactService["commit_impact_service.py"]
     MappingUI --> GitHistoryService["git_history_service.py"]
     MappingUI --> CodeReviewService["code_review_service.py"]
+    GraphUI --> Neo4jGraphService["neo4j_graph_service.py"]
     RagUI --> RagLayer["RAG Layer"]
     RagUI --> ChatService["chat_service.py"]
     DashboardUI --> ProgressService["progress_service.py"]
@@ -147,6 +155,7 @@ flowchart TB
     EmbeddingClient --> EmbeddingAPI["Mock / OpenAI / Local Embedding API"]
     GitService --> ServerGit["App-server Git Repository"]
     GitStatusService --> ServerGit
+    Neo4jGraphService --> ServerGit
     ExcelService --> ExcelFiles["Excel Files"]
 
     ExcelService --> DB[(PostgreSQL + pgvector)]
@@ -156,6 +165,8 @@ flowchart TB
     ImpactService --> DB
     GitHistoryService --> DB
     CodeReviewService --> DB
+    Neo4jGraphService --> DB
+    Neo4jGraphService -. sync .-> GraphDB[(Neo4j<br/>Knowledge Graph)]
     ProgressService --> DB
     DeveloperService --> DB
     ProgramAnalysisService --> DB
@@ -191,6 +202,7 @@ flowchart LR
     Git --> GitHistory["Git History<br/>커밋 이력/diff 탐색"]
     Mapping --> Risk["Risk Analysis<br/>리스크 탐지/저장"]
     Mapping --> Impact["Commit Impact<br/>커밋 영향도 분석"]
+    Impact --> KnowledgeGraph["Knowledge Graph<br/>Neo4j 관계 탐색"]
     Git --> CodeReview["AI Code Review<br/>커밋 이력 중심 리뷰"]
     Mapping --> Dashboard["Dashboard<br/>프로젝트 분석 요약"]
     Mapping --> AIProgress["AI Progress<br/>계획 vs AI 진척도"]
@@ -215,6 +227,7 @@ flowchart LR
 - `Risk Analysis`: 계획, 매핑, 커밋 활동, 예상 종료일 기반 리스크를 탐지하고 `risk_findings`에 저장/해결 처리.
 - `Git History`: 현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff를 조회.
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
+- `Knowledge Graph`: PostgreSQL 분석 데이터와 앱 서버 Git 저장소의 Java class/import 구조를 Neo4j graph read model로 동기화하고, 도메인 묶음, 클래스 관계도, 커밋 영향 경로를 조회.
 - `AI Code Review`: 앱 서버 Git 저장소의 최근 커밋과 특정 커밋을 중심으로 LLM 리뷰를 실행하고 결과를 저장. 서버 clone에 local 변경이 남아 있을 때만 서버 작업트리/staged 변경 리뷰를 보조 옵션으로 사용.
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, AI Resource Radar, PL Briefing, 개발자별 업무량·난이도, 예상 지연 프로그램, 고객가치 참고 지표 표시.
 - `AI 운영 현황`: LLM/embedding 연결 상태, AI 분석 준비 상태, AI 실행 바로가기, AI 근거 추적, sample project 품질 점검, 주간 보고서 export, AI 호출 기록 표시.
@@ -225,9 +238,9 @@ flowchart LR
 
 대부분의 프로젝트 단위 화면은 각 화면 안에서 프로젝트를 다시 고르지 않고, 사이드바의 현재 프로젝트 컨텍스트를 사용합니다. `프로젝트/Git 설정`은 프로젝트 생성, 수정, 삭제를 담당하므로 자체 선택 UI를 유지하고, `프로그램 목록`은 현재 프로젝트에 프로그램을 조회·추가·업로드하는 흐름만 담당합니다.
 
-프로젝트 분석 데이터 초기화는 프로젝트 record, Git 저장소 경로, 프로그램/개발계획, 표준용어/표준단어, 프로젝트 개발자 연결을 보존하고 Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, PL Briefing 이력, AI 호출 telemetry, RAG chunk/vector, Project Chat, AI Code Review 결과를 삭제합니다. 같은 프로젝트 shell과 산출물을 유지한 채 수집/분석을 다시 실행하기 위한 흐름입니다.
+프로젝트 분석 데이터 초기화는 프로젝트 record, Git 저장소 경로, 프로그램/개발계획, 표준용어/표준단어, 프로젝트 개발자 연결을 보존하고 Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, PL Briefing 이력, AI 호출 telemetry, RAG chunk/vector, Project Chat, AI Code Review 결과를 삭제합니다. Neo4j가 활성화되어 있으면 같은 프로젝트의 graph read model도 best-effort로 정리합니다. 같은 프로젝트 shell과 산출물을 유지한 채 수집/분석을 다시 실행하기 위한 흐름입니다.
 
-프로젝트 삭제는 프로젝트 소유 데이터 전체를 정리합니다. 프로그램, Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, PL Briefing 이력, AI 호출 telemetry, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어, 프로젝트 개발자 연결은 삭제 대상입니다. `developers`는 전역 개발자 마스터이므로 프로젝트 삭제 시 자동 삭제하지 않습니다.
+프로젝트 삭제는 프로젝트 소유 데이터 전체를 정리합니다. 프로그램, Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, PL Briefing 이력, AI 호출 telemetry, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어, 프로젝트 개발자 연결, Neo4j graph read model은 삭제 대상입니다. `developers`는 전역 개발자 마스터이므로 프로젝트 삭제 시 자동 삭제하지 않습니다.
 
 ## 2.1 Git 저장소 접근 모델
 
@@ -716,6 +729,7 @@ LLM 출력 예시:
 - Risk Analysis 실행, 리스크 저장, 미해결 리스크 조회 및 해결 처리. 예상 종료일 기준 지연 가능성은 `FORECAST_DELAY` 리스크로 저장한다.
 - Git History 커밋 이력과 diff 탐색.
 - Commit Impact 분석.
+- Neo4j Knowledge Graph preview와 동기화, 도메인 묶음, 클래스 관계도, 커밋 영향 경로 표시.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
 - Dashboard 자원관리 지표: AI Resource Radar와 PL Briefing, 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, 고객가치 참고 지표 표시, 수동 snapshot 저장과 추세 분석.
@@ -738,6 +752,7 @@ LLM 출력 예시:
 - RAG 검색 품질은 embedding 모델에 크게 의존하며, mock embedding은 테스트용이다.
 - local/openai embedding은 OpenAI-compatible `/embeddings` 형식을 가정하지만 실제 모델별 검증은 별도 필요하다.
 - PL Briefing은 구조화 validation과 1회 repair retry를 사용하지만, Mapping 등 일부 LLM 응답 처리는 여전히 pragmatic parsing과 fallback 중심이다.
+- Neo4j Knowledge Graph는 현재 PostgreSQL 분석 데이터와 Java source structure의 read model이며, Project Chat 답변 context에 graph path를 자동 주입하는 GraphRAG는 아직 없다.
 - Mapping 실패 재처리 정책은 기본 상태 기록 수준이며 상세 재시도 큐는 없다.
 - 테스트는 핵심 순수 로직 중심이며, Streamlit UI/DB 통합 테스트는 아직 부족하다.
 - 배포 설정, CI, 환경별 설정 분리는 제한적이다. AI 호출 telemetry는 앱 내부 관측용이며 외부 로그/모니터링 시스템 연계는 아직 없다.
@@ -757,11 +772,11 @@ LLM 출력 예시:
 
 주요 메뉴 그룹:
 
-- `개요`: Home, Dashboard, AI Progress
+- `개요`: Home, Dashboard, AI Progress, AI 운영 현황
 - `프로젝트 설정`: 프로젝트/Git 설정, Git 동기화, 샘플 데이터 생성
 - `산출물 관리`: 개발자 현황, 개발자 목록, 프로그램 목록, 개발계획, 표준용어/표준단어
 - `분석 실행`: Mapping, Risk Analysis, RAG 검색, Project Chat, AI Code Review
-- `분석 결과`: Program Detail, Git History, Commit Impact, 개발계획 대시보드
+- `분석 결과`: Program Detail, Git History, Commit Impact, Knowledge Graph, 개발계획 대시보드
 - `관리`: 설정
 
 ### 주요 UI 파일
@@ -782,6 +797,7 @@ LLM 출력 예시:
 | `src/ui/risk_page.py` | 프로젝트 리스크 분석, 미해결 리스크 조회 및 해결 처리. |
 | `src/ui/git_history_page.py` | 프로젝트별 Git 커밋 이력, 변경 파일, diff 조회. |
 | `src/ui/commit_impact_page.py` | 특정 커밋의 영향도 분석. |
+| `src/ui/knowledge_graph_page.py` | Neo4j Knowledge Graph preview, 동기화, 도메인/클래스/영향 경로 조회. |
 | `src/ui/rag_page.py` | RAG chunk/embedding/search 관리. |
 | `src/ui/project_chat_page.py` | 검증된 현재 소스 RAG 기반 프로젝트 채팅. |
 | `src/ui/code_review_page.py` | AI 코드 리뷰 실행 및 이력 조회. |
@@ -812,6 +828,7 @@ LLM 출력 예시:
 | `src/services/risk_service.py` | `run_risk_analysis`, `get_unresolved_findings`, `resolve_findings` |
 | `src/services/git_history_service.py` | `list_git_history_commits`, `get_git_history_detail`, `get_commit_full_diff` |
 | `src/services/commit_impact_service.py` | `list_commit_options`, `get_commit_impact_analysis` |
+| `src/services/neo4j_graph_service.py` | `build_project_graph_payload`, `sync_project_graph_to_neo4j`, `get_neo4j_connection_status` |
 | `src/services/code_review_service.py` | `get_review_target`, `CodeReviewService.review_project`, `get_recent_code_reviews` |
 | `src/services/resource_metrics_service.py` | `get_resource_metrics_summary` |
 | `src/services/ai_resource_radar_service.py` | `build_ai_resource_radar`, `generate_pl_briefing` |
@@ -842,7 +859,7 @@ LLM 출력 예시:
 
 ## 6. Docker 배포 구조
 
-Docker 배포는 개발자별 Python 환경 차이를 줄이고 서버 기동 순서를 표준화하기 위해 추가되었습니다. Compose 기준 실행 단위는 `app`과 `postgres`입니다.
+Docker 배포는 개발자별 Python 환경 차이를 줄이고 서버 기동 순서를 표준화하기 위해 추가되었습니다. Compose 기준 실행 단위는 `app`, `postgres`, `neo4j`입니다.
 
 ```mermaid
 flowchart LR
@@ -850,6 +867,7 @@ flowchart LR
     App --> Init["python -m src.db.init_db<br/>Alembic migration"]
     Init --> DB[(postgres container<br/>PostgreSQL + pgvector)]
     App --> DB
+    App -. graph sync .-> Neo4j[(neo4j container<br/>Knowledge Graph)]
     HostRepo["Windows host repo<br/>C:/dev"] --> Mount["container mount<br/>/host-dev"]
     Mount --> App
     App -. optional .-> HostLLM["host.docker.internal:1234/v1<br/>LM Studio / OpenAI-compatible API"]
@@ -857,7 +875,8 @@ flowchart LR
 
 - `Dockerfile`은 Python 3.11 slim image에 `requirements.txt`를 설치하고 `app.py`를 Streamlit으로 실행합니다.
 - 컨테이너 시작 command는 앱 실행 전에 `python -m src.db.init_db`를 호출해 DB 초기화와 Alembic migration을 적용합니다.
-- `docker-compose.yml`의 `postgres` service는 `pgvector/pgvector:pg16` image를 사용하고, `app` service는 PostgreSQL healthcheck 통과 후 시작됩니다.
+- `docker-compose.yml`의 `postgres` service는 `pgvector/pgvector:pg16` image를 사용하고, `neo4j` service는 `neo4j:5-community` image를 사용합니다. `app` service는 PostgreSQL healthcheck 통과와 Neo4j service 시작 후 기동합니다.
+- Neo4j Browser는 host `7474`, Bolt는 host `7687`로 노출합니다. Docker app은 `bolt://neo4j:7687`로 접속합니다.
 - Docker 내부 DB 접속 주소는 Compose service 이름인 `postgres`를 사용합니다. 로컬 Python 실행의 `127.0.0.1` DB 주소와 다릅니다.
 - Docker 앱이 DB에 저장된 Windows Git 경로를 읽을 수 있도록 `C:/dev`를 `/host-dev`에 mount하고 `REPO_STORAGE_ROOT`, `REPO_PATH_HOST_PREFIX`, `REPO_PATH_CONTAINER_PREFIX`로 경로 제한과 변환을 적용합니다.
 - 로컬 LM Studio를 컨테이너에서 호출할 때는 `host.docker.internal:1234/v1`을 사용합니다.

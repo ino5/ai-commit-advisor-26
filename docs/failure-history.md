@@ -31,6 +31,68 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-15 - Neo4j schema 변경과 graph write를 같은 transaction에서 실행했다
+
+분류:
+
+- Neo4j integration failure
+- Infrastructure verification gap
+- Graph read model lifecycle
+
+관련 기능 및 문서:
+
+- `src/services/neo4j_graph_service.py`
+- `tests/test_neo4j_graph_service.py`
+- `docs/engineering-decisions.md`의 `Neo4j는 프로젝트 관계 그래프 read model로 적용한다`
+- `AI_CHANGELOG.md`의 `Neo4j Knowledge Graph 기반 추가`
+
+### 증상
+
+Neo4j container를 실제로 띄운 뒤 `sync_project_graph_to_neo4j`를 실행하자 graph payload 생성은 성공했지만 Neo4j write가 실패했습니다. 오류는 `Neo.ClientError.Transaction.ForbiddenDueToTransactionType`였고, 같은 transaction 안에서 schema modification과 일반 write query를 섞었다는 메시지가 나왔습니다.
+
+실패 당시 출력:
+
+```text
+sync_status=failed nodes=1076 edges=10263 errors=1
+first_error=... Tried to execute Write query after executing Schema modification ...
+```
+
+### 직접 원인
+
+`_sync_project_graph_tx`가 `CREATE CONSTRAINT ... IF NOT EXISTS`를 실행한 뒤 같은 write transaction에서 기존 graph 삭제와 node/edge upsert를 이어서 실행했습니다. Neo4j 5는 schema 변경과 일반 write를 같은 transaction에 섞는 것을 허용하지 않습니다.
+
+### 배경 또는 구조적 원인
+
+초기 구현 검증은 graph payload 생성, UI preview, Docker Compose 구문, 단위 테스트 중심이었습니다. 실제 Neo4j Bolt 연결과 write transaction을 실행하기 전까지는 schema statement와 write statement의 transaction type 충돌이 드러나지 않았습니다.
+
+### 사전 검증에서 놓친 이유
+
+Neo4j service를 실제로 띄워 동기화하지 않고 `docker compose config -q`까지만 먼저 확인했습니다. 단위 테스트도 Java symbol 추출과 payload edge 구성을 검증했지만, driver/session transaction sequencing을 검증하지 않았습니다.
+
+### 수정 내용
+
+Neo4j schema 준비를 `_ensure_neo4j_schema(session)`로 분리하고, `session.run(...).consume()`으로 constraint 생성을 먼저 끝낸 뒤 별도 `session.execute_write(...)` transaction에서 graph cleanup과 node/edge upsert를 실행하도록 변경했습니다.
+
+`tests/test_neo4j_graph_service.py`에는 fake Neo4j session test를 추가해 schema 준비가 write transaction 밖에서 먼저 실행되는지 확인합니다.
+
+### 재발 방지 규칙
+
+- Neo4j schema 변경, index/constraint 생성, 일반 write query는 같은 explicit write transaction에 섞지 않습니다.
+- Graph DB 기능을 추가하거나 transaction 흐름을 바꿀 때는 payload unit test만으로 끝내지 말고 최소 1회 실제 Neo4j service against sync를 실행합니다.
+- 외부 read model은 "연결 확인"과 "실제 write path"를 별도 verification 항목으로 기록합니다.
+
+### 남은 한계 또는 후속 확인
+
+현재 graph sync는 실제 Neo4j에 node/edge를 저장하는 smoke까지 확인했습니다. 다만 대용량 프로젝트에서 batch size, transaction memory, dynamic relationship type 설계, Neo4j backup/restore 정책은 별도 운영 검증이 필요합니다.
+
+### 검증 명령과 결과
+
+- `docker compose up -d neo4j`: `neo4j:5-community` image pull 및 `ai_commit_advisor_neo4j` container 시작 성공.
+- `docker compose ps neo4j`: `7474`, `7687` port 노출과 `Up` 상태 확인.
+- `$env:NEO4J_ENABLED='true'; ...; get_neo4j_connection_status()`: `connected=True`, `Neo4j 연결됨`.
+- `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py -q`: 3개 테스트 통과.
+- 실제 sync 재실행: `project_id=1`, `nodes=1076`, `edges=10263`, `sync_status=completed`, `summary_status=completed`.
+
 ## 2026-06-14 - README top screenshot stayed stale after Application Preview refresh
 
 분류:

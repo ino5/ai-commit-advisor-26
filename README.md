@@ -8,7 +8,7 @@ AI Commit Advisor는 앱 서버에서 접근 가능한 Git 저장소의 커밋, 
 
 ## 아키텍처 요약
 
-AI Commit Advisor는 Python App 안의 화면단, 백단, RAG 계층이 분석 대상 프로젝트와 저장소, AI Provider를 연결하는 구조입니다. 자세한 모듈과 데이터 흐름은 [아키텍처](docs/architecture.md)에서 확인할 수 있습니다.
+AI Commit Advisor는 Python App 안의 화면단, 백단, RAG/Knowledge Graph 계층이 분석 대상 프로젝트와 저장소, AI Provider를 연결하는 구조입니다. 자세한 모듈과 데이터 흐름은 [아키텍처](docs/architecture.md)에서 확인할 수 있습니다.
 
 ```mermaid
 flowchart TB
@@ -25,6 +25,7 @@ flowchart TB
 
     subgraph Storage["저장소"]
         DB[(PostgreSQL + pgvector<br/>업무 데이터 / Git 데이터 / vector / 분석 결과)]
+        GraphDB[(Neo4j<br/>프로젝트 관계 그래프 read model)]
     end
 
     subgraph TargetProject["분석 대상 프로젝트"]
@@ -47,6 +48,7 @@ flowchart TB
     Artifacts --> Services
     Services <--> DB
     RAG <--> DB
+    Services -. sync .-> GraphDB
     Services <--> LLM
     RAG <--> LLM
 ```
@@ -61,6 +63,7 @@ flowchart TB
 - 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
 - Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, 고객가치 참고 지표와 저장형 추세 확인
 - AI 운영 현황에서 LLM/embedding 연결 상태, AI 분석 준비 상태, 근거 추적, 품질 점검, 주간 보고서, 호출 기록 확인
+- Neo4j Knowledge Graph에서 프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인 관계와 영향 경로 탐색
 - 현재 소스 검증형 RAG Search와 저장형 Project Chat
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
 - 앱 서버 Git 저장소의 최신/특정 커밋 중심 AI Code Review
@@ -82,20 +85,22 @@ AI Commit Advisor는 브라우저 사용자 PC의 Git 저장소를 직접 읽지
 
 ```powershell
 Copy-Item .env.example .env
-docker compose up -d postgres
+docker compose up -d postgres neo4j
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m src.db.init_db
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-Docker만으로 PostgreSQL과 앱을 함께 실행하려면 다음 명령을 사용합니다.
+Docker만으로 PostgreSQL, Neo4j, 앱을 함께 실행하려면 다음 명령을 사용합니다.
 
 ```powershell
 docker compose up -d --build
 ```
 
 Docker 앱은 `http://localhost:8501`에서 열립니다. 로컬 Python 실행과 Docker 앱 실행을 동시에 켜면 같은 port를 사용할 수 있으므로 한 방식만 선택하세요.
+
+로컬 Python Quick Start도 기본적으로 Neo4j를 함께 켭니다. Neo4j는 첫 image pull 때만 시간이 더 걸릴 수 있고, 이후에는 기존 Docker volume/image를 재사용합니다. 아주 가볍게 PostgreSQL만 켜고 싶다면 `docker compose up -d postgres`만 실행하고 `.env`에서 `NEO4J_ENABLED=false`로 바꾸세요. 이 경우 `Knowledge Graph` 화면은 PostgreSQL 데이터를 기준으로 preview만 보여주며, Neo4j 저장 동기화는 건너뜁니다.
 
 실제 LLM/RAG/Project Chat 품질을 검증하려면 로컬 LLM 설정 예시를 사용합니다.
 
@@ -143,7 +148,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 - [설치와 운영](docs/setup-and-operations.md): 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 가이드입니다.
 - [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md): 샘플 프로젝트로 주요 기능을 확인할 때 참고하는 권장 실행 흐름입니다.
 - [샘플 프로젝트 설계](docs/sample-target-repo-demo-design.md): 데모용 샘플 프로젝트의 구성, commit 시나리오, 기능별 확인 포인트입니다.
-- [AI 기술 개요](docs/ai-technical-overview.md): AX Use Case 기준으로 적용된 LLM, embedding/RAG, source verification, AI-derived analytics와 화면별 AI 동작 방식입니다.
+- [AI 기술 개요](docs/ai-technical-overview.md): AX Use Case 기준으로 적용된 LLM, embedding/RAG, Neo4j Knowledge Graph, source verification, AI-derived analytics와 화면별 AI 동작 방식입니다.
 - [소스 인덱싱과 임베딩 운영 계획](docs/source-indexing-and-embedding-plan.md): Project Chat source_file 증분 인덱싱, embedding 비용 제어, cloud 운영 계획입니다.
 - [아키텍처](docs/architecture.md): 모듈 구조, 데이터 흐름, 서비스 책임입니다.
 - [DB 마이그레이션](docs/db-migrations.md): Alembic 기반 DB schema 관리 기준입니다.

@@ -283,6 +283,19 @@ Add payment authorization flow
 
 - Git History가 commit 자체를 보는 화면이라면, Commit Impact는 commit이 업무 프로그램에 미치는 영향을 보는 화면입니다.
 
+### Knowledge Graph
+
+`분석 결과 > Knowledge Graph`로 이동합니다.
+
+확인할 내용:
+
+- 도메인별 프로그램, 파일, 클래스, 커밋 묶음
+- Java class/import 기반 클래스 관계도
+- 커밋에서 프로그램, 파일, 클래스, 도메인으로 이어지는 영향 경로
+- Neo4j 연결 상태와 동기화 대상 node/edge 수
+
+기본 Quick Start를 따르면 Neo4j가 함께 실행되므로 `Neo4j 동기화`로 graph 저장까지 확인할 수 있습니다. Neo4j를 끈 환경에서는 PostgreSQL과 앱 서버 Git 저장소 기준 preview만 볼 수 있습니다.
+
 ## 11. RAG Search와 Project Chat
 
 소스 기반 질의응답은 실제 embedding과 LLM 설정이 있을 때 가장 잘 보입니다. mock 설정에서는 흐름 확인용으로 사용합니다.
@@ -375,6 +388,7 @@ Extract shared order status constants
 -> Program Detail
 -> Git History
 -> Commit Impact
+-> Knowledge Graph
 -> RAG Search
 -> Project Chat
 -> AI Code Review

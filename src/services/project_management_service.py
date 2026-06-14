@@ -141,6 +141,16 @@ def _mapping_project_filter(program_ids: list[int], commit_ids: list[int]):
     return or_(*filters) if filters else false()
 
 
+def _clear_external_project_graph(project_id: int) -> None:
+    try:
+        from src.services.neo4j_graph_service import clear_project_graph
+
+        clear_project_graph(project_id)
+    except Exception:
+        # Project reset/delete must not fail because the optional graph read model is unavailable.
+        return
+
+
 def get_project_delete_impact(db: Session, project_id: int) -> ProjectDeleteImpact | None:
     project = db.get(Project, project_id)
     if project is None:
@@ -308,6 +318,7 @@ def reset_project_analysis_data(db: Session, project_id: int) -> ProjectResetImp
         synchronize_session=False,
     )
     db.commit()
+    _clear_external_project_graph(project_id)
     return impact
 
 
@@ -355,4 +366,5 @@ def delete_project(db: Session, project_id: int) -> ProjectDeleteImpact | None:
     db.query(Program).filter(Program.project_id == project_id).delete(synchronize_session=False)
     db.query(Project).filter(Project.id == project_id).delete(synchronize_session=False)
     db.commit()
+    _clear_external_project_graph(project_id)
     return impact

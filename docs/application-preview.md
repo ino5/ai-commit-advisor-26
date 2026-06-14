@@ -227,6 +227,15 @@ PL Briefing 회의 질문, 다음 action, 이력 확인
 </details>
 
 <details>
+<summary>Knowledge Graph</summary>
+
+프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인을 Neo4j 관계 그래프로 동기화하기 전에 PostgreSQL 기준 preview를 확인하는 화면입니다. 도메인별 묶음, 클래스 관계도, 커밋-프로그램-클래스 영향 경로를 함께 보며, Neo4j 연결을 켜면 같은 화면에서 그래프 read model로 저장합니다.
+
+![Knowledge Graph](images/features/knowledge-graph.png)
+
+</details>
+
+<details>
 <summary>개발계획 대시보드</summary>
 
 ![개발계획 대시보드](images/features/planning-dashboard.png)

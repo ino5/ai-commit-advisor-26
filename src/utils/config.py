@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     repo_storage_root: str | None = Field(default=None, alias="REPO_STORAGE_ROOT")
     repo_path_host_prefix: str | None = Field(default=None, alias="REPO_PATH_HOST_PREFIX")
     repo_path_container_prefix: str | None = Field(default=None, alias="REPO_PATH_CONTAINER_PREFIX")
+    neo4j_enabled: bool = Field(default=False, alias="NEO4J_ENABLED")
+    neo4j_uri: str = Field(default="bolt://localhost:7687", alias="NEO4J_URI")
+    neo4j_user: str = Field(default="neo4j", alias="NEO4J_USER")
+    neo4j_password: str = Field(default="ai_commit_advisor", alias="NEO4J_PASSWORD")
+    neo4j_database: str | None = Field(default=None, alias="NEO4J_DATABASE")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

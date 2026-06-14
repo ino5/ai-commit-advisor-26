@@ -110,6 +110,7 @@
 | P2 | Docs / Product Wording | Product wording cleanup | Done | 제품 용어 정리 |
 | P2 | UX / Product Wording | AI validation menu purpose cleanup | Done | AI 검증 메뉴 목적과 제품 용어 정리 |
 | P2 | UX / AI Ops | AI operations status menu | Done | AI 운영 현황 메뉴와 연결 상태 요약 |
+| P1 | Graph / AI | Neo4j knowledge graph foundation | Done | Neo4j Knowledge Graph 기반 추가 |
 
 ## Candidate Tasks
 
@@ -268,6 +269,25 @@ Checklist:
 - [x] Update user-facing and technical documentation to explain the status surface.
 - [x] Refresh the Application Preview screenshot and capture criteria.
 - [x] Run focused tests, screenshot capture, text search, and diff checks.
+
+## P1 - Neo4j Knowledge Graph Foundation
+
+Status: Done
+
+Goal:
+Add Neo4j as a graph read model for project, program, commit, file, class, and domain relationships so code impact and AI evidence can be explored as connected paths.
+
+Rationale:
+The existing PostgreSQL/pgvector model already stores project artifacts, Git history, RAG chunks, AI analysis, and risk records, but class-level structure and relationship traversal are not first-class. Neo4j makes the AX Use Case more visible by showing how AI analysis connects plans, commits, files, classes, domains, and risk/evidence paths.
+
+Checklist:
+
+- [x] Add Neo4j driver dependency, environment settings, and Docker service.
+- [x] Implement a Neo4j graph sync service that builds project/program/commit/file/class/domain nodes and relationships from existing data and source files.
+- [x] Add a Knowledge Graph screen with connection status, sync action, domain summary, class relationship summary, and impact path preview.
+- [x] Update setup, architecture, AI technical overview, feature guide, DB migration guidance, engineering decision, README, roadmap, and changelog.
+- [x] Add focused tests for source graph extraction and graph payload generation.
+- [x] Run compile, focused tests, full tests when practical, and documentation checks.
 
 ## P1 - Structured PL Briefing History And Validation Hardening
 

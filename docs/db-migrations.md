@@ -2,6 +2,8 @@
 
 이 프로젝트는 PostgreSQL schema migration에 Alembic을 사용합니다.
 
+Neo4j Knowledge Graph는 PostgreSQL schema가 아니라 탐색용 read model입니다. Graph node/edge는 `Knowledge Graph` 화면의 동기화 action이 PostgreSQL 분석 데이터와 앱 서버 Git 저장소의 현재 Java 소스 구조를 읽어 다시 구성합니다.
+
 ## 마이그레이션 적용
 
 ```powershell
@@ -56,6 +58,18 @@ Baseline 이후 revision은 정상적으로 실행됩니다. 예를 들어 mappi
 ```
 
 Schema 변경은 생성된 `migrations/versions/*.py` 파일에 작성합니다. 새 schema-upgrade `ALTER TABLE` 목록을 `src/db/init_db.py`에 추가하지 마세요.
+
+## Neo4j graph 변경 기준
+
+Neo4j에 저장하는 node, edge, property, constraint를 바꿀 때는 Alembic migration을 만들지 않습니다. 대신 다음 기준을 따릅니다.
+
+- PostgreSQL 원본 schema가 바뀌면 Alembic migration을 추가합니다.
+- Neo4j graph projection만 바뀌면 `src/services/neo4j_graph_service.py`와 관련 테스트를 수정하고, 기존 graph는 `Knowledge Graph` 화면에서 다시 동기화합니다.
+- Neo4j constraint는 동기화 시점에 `CREATE CONSTRAINT ... IF NOT EXISTS`로 준비합니다.
+- 프로젝트 분석 데이터 초기화나 프로젝트 삭제는 `NEO4J_ENABLED=true`인 경우 선택 프로젝트의 Neo4j node를 best-effort로 정리합니다.
+- 운영 환경에서 Neo4j 비밀번호, database, volume 정책을 바꾸는 작업은 migration이 아니라 배포/운영 변경으로 기록합니다.
+
+이 분리는 PostgreSQL을 source of truth로 유지하고, Neo4j를 관계 탐색과 이후 GraphRAG 확장을 위한 재생성 가능한 read model로 다루기 위한 결정입니다.
 
 ## 현재 Revision 확인
 

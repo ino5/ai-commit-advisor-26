@@ -13,6 +13,7 @@ from src.ui.developer_upload_page import render_developer_upload_page
 from src.ui.git_history_page import render_git_history_page
 from src.ui.git_page import render_git_page
 from src.ui.home_page import render_home_page
+from src.ui.knowledge_graph_page import render_knowledge_graph_page
 from src.ui.mapping_page import render_mapping_page
 from src.ui.planning_dashboard_page import render_planning_dashboard_page
 from src.ui.program_detail_page import render_program_detail_page
@@ -64,6 +65,7 @@ PAGE_GROUPS = {
         "Program Detail": render_program_detail_page,
         "Git History": render_git_history_page,
         "Commit Impact": render_commit_impact_page,
+        "Knowledge Graph": render_knowledge_graph_page,
         "개발계획 대시보드": render_planning_dashboard_page,
     },
     "관리": {

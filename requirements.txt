@@ -9,6 +9,7 @@ python-dotenv==1.0.1
 pydantic-settings==2.7.1
 plotly==5.24.1
 pgvector==0.3.6
+neo4j==6.2.0
 pytest==8.3.4
 playwright==1.60.0
 Pillow==11.3.0

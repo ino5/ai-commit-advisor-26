@@ -2,7 +2,7 @@
 
 ## 목적
 
-데모용 샘플 프로젝트는 실제 고객 코드나 제품 코드를 사용하지 않고 AI Commit Advisor를 검증하기 위해 존재합니다. Git sync, program mapping, risk analysis, RAG, Project Chat, AI Code Review, AI Progress가 의미 있는 결과를 만들 수 있을 만큼 현실적인 구조를 가져야 합니다.
+데모용 샘플 프로젝트는 실제 고객 코드나 제품 코드를 사용하지 않고 AI Commit Advisor를 검증하기 위해 존재합니다. Git sync, program mapping, risk analysis, RAG, Project Chat, AI Code Review, AI Progress, Knowledge Graph가 의미 있는 결과를 만들 수 있을 만큼 현실적인 구조를 가져야 합니다.
 
 샘플 프로젝트는 이 애플리케이션 저장소와 의도적으로 분리되어 있습니다.
 
@@ -28,7 +28,7 @@
 강점:
 
 - 샘플 프로젝트가 애플리케이션 저장소 밖의 sibling Git repository로 격리되어 있습니다.
-- Git sync, developer extraction, program upload, development plan upload, Mapping, RAG, Project Chat, Risk Analysis, AI Code Review, Commit Impact, AI Progress 확인에 필요한 구조가 충분합니다.
+- Git sync, developer extraction, program upload, development plan upload, Mapping, RAG, Project Chat, Risk Analysis, AI Code Review, Commit Impact, Knowledge Graph, AI Progress 확인에 필요한 구조가 충분합니다.
 - package path와 program module이 명확해 program-commit mapping 후보 선택에 도움이 됩니다.
 - 생성된 Excel file이 커밋 이력과 서로 맞습니다.
 - history에는 feature addition, bug-introducing change, bug fix, test, refactoring, documentation, cross-module change, incomplete work가 포함되어 있습니다.
@@ -67,6 +67,7 @@
 | Mapping | program-specific commit과 cross-module commit | 관련 program mapping과 다양한 relevance score |
 | Program Detail | program별 multiple commits, 일부 program의 multiple contributor | Commit history, contribution split, evidence details |
 | Commit Impact | order, inventory, payment, dashboard를 함께 건드리는 commit | 하나의 commit이 여러 program에 영향 |
+| Knowledge Graph | Spring package, Java class/import, program module, cross-domain commit | 도메인 묶음, 클래스 관계도, 커밋-프로그램-클래스 영향 경로 |
 | Risk Analysis | no related commits, overdue incomplete work, progress gaps, no recent commits, missing assignee | 여러 risk type이 한 번에 표시 |
 | RAG Search | current source, docs, commit messages, diffs와 searchable business terms | Source/history retrieval results |
 | Project Chat | 현실적인 한국어 업무 질문에 답할 current source, docs, standard terminology | file/line evidence가 있는 답변 |

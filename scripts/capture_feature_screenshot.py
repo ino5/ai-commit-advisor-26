@@ -271,6 +271,22 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/commit-impact.png",
         description="Commit Impact 커밋 선택 화면",
     ),
+    "knowledge-graph": FeatureScenario(
+        name="knowledge-graph",
+        sidebar_label="Knowledge Graph",
+        wait_text="동기화 대상 요약",
+        required_texts=(
+            "Knowledge Graph",
+            "Neo4j",
+            "동기화 대상 요약",
+            "도메인 묶음",
+            "클래스 관계도",
+            "영향 경로",
+            "노드/엣지",
+        ),
+        default_screenshot="docs/images/features/knowledge-graph.png",
+        description="Neo4j Knowledge Graph 관계 요약 화면",
+    ),
     "planning-dashboard": FeatureScenario(
         name="planning-dashboard",
         sidebar_label="개발계획 대시보드",
@@ -510,6 +526,7 @@ SIDEBAR_GROUP_BY_LABEL = {
     "Program Detail": "분석 결과",
     "Git History": "분석 결과",
     "Commit Impact": "분석 결과",
+    "Knowledge Graph": "분석 결과",
     "개발계획 대시보드": "분석 결과",
     "설정": "관리",
 }

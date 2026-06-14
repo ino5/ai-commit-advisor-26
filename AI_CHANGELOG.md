@@ -2,6 +2,18 @@
 
 ## 2026-06-15
 
+### Neo4j Knowledge Graph 기반 추가
+
+- Neo4j를 프로젝트 관계 탐색용 read model로 추가하고, `Knowledge Graph` 화면에서 프로젝트, 프로그램, 커밋, 파일, Java class, 도메인 관계를 preview하거나 Neo4j에 동기화할 수 있게 했습니다.
+- graph payload는 PostgreSQL의 프로젝트/프로그램/커밋/매핑 데이터와 앱 서버 Git 저장소의 Java package/class/import 구조를 함께 사용해 `project`, `program`, `commit`, `file`, `class`, `domain` node와 `MAPPED_TO_COMMIT`, `TOUCHES_FILE`, `CONTAINS_CLASS`, `IMPORTS_CLASS`, `TOUCHES_DOMAIN` 관계를 구성합니다.
+- Docker Compose에 Neo4j service를 추가하고, `.env` 예시와 설정 객체에 `NEO4J_*` 환경 변수를 추가했습니다. 로컬 Python Quick Start와 Docker 앱 모두 Neo4j 동기화를 사용할 수 있도록 기본 활성화했습니다.
+- 로컬 Python Quick Start도 Neo4j를 기본으로 함께 실행하도록 `.env.example`, `.env.local-llm.example`, README, 설치/운영 가이드를 조정했습니다. Neo4j 없이 실행해야 할 때만 `NEO4J_ENABLED=false`로 끄도록 안내합니다.
+- 실제 Neo4j 동기화 검증 중 schema constraint 생성과 graph write를 같은 transaction에서 실행하면 Neo4j 5가 실패하는 문제를 확인해, schema 준비와 write transaction을 분리하고 재발 방지 테스트와 실패 이력을 추가했습니다.
+- 프로젝트 분석 데이터 초기화와 프로젝트 삭제 시 Neo4j graph read model도 best-effort로 정리하도록 lifecycle을 맞췄습니다.
+- README, 기능 가이드, Application Preview, 아키텍처, AI 기술 개요, 설치/운영, DB migration guidance, sample project 설계, engineering decision을 갱신하고 `docs/images/features/knowledge-graph.png` screenshot을 추가했습니다.
+- 주요 파일: `app.py`, `src/ui/knowledge_graph_page.py`, `src/services/neo4j_graph_service.py`, `src/services/project_management_service.py`, `src/utils/config.py`, `docker-compose.yml`, `.env.example`, `.env.local-llm.example`, `requirements.txt`, `tests/test_neo4j_graph_service.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/knowledge-graph.png`, `README.md`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/setup-and-operations.md`, `docs/db-migrations.md`, `docs/demo-user-guide.md`, `docs/sample-target-repo-demo-design.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m compileall src app.py scripts\capture_feature_screenshot.py tests\test_neo4j_graph_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py tests\test_project_management_service.py tests\test_documentation_images.py -q` 8개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 129개 테스트 통과; `docker compose config -q` 통과; `docker compose up -d neo4j`와 `docker compose ps neo4j`로 Neo4j container 기동 확인; `get_neo4j_connection_status()`에서 `connected=True` 확인; 실제 Neo4j sync에서 `nodes=1076`, `edges=10263`, `sync_status=completed`, `summary_status=completed` 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature knowledge-graph --surface local --height 1400 --expect-text "Knowledge Graph" --expect-text "동기화 대상 요약" --expect-text "도메인 묶음" --expect-text "클래스 관계도" --expect-text "영향 경로"` 통과; 금지 표현 검색 매칭 없음; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### AI 운영 현황 메뉴와 연결 상태 요약
 
 - 사용자-facing 메뉴명과 화면 제목을 `AI 운영 현황`으로 바꾸고, 기존 검증 중심 화면을 LLM/embedding 연결 상태와 AI 실행 근거를 함께 보는 운영 상태판으로 정리했습니다.
