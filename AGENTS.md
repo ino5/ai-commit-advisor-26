@@ -49,7 +49,8 @@ When working on a roadmap task:
 - set the task status to `In Progress` when implementation starts
 - update checklist items as they are completed
 - set the task status to `Done` only after implementation, verification, docs, and `AI_CHANGELOG.md` updates are complete
-- add the related `AI_CHANGELOG.md` heading and commit hash after committing, when available
+- add the related `AI_CHANGELOG.md` heading when a roadmap-tracked task is completed
+- do not maintain commit hashes in `ROADMAP.md`; use Git history for commit-level traceability and avoid follow-up commits whose only purpose is filling a Roadmap hash cell
 
 For work that is not already in `ROADMAP.md`, add or update a task entry before implementing when the work affects product direction.
 

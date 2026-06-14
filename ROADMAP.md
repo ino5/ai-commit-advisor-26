@@ -5,92 +5,93 @@
 - Check this file before starting meaningful feature, UX, schema, test, or documentation work.
 - Move a task to `In Progress` when implementation starts.
 - Move a task to `Done` when implementation, verification, `AI_CHANGELOG.md`, and documentation updates are complete.
-- Record the related `AI_CHANGELOG.md` heading and commit hash in the roadmap after completion. Do not duplicate commit hashes in `AI_CHANGELOG.md` unless a specific historical note needs it.
+- Record the related `AI_CHANGELOG.md` heading in the roadmap after completion when a task is roadmap-tracked. Do not maintain commit hashes in the roadmap; use Git history for commit-level traceability.
 - Keep tasks small enough to complete and verify in one focused change set when practical.
 - Use `Candidate Tasks` for known product/UX/engineering concerns that are worth preserving but not yet approved for implementation.
 - When starting a candidate task, promote it into the priority overview and add a detailed task section before implementation.
 
 ## Priority Overview
 
-| Priority | Area | Task | Status | Related AI Change Log | Commit |
-|---|---|---|---|---|---|
-| P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 | b1cf9ef |
-| P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 | d00b868 |
-| P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 | 130c2f8 |
-| P1 | RAG | Project Chat answer quality and history persistence | Done | Project Chat database history and citation export | d08ff43 |
-| P1 | RAG | Standard terminology glossary upload and Korean query expansion | Done | Standard terminology documentation and screenshots | 05a40ad |
-| P1 | RAG | Incremental source indexing and embedding cost control | Done | Incremental source indexing and embedding cost control | fdb6d0f |
-| P1 | RAG | Project Chat answer formatting and citation accuracy | Done | Standard terminology documentation and screenshots | 05a40ad |
-| P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 표시 세부 보완 | 7895831 |
-| P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 | fa625d2 |
-| P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 | 704c7cf |
-| P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 | c42d847 |
-| P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 | fc87e29 |
-| P1 | Mapping / Ops | Commit-based mapping fallback and verified screenshots | Done | Commit-based mapping fallback and verified screenshots | bcfbf0c, 06ab07c, 93e202c |
-| P1 | CI | Git default branch deterministic tests | Done | CI Git default branch test fix | eef1643 |
-| P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
-| P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | a151133 |
-| P1 | AX / Resource Planning | AX resource management metrics foundation | Done | AX 자원관리 metric foundation | 455e18d |
-| P1 | Forecast / Risk | Forecasted completion and proactive delay risk | Done | 예상 종료일과 자원관리 Dashboard | 6102e8f |
-| P1 | Resource UX | Developer workload and difficulty dashboard | Done | 예상 종료일과 자원관리 Dashboard | 6102e8f |
-| P2 | Docs / Business Value | AX customer value KPI documentation | Done | 예상 종료일과 자원관리 Dashboard | 6102e8f |
-| P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
-| P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping | 60dd64c |
-| P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | 562da8a |
-| P2 | UX | Home analysis command center | Done | Home 분석 관제 화면 개선 | c3a30a1 |
-| P2 | UX | Home copy tone cleanup | Done | Home 문구 톤 정리 | c8c421e |
-| P2 | Ops | Home UI visual verification script | Done | Home UI 검증 스크립트 추가 | c8c421e |
-| P2 | UX | Sidebar menu layout stabilization | Done | Sidebar 메뉴 위치 흔들림 보정 | 5ee2065 |
-| P2 | Sample Data | Synthetic target project repository | Done | 가상 샘플 대상 프로젝트 생성 스크립트 추가 | fa7fcbb |
-| P2 | Sample Data | Rich demo target repository scenario design | Done | 샘플 대상 repo 데모 시나리오 설계 문서 추가 | 7038ac5 |
-| P2 | Sample Data | Rich demo target repository implementation | Done | 확장 샘플 대상 repo 구현 | fd1940d |
-| P2 | Sample Data | Sample project commit history expansion | Done | Sample project commit history expansion | eeb81df |
-| P2 | Docs | Rich sample demo walkthrough and screenshots | Done | 샘플 프로젝트 검증과 화면 캡처 갱신 | dd8fd5e |
-| P2 | Docs | README documentation hub restructure | Done | README 문서 허브 개편 | 6b27b35 |
-| P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 | 02f2b14 |
-| P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup | 3d56a7a |
-| P2 | Ops | Application Dockerfile and deployment guide | Done | Application Dockerfile and deployment guide | d9944f0 |
-| P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log | e23334a |
-| P2 | Ops | Feature screenshot capture automation | Done | Feature screenshot capture automation | c7b7884 |
-| P2 | Docs | Architecture document path cleanup | Done | Architecture document path cleanup | f85df08 |
-| P2 | Docs | Application Preview rename | Done | Application Preview rename | 45e79f3 |
-| P2 | Docs | Sample project wording cleanup | Done | Sample project wording cleanup | 5abe51c |
-| P2 | Docs | Natural wording policy generalization | Done | Natural wording policy generalization | 6e946e4 |
-| P2 | Docs | Reader-facing wording policy simplification | Done | Reader-facing wording policy simplification | fe093bc |
-| P2 | UX | Sidebar menu hierarchy sizing | Done | Sidebar 메뉴 계층 크기 조정 | 143f994 |
-| P2 | Docs | Documentation impact gate policy | Done | Documentation impact gate policy | 88ef1cb |
-| P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization | 5094ebb |
-| P2 | Docs | AI Agent onboarding guide | Done | AI Agent onboarding guide | 4237302 |
-| P2 | UX | Global project context | Done | Global project context | 17b281d |
-| P2 | UX | Home current project focus | Done | Home current project focus | 6027d20 |
-| P1 | Ops / Architecture | App-server Git repository operating model | Done | App-server Git repository operating model | 1403254 |
-| P2 | Git Ops | Server repository update runbook/script | Done | Server repository update runbook and script | e63b68f |
-| P2 | Git UX | Git History viewer | Done | Git History viewer | 6af18a7 |
-| P2 | Docs | Git History Application Preview screenshot | Done | Git History Application Preview screenshot | c57e773 |
-| P2 | Git Ops | Server repository status display | Done | Server repository status display | 08b2848 |
-| P2 | Docs | Demo user guide | Done | Demo user guide | 215a201 |
-| P2 | Docs / Verification | Sample project usage guide verification evidence | Done | 샘플 프로젝트 사용 가이드 실제 검증 결과 추가 | 60dd622 |
-| P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety | 8ef39f0 |
-| P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 | 8f4ad22 |
-| P2 | Code Review UX | AI Code Review server repository target wording | Done | AI Code Review 서버 저장소 대상 설명 정리 | 1023c11 |
-| P1 | Resource Analytics | Resource metric snapshot and trend dashboard | Done | 자원관리 지표 시계열 snapshot과 추세 분석 | 02421b7 |
-| P2 | Project Chat UX | Project Chat conversation controls cleanup | Done | Project Chat 대화 관리 UX 정리 | 0acd0c6 |
-| P2 | Project Chat UX | Project Chat source refresh wording cleanup | Done | Project Chat 근거 갱신 안내 UX 정리 | 692fa95 |
-| P2 | UX Help | Contextual help tooltips for Project/RAG controls | Done | Project/RAG 컨텍스트 도움말 툴팁 추가 | 692fa95 |
-| P2 | Resource UX | Resource value metric wording cleanup | Done | 자원관리 가치 지표 문구 정리 | 85c9106 |
-| P2 | UX / State | Current project selection persistence | Done | 현재 프로젝트 선택 유지 | 0cded3c |
-| P2 | UX / Analysis Views | User-facing analysis display cleanup | Done | 분석 화면 표시 정리 | 32efaa0 |
-| P2 | UX / Action State | Completed-state action priority cleanup | Done | 완료 상태 액션 우선순위 정리 | 423be58 |
-| P2 | UX / Data Flow | Program management project flow cleanup | Done | 프로그램 관리 현재 프로젝트 저장 흐름 정리 | 987a799 |
-| P2 | Home UX | Home summary priority cleanup | Done | Home 요약 우선순위 정리 | e38f0e9 |
-| P2 | Navigation UX | Sidebar group collapse cleanup | Done | Sidebar 접이식 그룹 정리 | b594b13 |
-| P2 | Sample Data UX | Sample commit date normalization | Done | 샘플 프로젝트 commit 날짜 정규화 | 99c20df |
-| P2 | Docs UX | Application Preview Dashboard wording cleanup | Done | Application Preview Dashboard 설명 문구 정리 | 190c14e |
-| P2 | Dashboard UX | Dashboard value terminology cleanup | Done | Dashboard 가치 지표 용어 정리 | 4533b25 |
-| P2 | Docs / Screenshot UX | Application Preview current sidebar screenshots | Done | Application Preview 현재 메뉴 screenshot 갱신 | b19dce3 |
-| P2 | Docs UX | Sidebar menu map documentation | Done | Sidebar 메뉴 구조 문서화 | 77f99f5 |
-| P2 | Docs / Screenshot UX | Application Preview lower-section coverage | Done | Application Preview 하단 기능 screenshot 보강 | 4b139a1 |
-| P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 | ea7ec14 |
+| Priority | Area | Task | Status | Related AI Change Log |
+|---|---|---|---|---|
+| P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 |
+| P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 |
+| P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 |
+| P1 | RAG | Project Chat answer quality and history persistence | Done | Project Chat database history and citation export |
+| P1 | RAG | Standard terminology glossary upload and Korean query expansion | Done | Standard terminology documentation and screenshots |
+| P1 | RAG | Incremental source indexing and embedding cost control | Done | Incremental source indexing and embedding cost control |
+| P1 | RAG | Project Chat answer formatting and citation accuracy | Done | Standard terminology documentation and screenshots |
+| P1 | RAG | Source file re-index warning and one-click refresh | Done | source_file 인덱스 상태 표시 세부 보완 |
+| P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 |
+| P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 |
+| P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 |
+| P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 |
+| P1 | Mapping / Ops | Commit-based mapping fallback and verified screenshots | Done | Commit-based mapping fallback and verified screenshots |
+| P1 | CI | Git default branch deterministic tests | Done | CI Git default branch test fix |
+| P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 |
+| P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 |
+| P1 | AX / Resource Planning | AX resource management metrics foundation | Done | AX 자원관리 metric foundation |
+| P1 | Forecast / Risk | Forecasted completion and proactive delay risk | Done | 예상 종료일과 자원관리 Dashboard |
+| P1 | Resource UX | Developer workload and difficulty dashboard | Done | 예상 종료일과 자원관리 Dashboard |
+| P2 | Docs / Business Value | AX customer value KPI documentation | Done | 예상 종료일과 자원관리 Dashboard |
+| P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 |
+| P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping |
+| P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 |
+| P2 | UX | Home analysis command center | Done | Home 분석 관제 화면 개선 |
+| P2 | UX | Home copy tone cleanup | Done | Home 문구 톤 정리 |
+| P2 | Ops | Home UI visual verification script | Done | Home UI 검증 스크립트 추가 |
+| P2 | UX | Sidebar menu layout stabilization | Done | Sidebar 메뉴 위치 흔들림 보정 |
+| P2 | Sample Data | Synthetic target project repository | Done | 가상 샘플 대상 프로젝트 생성 스크립트 추가 |
+| P2 | Sample Data | Rich demo target repository scenario design | Done | 샘플 대상 repo 데모 시나리오 설계 문서 추가 |
+| P2 | Sample Data | Rich demo target repository implementation | Done | 확장 샘플 대상 repo 구현 |
+| P2 | Sample Data | Sample project commit history expansion | Done | Sample project commit history expansion |
+| P2 | Docs | Rich sample demo walkthrough and screenshots | Done | 샘플 프로젝트 검증과 화면 캡처 갱신 |
+| P2 | Docs | README documentation hub restructure | Done | README 문서 허브 개편 |
+| P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 |
+| P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup |
+| P2 | Ops | Application Dockerfile and deployment guide | Done | Application Dockerfile and deployment guide |
+| P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log |
+| P2 | Ops | Feature screenshot capture automation | Done | Feature screenshot capture automation |
+| P2 | Docs | Architecture document path cleanup | Done | Architecture document path cleanup |
+| P2 | Docs | Application Preview rename | Done | Application Preview rename |
+| P2 | Docs | Sample project wording cleanup | Done | Sample project wording cleanup |
+| P2 | Docs | Natural wording policy generalization | Done | Natural wording policy generalization |
+| P2 | Docs | Reader-facing wording policy simplification | Done | Reader-facing wording policy simplification |
+| P2 | UX | Sidebar menu hierarchy sizing | Done | Sidebar 메뉴 계층 크기 조정 |
+| P2 | Docs | Documentation impact gate policy | Done | Documentation impact gate policy |
+| P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization |
+| P2 | Docs | AI Agent onboarding guide | Done | AI Agent onboarding guide |
+| P2 | UX | Global project context | Done | Global project context |
+| P2 | UX | Home current project focus | Done | Home current project focus |
+| P1 | Ops / Architecture | App-server Git repository operating model | Done | App-server Git repository operating model |
+| P2 | Git Ops | Server repository update runbook/script | Done | Server repository update runbook and script |
+| P2 | Git UX | Git History viewer | Done | Git History viewer |
+| P2 | Docs | Git History Application Preview screenshot | Done | Git History Application Preview screenshot |
+| P2 | Git Ops | Server repository status display | Done | Server repository status display |
+| P2 | Docs | Demo user guide | Done | Demo user guide |
+| P2 | Docs / Verification | Sample project usage guide verification evidence | Done | 샘플 프로젝트 사용 가이드 실제 검증 결과 추가 |
+| P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety |
+| P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 |
+| P2 | Code Review UX | AI Code Review server repository target wording | Done | AI Code Review 서버 저장소 대상 설명 정리 |
+| P1 | Resource Analytics | Resource metric snapshot and trend dashboard | Done | 자원관리 지표 시계열 snapshot과 추세 분석 |
+| P2 | Project Chat UX | Project Chat conversation controls cleanup | Done | Project Chat 대화 관리 UX 정리 |
+| P2 | Project Chat UX | Project Chat source refresh wording cleanup | Done | Project Chat 근거 갱신 안내 UX 정리 |
+| P2 | UX Help | Contextual help tooltips for Project/RAG controls | Done | Project/RAG 컨텍스트 도움말 툴팁 추가 |
+| P2 | Resource UX | Resource value metric wording cleanup | Done | 자원관리 가치 지표 문구 정리 |
+| P2 | UX / State | Current project selection persistence | Done | 현재 프로젝트 선택 유지 |
+| P2 | UX / Analysis Views | User-facing analysis display cleanup | Done | 분석 화면 표시 정리 |
+| P2 | UX / Action State | Completed-state action priority cleanup | Done | 완료 상태 액션 우선순위 정리 |
+| P2 | UX / Data Flow | Program management project flow cleanup | Done | 프로그램 관리 현재 프로젝트 저장 흐름 정리 |
+| P2 | Home UX | Home summary priority cleanup | Done | Home 요약 우선순위 정리 |
+| P2 | Navigation UX | Sidebar group collapse cleanup | Done | Sidebar 접이식 그룹 정리 |
+| P2 | Sample Data UX | Sample commit date normalization | Done | 샘플 프로젝트 commit 날짜 정규화 |
+| P2 | Docs UX | Application Preview Dashboard wording cleanup | Done | Application Preview Dashboard 설명 문구 정리 |
+| P2 | Dashboard UX | Dashboard value terminology cleanup | Done | Dashboard 가치 지표 용어 정리 |
+| P2 | Docs / Screenshot UX | Application Preview current sidebar screenshots | Done | Application Preview 현재 메뉴 screenshot 갱신 |
+| P2 | Docs UX | Sidebar menu map documentation | Done | Sidebar 메뉴 구조 문서화 |
+| P2 | Docs / Screenshot UX | Application Preview lower-section coverage | Done | Application Preview 하단 기능 screenshot 보강 |
+| P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 |
+| P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 
 ## Candidate Tasks
 
@@ -101,6 +102,25 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P2 | UX / State | Project-scoped UI state namespacing | The global project selector changes the data context, but Streamlit widget values with stable keys can remain in `st.session_state` across projects. Text search reuse can be useful, but project-specific selections such as program, commit, mapping, or filter state can feel stale or misleading after switching projects. | Keep intentional global state small (`current_project_id`, sidebar navigation). For project-dependent UI state, include `project_id` in widget keys or provide a shared helper for project-scoped keys. Avoid clearing all inputs blindly because cross-project keyword comparison can be useful. | Review RAG search, Mapping filters, Program Detail filters, Commit Impact filters, and any selected row/commit/program widgets before implementation. |
 | P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - Roadmap Commit Hash Tracking Cleanup
+
+Status: Done
+
+Goal:
+Keep `ROADMAP.md` focused on planning state and related changelog headings, while leaving commit-level traceability to Git history.
+
+Rationale:
+The previous `Commit` column made each roadmap task need a second bookkeeping update after the real work commit was created. That added manual maintenance cost and created stale or empty cells without improving traceability enough to justify the extra step.
+
+Checklist:
+
+- [x] Remove the `Commit` column from the Roadmap priority overview.
+- [x] Update Roadmap management rules to stop requiring commit hash tracking.
+- [x] Update `AGENTS.md` so future agents do not create follow-up commits only for Roadmap hash bookkeeping.
+- [x] Supersede the previous engineering decision that put commit hashes in `ROADMAP.md`.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run documentation diff and policy reference verification.
 
 ## P2 - Sample Commit Date Normalization
 

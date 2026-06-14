@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Roadmap commit hash tracking cleanup
+
+- `ROADMAP.md` Priority Overview에서 `Commit` 컬럼을 제거하고, Roadmap은 작업 상태와 관련 `AI_CHANGELOG.md` heading만 추적하도록 정리했습니다.
+- `ROADMAP.md` Management Rules와 `AGENTS.md`에서 commit hash 기록 요구를 제거하고, commit-level traceability는 Git history를 사용하도록 했습니다.
+- 이전 `Roadmap owns commit hash tracking` engineering decision을 `Superseded`로 표시하고, 새 결정인 `Roadmap은 commit hash를 직접 관리하지 않는다`를 추가했습니다.
+- 주요 파일: `ROADMAP.md`, `AGENTS.md`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
+- 검증: `ROADMAP.md` Priority Overview가 5컬럼으로 정리됐는지 확인; `rg -n 'heading and commit hash|Priority \\| Area \\| Task \\| Status \\| Related AI Change Log \\| Commit' ROADMAP.md AGENTS.md` 결과 없음; `git diff --check` 통과.
+
 ### Roadmap 완료 작업 commit 기록 정리
 
 - `ROADMAP.md` Priority Overview에서 완료 상태지만 commit 칸이 비어 있던 항목을 실제 완료 commit 기준으로 채웠습니다.
