@@ -2,6 +2,13 @@
 
 ## 2026-06-14
 
+### README Git 저장소 접근 모델 보정
+
+- README의 Git 저장소 접근 모델 설명을 사내 서버에 미리 clone된 저장소만 전제하지 않도록 수정했습니다.
+- 서버 저장소는 운영자가 미리 준비할 수도 있고, 프로젝트/Git 설정의 `Git remote URL`과 branch 기반 `서버 저장소 clone/fetch`로 준비할 수도 있음을 명시했습니다.
+- 주요 파일: `README.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "clone되어 있어야|서버 저장소 clone/fetch|미리 clone" README.md`로 README Git 접근 설명 확인; `git diff --check` 통과.
+
 ### 데모 사용 가이드 reset/fetch 안내 정리
 
 - 반복 시연에서 기존 샘플 프로젝트를 다시 사용할 때 `프로젝트 삭제`보다 `분석 데이터 초기화`를 먼저 사용하도록 `docs/demo-user-guide.md` 안내를 바꿨습니다.
