@@ -54,17 +54,27 @@ SCENARIOS: dict[str, FeatureScenario] = {
     "project-chat": FeatureScenario(
         name="project-chat",
         sidebar_label="Project Chat",
-        wait_text="현재 소스 파일에서 검증된 RAG 근거로 프로젝트 질문에 답합니다.",
+        wait_text="현재 코드에서 확인된 소스 근거를 찾아 프로젝트 질문에 답합니다.",
         required_texts=(
             "Project Chat",
-            "현재 소스 파일에서 검증된 RAG 근거로 프로젝트 질문에 답합니다.",
+            "현재 코드에서 확인된 소스 근거를 찾아 프로젝트 질문에 답합니다.",
+            "답변 근거 상태",
+            "코드 반영 상태",
+            "최신 변경분 반영",
+            "전체 소스 다시 읽기",
             "대화 관리",
             "저장된 대화",
             "새 대화 시작",
         ),
-        forbidden_texts=(),
+        forbidden_texts=(
+            "Project Chat의 재인덱싱은 PC 부하",
+            "chunk만 갱신합니다",
+            "현재 소스 파일에서 검증된 RAG 근거로 프로젝트 질문에 답합니다.",
+        ),
         default_screenshot="docs/images/features/project-chat.png",
         description="Project Chat 질문/근거 화면",
+        scroll_to_text="현재 코드에서 확인된 소스 근거를 찾아 프로젝트 질문에 답합니다.",
+        full_page=False,
     ),
     "git-history": FeatureScenario(
         name="git-history",
@@ -163,22 +173,22 @@ SCENARIOS: dict[str, FeatureScenario] = {
     "rag-search": FeatureScenario(
         name="rag-search",
         sidebar_label="RAG 검색",
-        wait_text="조회된 chunk 목록",
+        wait_text="조회된 근거 목록",
         required_texts=(
             "RAG 검색",
-            "Chunks",
-            "Vectors",
+            "근거 조각",
+            "검색 데이터",
             "검색 품질 확인",
             "검색어:",
-            "조회된 chunk 목록",
+            "조회된 근거 목록",
         ),
         default_screenshot="docs/images/features/rag-search.png",
         description="RAG 검색 결과 화면",
-        tab_label="Search",
+        tab_label="검색 확인",
         fill_label="검색어",
         fill_value="payment amount validation PaymentService",
         click_label="검색",
-        action_wait_text="조회된 chunk 목록",
+        action_wait_text="조회된 근거 목록",
     ),
 }
 
@@ -249,14 +259,22 @@ def _select_sidebar_project(page: Page, project_name: str | None) -> None:
     page.get_by_text(project_name).first.wait_for(timeout=15_000)
 
 
+def _wait_for_body_text(page: Page, text: str, timeout: int = 20_000) -> None:
+    page.wait_for_function(
+        "(value) => document.body && document.body.innerText.includes(value)",
+        arg=text,
+        timeout=timeout,
+    )
+
+
 def _page_text(page: Page, wait_text: str) -> str:
-    page.get_by_text(wait_text).first.wait_for(timeout=20_000)
+    _wait_for_body_text(page, wait_text)
     return page.locator("body").inner_text(timeout=10_000)
 
 
 def _wait_for_texts(page: Page, texts: tuple[str, ...]) -> None:
     for text in texts:
-        page.get_by_text(text).first.wait_for(timeout=20_000)
+        _wait_for_body_text(page, text)
 
 
 def _assert_texts(
@@ -417,7 +435,7 @@ def _capture_scenario(
     if scenario.click_label:
         page.locator('[data-testid="stTabs"]').get_by_role("button", name=scenario.click_label).click()
     if scenario.action_wait_text:
-        page.get_by_text(scenario.action_wait_text).first.wait_for(timeout=30_000)
+        _wait_for_body_text(page, scenario.action_wait_text, timeout=30_000)
 
     _wait_for_texts(page, scenario.required_texts + extra_required_texts)
     text = _page_text(page, scenario.wait_text)

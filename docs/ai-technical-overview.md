@@ -121,7 +121,7 @@ Source index refresh는 두 가지 경로로 나뉩니다.
 
 증분 source indexing은 `src/rag/source_index_service.py::refresh_changed_source_files`가 담당합니다. 이 service는 `Added`, `Modified`, `Copied` file을 단일 파일 단위로 다시 chunking하고, `Deleted` file의 chunk/vector를 제거하며, `Renamed` file은 old path 제거 후 new path를 새로 chunking합니다. 이 경로는 repository 전체를 scan하지 않으므로 대형 SI repository에서 일반 commit sync 후 사용할 수 있습니다.
 
-증분 indexing과 Project Chat source refresh는 embedding을 자동 생성하지 않습니다. 새 chunk는 pending 상태로 남고, `RAG 검색 > Embedding`에서 현재 embedding model 기준 missing vector만 제한 수량으로 생성합니다. 이 분리는 cloud embedding 과금과 local LM Studio CPU/GPU 부하를 사용자가 통제하기 위한 안전장치입니다.
+증분 indexing과 Project Chat source refresh는 embedding을 자동 생성하지 않습니다. 새 chunk는 pending 상태로 남고, `RAG 검색 > 검색 준비`에서 현재 embedding model 기준 missing vector만 제한 수량으로 생성합니다. 이 분리는 cloud embedding 과금과 local LM Studio CPU/GPU 부하를 사용자가 통제하기 위한 안전장치입니다.
 
 One-click full source refresh는 current HEAD에서 `source_file` chunk를 다시 만들고, 더 이상 verify할 수 없는 chunk/vector를 제거합니다. 이를 통해 이전 indexing run 뒤 삭제된 file의 evidence가 남는 문제를 줄입니다. Local embedding server 과부하를 피하기 위해 Project Chat refresh는 embedding을 자동 생성하지 않고, RAG 화면도 사용자가 명시적으로 선택한 경우 제한된 수량만 embedding을 생성합니다.
 

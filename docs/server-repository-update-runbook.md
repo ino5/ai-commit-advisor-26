@@ -108,7 +108,7 @@ python scripts/update_server_repos.py \
 1. 운영자 또는 배포 job이 서버 저장소를 갱신합니다.
 2. AI Commit Advisor에서 현재 프로젝트를 선택합니다.
 3. `Git 동기화` 화면에서 증분 동기화 또는 전체 수집을 실행합니다.
-4. 필요한 경우 `RAG 검색` 또는 `Project Chat`에서 최근 Git sync 변경 파일만 인덱싱합니다.
+4. 필요한 경우 `RAG 검색` 또는 `Project Chat`에서 `최신 변경분 반영`을 실행합니다.
 5. embedding은 별도 화면에서 제한 수량으로 실행합니다.
 
 ## 주의사항

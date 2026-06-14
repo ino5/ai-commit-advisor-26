@@ -85,6 +85,7 @@ def render_global_project_selector() -> ProjectContext | None:
         project_ids,
         index=project_ids.index(int(current_id)),
         format_func=lambda project_id: labels[int(project_id)],
+        help="현재 화면에서 조회, 분석, 질문에 사용할 프로젝트입니다. 화면을 바꾸어도 이 선택이 유지됩니다.",
     )
     if int(selected_id) != int(current_id):
         set_current_project_id(int(selected_id))

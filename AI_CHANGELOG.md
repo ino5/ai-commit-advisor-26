@@ -2,6 +2,26 @@
 
 ## 2026-06-14
 
+### Project/RAG 컨텍스트 도움말 툴팁 추가
+
+- 전역 `현재 프로젝트` 선택, Project Chat의 `TOP K`, `커밋 이력도 참고에 포함`, `최신 변경분 반영`, `전체 소스 다시 읽기`, 저장된 대화/새 대화 control에 물음표 도움말을 추가했습니다.
+- RAG 검색의 근거/검색 준비 metric, `근거 조각 크기`, `겹치는 글자 수`, `검색 준비 최대 처리 수`, `TOP K`, source filter, 검색 준비 실행 버튼에 물음표 도움말을 추가했습니다.
+- 항상 보이는 설명문을 늘리지 않고, 헷갈리는 control에서만 마우스 hover로 의미와 사용 기준을 확인하도록 정리했습니다.
+- feature guide와 Application Preview에 물음표 도움말 사용 기준을 반영했습니다.
+- 주요 파일: `src/ui/project_context.py`, `src/ui/project_chat_page.py`, `src/ui/rag_page.py`, `docs/feature-guide.md`, `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_context.py src\ui\project_chat_page.py src\ui\rag_page.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_history_service.py tests\test_project_chat_service.py tests\test_source_index_service.py -q` 14개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 106개 테스트 통과; Browser에서 Project Chat tooltip target 17개, RAG 검색 tooltip target 29개 렌더링과 Project Chat/RAG 주요 화면 문구 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature project-chat --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local` 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature rag-search --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local` 통과; 갱신 screenshot 육안 확인 통과.
+
+### Project Chat 근거 갱신 안내 UX 정리
+
+- Project Chat 상단의 `chunk`, `embedding`, `source_file` 중심 안내를 `답변 근거 상태`, `최신 변경분 반영`, `전체 소스 다시 읽기` 중심의 사용자-facing 문구로 정리했습니다.
+- 소스 근거, 검색 준비, 코드 반영 상태, 추가 준비 필요를 요약 metric으로 보여주고, Git/HEAD/chunk/vector 상세는 접힌 `기술 상세` 영역으로 이동했습니다.
+- `어떤 버튼을 누르면 되나요?` 도움말을 추가해 일반 사용자는 최신 변경분 반영과 전체 소스 다시 읽기 중 무엇을 선택할지 먼저 알 수 있게 했습니다.
+- Project Chat에서 안내하는 후속 작업과 맞도록 RAG 검색 화면도 `한 번에 준비`, `근거 만들기`, `검색 준비`, `검색 확인`, `소스 Q&A` 흐름으로 정리하고 `Embedding 생성`, `Chunk 생성` 같은 주요 버튼/탭 문구를 사용자 작업 중심으로 바꿨습니다.
+- feature guide, setup/operations, Application Preview, demo user guide, architecture, AI technical overview, source indexing plan, server repository runbook, screenshot capture 기준을 새 UI 문구로 갱신했습니다.
+- Project Chat과 RAG 검색 Application Preview screenshot을 새 문구 기준으로 갱신했습니다.
+- 주요 파일: `src/ui/project_chat_page.py`, `src/ui/rag_page.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/project-chat.png`, `docs/images/features/rag-search.png`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `docs/application-preview.md`, `docs/demo-user-guide.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/source-indexing-and-embedding-plan.md`, `docs/server-repository-update-runbook.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_history_service.py tests\test_project_chat_service.py tests\test_source_index_service.py -q` 14개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 106개 테스트 통과; Browser에서 Project Chat의 `답변 근거 상태`, `소스 근거`, `검색 준비`, `코드 반영 상태`, `최신 변경분 반영`, `전체 소스 다시 읽기` 렌더링과 기존 `Project Chat의 재인덱싱은 PC 부하`, `chunk만 갱신합니다` 문구 미노출 확인; Browser에서 RAG 검색의 `한 번에 준비`, `근거 만들기`, `검색 준비`, `검색 확인`, `검색 준비 연결 테스트`, `검색 준비 실행` 렌더링과 기존 `Embedding 생성`, `Chunk 생성` 미노출 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature project-chat --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local` 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature rag-search --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local` 통과; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### Project Chat 대화 관리 UX 정리
 
 - Project Chat의 `대화 초기화`와 `새 대화`가 모두 새 session을 만드는 중복 액션으로 보이던 문제를 정리했습니다.

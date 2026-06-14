@@ -27,6 +27,32 @@ SOURCE_TYPE_LABELS = {
     "commit": "커밋 메시지",
     "commit_file": "변경 파일/diff",
 }
+
+RAG_HELP = {
+    "evidence_chunks": "질문 검색에 사용할 수 있도록 잘라 둔 근거 조각 수입니다.",
+    "search_data": "근거 조각 중 질문과 유사도를 비교할 수 있도록 검색 준비가 끝난 데이터 수입니다.",
+    "source_types": "검색 준비에 포함된 근거 종류 수입니다. 현재 소스, 프로그램 정보, 커밋 메시지 등이 포함될 수 있습니다.",
+    "search_engine": "검색 준비를 만들 때 사용하는 embedding provider입니다. local_openai는 LM Studio 같은 로컬 서버를 뜻합니다.",
+    "source_count": "현재 소스 파일에서 만들어 둔 Project Chat/RAG용 근거 수입니다.",
+    "search_ready": "현재 소스 근거 중 검색 준비가 끝난 수입니다. 전체 수보다 작으면 `검색 준비` 탭에서 남은 작업을 실행하세요.",
+    "code_status": "앱 서버 Git 저장소의 현재 코드가 소스 근거에 반영되어 있는지 보여줍니다.",
+    "missing_ready": "소스 근거는 있지만 아직 검색 준비가 끝나지 않은 수입니다.",
+    "refresh_changed": "Git 동기화 후 바뀐 파일만 빠르게 다시 읽습니다. 최신 commit 반영 직후에 적합합니다.",
+    "refresh_all": "현재 소스를 전체 기준으로 다시 읽습니다. 처음 준비하거나 브랜치를 크게 바꿨을 때 사용합니다.",
+    "search_after_refresh": "전체 소스 다시 읽기 직후 검색 준비까지 이어서 실행할지 선택합니다. PC 부하가 있을 수 있어 기본값은 꺼져 있습니다.",
+    "chunk_size": "긴 파일을 검색 가능한 근거로 나눌 때 한 조각의 최대 길이입니다. 기본값을 먼저 사용하세요.",
+    "overlap": "근거 조각을 나눌 때 앞뒤 조각이 일부 겹치도록 하는 길이입니다. 문맥이 끊기는 것을 줄입니다.",
+    "limit": "이번 실행에서 검색 준비를 처리할 최대 근거 수입니다. 값이 작으면 PC 부하는 낮지만 여러 번 실행해야 할 수 있습니다.",
+    "source_filter": "이번 작업에 포함할 근거 종류입니다. Project Chat 품질 확인은 보통 `현재 소스 파일`부터 준비합니다.",
+    "run_all": "선택한 근거를 만들고 검색 준비까지 한 번에 실행합니다. 처음 준비할 때 사용합니다.",
+    "run_evidence": "선택한 자료를 질문 검색에 사용할 근거 조각으로 만듭니다. 검색 준비는 별도 탭에서 실행할 수 있습니다.",
+    "connection_test": "검색 준비 서버가 응답하는지 확인합니다. LM Studio 모델을 바꿨거나 서버를 새로 켰을 때 먼저 확인하세요.",
+    "run_search_ready": "아직 검색 준비가 안 된 근거를 제한 수량만큼 처리합니다.",
+    "top_k": "검색어와 가장 비슷한 근거를 최대 몇 개까지 보여줄지 정합니다. 값이 크면 더 넓게 찾지만 결과가 덜 집중될 수 있습니다.",
+    "chat_top_k": "질문에 답할 때 후보로 가져올 소스 근거의 최대 개수입니다.",
+    "include_history": "현재 소스뿐 아니라 과거 커밋 이력도 검색 후보에 포함합니다. 현재 코드 사실과 변경 이력은 구분해서 봐야 합니다.",
+}
+
 VERIFICATION_LABELS = {
     "verified": "현재 코드 검증됨",
     "stale": "인덱스 오래됨",
@@ -76,17 +102,22 @@ def _render_index_stats(project_id: int) -> None:
 
     source_counts = pd.Series([row[0] for row in source_rows]).value_counts().to_dict() if source_rows else {}
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Chunks", chunk_count)
-    col2.metric("Vectors", vector_count)
-    col3.metric("Source types", len(source_counts))
-    col4.metric("Embedding", settings.embedding_provider)
+    col1.metric("근거 조각", chunk_count, help=RAG_HELP["evidence_chunks"])
+    col2.metric("검색 데이터", vector_count, help=RAG_HELP["search_data"])
+    col3.metric("근거 종류", len(source_counts), help=RAG_HELP["source_types"])
+    col4.metric("검색 엔진", settings.embedding_provider, help=RAG_HELP["search_engine"])
     if source_counts:
         st.caption(", ".join(f"{_source_label(key)}: {value}" for key, value in source_counts.items()))
 
 
-def _selected_source_types(label: str, default: list[str] | None = None) -> list[str]:
+def _selected_source_types(label: str, default: list[str] | None = None, help_text: str | None = None) -> list[str]:
     labels = {SOURCE_TYPE_LABELS[value]: value for value in SOURCE_TYPE_OPTIONS}
-    selected = st.multiselect(label, list(labels.keys()), default=[SOURCE_TYPE_LABELS[v] for v in (default or SOURCE_TYPE_OPTIONS)])
+    selected = st.multiselect(
+        label,
+        list(labels.keys()),
+        default=[SOURCE_TYPE_LABELS[v] for v in (default or SOURCE_TYPE_OPTIONS)],
+        help=help_text,
+    )
     return [labels[item] for item in selected]
 
 
@@ -151,18 +182,28 @@ def _render_source_index_status(project: Project) -> None:
             return
         status = get_source_index_status(db, current_project)
 
-    st.markdown("#### 현재 소스 인덱스 상태")
+    st.markdown("#### 현재 소스 근거 상태")
+    search_ready_count = max(status.source_chunk_count - status.missing_embedding_count, 0)
+    code_status = "확인 필요" if status.needs_reindex else "최신"
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Current HEAD", _short_hash(status.current_head_hash))
-    col2.metric("Indexed HEAD", _short_hash(status.latest_indexed_head_hash))
-    col3.metric("source_file chunks", status.source_chunk_count)
-    col4.metric("source_file vectors", status.source_vector_count)
+    col1.metric("소스 근거", status.source_chunk_count, help=RAG_HELP["source_count"])
+    col2.metric("검색 준비", f"{search_ready_count}/{status.source_chunk_count}", help=RAG_HELP["search_ready"])
+    col3.metric("코드 반영 상태", code_status, help=RAG_HELP["code_status"])
+    col4.metric("추가 준비 필요", status.missing_embedding_count, help=RAG_HELP["missing_ready"])
 
-    col5, col6, col7, col8 = st.columns(4)
-    col5.metric("HEAD 불일치 chunk", status.head_mismatch_chunk_count)
-    col6.metric("stale chunk", status.stale_chunk_count)
-    col7.metric("검증 불가", status.invalid_chunk_count)
-    col8.metric("embedding 필요", status.missing_embedding_count)
+    with st.expander("기술 상세", expanded=False):
+        st.write(
+            {
+                "Current HEAD": _short_hash(status.current_head_hash),
+                "Indexed HEAD": _short_hash(status.latest_indexed_head_hash),
+                "source_file chunks": status.source_chunk_count,
+                "source_file vectors": status.source_vector_count,
+                "HEAD mismatch chunks": status.head_mismatch_chunk_count,
+                "stale chunks": status.stale_chunk_count,
+                "invalid chunks": status.invalid_chunk_count,
+                "missing embeddings": status.missing_embedding_count,
+            }
+        )
     if status.indexed_head_hashes:
         with st.expander("인덱싱된 HEAD 종류", expanded=False):
             st.write([_short_hash(value) for value in status.indexed_head_hashes])
@@ -170,7 +211,7 @@ def _render_source_index_status(project: Project) -> None:
     for error in status.errors:
         st.warning(error)
 
-    if st.button("최근 Git sync 변경 파일만 인덱싱", type="primary", disabled=not bool(project.git_repo_path)):
+    if st.button("최신 변경분 반영", type="primary", disabled=not bool(project.git_repo_path), help=RAG_HELP["refresh_changed"]):
         with SessionLocal() as db:
             current_project = db.get(Project, project.id)
             if current_project is None:
@@ -179,41 +220,41 @@ def _render_source_index_status(project: Project) -> None:
             changed_files = get_changed_source_files_since_latest_index(db, current_project)
             if not changed_files:
                 st.info(
-                    "최근 indexed HEAD 이후 Git sync에 저장된 변경 파일이 없습니다. "
-                    "최초 구축이나 복구가 필요하면 전체 source_file 재인덱싱을 실행하세요."
+                    "Git 동기화 이후 새로 반영할 변경 파일이 없습니다. "
+                    "처음 준비하는 중이거나 근거가 계속 오래되어 보이면 `전체 소스 다시 읽기`를 실행하세요."
                 )
                 return
-            with st.spinner("최근 Git sync 변경 파일만 source_file chunk로 갱신합니다. embedding은 자동 실행하지 않습니다."):
+            with st.spinner("최신 변경 파일을 소스 근거에 반영하는 중입니다."):
                 result = refresh_changed_source_files(db, current_project, changed_files)
         st.success(
-            "증분 source_file 인덱싱 완료: "
+            "최신 변경분 반영 완료: "
             f"변경 파일 {result.changed_file_count}건, "
-            f"인덱싱 대상 {result.indexed_file_count}건, "
-            f"삭제 chunk {result.deleted_file_count}건, "
-            f"신규 chunk {result.chunk_result.created_count}건, "
+            f"반영 대상 {result.indexed_file_count}건, "
+            f"정리한 이전 근거 {result.deleted_file_count}건, "
+            f"새 근거 {result.chunk_result.created_count}건, "
             f"건너뜀 {result.chunk_result.skipped_count + result.skipped_file_count}건"
         )
         st.rerun()
 
     if status.needs_reindex:
         st.warning(
-            "현재 Git HEAD와 인덱싱 시점이 다를 수 있습니다. "
-            "최신 코드 기준 답변을 위해 source_file 재인덱싱을 권장합니다."
+            "코드가 바뀐 뒤 소스 근거가 아직 최신 상태가 아닐 수 있습니다. "
+            "최신 코드 기준 검색을 위해 변경분을 먼저 반영하세요."
         )
     elif status.source_chunk_count:
-        st.success("현재 소스 인덱스가 등록된 Git 저장소 기준으로 검증되었습니다.")
+        st.success("현재 소스 근거가 등록된 Git 저장소 기준으로 확인되었습니다.")
     else:
-        st.info("현재 소스 파일 인덱스가 아직 없습니다.")
+        st.info("현재 소스 근거가 아직 없습니다.")
 
     embed_after_refresh = st.checkbox(
-        "재인덱싱 후 embedding도 바로 생성",
+        "전체 소스 다시 읽은 뒤 검색 준비도 실행",
         value=False,
-        help="LM Studio/local embedding 서버를 많이 사용할 수 있습니다. 기본값은 chunk만 갱신합니다.",
+        help=RAG_HELP["search_after_refresh"],
     )
     refresh_embedding_limit = 0
     if embed_after_refresh:
         refresh_embedding_limit = st.number_input(
-            "재인덱싱 후 embedding 최대 처리 수",
+            "검색 준비 최대 처리 수",
             min_value=1,
             max_value=500,
             value=50,
@@ -222,13 +263,13 @@ def _render_source_index_status(project: Project) -> None:
         )
         _render_runtime_notice("embedding", status.source_chunk_count, int(refresh_embedding_limit))
 
-    if st.button("현재 소스 다시 인덱싱", type="secondary", disabled=not bool(project.git_repo_path)):
+    if st.button("전체 소스 다시 읽기", type="secondary", disabled=not bool(project.git_repo_path), help=RAG_HELP["refresh_all"]):
         with SessionLocal() as db:
             current_project = db.get(Project, project.id)
             if current_project is None:
                 st.error("프로젝트를 찾을 수 없습니다.")
                 return
-            with st.spinner("현재 HEAD 기준으로 source_file chunk를 갱신합니다. embedding은 선택한 경우에만 제한 수량만 생성합니다."):
+            with st.spinner("현재 코드 전체를 다시 읽어 소스 근거를 정리하는 중입니다. 검색 준비는 선택한 경우에만 제한 수량으로 실행합니다."):
                 result = refresh_source_file_index(
                     db,
                     current_project,
@@ -236,81 +277,81 @@ def _render_source_index_status(project: Project) -> None:
                     embedding_limit=int(refresh_embedding_limit or 0),
                 )
         st.success(
-            "source_file 재인덱싱 완료: "
-            f"chunk {result.chunk_result.created_count}건, "
-            f"오래된 chunk 정리 {result.deleted_unverified_count}건, "
-            f"vector {result.embedding_result.created_count}건 생성, "
-            f"embedding 실패 {result.embedding_result.failed_count}건"
+            "전체 소스 다시 읽기 완료: "
+            f"새 근거 {result.chunk_result.created_count}건, "
+            f"오래된 근거 정리 {result.deleted_unverified_count}건, "
+            f"검색 준비 {result.embedding_result.created_count}건, "
+            f"실패 {result.embedding_result.failed_count}건"
         )
         if result.embedding_result.errors:
-            with st.expander("Embedding 실패 상세", expanded=False):
+            with st.expander("검색 준비 실패 상세", expanded=False):
                 for error in result.embedding_result.errors[:30]:
                     st.error(error)
         st.rerun()
 
 
 def _render_index_controls(project: Project) -> None:
-    st.subheader("RAG 인덱싱")
+    st.subheader("한 번에 준비")
     _render_source_index_status(project)
     st.divider()
     col1, col2, col3 = st.columns(3)
-    chunk_size = col1.number_input("Chunk size", min_value=300, max_value=4000, value=DEFAULT_CHUNK_SIZE, step=100)
-    overlap = col2.number_input("Overlap", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50)
-    limit = col3.number_input("Embedding 최대 처리 수", min_value=1, max_value=10000, value=50, step=25)
-    source_types = _selected_source_types("인덱싱 대상", SOURCE_TYPE_OPTIONS)
+    chunk_size = col1.number_input("근거 조각 크기", min_value=300, max_value=4000, value=DEFAULT_CHUNK_SIZE, step=100, help=RAG_HELP["chunk_size"])
+    overlap = col2.number_input("겹치는 글자 수", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50, help=RAG_HELP["overlap"])
+    limit = col3.number_input("검색 준비 최대 처리 수", min_value=1, max_value=10000, value=50, step=25, help=RAG_HELP["limit"])
+    source_types = _selected_source_types("준비할 근거 종류", SOURCE_TYPE_OPTIONS, help_text=RAG_HELP["source_filter"])
     _, pending_count = _embedding_workload(project.id, source_types)
     _render_runtime_notice("embedding", pending_count, int(limit))
     if "source_file" in source_types and not project.git_repo_path:
-        st.warning("현재 소스 파일을 인덱싱하려면 프로젝트에 앱 서버 Git 저장소 경로가 필요합니다.")
+        st.warning("현재 소스 파일을 근거로 준비하려면 프로젝트에 앱 서버 Git 저장소 경로가 필요합니다.")
 
-    if st.button("RAG 인덱싱 실행", type="primary"):
-        with st.spinner("현재 소스, 프로그램, 커밋, 변경 파일/diff를 chunk로 만들고 누락 embedding을 저장합니다."):
+    if st.button("근거 만들고 검색 준비 실행", type="primary", help=RAG_HELP["run_all"]):
+        with st.spinner("현재 소스, 프로그램, 커밋, 변경 파일/diff를 질문 검색에 사용할 근거로 준비하는 중입니다."):
             chunk_result = _run_chunking(project, source_types, int(chunk_size), int(overlap))
             client, embedding_result = _run_embedding(project.id, source_types, int(limit))
         st.success(
-            "인덱싱 완료: "
-            f"chunk 신규 {chunk_result.created_count}건, chunk 중복 건너뜀 {chunk_result.skipped_count}건, "
-            f"vector 신규 {embedding_result.created_count}건, vector 중복 건너뜀 {embedding_result.skipped_count}건, "
-            f"embedding 실패 {embedding_result.failed_count}건"
+            "준비 완료: "
+            f"새 근거 {chunk_result.created_count}건, 중복 근거 건너뜀 {chunk_result.skipped_count}건, "
+            f"검색 준비 {embedding_result.created_count}건, 이미 준비됨 {embedding_result.skipped_count}건, "
+            f"실패 {embedding_result.failed_count}건"
         )
-        st.caption(f"Embedding model: {client.embedding_model_name}")
+        st.caption(f"검색 준비 모델: {client.embedding_model_name}")
         if embedding_result.errors:
-            with st.expander("Embedding 실패 상세", expanded=False):
+            with st.expander("검색 준비 실패 상세", expanded=False):
                 for error in embedding_result.errors[:30]:
                     st.error(error)
 
 
 def _render_chunk_controls(project: Project) -> None:
-    st.subheader("Chunk 생성")
+    st.subheader("근거 만들기")
     col1, col2 = st.columns(2)
-    chunk_size = col1.number_input("Chunk size", min_value=300, max_value=4000, value=DEFAULT_CHUNK_SIZE, step=100, key="chunk_size_only")
-    overlap = col2.number_input("Overlap", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50, key="overlap_only")
-    source_types = _selected_source_types("Chunk 대상", SOURCE_TYPE_OPTIONS)
+    chunk_size = col1.number_input("근거 조각 크기", min_value=300, max_value=4000, value=DEFAULT_CHUNK_SIZE, step=100, key="chunk_size_only", help=RAG_HELP["chunk_size"])
+    overlap = col2.number_input("겹치는 글자 수", min_value=0, max_value=500, value=DEFAULT_CHUNK_OVERLAP, step=50, key="overlap_only", help=RAG_HELP["overlap"])
+    source_types = _selected_source_types("근거 대상", SOURCE_TYPE_OPTIONS, help_text=RAG_HELP["source_filter"])
     if "source_file" in source_types and not project.git_repo_path:
-        st.warning("현재 소스 파일을 chunk로 만들려면 프로젝트에 앱 서버 Git 저장소 경로가 필요합니다.")
+        st.warning("현재 소스 파일을 근거로 만들려면 프로젝트에 앱 서버 Git 저장소 경로가 필요합니다.")
 
-    if not st.button("Chunk 생성", type="primary"):
+    if not st.button("근거 만들기", type="primary", help=RAG_HELP["run_evidence"]):
         return
 
     result = _run_chunking(project, source_types, int(chunk_size), int(overlap))
-    st.success(f"Chunk 생성 완료: 신규 {result.created_count}건, 중복 건너뜀 {result.skipped_count}건")
+    st.success(f"근거 만들기 완료: 새 근거 {result.created_count}건, 중복 건너뜀 {result.skipped_count}건")
 
 
 def _render_embedding_controls(project_id: int) -> None:
-    st.subheader("Embedding 생성")
+    st.subheader("검색 준비")
     st.caption(
         f"provider={settings.embedding_provider}, "
         f"base_url={settings.embedding_base_url or settings.llm_base_url or '미설정'}, "
         f"model={settings.embedding_model or '미설정'}, dimension={settings.pgvector_dimension}"
     )
-    source_types = _selected_source_types("Embedding 대상 source_type", SOURCE_TYPE_OPTIONS)
-    limit = st.number_input("이번 실행에서 처리할 최대 chunk 수", min_value=1, max_value=10000, value=50, step=25)
+    source_types = _selected_source_types("검색 준비 대상", SOURCE_TYPE_OPTIONS, help_text=RAG_HELP["source_filter"])
+    limit = st.number_input("이번 실행에서 처리할 최대 근거 수", min_value=1, max_value=10000, value=50, step=25, help=RAG_HELP["limit"])
     client_preview, pending_count = _embedding_workload(project_id, source_types)
     _render_runtime_notice("embedding", pending_count, int(limit))
-    st.caption(f"대상 embedding model: {client_preview.embedding_model_name}")
+    st.caption(f"검색 준비 모델: {client_preview.embedding_model_name}")
 
     col1, col2 = st.columns([1, 2])
-    if col1.button("Embedding 연결 테스트"):
+    if col1.button("검색 준비 연결 테스트", help=RAG_HELP["connection_test"]):
         client = EmbeddingClient()
         ok, message = client.test_connection()
         if ok:
@@ -318,18 +359,18 @@ def _render_embedding_controls(project_id: int) -> None:
         else:
             st.error(message)
 
-    if not col2.button("Embedding 생성", type="primary"):
+    if not col2.button("검색 준비 실행", type="primary", help=RAG_HELP["run_search_ready"]):
         return
 
-    with st.spinner("누락 embedding을 생성합니다."):
+    with st.spinner("아직 검색 준비가 안 된 근거를 처리하는 중입니다."):
         client, result = _run_embedding(project_id, source_types, int(limit))
 
     st.success(
-        f"Embedding 완료: 신규 {result.created_count}건, 중복 건너뜀 {result.skipped_count}건, 실패 {result.failed_count}건"
+        f"검색 준비 완료: 신규 {result.created_count}건, 이미 준비됨 {result.skipped_count}건, 실패 {result.failed_count}건"
     )
-    st.caption(f"Embedding model: {client.embedding_model_name}")
+    st.caption(f"검색 준비 모델: {client.embedding_model_name}")
     if result.errors:
-        with st.expander("Embedding 실패 상세", expanded=False):
+        with st.expander("검색 준비 실패 상세", expanded=False):
             for error in result.errors[:30]:
                 st.error(error)
 
@@ -344,8 +385,8 @@ def _render_search(project: Project) -> None:
         key="rag_search_query",
     )
     col1, col2 = st.columns(2)
-    top_k = col1.slider("TOP K", min_value=1, max_value=50, value=10)
-    source_types = _selected_source_types("source_type 필터", ["source_file"])
+    top_k = col1.slider("TOP K", min_value=1, max_value=50, value=10, help=RAG_HELP["top_k"])
+    source_types = _selected_source_types("근거 종류 필터", ["source_file"], help_text=RAG_HELP["source_filter"])
 
     if not st.button("검색", type="primary"):
         return
@@ -365,9 +406,9 @@ def _render_search(project: Project) -> None:
             return
 
     st.markdown(f"**검색어:** {query_text}")
-    st.caption(f"Embedding model: {model_name}")
+    st.caption(f"검색 준비 모델: {model_name}")
     if not results:
-        st.info("검색 결과가 없습니다. RAG 인덱싱 또는 embedding 생성이 완료되었는지 확인하세요.")
+        st.info("검색 결과가 없습니다. 근거 만들기와 검색 준비가 완료되었는지 확인하세요.")
         return
 
     rows = []
@@ -382,7 +423,7 @@ def _render_search(project: Project) -> None:
                 "source_type": result["source_type"],
                 "verification": VERIFICATION_LABELS.get(result.get("verification_status"), result.get("verification_status")),
                 "source_id": result["source_id"],
-                "chunk_index": result["chunk_index"],
+                "근거 순번": result["chunk_index"],
                 "program_id": metadata.get("program_id"),
                 "commit_hash": metadata.get("commit_hash"),
                 "file_path": metadata.get("file_path"),
@@ -393,18 +434,18 @@ def _render_search(project: Project) -> None:
         )
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-    st.markdown("#### 조회된 chunk 목록")
+    st.markdown("#### 조회된 근거 목록")
     for rank, result in enumerate(results, start=1):
         title = (
             f"#{rank} score={result['similarity']:.4f} "
-            f"{_format_source(result)} chunk={result['chunk_index']}"
+            f"{_format_source(result)} 근거={result['chunk_index']}"
         )
         with st.expander(title, expanded=rank <= 3):
             st.write(
                 {
                     "source_type": result["source_type"],
                     "source_id": result["source_id"],
-                    "chunk_index": result["chunk_index"],
+                    "근거 순번": result["chunk_index"],
                     "similarity": round(result["similarity"], 6),
                     "distance": round(result["distance"], 6),
                     "verification_status": result.get("verification_status"),
@@ -417,15 +458,15 @@ def _render_search(project: Project) -> None:
 
 def _render_chat(project: Project) -> None:
     st.subheader("소스 검색 챗")
-    st.caption("기본적으로 현재 파일에서 검증된 `source_file` chunk만 근거로 사용합니다.")
+    st.caption("기본적으로 현재 파일에서 검증된 소스 근거만 사용합니다.")
     question = st.text_area(
         "질문",
         placeholder="예: 매핑 피드백 저장 흐름이 어디에서 처리되는지 알려줘.",
         key="rag_chat_question",
     )
     col1, col2 = st.columns([1, 1])
-    top_k = col1.slider("검색 TOP K", min_value=3, max_value=30, value=8, key="rag_chat_top_k")
-    include_history = col2.checkbox("커밋 이력도 검색 후보에 포함", value=False)
+    top_k = col1.slider("검색 TOP K", min_value=3, max_value=30, value=8, key="rag_chat_top_k", help=RAG_HELP["chat_top_k"])
+    include_history = col2.checkbox("커밋 이력도 검색 후보에 포함", value=False, help=RAG_HELP["include_history"])
 
     if not st.button("질문하기", type="primary"):
         return
@@ -455,7 +496,7 @@ def _render_chat(project: Project) -> None:
     st.markdown("#### 답변")
     st.write(answer.answer)
     if answer.excluded_count:
-        st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 chunk {answer.excluded_count}건은 답변 근거에서 제외했습니다.")
+        st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 근거 {answer.excluded_count}건은 답변 근거에서 제외했습니다.")
 
     if not answer.sources:
         return
@@ -478,7 +519,7 @@ def _render_chat(project: Project) -> None:
 
 def render_rag_page() -> None:
     st.title("RAG 검색")
-    st.caption("프로그램 정보, 커밋 메시지, 변경 파일/diff를 chunk로 만들고 pgvector cosine 검색 품질을 확인합니다.")
+    st.caption("현재 소스, 프로그램, 커밋 정보를 질문 검색에 사용할 근거로 준비하고 검색 품질을 확인합니다.")
 
     context = require_project_context("먼저 프로젝트를 등록하세요.")
     if context is None:
@@ -488,7 +529,7 @@ def render_rag_page() -> None:
 
     _render_index_stats(project_id)
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Index", "Chunk", "Embedding", "Search", "Chat"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["한 번에 준비", "근거 만들기", "검색 준비", "검색 확인", "소스 Q&A"])
     with tab1:
         _render_index_controls(project)
     with tab2:

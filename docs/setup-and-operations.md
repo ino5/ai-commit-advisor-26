@@ -258,7 +258,7 @@ environment:
   REPO_PATH_CONTAINER_PREFIX: /host-work
 ```
 
-이 mapping이 없거나 mount가 맞지 않으면 Docker 앱에서는 Current HEAD가 `-`로 보이거나 source_file chunk가 `검증 불가`로 표시될 수 있습니다. 이 경우 Project Chat은 현재 소스 근거를 검증하지 못하므로 추측성 답변을 만들지 않습니다.
+이 mapping이 없거나 mount가 맞지 않으면 Docker 앱에서는 Current HEAD가 `-`로 보이거나 소스 근거가 `검증 불가`로 표시될 수 있습니다. 이 경우 Project Chat은 현재 소스 근거를 검증하지 못하므로 추측성 답변을 만들지 않습니다.
 
 Docker image에는 Git Sync와 현재 HEAD 확인에 필요한 `git` binary가 포함되어 있습니다. Dockerfile을 수정해 base image를 바꾸는 경우에도 `git` 설치는 유지해야 합니다.
 
@@ -325,7 +325,7 @@ LLM_MODEL=qwen2.5-coder-7b-instruct
 
 일부 모델은 LM Studio prompt template 문제로 `prediction-error` 또는 Jinja template 오류가 날 수 있습니다. 이 경우 `lmstudio-community` 모델을 사용하거나 해당 모델의 Prompt Template을 수정하세요.
 
-## Embedding / RAG 설정
+## 검색 준비 / RAG 설정
 
 기본값은 mock embedding입니다. 실제 검색 품질을 보려면 OpenAI-compatible embedding 서버를 사용하세요.
 
@@ -337,7 +337,7 @@ EMBEDDING_MODEL=text-embedding-nomic-embed-text-v1.5
 PGVECTOR_DIMENSION=768
 ```
 
-LM Studio를 사용할 경우 embedding 모델을 로드하고 Local Server를 켠 뒤, RAG 화면의 `Embedding 연결 테스트`로 `/v1/embeddings` 응답과 vector dimension을 확인합니다. `PGVECTOR_DIMENSION`은 사용하는 embedding 모델의 출력 차원과 같아야 하며, 이미 다른 차원으로 생성된 `vector_items.embedding` 컬럼은 DB를 새로 만들거나 migration해야 합니다.
+LM Studio를 사용할 경우 embedding 모델을 로드하고 Local Server를 켠 뒤, RAG 화면의 `검색 준비 연결 테스트`로 `/v1/embeddings` 응답과 vector dimension을 확인합니다. `PGVECTOR_DIMENSION`은 사용하는 embedding 모델의 출력 차원과 같아야 하며, 이미 다른 차원으로 생성된 `vector_items.embedding` 컬럼은 DB를 새로 만들거나 migration해야 합니다.
 
 mock embedding으로 생성된 vector는 local_openai embedding 검색에 사용되지 않습니다. `LLM_PROVIDER`, `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `PGVECTOR_DIMENSION`을 바꾼 뒤에는 현재 모델 기준으로 embedding을 다시 생성해야 RAG Search와 Project Chat이 같은 근거를 검색할 수 있습니다.
 
@@ -346,49 +346,49 @@ Project Chat을 실제 LLM 모드로 검증하는 권장 순서:
 1. LM Studio에서 chat 모델과 embedding 모델을 로드합니다.
 2. `Copy-Item .env.local-llm.example .env`로 local LLM 설정을 적용합니다.
 3. Streamlit 앱을 재시작합니다.
-4. RAG 검색 화면에서 `Embedding 연결 테스트`를 실행합니다.
-5. RAG 검색 화면의 Embedding 영역에서 source_file chunk의 embedding을 생성합니다.
+4. RAG 검색 화면에서 `검색 준비 연결 테스트`를 실행합니다.
+5. RAG 검색 화면의 `검색 준비` 탭에서 현재 소스의 검색 준비를 실행합니다.
 6. Project Chat에서 질문하고 `답변 근거 보기`를 펼쳐 현재 소스 근거를 확인합니다.
 7. 답변을 기록으로 남겨야 하면 `근거 복사용 Markdown` 내용을 회의록, 리뷰 문서, 이슈에 붙여 넣습니다.
 
-## source_file 재인덱싱 운영 주의사항
+## Project Chat 답변 근거 갱신 운영 주의사항
 
-LM Studio 같은 로컬 embedding 서버는 한 번에 많은 chunk를 처리하면 CPU/GPU와 메모리를 오래 점유할 수 있습니다. 그래서 현재 소스 재인덱싱과 embedding 생성을 분리합니다.
+Project Chat은 질문할 때마다 저장소 전체를 다시 읽지 않고, 미리 준비한 소스 근거에서 질문과 관련된 부분을 찾습니다. 이 준비는 두 단계로 나뉩니다. 먼저 현재 코드를 읽어 `소스 근거`를 만들고, 그다음 질문과 비슷한 근거를 찾을 수 있도록 `검색 준비`를 만듭니다. 두 번째 단계는 로컬 LLM/embedding 서버의 CPU/GPU와 메모리를 오래 점유할 수 있으므로 한 번에 많이 실행하지 않고 제한 수량으로 나누어 처리합니다.
 
-- `RAG 검색 > 최근 Git sync 변경 파일만 인덱싱`: 최근 indexed HEAD 이후 Git Sync가 DB에 저장한 changed file path만 source_file chunk로 갱신합니다. 일반적인 개발 흐름에서는 이 버튼을 먼저 사용합니다. embedding은 자동 실행하지 않습니다.
-- `Project Chat > 최근 Git sync 변경 파일만 인덱싱`: Chat 화면에서 같은 증분 인덱싱을 실행합니다. 답변 전 source index 상태가 오래되었을 때 빠르게 최신 sync 변경분만 반영할 수 있습니다.
-- `Project Chat > 현재 소스 다시 인덱싱`: 현재 HEAD 기준으로 source_file chunk만 갱신합니다. embedding은 자동 실행하지 않습니다.
-- `RAG 검색 > 현재 소스 다시 인덱싱`: 기본값은 chunk 갱신만 수행합니다. `재인덱싱 후 embedding도 바로 생성`을 직접 체크한 경우에만 제한 수량으로 embedding을 생성합니다.
-- `RAG 검색 > Embedding`: 남은 pending chunk를 별도로 처리할 때 사용합니다. 화면에서 남은 작업 수와 예상 소요 시간을 확인한 뒤 여러 번 나눠 실행하세요.
+- `Project Chat > 최신 변경분 반영`: Git 동기화 후 바뀐 파일만 빠르게 읽어 Project Chat 답변 근거를 최신화합니다. 일반적인 개발 흐름에서는 이 버튼을 먼저 사용합니다.
+- `Project Chat > 전체 소스 다시 읽기`: 처음 준비하거나 브랜치를 크게 바꿨거나 오래된 근거가 계속 보일 때 현재 소스를 전체 기준으로 다시 읽습니다.
+- `RAG 검색 > 최신 변경분 반영`: Project Chat의 `최신 변경분 반영`과 같은 계열의 작업입니다. RAG 화면에서 직접 실행할 때 사용합니다.
+- `RAG 검색 > 전체 소스 다시 읽기`: 기본값은 소스 근거 갱신만 수행합니다. `전체 소스 다시 읽은 뒤 검색 준비도 실행`을 직접 체크한 경우에만 제한 수량으로 검색 준비 데이터를 생성합니다.
+- `RAG 검색 > 검색 준비`: Project Chat의 `검색 준비`가 전체 근거 수보다 적거나 embedding model을 바꾼 뒤 남은 작업을 처리할 때 사용합니다. 화면에서 남은 작업 수와 예상 소요 시간을 확인한 뒤 여러 번 나눠 실행하세요.
 
 ### 증분 인덱싱과 전체 재인덱싱 선택 기준
 
 | 상황 | 권장 action | 이유 |
 |---|---|---|
-| Git Sync로 최신 commit을 가져온 직후 | `최근 Git sync 변경 파일만 인덱싱` | 변경된 파일만 읽으므로 대형 repo에서도 빠르고 embedding 비용이 자동 발생하지 않습니다. |
-| 특정 파일 수정, 삭제, rename만 반영하면 되는 경우 | `최근 Git sync 변경 파일만 인덱싱` | `Added`, `Modified`, `Deleted`, `Renamed` path만 chunk 교체/삭제합니다. |
-| 처음 source_file index를 만드는 경우 | `현재 소스 다시 인덱싱` | 기준 chunk가 없으면 전체 source file scan이 필요합니다. |
-| branch를 크게 바꾸었거나 include/exclude/chunking rule이 바뀐 경우 | `현재 소스 다시 인덱싱` | 최근 commit file 목록만으로는 전체 repository snapshot을 보정하기 어렵습니다. |
-| stale/invalid chunk가 많이 보이거나 삭제된 파일이 계속 evidence에 나타나는 경우 | `현재 소스 다시 인덱싱` | 전체 scan과 검증 cleanup으로 오래된 chunk/vector를 정리합니다. |
-| chunk는 최신인데 검색 결과가 없거나 embedding model을 바꾼 경우 | `RAG 검색 > Embedding` | 현재 model 기준 missing vector만 제한 수량으로 생성해야 합니다. |
+| Git Sync로 최신 commit을 가져온 직후 | `최신 변경분 반영` | 변경된 파일만 읽으므로 대형 repo에서도 빠르고 embedding 비용이 자동 발생하지 않습니다. |
+| 특정 파일 수정, 삭제, rename만 반영하면 되는 경우 | `최신 변경분 반영` | `Added`, `Modified`, `Deleted`, `Renamed` path만 chunk 교체/삭제합니다. |
+| 처음 Project Chat 근거를 준비하는 경우 | `전체 소스 다시 읽기` | 기준 근거가 없으면 전체 source file scan이 필요합니다. |
+| branch를 크게 바꾸었거나 include/exclude/chunking rule이 바뀐 경우 | `전체 소스 다시 읽기` | 최근 commit file 목록만으로는 전체 repository snapshot을 보정하기 어렵습니다. |
+| stale/invalid chunk가 많이 보이거나 삭제된 파일이 계속 evidence에 나타나는 경우 | `전체 소스 다시 읽기` | 전체 scan과 검증 cleanup으로 오래된 chunk/vector를 정리합니다. |
+| 소스 근거는 최신인데 검색 결과가 없거나 embedding model을 바꾼 경우 | `RAG 검색 > 검색 준비` | 현재 model 기준 missing vector만 제한 수량으로 생성해야 합니다. |
 
 증분 인덱싱의 처리 방식은 다음과 같습니다.
 
 1. 화면에서 현재 `Current HEAD`, `Indexed HEAD`, stale/invalid chunk 수를 확인합니다.
-2. Git Sync가 최신 commit을 저장한 상태라면 `최근 Git sync 변경 파일만 인덱싱`을 실행합니다.
+2. Git Sync가 최신 commit을 저장한 상태라면 Project Chat에서 `최신 변경분 반영`을 실행합니다.
 3. app은 최근 indexed HEAD 이후 DB에 저장된 `CommitFile` row를 읽습니다.
 4. source-like text/code file만 chunk 대상으로 삼고, binary/image/Excel/cache/virtualenv/oversized file은 건너뜁니다.
 5. 수정된 파일은 기존 path chunk와 vector를 제거한 뒤 새 chunk를 만들고 `embedding_status=pending`으로 둡니다.
 6. 삭제된 파일은 해당 path의 chunk와 vector를 제거합니다.
 7. rename은 old path를 제거하고 new path가 source-like file이면 새 chunk를 만듭니다.
-8. 검색 품질 확인이 필요하면 `RAG 검색 > Embedding`에서 pending chunk를 작은 limit으로 나누어 처리합니다.
+8. 검색 품질 확인이 필요하면 `RAG 검색 > 검색 준비`에서 아직 검색 준비가 안 된 근거를 작은 limit으로 나누어 처리합니다.
 
 중요한 비용 제어 규칙:
 
 - Git Sync는 commit/diff metadata만 저장하며 embedding API를 호출하지 않습니다.
-- `최근 Git sync 변경 파일만 인덱싱`은 chunk만 갱신하며 embedding API를 호출하지 않습니다.
-- Project Chat의 source index 버튼도 embedding API를 호출하지 않습니다.
-- embedding API 호출은 `RAG 검색 > Embedding` 또는 RAG Index 화면에서 사용자가 명시적으로 선택한 제한 수량에서만 발생합니다.
+- `최신 변경분 반영`은 소스 근거만 갱신하며 embedding API를 호출하지 않습니다.
+- Project Chat의 답변 근거 갱신 버튼도 embedding API를 호출하지 않습니다.
+- embedding API 호출은 `RAG 검색 > 검색 준비` 또는 RAG 검색의 `한 번에 준비` 화면에서 사용자가 명시적으로 선택한 제한 수량에서만 발생합니다.
 - embedding provider/model/dimension을 바꾸면 기존 vector를 조용히 재사용하지 말고 현재 model 기준 missing vector를 다시 생성하세요.
 
 Project Chat 대화는 프로젝트별 DB session으로 저장됩니다. `대화 관리`에서 저장된 대화를 선택할 수 있고, `새 대화 시작`은 기존 이력을 삭제하지 않고 새 session을 만듭니다. 이전 session은 `저장된 대화`에서 다시 선택할 수 있습니다.

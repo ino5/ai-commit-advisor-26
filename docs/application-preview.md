@@ -143,6 +143,8 @@
 <details>
 <summary>RAG 검색</summary>
 
+근거 조각과 검색 데이터 준비 상태, 검색 품질 확인 결과, 조회된 근거 목록을 함께 보여주는 RAG 검색 상태입니다. `TOP K`, 근거 조각 크기, 검색 준비 수량처럼 판단이 필요한 control은 물음표 도움말로 의미와 사용 기준을 확인할 수 있습니다.
+
 ![RAG Search](images/features/rag-search.png)
 
 </details>
@@ -150,7 +152,7 @@
 <details>
 <summary>Project Chat</summary>
 
-정리된 대화 관리 영역, 저장된 대화 선택, 현재 소스 근거가 포함된 답변, 근거 복사용 Markdown을 함께 보여주는 Project Chat 상태입니다.
+답변 근거 상태에서 소스 근거, 검색 준비, 코드 반영 상태를 확인하고, 최신 변경분 반영과 전체 소스 다시 읽기 중 필요한 작업을 바로 선택할 수 있는 Project Chat 상태입니다. `TOP K`, 커밋 이력 참고, 저장된 대화, 새 대화 시작은 물음표 도움말로 동작을 확인할 수 있습니다.
 
 ![Project Chat](images/features/project-chat.png)
 
