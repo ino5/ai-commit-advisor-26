@@ -2,6 +2,82 @@
 
 이 문서는 `ai-commit-advisor` 프로젝트 작성자가 전체 구조와 처리 흐름을 빠르게 이해할 수 있도록 정리한 아키텍처 문서입니다.
 
+## 0. 한눈에 보는 큰 흐름
+
+AI Commit Advisor는 사용자가 업로드한 업무 산출물과 앱 서버에서 접근 가능한 Git 저장소를 같은 프로젝트 기준으로 모아 분석합니다. 분석 실행 화면은 DB에 저장된 프로그램, 계획, 개발자, commit/diff, RAG chunk를 읽고, 필요한 경우 LLM/Embedding provider를 호출한 뒤 결과를 다시 DB에 저장합니다. 사용자는 Home, Dashboard, AI Progress, Program Detail, Project Chat 같은 화면에서 저장된 결과와 근거를 확인합니다.
+
+```mermaid
+flowchart TB
+    User["사용자<br/>관리자 / PL / 개발 리더"] --> Browser["브라우저<br/>Streamlit 화면 접속"]
+    Browser --> App["우리 프로젝트<br/>AI Commit Advisor App<br/>app.py + src/services"]
+
+    App --> ProjectSetup["프로젝트/Git 설정<br/>대상 프로젝트 경로 등록"]
+    App --> Upload["산출물 관리<br/>프로그램 / 개발계획 / 개발자 / 표준용어 업로드"]
+    App --> Analysis["분석 실행<br/>Mapping / Risk / Code Review / Project Chat"]
+    App --> Results["분석 결과 확인<br/>Home / Dashboard / AI Progress / Program Detail / Git History"]
+
+    TargetRemote["GitHub / 사내 Git<br/>대상 프로젝트 원격 저장소"] --> ServerClone["앱 서버 대상 프로젝트 clone<br/>projects.git_repo_path"]
+    ServerClone --> GitSync["Git 동기화<br/>commit / file / diff 수집"]
+    ServerClone --> SourceIndex["RAG source_file 인덱싱<br/>현재 HEAD source"]
+
+    Upload --> DB[(PostgreSQL + pgvector)]
+    GitSync --> DB
+    SourceIndex --> Rag["RAG Layer<br/>chunk / embedding / retrieval"]
+    Rag --> DB
+    DB --> Analysis
+    Analysis --> LLM["LLM / Embedding provider<br/>Mock / LM Studio / OpenAI-compatible API"]
+    LLM --> Analysis
+    Analysis --> DB
+    DB --> Results
+    Results --> Browser
+```
+
+큰 흐름은 다음 순서로 이해하면 됩니다.
+
+- 사용자가 브라우저로 AI Commit Advisor에 접속합니다.
+- `프로젝트/Git 설정`에서 프로젝트와 앱 서버 Git 저장소 경로를 등록합니다.
+- `산출물 관리` 화면에서 프로그램, 개발계획, 개발자, 표준용어 데이터를 넣습니다.
+- `Git 동기화`가 commit, 변경 파일, diff를 DB에 수집합니다.
+- `RAG 검색`이 현재 source와 산출물/commit 정보를 chunk와 vector로 준비합니다.
+- `Mapping`, `Risk Analysis`, `AI Code Review`, `Project Chat`이 DB 데이터와 LLM/Embedding provider를 사용해 분석 결과를 저장합니다.
+- `Home`, `Dashboard`, `Program Detail`, `AI Progress`, `Git History`가 저장된 결과를 업무 검토 화면으로 보여줍니다.
+
+## 0.1 우리 프로젝트와 대상 프로젝트의 관계
+
+이 저장소(`ai-commit-advisor`)는 분석 도구 자체이고, 대상 프로젝트는 분석을 받는 별도 Git 프로젝트입니다. GitHub는 대상 프로젝트의 원격 저장소일 수 있지만, 앱은 GitHub API를 직접 분석 대상으로 삼지 않고 앱 서버에 clone/fetch된 대상 프로젝트의 Git 저장소를 읽습니다.
+
+```mermaid
+flowchart LR
+    Dev["개발자"] --> TargetWork["대상 프로젝트 작업 폴더<br/>분석받는 업무 시스템 source"]
+    TargetWork --> GitHub["GitHub / 사내 Git 원격 저장소<br/>push / pull / fetch"]
+
+    GitHub --> ServerClone["앱 서버의 대상 프로젝트 clone<br/>projects.git_repo_path"]
+    ServerClone --> GitSync["Git 동기화<br/>commit / file / diff 수집"]
+    ServerClone --> SourceIndex["RAG source_file 인덱싱<br/>현재 HEAD source chunk"]
+
+    AdvisorRepo["우리 프로젝트<br/>ai-commit-advisor source"] --> App["AI Commit Advisor App<br/>Streamlit + services"]
+    App --> GitSync
+    App --> SourceIndex
+    App --> Rag["RAG Layer<br/>chunk / embedding / retrieval"]
+    App --> LLM["LLM / Embedding provider"]
+
+    GitSync --> DB[(PostgreSQL + pgvector)]
+    SourceIndex --> DB
+    Rag --> DB
+    DB --> Rag
+    Rag --> App
+    LLM --> App
+    App --> Result["분석 화면<br/>Mapping / Risk / AI Progress / Project Chat / Code Review"]
+```
+
+관계는 다음처럼 나뉩니다.
+
+- `ai-commit-advisor`: 이 앱의 source code와 문서가 있는 우리 프로젝트입니다.
+- 대상 프로젝트: 사용자가 분석하려는 업무 시스템 source입니다. 샘플 시연에서는 `C:\dev\ai-advisor-sample-shop` 같은 별도 Git 저장소가 이 역할을 합니다.
+- GitHub/사내 Git: 대상 프로젝트의 원격 저장소입니다. 운영자가 앱 서버 저장소를 fetch/reset해서 최신 상태로 맞춥니다.
+- 앱 서버 clone: AI Commit Advisor가 실제로 읽는 Git 저장소입니다. `projects.git_repo_path`에 이 경로를 등록합니다.
+- RAG: 앱 서버 clone의 현재 source, 프로그램/commit/diff 데이터를 chunk와 embedding으로 만들어 Project Chat과 검색, Mapping 후보 검색에 사용합니다.
+
 ## 1. 전체 아키텍처 다이어그램
 
 ```mermaid

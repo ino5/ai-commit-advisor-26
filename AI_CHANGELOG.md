@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### 아키텍처 큰 흐름 다이어그램 보강
+
+- `docs/architecture.md` 상단에 사용자가 흔히 기대하는 큰 박스/화살표 중심의 전체 흐름 다이어그램을 추가했습니다.
+- 첫 다이어그램을 사용자 진입 중심으로 재구성해 브라우저, 우리 앱, 대상 프로젝트 원격 저장소, 앱 서버 clone, RAG, DB, LLM/Embedding provider, 분석 결과 화면이 어떻게 이어지는지 먼저 볼 수 있게 했습니다.
+- `ai-commit-advisor` 프로젝트, 분석 대상 프로젝트, GitHub/사내 Git 원격 저장소, 앱 서버 clone, RAG layer가 어떻게 연결되는지 별도 다이어그램으로 보강했습니다.
+- 상세 서비스/ERD 다이어그램은 기존 구조를 유지하고, 빠른 이해용 요약 섹션만 앞에 추가했습니다.
+- 주요 파일: `docs/architecture.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "사용자|브라우저|우리 프로젝트|대상 프로젝트 원격 저장소|우리 프로젝트와 대상 프로젝트의 관계|아키텍처 큰 흐름 다이어그램" docs\architecture.md AI_CHANGELOG.md` 통과; `git diff --check` 통과.
+
 ### Activation 없는 Quick Start 정리
 
 - README Quick Start를 `Activate.ps1` 없이 `.venv\Scripts\python.exe -m ...` 명령으로 실행하도록 바꿨습니다.
