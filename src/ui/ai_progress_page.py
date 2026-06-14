@@ -5,11 +5,12 @@ import streamlit as st
 from src.db.database import SessionLocal
 from src.services.progress_service import get_ai_progress_summary, get_program_commit_details
 from src.services.risk_service import get_unresolved_findings
+from src.ui.display_utils import format_datetime, key_value_dataframe
 from src.ui.project_context import require_project_context
 
 
-def _format_datetime(value) -> str:
-    return value.strftime("%Y-%m-%d %H:%M") if value else "-"
+def _format_date(value) -> str:
+    return value.strftime("%Y-%m-%d") if value else "-"
 
 
 def _rows_to_dataframe(rows) -> pd.DataFrame:
@@ -33,7 +34,7 @@ def _rows_to_dataframe(rows) -> pd.DataFrame:
                 "implementation_analysis_status_label": row.implementation_analysis_status_label,
                 "implementation_analysis_summary": row.implementation_analysis_summary,
                 "implementation_analyzed_at": row.implementation_analyzed_at,
-                "implementation_analyzed_at_label": _format_datetime(row.implementation_analyzed_at),
+                "implementation_analyzed_at_label": format_datetime(row.implementation_analyzed_at),
                 "implementation_evidence_count": row.implementation_evidence_count,
                 "is_risk": row.is_risk,
                 "risk_reasons": ", ".join(row.risk_reasons),
@@ -229,18 +230,20 @@ def _render_program_detail(df: pd.DataFrame) -> None:
     else:
         st.write(selected.implementation_analysis_summary or "-")
 
-    st.write(
-        {
-            "program_id": selected.program_id,
-            "program_name": selected.program_name,
-            "developer": selected.developer,
-            "planned_start_date": selected.planned_start_date,
-            "planned_end_date": selected.planned_end_date,
-            "status": selected.status,
-            "implementation_status": selected.implementation_status,
-            "implementation_analysis": selected.implementation_analysis_status_label,
-            "risk_reasons": selected.risk_reasons,
-        }
+    st.table(
+        key_value_dataframe(
+            [
+                ("프로그램 ID", selected.program_id),
+                ("프로그램명", selected.program_name),
+                ("담당자", selected.developer),
+                ("계획 시작일", _format_date(selected.planned_start_date)),
+                ("계획 종료일", _format_date(selected.planned_end_date)),
+                ("계획 상태", selected.status),
+                ("매핑 구현상태", selected.implementation_status),
+                ("구현상태 분석", selected.implementation_analysis_status_label),
+                ("리스크 사유", selected.risk_reasons or "정상"),
+            ]
+        )
     )
 
     with SessionLocal() as db:

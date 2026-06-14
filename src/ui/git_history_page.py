@@ -12,11 +12,8 @@ from src.services.git_history_service import (
     get_git_history_detail,
     list_git_history_commits,
 )
+from src.ui.display_utils import format_datetime, key_value_dataframe
 from src.ui.project_context import require_project_context
-
-
-def _format_datetime(value) -> str:
-    return value.strftime("%Y-%m-%d %H:%M") if value else "-"
 
 
 def _render_history_charts(rows: pd.DataFrame) -> None:
@@ -106,7 +103,7 @@ def _select_commit(project_id: int) -> int | None:
     st.dataframe(rows[display_cols], use_container_width=True, hide_index=True)
 
     labels = {
-        f"{row.commit_hash} | {row.author_name} | {_format_datetime(row.committed_at)} | {str(row.message)[:90]}": int(
+        f"{row.commit_hash} | {row.author_name} | {format_datetime(row.committed_at)} | {str(row.message)[:90]}": int(
             row.commit_db_id
         )
         for row in rows.itertuples()
@@ -125,15 +122,17 @@ def _render_commit_detail(project_id: int, commit_db_id: int) -> None:
 
     commit = detail.commit
     st.subheader("커밋 상세")
-    st.write(
-        {
-            "commit_hash": commit.commit_hash,
-            "message": commit.message,
-            "author": commit.author_name or commit.author,
-            "author_email": commit.author_email,
-            "committed_at": _format_datetime(commit.committed_at),
-            "is_merge_commit": commit.is_merge_commit,
-        }
+    st.table(
+        key_value_dataframe(
+            [
+                ("커밋", commit.commit_hash),
+                ("메시지", commit.message),
+                ("작성자", commit.author_name or commit.author),
+                ("작성자 이메일", commit.author_email),
+                ("커밋 시각", format_datetime(commit.committed_at)),
+                ("Merge commit", "예" if commit.is_merge_commit else "아니오"),
+            ]
+        )
     )
 
     if not detail.files:

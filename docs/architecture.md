@@ -698,6 +698,7 @@ LLM 출력 예시:
 | 파일 | 역할 |
 |---|---|
 | `src/ui/home_page.py` | 현재 프로젝트 기준 KPI, 분석 상태, 다음 작업, 리스크 요약. |
+| `src/ui/display_utils.py` | 여러 분석 화면에서 공유하는 날짜 포맷과 `항목/값` 표시용 DataFrame helper. |
 | `src/ui/project_context.py` | 현재 프로젝트 선택값 저장/조회, URL `project_id` 복원, 삭제된 선택 복구, 사이드바 전역 프로젝트 selector. |
 | `src/ui/project_page.py` | 프로젝트 등록/수정. |
 | `src/ui/developer_page.py` | Git author 기반 개발자 현황, 자동 추출, 개발자 통계. |

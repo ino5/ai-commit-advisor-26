@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### 분석 화면 표시 정리
+
+- AI Code Review, Git History, Commit Impact, AI Progress, Program Detail, Risk Analysis의 기본 화면에서 raw dictionary/JSON과 내부 risk/code label 노출을 줄였습니다.
+- 커밋 요약, 커밋 상세, 프로그램 요약은 `항목/값` 표로 표시하고, `datetime.date(...)`, `commit_hash`, `is_merge_commit`, `app_server_git_repo_path`, `Risk Level`, `Risk Type` 같은 디버그형 표기가 기본 화면에 보이지 않도록 정리했습니다.
+- 리스크 수준/유형 필터와 차트/표 컬럼을 한국어 업무 라벨로 바꾸고, commit hash, program ID, file path처럼 근거 추적에 필요한 식별자는 유지했습니다.
+- 분석 화면 표시 정책을 feature guide, architecture, engineering decisions, roadmap에 문서화했습니다.
+- 주요 파일: `src/ui/display_utils.py`, `src/ui/code_review_page.py`, `src/ui/git_history_page.py`, `src/ui/commit_impact_page.py`, `src/ui/ai_progress_page.py`, `src/ui/program_detail_page.py`, `src/ui/risk_page.py`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\display_utils.py src\ui\code_review_page.py src\ui\git_history_page.py src\ui\commit_impact_page.py src\ui\ai_progress_page.py src\ui\program_detail_page.py src\ui\risk_page.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 108개 테스트 통과; Browser에서 Git History, Commit Impact, AI Progress, Risk Analysis, AI Code Review의 새 한국어 요약/필터 렌더링과 주요 raw key 미노출 확인; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### 현재 프로젝트 선택 유지
 
 - 사이드바의 `현재 프로젝트` 선택값을 Streamlit session state뿐 아니라 URL `project_id` query parameter에도 저장하도록 변경했습니다.

@@ -5,11 +5,8 @@ from datetime import date, timedelta
 
 from src.db.database import SessionLocal
 from src.services.commit_impact_service import get_commit_impact_analysis, list_commit_options
+from src.ui.display_utils import format_datetime, key_value_dataframe
 from src.ui.project_context import require_project_context
-
-
-def _format_datetime(value) -> str:
-    return value.strftime("%Y-%m-%d %H:%M") if value else "-"
 
 
 def _select_commit(project_id: int) -> int | None:
@@ -52,7 +49,7 @@ def _select_commit(project_id: int) -> int | None:
         ]
     )
     labels = {
-        f"{row.commit_hash} | {row.author_name} | {_format_datetime(row.committed_at)} | {row.message[:90]}": int(row.commit_db_id)
+        f"{row.commit_hash} | {row.author_name} | {format_datetime(row.committed_at)} | {row.message[:90]}": int(row.commit_db_id)
         for row in rows.itertuples()
     }
     selected_label = st.selectbox("분석할 커밋", list(labels.keys()))
@@ -80,15 +77,17 @@ def _render_kpis(analysis) -> None:
 def _render_commit_summary(analysis) -> None:
     commit = analysis.commit
     st.subheader("커밋 요약")
-    st.write(
-        {
-            "commit_hash": commit.commit_hash,
-            "message": commit.message,
-            "author": commit.author_name or commit.author,
-            "author_email": commit.author_email,
-            "committed_at": _format_datetime(commit.committed_at),
-            "is_merge_commit": commit.is_merge_commit,
-        }
+    st.table(
+        key_value_dataframe(
+            [
+                ("커밋", commit.commit_hash),
+                ("메시지", commit.message),
+                ("작성자", commit.author_name or commit.author),
+                ("작성자 이메일", commit.author_email),
+                ("커밋 시각", format_datetime(commit.committed_at)),
+                ("Merge commit", "예" if commit.is_merge_commit else "아니오"),
+            ]
+        )
     )
 
 

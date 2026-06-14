@@ -8,6 +8,24 @@ from src.ui.project_context import require_project_context
 
 
 LEVEL_ORDER = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+LEVEL_LABELS = {"HIGH": "높음", "MEDIUM": "중간", "LOW": "낮음"}
+RISK_TYPE_LABELS = {
+    "ASSIGNEE_MISSING": "담당자 없음",
+    "FORECAST_DELAY": "예상 지연",
+    "NO_RELATED_COMMIT": "관련 커밋 없음",
+    "OVERDUE_AI_INCOMPLETE": "계획 종료 후 AI 진척 미완료",
+    "PROGRESS_GAP": "계획 대비 AI 진척 차이",
+    "RECENT_ACTIVITY_MISSING": "최근 활동 없음",
+    "UNKNOWN_IMPLEMENTATION": "구현상태 판단불가",
+}
+
+
+def _level_label(value: str | None) -> str:
+    return LEVEL_LABELS.get(str(value or "").upper(), value or "-")
+
+
+def _risk_type_label(value: str | None) -> str:
+    return RISK_TYPE_LABELS.get(str(value or "").upper(), value or "-")
 
 
 def _findings_dataframe(findings) -> pd.DataFrame:
@@ -16,7 +34,9 @@ def _findings_dataframe(findings) -> pd.DataFrame:
             {
                 "id": finding.id,
                 "risk_level": finding.risk_level,
+                "risk_level_label": _level_label(finding.risk_level),
                 "risk_type": finding.risk_type,
+                "risk_type_label": _risk_type_label(finding.risk_type),
                 "program_id": (finding.evidence or {}).get("program_id"),
                 "program_name": (finding.evidence or {}).get("program_name"),
                 "developer": (finding.evidence or {}).get("developer"),
@@ -47,16 +67,33 @@ def _render_dashboard(findings) -> None:
 
     chart_left, chart_right = st.columns(2)
     type_df = pd.DataFrame(
-        [{"risk_type": risk_type, "count": count} for risk_type, count in summary["by_type"].items()]
+        [{"risk_type": _risk_type_label(risk_type), "count": count} for risk_type, count in summary["by_type"].items()]
     )
     developer_df = pd.DataFrame(
         [{"developer": developer, "count": count} for developer, count in summary["by_developer"].items()]
     )
     with chart_left:
-        st.plotly_chart(px.bar(type_df, x="risk_type", y="count", text="count", title="리스크 유형별"), use_container_width=True)
+        st.plotly_chart(
+            px.bar(
+                type_df,
+                x="risk_type",
+                y="count",
+                text="count",
+                title="리스크 유형별",
+                labels={"risk_type": "리스크 유형", "count": "건수"},
+            ),
+            use_container_width=True,
+        )
     with chart_right:
         st.plotly_chart(
-            px.bar(developer_df, x="developer", y="count", text="count", title="개발자별 리스크 프로그램 수"),
+            px.bar(
+                developer_df,
+                x="developer",
+                y="count",
+                text="count",
+                title="개발자별 리스크 프로그램 수",
+                labels={"developer": "담당자", "count": "건수"},
+            ),
             use_container_width=True,
         )
 
@@ -72,9 +109,13 @@ def _render_findings(project_id: int, findings) -> None:
 
     col1, col2, col3 = st.columns(3)
     levels = sorted(df["risk_level"].dropna().unique().tolist(), key=lambda value: -LEVEL_ORDER.get(value, 0))
-    selected_levels = col1.multiselect("Risk Level", levels, default=levels)
+    level_options = {_level_label(level): level for level in levels}
+    selected_level_labels = col1.multiselect("리스크 수준", list(level_options.keys()), default=list(level_options.keys()))
+    selected_levels = [level_options[label] for label in selected_level_labels]
     risk_types = sorted(df["risk_type"].dropna().unique().tolist())
-    selected_types = col2.multiselect("Risk Type", risk_types, default=risk_types)
+    type_options = {_risk_type_label(risk_type): risk_type for risk_type in risk_types}
+    selected_type_labels = col2.multiselect("리스크 유형", list(type_options.keys()), default=list(type_options.keys()))
+    selected_types = [type_options[label] for label in selected_type_labels]
     developers = sorted(df["developer"].fillna("미지정").unique().tolist())
     selected_developers = col3.multiselect("담당자", developers, default=developers)
 
@@ -87,8 +128,8 @@ def _render_findings(project_id: int, findings) -> None:
         filtered[
             [
                 "id",
-                "risk_level",
-                "risk_type",
+                "risk_level_label",
+                "risk_type_label",
                 "program_id",
                 "program_name",
                 "developer",
@@ -103,11 +144,27 @@ def _render_findings(project_id: int, findings) -> None:
         ],
         use_container_width=True,
         hide_index=True,
+    ).rename(
+        columns={
+            "id": "ID",
+            "risk_level_label": "리스크 수준",
+            "risk_type_label": "리스크 유형",
+            "program_id": "프로그램 ID",
+            "program_name": "프로그램명",
+            "developer": "담당자",
+            "title": "제목",
+            "description": "설명",
+            "plan_progress_rate": "계획 진척도",
+            "ai_progress_rate": "AI 진척도",
+            "progress_gap": "진척도 차이",
+            "related_commit_count": "관련 커밋",
+            "detected_at": "탐지 시각",
+        }
     )
 
     st.subheader("Resolved 처리")
     resolve_options = {
-        f"{row.id} | {row.risk_level} | {row.program_id or '-'} | {row.title}": int(row.id)
+        f"{row.id} | {_level_label(row.risk_level)} | {row.program_id or '-'} | {row.title}": int(row.id)
         for row in filtered.itertuples()
     }
     selected = st.multiselect("resolved 처리할 리스크", list(resolve_options.keys()))

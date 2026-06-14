@@ -13,6 +13,7 @@ from src.services.program_implementation_analyzer import (
     get_program_implementation_status,
 )
 from src.services.risk_service import get_unresolved_findings
+from src.ui.display_utils import key_value_dataframe
 from src.ui.project_context import require_project_context
 
 
@@ -39,6 +40,24 @@ def _short_commit_hash(value: str | None) -> str:
     return text[:12] if text else "-"
 
 
+def _risk_type_label(value: str | None) -> str:
+    labels = {
+        "ASSIGNEE_MISSING": "담당자 없음",
+        "FORECAST_DELAY": "예상 지연",
+        "NO_RELATED_COMMIT": "관련 커밋 없음",
+        "OVERDUE_AI_INCOMPLETE": "계획 종료 후 AI 진척 미완료",
+        "PROGRESS_GAP": "계획 대비 AI 진척 차이",
+        "RECENT_ACTIVITY_MISSING": "최근 활동 없음",
+        "UNKNOWN_IMPLEMENTATION": "구현상태 판단불가",
+    }
+    return labels.get(str(value or "").upper(), value or "-")
+
+
+def _risk_level_label(value: str | None) -> str:
+    labels = {"HIGH": "높음", "MEDIUM": "중간", "LOW": "낮음"}
+    return labels.get(str(value or "").upper(), value or "-")
+
+
 def _option_dataframe(options) -> pd.DataFrame:
     return pd.DataFrame([option.__dict__ for option in options])
 
@@ -53,7 +72,7 @@ def _render_program_selector(project_id: int) -> int | None:
 
     df = _option_dataframe(options)
     filter_col1, filter_col2, filter_col3 = st.columns([2, 1, 1])
-    keyword = filter_col1.text_input("program_name 검색", placeholder="프로그램명 일부를 입력하세요.")
+    keyword = filter_col1.text_input("프로그램명 검색", placeholder="프로그램명 일부를 입력하세요.")
     statuses = sorted(df["status"].dropna().unique().tolist())
     developers = sorted(df["developer"].dropna().unique().tolist())
     selected_statuses = filter_col2.multiselect("상태 필터", statuses, default=statuses)
@@ -87,33 +106,22 @@ def _render_basic_info(analysis) -> None:
     info_col, desc_col = st.columns([2, 1])
     with info_col:
         st.table(
-            {
-                "항목": [
-                    "program_id",
-                    "program_name",
-                    "module",
-                    "screen_name",
-                    "담당 개발자",
-                    "planned_start_date",
-                    "planned_end_date",
-                    "status",
-                    "progress_rate",
-                ],
-                "값": [
-                    program.program_id or "-",
-                    program.program_name,
-                    program.module or "-",
-                    program.screen_name or "-",
-                    analysis.developer,
-                    _format_date(program.planned_start_date),
-                    _format_date(program.planned_end_date),
-                    program.status or "미지정",
-                    f"{float(program.progress_rate or 0):.1f}%",
-                ],
-            }
+            key_value_dataframe(
+                [
+                    ("프로그램 ID", program.program_id or "-"),
+                    ("프로그램명", program.program_name),
+                    ("모듈", program.module or "-"),
+                    ("화면/경로", program.screen_name or "-"),
+                    ("담당 개발자", analysis.developer),
+                    ("계획 시작일", _format_date(program.planned_start_date)),
+                    ("계획 종료일", _format_date(program.planned_end_date)),
+                    ("계획 상태", program.status or "미지정"),
+                    ("계획 진척도", f"{float(program.progress_rate or 0):.1f}%"),
+                ]
+            )
         )
     with desc_col:
-        st.markdown("**description**")
+        st.markdown("**설명**")
         st.write(program.description or "-")
 
 
@@ -134,11 +142,11 @@ def _render_kpis(analysis) -> None:
 
     risk_message = ", ".join(analysis.risk.risk_reasons) if analysis.risk.risk_reasons else "리스크 조건 없음"
     if analysis.risk.risk_level == "HIGH":
-        st.error(f"Risk Level: HIGH - {risk_message}")
+        st.error(f"높은 리스크 - {risk_message}")
     elif analysis.risk.risk_level == "MEDIUM":
-        st.warning(f"Risk Level: MEDIUM - {risk_message}")
+        st.warning(f"중간 리스크 - {risk_message}")
     else:
-        st.success(f"Risk Level: LOW - {risk_message}")
+        st.success(f"낮은 리스크 - {risk_message}")
 
 
 def _render_saved_risks(project_id: int, program_db_id: int) -> None:
@@ -152,11 +160,11 @@ def _render_saved_risks(project_id: int, program_db_id: int) -> None:
 
     rows = [
         {
-            "risk_level": finding.risk_level,
-            "risk_type": finding.risk_type,
-            "title": finding.title,
-            "description": finding.description,
-            "detected_at": finding.detected_at,
+            "리스크 수준": _risk_level_label(finding.risk_level),
+            "리스크 유형": _risk_type_label(finding.risk_type),
+            "제목": finding.title,
+            "설명": finding.description,
+            "탐지 시각": finding.detected_at,
         }
         for finding in findings
     ]
@@ -370,12 +378,12 @@ def _render_commits(project_id: int, program_db_id: int, analysis) -> None:
     with SessionLocal() as db:
         message, files, reason = get_commit_file_details(db, program_db_id, selected_hash)
 
-    st.markdown("**commit message**")
+    st.markdown("**커밋 메시지**")
     st.write(message or "-")
     st.markdown("**LLM 판단 근거**")
     st.write(reason or "-")
 
-    st.markdown("**changed files / diff snippet**")
+    st.markdown("**변경 파일 / diff snippet**")
     if not files:
         st.info("변경 파일 정보가 없습니다.")
         return

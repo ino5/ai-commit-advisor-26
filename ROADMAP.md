@@ -78,7 +78,8 @@
 | P2 | Project Chat UX | Project Chat source refresh wording cleanup | Done | Project Chat 근거 갱신 안내 UX 정리 | 692fa95 |
 | P2 | UX Help | Contextual help tooltips for Project/RAG controls | Done | Project/RAG 컨텍스트 도움말 툴팁 추가 | 692fa95 |
 | P2 | Resource UX | Resource value metric wording cleanup | Done | 자원관리 가치 지표 문구 정리 | 85c9106 |
-| P2 | UX / State | Current project selection persistence | Done | 현재 프로젝트 선택 유지 |  |
+| P2 | UX / State | Current project selection persistence | Done | 현재 프로젝트 선택 유지 | 0cded3c |
+| P2 | UX / Analysis Views | User-facing analysis display cleanup | Done | 분석 화면 표시 정리 |  |
 
 ## Candidate Tasks
 
@@ -90,6 +91,25 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P2 | UX | Program management project flow cleanup | `프로그램 관리` now defaults to the global current project, but it still keeps an explicit `새 프로젝트명으로 저장` option for legacy upload/create flows. This preserves compatibility but makes the page slightly less direct than other project-scoped screens. | Consider making program management strictly current-project based and moving new project creation to `프로젝트/Git 설정`. If keeping the exception, make the create-new-project path visually secondary and explain when it should be used. | Check sample data and Excel upload workflows before removing the exception. |
 | P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - User-Facing Analysis Display Cleanup
+
+Status: Done
+
+Goal:
+Replace raw JSON-like dictionaries, internal field names, and code-first risk labels in analysis screens with readable business-oriented summaries while keeping technical details available where they are useful.
+
+Rationale:
+AI Progress, Program Detail, Commit Impact, Git History, Risk Analysis, and AI Code Review are review surfaces for project leads and operators. When these pages expose `st.write({ ... })`, `st.json`, `risk_type`, `planned_start_date`, or `Risk Level: HIGH` directly, the page feels like a debug console and makes users translate internal data shapes before making a decision.
+
+Checklist:
+
+- [x] Replace raw commit/project dictionaries with compact summary tables or metrics.
+- [x] Rename visible table/filter labels for risk and program details to user-facing Korean labels where practical.
+- [x] Keep technical identifiers such as commit hash, file path, and program ID visible when they are useful evidence.
+- [x] Update feature/architecture documentation if the display policy changes.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile/tests and Browser rendering verification.
 
 ## P2 - Current Project Selection Persistence
 

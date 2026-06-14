@@ -4,6 +4,7 @@ import streamlit as st
 from src.db.database import SessionLocal
 from src.db.models import Project
 from src.services.code_review_service import CodeReviewService, get_recent_code_reviews
+from src.ui.display_utils import key_value_dataframe
 from src.ui.project_context import require_project_context
 
 
@@ -13,18 +14,26 @@ TARGET_OPTIONS = {
     "서버 작업트리 변경": "working_tree",
     "서버 Staged 변경": "staged",
 }
+
+TARGET_TYPE_LABELS = {value: label for label, value in TARGET_OPTIONS.items()}
+
+
 def _render_review_result(review) -> None:
     st.subheader("리뷰 결과")
     status_col, target_col, ref_col = st.columns(3)
     status_col.metric("상태", review.status)
-    target_col.metric("대상", review.target_type)
+    target_col.metric("대상", TARGET_TYPE_LABELS.get(review.target_type, review.target_type))
     ref_col.metric("참조", review.target_ref[:12] if review.target_ref else "-")
 
     st.markdown("**요약**")
     st.write(review.summary or "-")
 
     st.markdown("**커밋 분석**")
-    st.json(review.commit_analysis or {})
+    commit_analysis = review.commit_analysis or {}
+    if isinstance(commit_analysis, dict) and commit_analysis:
+        st.table(key_value_dataframe((str(key), value) for key, value in commit_analysis.items()))
+    else:
+        st.info("커밋 분석 요약이 없습니다.")
 
     st.markdown("**버그 탐지**")
     bug_findings = review.bug_findings or []
@@ -55,7 +64,7 @@ def _render_review_history(project_id: int) -> None:
             "id": review.id,
             "created_at": review.created_at,
             "status": review.status,
-            "target_type": review.target_type,
+            "target_type": TARGET_TYPE_LABELS.get(review.target_type, review.target_type),
             "target_ref": review.target_ref[:12] if review.target_ref else "-",
             "bug_count": len(review.bug_findings or []),
             "refactoring_count": len(review.refactoring_suggestions or []),
@@ -82,7 +91,7 @@ def render_code_review_page() -> None:
         st.warning("선택한 프로젝트에 앱 서버 Git 저장소 경로가 없습니다. 프로젝트/Git 설정에서 경로를 먼저 설정하세요.")
         return
 
-    st.write({"app_server_git_repo_path": project.git_repo_path})
+    st.caption(f"앱 서버 Git 저장소: {project.git_repo_path}")
     st.divider()
 
     target_label = st.radio("리뷰 대상", list(TARGET_OPTIONS.keys()), horizontal=True)

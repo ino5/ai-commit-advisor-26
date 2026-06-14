@@ -45,6 +45,39 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-14 - 분석 화면 기본 표시는 업무 라벨을 우선한다
+
+### 배경
+
+Program Detail, AI Progress, Git History, Commit Impact, Risk Analysis, AI Code Review는 프로젝트 리더와 운영자가 판단을 내리는 화면입니다. 이 화면에 Python dictionary, JSON, `risk_type`, `planned_start_date`, `target_type` 같은 내부 필드명이 그대로 나오면 사용자는 원본 데이터 구조를 해석한 뒤 업무 의미로 다시 번역해야 합니다.
+
+### 결정
+
+분석 화면의 기본 표시에는 한국어 업무 라벨과 `항목/값` 요약 표를 우선 사용합니다. commit hash, program ID, file path, API/model name처럼 증거 추적에 필요한 기술 식별자는 유지하되, 원본 객체 구조와 내부 코드값은 기본 화면의 주요 요약으로 직접 노출하지 않습니다.
+
+### 이유
+
+- 사용자는 분석 결과의 의미와 다음 행동을 먼저 판단해야 합니다.
+- 기술 식별자는 근거 추적에 필요하지만, 화면 제목이나 필터, 요약 표의 주언어가 되면 스캔 비용이 커집니다.
+- 공통 `display_utils.py` helper로 날짜와 key/value 표 표시를 맞추면 화면별 미세한 포맷 차이를 줄일 수 있습니다.
+
+### 검토한 대안
+
+- Raw JSON을 접힌 기술 상세에 유지: 디버깅에는 좋지만 이번 범위의 주요 문제는 기본 화면 노출이므로 우선 제거했습니다. 필요한 화면은 후속으로 별도 `기술 상세` expander를 추가할 수 있습니다.
+- 모든 컬럼명을 한국어로 강제 변환: commit hash, file path, program ID처럼 그대로 두는 편이 더 명확한 식별자까지 번역하려는 부작용이 있습니다.
+
+### 영향과 tradeoff
+
+- 기본 화면은 읽기 쉬워지지만, 개발자가 raw payload를 즉시 확인하던 편의는 줄어듭니다.
+- AI 응답 payload 전체 검토가 필요한 경우에는 별도 debug/technical detail UI를 추가하는 것이 좋습니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `User-Facing Analysis Display Cleanup`
+- `docs/feature-guide.md`
+- `docs/architecture.md`
+- `AI_CHANGELOG.md`의 `분석 화면 표시 정리`
+
 ## 2026-06-14 - 현재 프로젝트 선택은 URL query parameter로도 보존한다
 
 ### 배경
