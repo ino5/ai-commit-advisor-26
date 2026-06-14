@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### AX AI 후보 작업 기록
+
+- `ROADMAP.md` Candidate Tasks에 `AI Resource Radar`와 `PL Briefing from AI Resource Radar` 후보를 추가했습니다.
+- 두 후보 모두 AX Use Case에서 AI 기술이 프로젝트 자원관리 판단 보조로 더 두드러지게 보이도록 하는 후속 개선으로 정리했습니다.
+- `AI Resource Radar`는 설명 가능한 위험/자원 병목 랭킹과 embedding 기반 유사 근거 검색 방향을, `PL Briefing`은 그 근거를 LLM이 한국어 회의 브리핑으로 요약하는 방향을 기록했습니다.
+- 주요 파일: `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "AI Resource Radar|PL Briefing from AI Resource Radar|AX AI 후보 작업 기록|현재 승인 대기 중인 후보 작업은 없습니다" ROADMAP.md AI_CHANGELOG.md`로 후보 2개와 변경이력 반영 확인; `git diff --check` 통과.
+
 ### AI 기술 적용 요약 문서화
 
 - `docs/ai-technical-overview.md`에 AX Use Case 기준 AI 적용 요약을 추가해 LLM, embedding/vector search, source-grounded RAG, 한국어 업무용어 확장, AI-derived risk/resource analytics, human-in-the-loop 보정, local provider 운영 제어를 한눈에 볼 수 있게 했습니다.
