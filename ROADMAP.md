@@ -85,6 +85,7 @@
 | P2 | Home UX | Home summary priority cleanup | Done | Home 요약 우선순위 정리 | e38f0e9 |
 | P2 | Navigation UX | Sidebar group collapse cleanup | Done | Sidebar 접이식 그룹 정리 | b594b13 |
 | P2 | Sample Data UX | Sample commit date normalization | Done | 샘플 프로젝트 commit 날짜 정규화 |  |
+| P2 | Docs UX | Application Preview Dashboard wording cleanup | Done | Application Preview Dashboard 설명 문구 정리 |  |
 
 ## Candidate Tasks
 
@@ -113,6 +114,23 @@ Checklist:
 - [x] Update sample design documentation.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run compile/tests and sample generation verification.
+
+## P2 - Application Preview Dashboard Wording Cleanup
+
+Status: Done
+
+Goal:
+Make the Dashboard preview description easier to understand on first read.
+
+Rationale:
+The previous paragraph combined the screen purpose, resource metric caveat, PoC value assumptions, and snapshot trend behavior in one dense sentence. Application Preview should help readers recognize the screen quickly before they dive into detailed feature documentation.
+
+Checklist:
+
+- [x] Rewrite the Dashboard preview text with shorter reader-facing sentences.
+- [x] Preserve the boundary that resource metrics are planning signals, not personal evaluation or confirmed savings.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run documentation diff verification.
 
 ## P2 - Sidebar Group Collapse Cleanup
 

@@ -2,6 +2,13 @@
 
 ## 2026-06-14
 
+### Application Preview Dashboard 설명 문구 정리
+
+- `docs/application-preview.md`의 Dashboard 설명을 짧은 문장 중심으로 바꿔 첫 독자가 화면 목적을 먼저 이해할 수 있게 했습니다.
+- 자원관리 지표가 개인 평가나 확정 절감액이 아니라 PL의 병목/일정 리스크 확인용 참고 지표라는 경계는 유지했습니다.
+- 주요 파일: `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: 문서 문구 변경으로 별도 코드 테스트는 수행하지 않았고, `git diff --check` 통과를 확인했습니다.
+
 ### 샘플 프로젝트 commit 날짜 정규화
 
 - `scripts/create_sample_target_repo.py`의 48개 commit history 기준 시작일을 `2026-04-25 09:30 KST`로 조정해 마지막 commit 날짜가 `2026-06-14`를 넘지 않게 했습니다.
