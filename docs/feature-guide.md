@@ -186,3 +186,16 @@ AI Code Review는 앱 서버 Git 저장소의 변경 사항 또는 commit을 LLM
 
 - 개발계획 대시보드: 프로그램 목록, 상태별 프로그램 수, 개발자별 배정 프로그램 수, 지연 프로그램, 계획 대비 완료율
 - Dashboard: Git author 기반 개발자별 commit 수와 변경 파일 수
+
+## 자원관리 지표 foundation
+
+AX 자원관리 확장을 위해 계산형 metric foundation을 추가했습니다. 이 foundation은 아직 별도 전용 화면이 아니라 후속 예상 종료 일정, 개발자 업무량/난이도 대시보드, 고객가치 KPI 화면에서 재사용할 서비스 기준입니다.
+
+현재 계산하는 지표:
+
+- 프로그램별 난이도 점수: 관련 commit 수, 변경 파일 수, diff line 수, touched area 수, cross-program commit 수, unresolved risk 수를 조합합니다.
+- 프로그램별 업무량 근거: 미완료 여부, 계획 대비 AI 진척도 차이, 리스크 수, 난이도 점수를 조합합니다.
+- 개발자별 업무량/난이도 집계: 담당 프로그램 수, 미완료 프로그램 수, 리스크 프로그램 수, 평균 계획/AI 진척도, 평균 난이도를 집계합니다.
+- PoC 고객가치 KPI: unresolved risk 수, HIGH risk 수, AI Code Review 실행 수, 추정 리뷰 절감 시간, 추정 추가 MM 회피 노출을 계산합니다.
+
+이 지표는 PL의 의사결정을 돕는 planning signal입니다. 커밋과 산출물에서 관측 가능한 신호를 조합한 값이므로 개인 성과를 확정 평가하는 지표로 사용하면 안 됩니다. 후속 화면에서는 이 경계를 사용자 문구와 시각화에 함께 표시해야 합니다.

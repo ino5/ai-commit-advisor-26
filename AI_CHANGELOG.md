@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### AX 자원관리 metric foundation
+
+- AX Use Case의 개발자별 업무량, 진행도, 업무 난이도, 고객가치 KPI 확장을 위한 계산형 metric foundation을 추가했습니다.
+- `resource_metrics_service.py`에서 프로그램별 난이도/업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI를 기존 `Program`, `GitCommit`, `CommitFile`, `ProgramCommitMapping`, `RiskFinding`, `CodeReviewResult` 데이터로 계산합니다.
+- 첫 구현은 저장형 snapshot이나 Alembic migration 없이 조회 시점 계산형으로 두고, 예상 종료 일정과 전용 자원 대시보드는 후속 로드맵 작업에서 확장하도록 했습니다.
+- 지표가 개인 성과 확정 평가가 아니라 PL 의사결정 보조 신호라는 해석 경계를 feature guide, AI technical overview, engineering decision log에 기록했습니다.
+- 주요 파일: `src/services/resource_metrics_service.py`, `tests/test_resource_metrics_service.py`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\resource_metrics_service.py tests\test_resource_metrics_service.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py -q` 2개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 104개 테스트 통과.
+
 ### AX 자원관리 로드맵 등록
 
 - AX Use Case 명세 대비 현재 제품의 충족/미충족 항목을 바탕으로 자원관리 정렬 작업을 `ROADMAP.md`에 등록했습니다.

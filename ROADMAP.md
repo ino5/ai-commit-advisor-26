@@ -30,7 +30,7 @@
 | P1 | CI | Git default branch deterministic tests | Done | CI Git default branch test fix | eef1643 |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | a151133 |
-| P1 | AX / Resource Planning | AX resource management metrics foundation | In Progress |  |  |
+| P1 | AX / Resource Planning | AX resource management metrics foundation | Done | AX 자원관리 metric foundation |  |
 | P1 | Forecast / Risk | Forecasted completion and proactive delay risk | Pending |  |  |
 | P1 | Resource UX | Developer workload and difficulty dashboard | Pending |  |  |
 | P2 | Docs / Business Value | AX customer value KPI documentation | Pending |  |  |
@@ -86,7 +86,7 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 ## P1 - AX Resource Management Metrics Foundation
 
-Status: In Progress
+Status: Done
 
 Goal:
 Define the shared metric model needed to align AI Commit Advisor with the AX use case for AI commit analysis based project resource management.
@@ -98,13 +98,13 @@ Checklist:
 
 - [x] Confirm `AGENTS.md` already requires documentation impact checks and user-facing documentation updates for feature/UX/behavior changes.
 - [x] Record the AX use case gap analysis as roadmap-tracked work.
-- [ ] Define metric names, formulas, confidence labels, and interpretation boundaries for workload, difficulty, forecast, and value KPIs.
-- [ ] Decide whether the first implementation is computed-only or needs stored metric snapshots and Alembic migration.
-- [ ] Add or update the reusable service layer for project/program/developer resource metrics.
-- [ ] Add focused tests for formula boundaries and empty/partial data behavior.
-- [ ] Update `docs/engineering-decisions.md` if the metric formula policy becomes a repeatable product convention.
-- [ ] Update `docs/architecture.md`, `docs/feature-guide.md`, and `docs/ai-technical-overview.md` as implementation changes require.
-- [ ] Update `AI_CHANGELOG.md`.
+- [x] Define metric names, formulas, confidence labels, and interpretation boundaries for workload, difficulty, forecast, and value KPIs.
+- [x] Decide whether the first implementation is computed-only or needs stored metric snapshots and Alembic migration.
+- [x] Add or update the reusable service layer for project/program/developer resource metrics.
+- [x] Add focused tests for formula boundaries and empty/partial data behavior.
+- [x] Update `docs/engineering-decisions.md` if the metric formula policy becomes a repeatable product convention.
+- [x] Update `docs/architecture.md`, `docs/feature-guide.md`, and `docs/ai-technical-overview.md` as implementation changes require.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P1 - Forecasted Completion And Proactive Delay Risk
 

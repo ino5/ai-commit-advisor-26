@@ -45,6 +45,49 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-14 - AX 자원관리 지표는 계산형 foundation부터 시작
+
+### 배경
+
+AX Use Case는 AI 커밋 분석 기반 프로젝트 자원 관리 서비스를 목표로 하며, 개발 진척도, 개발자별 업무량, 진행도, 난이도, AI 코드리뷰, 일정 리스크 사전 방어를 요구합니다. 현재 제품은 Git sync, Mapping, AI Progress, Risk Analysis, 개발자 Git 활동, AI Code Review를 이미 갖고 있지만, 예상 종료 일정과 개발자별 업무 난이도·부하 지표는 별도 공통 산식 없이 화면별 보조 지표로 흩어질 위험이 있었습니다.
+
+### 결정
+
+첫 구현은 DB schema를 늘리지 않고 `resource_metrics_service.py`의 계산형 foundation으로 시작합니다. 이 서비스는 기존 `Program`, `GitCommit`, `CommitFile`, `ProgramCommitMapping`, `RiskFinding`, `CodeReviewResult` 데이터를 조합해 프로그램별 난이도/업무량 근거, 개발자별 업무량·난이도 집계, PoC 수준의 고객가치 추정 KPI를 계산합니다.
+
+지표는 의사결정 보조 신호로 정의하고, 개인 성과를 확정 평가하는 값이 아니라는 해석 경계를 서비스 결과와 사용자 문서에 함께 남깁니다.
+
+### 이유
+
+- 기존 테이블만으로 AX gap을 줄이는 첫 기능을 빠르게 검증할 수 있습니다.
+- 산식과 aggregation boundary를 한 서비스에 모아 후속 Dashboard, Risk Analysis, 예상 종료 일정 기능이 같은 기준을 재사용할 수 있습니다.
+- schema snapshot 저장을 미루면 migration과 보관 정책을 확정하기 전에도 UI/문서/테스트에서 지표의 유용성을 검증할 수 있습니다.
+
+### 검토한 대안
+
+- 별도 metric snapshot 테이블을 즉시 추가: 추세 분석에는 좋지만, 지표 산식이 안정되기 전 migration과 보관 정책 부담이 큽니다.
+- Dashboard 화면 안에서 직접 계산: 빠르게 보일 수 있지만 산식이 UI에 묶여 테스트와 재사용이 어려워집니다.
+- LLM으로 난이도를 바로 판단: 설명력은 높을 수 있으나 비용, 일관성, 재현성이 낮아 PoC 기본 지표로 쓰기 어렵습니다.
+
+### 영향과 tradeoff
+
+- 계산형 지표는 현재 DB 상태의 스냅샷이며 과거 추세를 보관하지 않습니다.
+- 난이도와 업무량 점수는 변경 파일, diff line, 관련 commit, 리스크 같은 관측 가능한 신호에 기반하므로 실제 업무 난도나 개인 생산성을 완전히 설명하지 않습니다.
+- 후속 예상 종료 일정이나 자원 대시보드는 이 서비스를 재사용하되, 지표 산식이 바뀌면 관련 문서와 테스트를 함께 갱신해야 합니다.
+
+### 후속 확인
+
+- 예상 종료 일정 기능에서 `forecast_end_date`, confidence, delay risk를 추가할 때 저장형 snapshot이 필요한지 재검토합니다.
+- 개발자 대시보드 UI를 추가할 때 지표 라벨이 인사평가처럼 보이지 않도록 문구와 시각화를 점검합니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `AX Resource Management Metrics Foundation`
+- `docs/architecture.md`
+- `docs/feature-guide.md`
+- `docs/ai-technical-overview.md`
+- `AI_CHANGELOG.md`의 `AX 자원관리 metric foundation`
+
 ## 2026-06-14 - AI change log uses Korean by default
 
 ### 배경

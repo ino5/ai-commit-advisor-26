@@ -123,6 +123,7 @@ flowchart TB
     DashboardUI --> ProgressService["progress_service.py"]
     DashboardUI --> DeveloperService["developer_service.py"]
     DashboardUI --> ProgramAnalysisService["program_analysis_service.py"]
+    DashboardUI --> ResourceMetricsService["resource_metrics_service.py"]
 
     MappingService --> LLMClient["llm_client.py"]
     MappingFeedbackService --> DB
@@ -157,6 +158,7 @@ flowchart TB
     ProgressService --> DB
     DeveloperService --> DB
     ProgramAnalysisService --> DB
+    ResourceMetricsService --> DB
     ImplementationAnalyzer --> DB
     VectorStore --> DB
 
@@ -477,6 +479,7 @@ erDiagram
 | `git_history_service.py` | 프로젝트별 커밋 이력, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff 조회를 처리한다. |
 | `commit_impact_service.py` | 특정 커밋이 영향을 줄 가능성이 있는 프로그램, 파일, 개발자 범위를 계산한다. |
 | `code_review_service.py` | staged 변경, 최근 커밋, 특정 커밋 diff를 LLM으로 리뷰하고 `code_review_results`에 저장한다. |
+| `resource_metrics_service.py` | AX 자원관리 foundation. 프로그램별 난이도/업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI를 계산한다. 현재는 저장형 snapshot이 아니라 조회 시점 계산 결과를 반환한다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
 | `vector_store.py` | embedding 저장, 중복 방지, embedding 실패 기록, pgvector cosine 검색. |
@@ -644,6 +647,7 @@ LLM 출력 예시:
 - Commit Impact 분석.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
+- AX 자원관리 metric foundation: 프로그램별 난이도/업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI 계산.
 - RAG chunk 생성: source_file, program, commit, commit_file.
 - mock/openai/local embedding client 구조.
 - pgvector vector 저장 및 cosine 검색.
@@ -734,6 +738,7 @@ LLM 출력 예시:
 | `src/services/git_history_service.py` | `list_git_history_commits`, `get_git_history_detail`, `get_commit_full_diff` |
 | `src/services/commit_impact_service.py` | `list_commit_options`, `get_commit_impact_analysis` |
 | `src/services/code_review_service.py` | `get_review_target`, `CodeReviewService.review_project`, `get_recent_code_reviews` |
+| `src/services/resource_metrics_service.py` | `get_resource_metrics_summary` |
 | `src/rag/chunker.py` | `build_project_chunks` |
 | `src/rag/embedding_client.py` | `EmbeddingClient.embed_text` |
 | `src/rag/vector_store.py` | `embed_missing_chunks`, `search_similar` |
