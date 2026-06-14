@@ -350,6 +350,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
             "AI Resource Radar",
             "PL Briefing 생성",
             "provider=local_openai, mode=LLM 생성",
+            "PL 주간 점검 브리핑",
             "요약",
             "우선 확인 항목",
             "회의 질문",

@@ -36,7 +36,7 @@
 | Risk Analysis | 14개 risk finding을 생성했습니다. |
 | Project Chat | `결제금액 검증은 어디에서 수행되나요?` 질문에 `PaymentService.java` 근거가 포함된 답변을 생성했습니다. |
 | AI Code Review | `Relax partner payment validation for pilot channel` commit을 실제 LLM으로 리뷰했고 결과를 저장했습니다. |
-| PL Briefing 추가 리허설 | 2026-06-15에 Dashboard `AI Resource Radar`에서 `PL Briefing 생성`을 실행했고, `provider=local_openai, mode=LLM 생성` 상태와 한국어 브리핑 본문을 확인했습니다. |
+| PL Briefing 추가 리허설 | 2026-06-15에 Dashboard `AI Resource Radar`에서 `PL Briefing 생성`을 실행했고, `provider=local_openai, mode=LLM 생성` 상태와 PL 점검 브리핑 본문을 확인했습니다. |
 
 ## 대표 화면 증거
 
@@ -112,7 +112,7 @@ Mermaid/문서 검증과 화면 캡처:
 
 ```powershell
 Invoke-RestMethod -Uri http://127.0.0.1:1234/v1/models -Method Get
-.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8502 --feature dashboard-pl-briefing --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --screenshot docs\images\usage-verification\12-pl-briefing.png --expect-text "provider=local_openai, mode=LLM 생성" --expect-text "요약" --expect-text "회의 질문" --expect-text "기반으로 이번" --forbid-text "```json" --forbid-text "本周" --forbid-text "기반으로이번"
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8502 --feature dashboard-pl-briefing --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --screenshot docs\images\usage-verification\12-pl-briefing.png --expect-text "provider=local_openai, mode=LLM 생성" --expect-text "PL 주간 점검 브리핑" --expect-text "요약" --expect-text "회의 질문" --expect-text "기반으로 이번" --forbid-text "```json" --forbid-text "한국어 브리핑" --forbid-text "本周" --forbid-text "기반으로이번"
 ```
 
 ## 남은 제한 사항

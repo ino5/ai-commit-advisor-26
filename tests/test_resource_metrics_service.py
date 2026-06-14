@@ -392,9 +392,11 @@ def test_pl_briefing_normalizes_fenced_json_response():
 
 
 def test_pl_briefing_cleans_common_mixed_language_terms():
-    text = _normalize_llm_briefing_text("本周 점검에서는 고우한 우선순위 항목을 기반으로이번 확인합니다.")
+    text = _normalize_llm_briefing_text(
+        "PL 주간 점검용 한국어 브리핑\n本周 점검에서는 고우한 우선순위와 고도의 우선순위 항목을 기반으로이번 확인합니다."
+    )
 
-    assert text == "이번 주 점검에서는 높은 우선순위 항목을 기반으로 이번 확인합니다."
+    assert text == "PL 주간 점검 브리핑\n이번 주 점검에서는 높은 우선순위와 높은 우선순위 항목을 기반으로 이번 확인합니다."
 
 
 def test_resource_metrics_summary_handles_empty_project():

@@ -2,9 +2,17 @@
 
 ## 2026-06-15
 
+### PL Briefing 문구 자연화
+
+- `PL Briefing` 생성 prompt와 표시 후처리에서 `한국어 브리핑`처럼 번역체로 보이는 제목 표현을 피하고, 화면 제목을 `PL 주간 점검 브리핑`으로 자연스럽게 정리했습니다.
+- local LLM이 이전 제목 표현이나 어색한 우선순위 표현을 반환해도 표시 전 자연스러운 표현으로 보정하도록 했습니다.
+- Application Preview와 사용 가이드 검증용 `PL Briefing` screenshot을 새 표현 기준으로 다시 캡처했습니다.
+- 주요 파일: `src/services/ai_resource_radar_service.py`, `scripts/capture_feature_screenshot.py`, `tests/test_resource_metrics_service.py`, `docs/ai-technical-overview.md`, `docs/sample-project-usage-verification.md`, `docs/images/features/dashboard-pl-briefing.png`, `docs/images/usage-verification/12-pl-briefing.png`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py::test_pl_briefing_cleans_common_mixed_language_terms -q` 통과; `dashboard-pl-briefing` screenshot capture에서 `PL 주간 점검 브리핑` 표시와 `한국어 브리핑`, `고도의 우선순위`, JSON code fence 미표시 확인.
+
 ### PL Briefing 실제 LLM 시연 증거 보강
 
-- Dashboard `PL Briefing 생성` 경로를 `LLM_PROVIDER=local_openai`, `LLM_MODEL=qwen2.5-coder-7b-instruct` 환경에서 실제 호출해 `provider=local_openai, mode=LLM 생성` 상태와 한국어 브리핑 본문이 표시되는지 확인했습니다.
+- Dashboard `PL Briefing 생성` 경로를 `LLM_PROVIDER=local_openai`, `LLM_MODEL=qwen2.5-coder-7b-instruct` 환경에서 실제 호출해 `provider=local_openai, mode=LLM 생성` 상태와 PL 점검 브리핑 본문이 표시되는지 확인했습니다.
 - 일부 local LLM이 Markdown 요청에도 JSON/code fence나 혼합 언어 표현을 반환할 수 있어, `PL Briefing` 화면 표시 전 JSON/code fence를 Markdown 브리핑 섹션으로 정리하고 흔한 혼합 표기를 보정하도록 했습니다. 이 정규화는 새 근거를 만들지 않고 표시 품질만 보정합니다.
 - `dashboard-pl-briefing` screenshot 시나리오를 추가하고, Application Preview와 사용 가이드 검증 증거에 실제 LLM 브리핑 결과 이미지를 추가했습니다.
 - 주요 파일: `src/services/ai_resource_radar_service.py`, `scripts/capture_feature_screenshot.py`, `tests/test_resource_metrics_service.py`, `tests/test_documentation_images.py`, `docs/application-preview.md`, `docs/ai-technical-overview.md`, `docs/sample-project-usage-verification.md`, `docs/images/features/dashboard-pl-briefing.png`, `docs/images/usage-verification/12-pl-briefing.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.

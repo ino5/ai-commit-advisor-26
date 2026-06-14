@@ -250,9 +250,11 @@ def _briefing_payload(radar: ResourceRadar) -> dict:
 def _build_briefing_prompt(radar: ResourceRadar) -> str:
     payload = json.dumps(_briefing_payload(radar), ensure_ascii=False, indent=2)
     return f"""
-다음 AI Resource Radar 근거를 바탕으로 PL 주간 점검용 한국어 브리핑을 작성하세요.
+다음 AI Resource Radar 근거를 바탕으로 PL 주간 점검 브리핑을 작성하세요.
 
 규칙:
+- 응답은 한국어로 작성하되, 제목에는 "한국어 브리핑" 같은 언어 설명을 넣지 마세요.
+- 제목이 필요하면 "PL 주간 점검 브리핑"을 사용하세요.
 - 근거에 없는 사실을 추가하지 마세요.
 - 위험 단정 대신 "확인 필요", "주의", "우선 검토"처럼 보조 판단으로 표현하세요.
 - JSON, code fence, 표가 아니라 Markdown 본문으로만 작성하세요.
@@ -328,7 +330,10 @@ def _normalize_llm_briefing_text(text: str) -> str:
 
 def _clean_korean_briefing_text(text: str) -> str:
     replacements = {
+        "PL 주간 점검용 한국어 브리핑": "PL 주간 점검 브리핑",
+        "한국어 브리핑": "브리핑",
         "本周": "이번 주",
+        "고도의 우선순위": "높은 우선순위",
         "고우한": "높은",
         "기반으로이번": "기반으로 이번",
     }
