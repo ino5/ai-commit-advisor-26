@@ -2,6 +2,16 @@
 
 ## 2026-06-15
 
+### 구조화 PL Briefing 이력과 시연 안정화
+
+- `PL Briefing` LLM 응답을 자유형 Markdown 대신 `summary`, `priority_items`, `meeting_questions`, `next_actions` 구조로 받아 앱이 일관된 Markdown을 조립하도록 변경했습니다.
+- 생성된 briefing을 `pl_briefing_history`에 저장해 provider/model/mode, 구조화 섹션, rendered text, Radar evidence payload, raw response를 다시 확인할 수 있게 했습니다.
+- Dashboard에서 최근 저장된 PL Briefing과 이력 표를 보여주고, 프로젝트 reset/delete 시 briefing 이력도 함께 정리되도록 lifecycle을 맞췄습니다.
+- Application Preview와 사용 가이드 검증 screenshot을 최근 저장/이력 표시 기준으로 갱신하고, screenshot smoke 기준도 구조화 섹션과 저장 상태를 확인하도록 보강했습니다.
+- PL Briefing 구조화/저장 정책과 DB migration, 아키텍처, AI 기술 설명, 기능 가이드, engineering decision을 함께 갱신했습니다.
+- 주요 파일: `src/services/ai_resource_radar_service.py`, `src/ui/dashboard_page.py`, `src/db/models.py`, `src/services/project_management_service.py`, `migrations/versions/20260615_0008_add_pl_briefing_history.py`, `tests/test_resource_metrics_service.py`, `scripts/capture_feature_screenshot.py`, `docs/ai-technical-overview.md`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/db-migrations.md`, `docs/engineering-decisions.md`, `docs/application-preview.md`, `docs/sample-project-usage-verification.md`, `docs/images/features/dashboard-pl-briefing.png`, `docs/images/features/dashboard-pl-briefing-actions.png`, `docs/images/usage-verification/12-pl-briefing.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m alembic heads`와 `.\.venv\Scripts\python.exe -m alembic current`에서 `20260615_0008 (head)` 확인; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py tests\test_project_management_service.py tests\test_documentation_images.py -q` 13개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 123개 테스트 통과; `dashboard-pl-briefing`, `dashboard-pl-briefing-actions`, usage verification `12-pl-briefing` screenshot capture에서 `provider=local_openai`, `mode=LLM 생성`, 최근 저장된 PL Briefing, PL Briefing 이력, 요약/우선 확인 항목/회의 질문/다음 액션 표시 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Application Preview 스크롤 영역 screenshot 보강
 
 - `Application Preview`에서 아래쪽 workflow 상태가 잘리던 화면들을 더 큰 viewport 또는 full-page 기준으로 다시 캡처했습니다.

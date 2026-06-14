@@ -10,6 +10,7 @@ from src.db.models import (
     CommitFile,
     Developer,
     GitCommit,
+    PLBriefingHistory,
     Program,
     ProgramCommitMapping,
     Project,
@@ -22,9 +23,12 @@ from src.services.resource_metrics_service import (
     save_resource_metric_snapshot,
 )
 from src.services.ai_resource_radar_service import (
-    _normalize_llm_briefing_text,
+    _clean_korean_briefing_text,
+    _parse_structured_briefing,
     build_ai_resource_radar,
     generate_pl_briefing,
+    get_latest_pl_briefing,
+    save_pl_briefing,
 )
 from src.services.risk_service import RISK_FORECAST_DELAY, run_risk_analysis
 
@@ -34,6 +38,7 @@ def _unique(prefix: str) -> str:
 
 
 def _cleanup_project_graph(db, project_id: int, developer_pk: int | None = None) -> None:
+    db.query(PLBriefingHistory).filter(PLBriefingHistory.project_id == project_id).delete(synchronize_session=False)
     db.query(ResourceMetricSnapshot).filter(ResourceMetricSnapshot.project_id == project_id).delete(synchronize_session=False)
     db.query(CodeReviewResult).filter(CodeReviewResult.project_id == project_id).delete(synchronize_session=False)
     db.query(RiskFinding).filter(RiskFinding.project_id == project_id).delete(synchronize_session=False)
@@ -309,11 +314,18 @@ def test_ai_resource_radar_ranks_risky_program_and_generates_briefing():
 
 def test_pl_briefing_uses_configured_llm_when_available():
     class FakeResponse:
-        text = "LLM briefing text"
+        text = """{
+          "title": "PL 주간 점검 브리핑",
+          "summary": "Briefing Program은 우선 확인이 필요합니다.",
+          "priority_items": [{"program_name": "Briefing Program", "reason": "HIGH 리스크 1건", "owner": "Briefing Owner"}],
+          "meeting_questions": ["Briefing Program의 착수 여부를 확인했나요?"],
+          "next_actions": [{"program_id": "P-BR", "action": "담당자 확인"}]
+        }"""
         raw = {"provider": "fake"}
 
     class FakeLLM:
         provider = "local_openai"
+        model = "fake-model"
 
         def __init__(self):
             self.prompt = ""
@@ -359,40 +371,46 @@ def test_pl_briefing_uses_configured_llm_when_available():
 
             assert briefing.used_llm is True
             assert briefing.provider == "local_openai"
-            assert briefing.text == "LLM briefing text"
+            assert briefing.model == "fake-model"
+            assert briefing.summary == "Briefing Program은 우선 확인이 필요합니다."
+            assert "PL 주간 점검 브리핑" in briefing.text
+            assert "회의 질문" in briefing.text
             assert "Briefing Program" in fake_llm.prompt
+
+            saved = save_pl_briefing(db, radar, briefing)
+            latest = get_latest_pl_briefing(db, project.id)
+            assert latest is not None
+            assert latest.id == saved.id
+            assert latest.mode == "LLM 생성"
+            assert latest.model == "fake-model"
+            assert "Briefing Program은 우선 확인" in (latest.summary or "")
         finally:
             _cleanup_project_graph(db, project.id)
 
 
-def test_pl_briefing_normalizes_fenced_json_response():
+def test_pl_briefing_parses_fenced_json_response():
     raw = """```json
 {
-  "요약": "우선 검토 항목 2개가 있습니다.",
-  "우선 확인 항목": [
-    {"program_name": "주문 상태 변경", "reasons": ["미해결 리스크 2건", "57일 지연 가능성"]}
+  "summary": "우선 검토 항목 2개가 있습니다.",
+  "priority_items": [
+    {"program_name": "주문 상태 변경", "reason": "미해결 리스크 2건, 57일 지연 가능성"}
   ],
-  "회의 질문": ["주문 상태 변경의 범위 조정이 필요한가요?"],
-  "다음 액션 순서": [
+  "meeting_questions": ["주문 상태 변경의 범위 조정이 필요한가요?"],
+  "next_actions": [
     {"action": "담당자와 범위/일정을 확인하세요.", "program_id": ["SMP-ORD-002"]}
   ]
 }
 ```"""
 
-    text = _normalize_llm_briefing_text(raw)
+    payload = _parse_structured_briefing(raw)
 
-    assert "```" not in text
-    assert "### 요약" in text
-    assert "우선 검토 항목 2개" in text
-    assert "### 우선 확인 항목" in text
-    assert "주문 상태 변경" in text
-    assert "미해결 리스크 2건" in text
-    assert "### 회의 질문" in text
-    assert "### 다음 액션" in text
+    assert payload is not None
+    assert payload["summary"] == "우선 검토 항목 2개가 있습니다."
+    assert payload["priority_items"][0]["program_name"] == "주문 상태 변경"
 
 
 def test_pl_briefing_cleans_common_mixed_language_terms():
-    text = _normalize_llm_briefing_text(
+    text = _clean_korean_briefing_text(
         "PL 주간 점검용 한국어 브리핑\n本周 점검에서는 고우한 우선순위와 고도의 우선순위 항목을 기반으로이번 확인합니다."
     )
 

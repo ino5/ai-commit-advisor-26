@@ -26,11 +26,11 @@ AI Resource Radar 우선순위와 PL Briefing action
 
 ![Dashboard AI Resource Radar](images/features/dashboard-radar.png)
 
-local LLM이 생성한 PL Briefing 결과
+local LLM이 생성하고 저장한 PL Briefing 결과
 
 ![Dashboard PL Briefing](images/features/dashboard-pl-briefing.png)
 
-PL Briefing 회의 질문과 다음 action
+PL Briefing 회의 질문, 다음 action, 이력 확인
 
 ![Dashboard PL Briefing Actions](images/features/dashboard-pl-briefing-actions.png)
 

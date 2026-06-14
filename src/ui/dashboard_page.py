@@ -11,7 +11,13 @@ from src.services.resource_metrics_service import (
     get_resource_metrics_summary,
     save_resource_metric_snapshot,
 )
-from src.services.ai_resource_radar_service import build_ai_resource_radar, generate_pl_briefing
+from src.services.ai_resource_radar_service import (
+    build_ai_resource_radar,
+    generate_pl_briefing,
+    get_pl_briefing_history,
+    get_latest_pl_briefing,
+    save_pl_briefing,
+)
 from src.ui.project_context import require_project_context
 
 
@@ -242,6 +248,8 @@ def _render_resource_metric_trends(project_id: int) -> None:
 def _render_ai_resource_radar(project_id: int, resource_summary) -> None:
     with SessionLocal() as db:
         radar = build_ai_resource_radar(db, resource_summary, limit=5)
+        latest_briefing = get_latest_pl_briefing(db, project_id)
+        briefing_history = get_pl_briefing_history(db, project_id, limit=5)
 
     st.subheader("AI Resource Radar")
     st.caption(radar.interpretation_note)
@@ -278,9 +286,36 @@ def _render_ai_resource_radar(project_id: int, resource_summary) -> None:
     if st.button("PL Briefing 생성", key=f"generate_pl_briefing_{project_id}"):
         with st.spinner("AI Resource Radar 근거로 PL 브리핑을 생성하는 중입니다."):
             briefing = generate_pl_briefing(radar)
-        status = "LLM 생성" if briefing.used_llm else "규칙 기반 fallback"
-        st.caption(f"provider={briefing.provider}, mode={status}")
+            with SessionLocal() as db:
+                latest_briefing = save_pl_briefing(db, radar, briefing)
+                briefing_history = get_pl_briefing_history(db, project_id, limit=5)
+        st.caption(f"provider={briefing.provider}, model={briefing.model or '-'}, mode={briefing.mode}")
         st.markdown(briefing.text)
+
+    if latest_briefing:
+        st.caption(
+            "최근 저장된 PL Briefing: "
+            f"{latest_briefing.generated_at.strftime('%Y-%m-%d %H:%M')} · "
+            f"provider={latest_briefing.provider}, model={latest_briefing.model or '-'}, mode={latest_briefing.mode}"
+        )
+        with st.expander("최근 PL Briefing 다시 보기", expanded=False):
+            st.markdown(latest_briefing.rendered_text)
+
+    if briefing_history:
+        with st.expander("PL Briefing 이력", expanded=False):
+            history_df = pd.DataFrame(
+                [
+                    {
+                        "생성 시각": row.generated_at.strftime("%Y-%m-%d %H:%M"),
+                        "provider": row.provider,
+                        "model": row.model or "-",
+                        "mode": row.mode,
+                        "요약": row.summary or "-",
+                    }
+                    for row in briefing_history
+                ]
+            )
+            st.dataframe(history_df, use_container_width=True, hide_index=True)
 
 
 def _render_resource_metrics(project_id: int, resource_summary) -> None:

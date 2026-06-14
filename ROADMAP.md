@@ -94,6 +94,7 @@
 | P2 | Docs UX | Sidebar menu map documentation | Done | Sidebar 메뉴 구조 문서화 |
 | P2 | Docs / Screenshot UX | Application Preview lower-section coverage | Done | Application Preview 하단 기능 screenshot 보강 |
 | P2 | Docs / Screenshot UX | Application Preview scroll coverage refresh | Done | Application Preview 스크롤 영역 screenshot 보강 |
+| P1 | AX / AI Evidence | Structured PL Briefing history and demo hardening | Done | 구조화 PL Briefing 이력과 시연 안정화 |
 | P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
@@ -105,6 +106,26 @@
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
 
 현재 승인 대기 중인 후보 작업은 없습니다. 새 concern이나 tradeoff를 보존해야 할 때 이 섹션에 후보 작업을 추가합니다.
+
+## P1 - Structured PL Briefing History And Demo Hardening
+
+Status: Done
+
+Goal:
+Make `PL Briefing` more stable for AX PoC demos by generating structured briefing sections, storing generated briefing history, tightening UI smoke verification, and cleaning stale limitation wording.
+
+Rationale:
+The current live LLM briefing demonstrates real AI use, but the output is still rendered from free-form text and disappears after generation. For demos and review, PLs should see consistent sections, inspect the latest saved briefing, and trust that screenshots and documentation represent current behavior.
+
+Checklist:
+
+- [x] Generate `PL Briefing` from structured sections instead of relying on free-form Markdown.
+- [x] Persist generated PL briefing history with provider/model/mode and evidence payload.
+- [x] Show latest briefing history on Dashboard and keep generated output visible after reruns.
+- [x] Add focused service/UI smoke verification for the briefing action and history display.
+- [x] Refresh affected Application Preview images without unnecessary oversized captures.
+- [x] Update AI technical overview, feature guide, architecture, DB migration guidance, engineering decision notes, and changelog.
+- [x] Run migration, compile, tests, screenshot, and documentation checks.
 
 ## P2 - Application Preview Scroll Coverage Refresh
 

@@ -43,6 +43,10 @@ class Project(Base, TimestampMixin):
         back_populates="project",
         cascade="all, delete-orphan",
     )
+    pl_briefings: Mapped[list["PLBriefingHistory"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
     chat_sessions: Mapped[list["ProjectChatSession"]] = relationship(
         back_populates="project",
         cascade="all, delete-orphan",
@@ -259,6 +263,27 @@ class ResourceMetricSnapshot(Base, TimestampMixin):
     raw_summary: Mapped[dict | None] = mapped_column(JSONB)
 
     project: Mapped["Project"] = relationship(back_populates="resource_metric_snapshots")
+
+
+class PLBriefingHistory(Base, TimestampMixin):
+    __tablename__ = "pl_briefing_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    provider: Mapped[str] = mapped_column(String(100), nullable=False)
+    model: Mapped[str | None] = mapped_column(String(255))
+    mode: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    summary: Mapped[str | None] = mapped_column(Text)
+    priority_items: Mapped[list | None] = mapped_column(JSONB)
+    meeting_questions: Mapped[list | None] = mapped_column(JSONB)
+    next_actions: Mapped[list | None] = mapped_column(JSONB)
+    rendered_text: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_payload: Mapped[dict | None] = mapped_column(JSONB)
+    raw_response: Mapped[dict | None] = mapped_column(JSONB)
+
+    project: Mapped["Project"] = relationship(back_populates="pl_briefings")
 
 
 class ProjectChatSession(Base, TimestampMixin):

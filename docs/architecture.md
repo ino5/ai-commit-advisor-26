@@ -166,7 +166,7 @@ flowchart TB
     ImplementationAnalyzer --> DB
     VectorStore --> DB
 
-    DB --> Tables["projects, developers, project_developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>program_implementation_status,<br/>code_review_results, risk_findings,<br/>project_chat_sessions, project_chat_messages,<br/>document_chunks, vector_items"]
+    DB --> Tables["projects, developers, project_developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>program_implementation_status,<br/>code_review_results, resource_metric_snapshots,<br/>pl_briefing_history, risk_findings,<br/>project_chat_sessions, project_chat_messages,<br/>document_chunks, vector_items"]
 ```
 
 ## 2. 화면 흐름도
@@ -459,6 +459,7 @@ erDiagram
 | `analysis_runs` | Mapping 분석 실행 이력. 실행 상태, 처리 수, 실패 수, 파라미터, 요약을 저장한다. |
 | `code_review_results` | AI Code Review 실행 결과. 리뷰 대상, 요약, 커밋 분석, 버그 발견, 리팩토링 제안을 저장한다. |
 | `resource_metric_snapshots` | Dashboard 자원관리 지표의 수동 저장 snapshot. 핵심 지표, 평균 업무량/난이도, raw summary를 저장해 추세 분석에 사용한다. |
+| `pl_briefing_history` | Dashboard AI Resource Radar에서 생성한 PL Briefing 이력. provider/model/mode, 구조화 섹션, rendered text, Radar evidence payload, raw response를 저장한다. |
 | `risk_findings` | 리스크 분석 결과. 리스크 유형/등급, 설명, 근거, 해결 여부를 저장한다. |
 | `project_chat_sessions` | Project Chat의 프로젝트별 대화 session 제목, 상태, 마지막 메시지 시각을 저장한다. |
 | `project_chat_messages` | Project Chat user/assistant message와 검색 근거, 확장 쿼리, 근거 부족 여부, 복사용 citation metadata를 저장한다. |
@@ -487,7 +488,7 @@ erDiagram
 | `commit_impact_service.py` | 특정 커밋이 영향을 줄 가능성이 있는 프로그램, 파일, 개발자 범위를 계산한다. |
 | `code_review_service.py` | 앱 서버 Git 저장소의 최근 커밋, 특정 커밋 diff를 중심으로 LLM 리뷰를 실행하고 `code_review_results`에 저장한다. 서버 clone local 변경 점검용으로 working tree/staged diff 리뷰도 지원한다. |
 | `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 고객가치 참고 지표를 계산하고, 사용자가 요청한 기준 시점 snapshot을 저장/조회한다. |
-| `ai_resource_radar_service.py` | AX 자원관리 Radar. `resource_metrics_service.py` 결과와 미해결 리스크, 관련 commit evidence를 조합해 PL 우선 검토 프로그램을 랭킹하고, LLM 또는 fallback으로 PL Briefing을 생성한다. |
+| `ai_resource_radar_service.py` | AX 자원관리 Radar. `resource_metrics_service.py` 결과와 미해결 리스크, 관련 commit evidence를 조합해 PL 우선 검토 프로그램을 랭킹하고, LLM 또는 fallback으로 구조화된 PL Briefing을 생성해 `pl_briefing_history`에 저장한다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
 | `vector_store.py` | embedding 저장, 중복 방지, embedding 실패 기록, pgvector cosine 검색. |
@@ -676,7 +677,6 @@ LLM 출력 예시:
 - local/openai embedding은 OpenAI-compatible `/embeddings` 형식을 가정하지만 실제 모델별 검증은 별도 필요하다.
 - LLM 응답 JSON 스키마 검증은 엄격한 validator가 아니라 기본 파싱 중심이다.
 - Mapping 실패 재처리 정책은 기본 상태 기록 수준이며 상세 재시도 큐는 없다.
-- Dashboard 일부 기존 보조 페이지에는 아직 오래된 한글 깨짐 문자열이 남아 있을 수 있다.
 - 테스트는 핵심 순수 로직 중심이며, Streamlit UI/DB 통합 테스트는 아직 부족하다.
 - 배포 설정, CI, 환경별 설정 분리, 로그 수집/모니터링이 없다.
 - vector index 생성 튜닝(HNSW/IVFFlat 등)은 아직 없다.

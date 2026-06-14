@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
-from datetime import date
+from datetime import date, datetime
 from typing import Protocol
 
 from sqlalchemy.orm import Session, joinedload
 
-from src.db.models import GitCommit, Program, ProgramCommitMapping, RiskFinding
+from src.db.models import GitCommit, PLBriefingHistory, Program, ProgramCommitMapping, RiskFinding
 from src.services.llm_client import LLMClient
 from src.services.resource_metrics_service import ProgramResourceMetric, ResourceMetricsSummary
 
@@ -45,12 +45,32 @@ class ResourceRadar:
 class PLBriefing:
     text: str
     provider: str
+    model: str | None
+    mode: str
     used_llm: bool
     raw: dict
+    title: str = "PL 주간 점검 브리핑"
+    summary: str = ""
+    priority_items: list[dict] = field(default_factory=list)
+    meeting_questions: list[str] = field(default_factory=list)
+    next_actions: list[dict] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class PLBriefingHistoryRow:
+    id: int
+    generated_at: datetime
+    provider: str
+    model: str | None
+    mode: str
+    title: str
+    summary: str | None
+    rendered_text: str
 
 
 class BriefingLLM(Protocol):
     provider: str
+    model: str | None
 
     def generate(self, prompt: str):
         ...
@@ -250,16 +270,27 @@ def _briefing_payload(radar: ResourceRadar) -> dict:
 def _build_briefing_prompt(radar: ResourceRadar) -> str:
     payload = json.dumps(_briefing_payload(radar), ensure_ascii=False, indent=2)
     return f"""
-다음 AI Resource Radar 근거를 바탕으로 PL 주간 점검 브리핑을 작성하세요.
+다음 AI Resource Radar 근거를 바탕으로 PL 주간 점검 브리핑 데이터를 작성하세요.
 
 규칙:
-- 응답은 한국어로 작성하되, 제목에는 "한국어 브리핑" 같은 언어 설명을 넣지 마세요.
-- 제목이 필요하면 "PL 주간 점검 브리핑"을 사용하세요.
+- 응답은 JSON object 하나만 반환하세요. Markdown, code fence, 표를 쓰지 마세요.
+- 모든 문장은 한국어로 작성하되, 제목에는 "한국어 브리핑" 같은 언어 설명을 넣지 마세요.
+- title은 "PL 주간 점검 브리핑"으로 작성하세요.
 - 근거에 없는 사실을 추가하지 마세요.
 - 위험 단정 대신 "확인 필요", "주의", "우선 검토"처럼 보조 판단으로 표현하세요.
-- JSON, code fence, 표가 아니라 Markdown 본문으로만 작성하세요.
-- 1) 요약, 2) 우선 확인 항목, 3) 회의 질문, 4) 다음 액션 순서로 작성하세요.
-- 각 항목에는 program_name 또는 program_id와 근거 숫자를 포함하세요.
+- priority_items와 next_actions에는 program_id 또는 program_name과 근거 숫자를 포함하세요.
+- 다음 schema를 지키세요:
+{{
+  "title": "PL 주간 점검 브리핑",
+  "summary": "한 문단 요약",
+  "priority_items": [
+    {{"program_id": "SMP-ORD-001", "program_name": "주문 접수", "reason": "미해결 리스크 2건, 예상 지연 53일", "owner": "김민수"}}
+  ],
+  "meeting_questions": ["회의에서 확인할 질문"],
+  "next_actions": [
+    {{"program_id": "SMP-ORD-001", "action": "담당자와 범위/일정 조정 필요 여부 확인"}}
+  ]
+}}
 
 AI Resource Radar JSON:
 {payload}
@@ -276,56 +307,15 @@ def _strip_code_fence(text: str) -> str:
     return stripped
 
 
-def _json_list_lines(values: object) -> list[str]:
-    if not isinstance(values, list):
-        return []
-    lines: list[str] = []
-    for value in values:
-        if isinstance(value, str):
-            lines.append(f"- {value}")
-        elif isinstance(value, dict):
-            name = value.get("program_name") or value.get("program_id") or value.get("action") or "항목"
-            details: list[str] = []
-            for key in ("reasons", "reason", "action", "program_id"):
-                item_value = value.get(key)
-                if not item_value or item_value == name:
-                    continue
-                if isinstance(item_value, list):
-                    details.append(", ".join(str(item) for item in item_value))
-                else:
-                    details.append(str(item_value))
-            suffix = f": {'; '.join(details)}" if details else ""
-            lines.append(f"- {name}{suffix}")
-    return lines
-
-
-def _normalize_llm_briefing_text(text: str) -> str:
+def _parse_structured_briefing(text: str) -> dict | None:
     stripped = _strip_code_fence(text)
     try:
         payload = json.loads(stripped)
     except json.JSONDecodeError:
-        return _clean_korean_briefing_text(stripped)
+        return None
     if not isinstance(payload, dict):
-        return _clean_korean_briefing_text(stripped)
-
-    lines: list[str] = []
-    summary = payload.get("요약") or payload.get("summary")
-    if summary:
-        lines.extend(["### 요약", str(summary).strip()])
-
-    sections = (
-        ("### 우선 확인 항목", payload.get("우선 확인 항목") or payload.get("priority_items")),
-        ("### 회의 질문", payload.get("회의 질문") or payload.get("meeting_questions")),
-        ("### 다음 액션", payload.get("다음 액션 순서") or payload.get("next_actions")),
-    )
-    for title, values in sections:
-        section_lines = _json_list_lines(values)
-        if section_lines:
-            if lines:
-                lines.append("")
-            lines.append(title)
-            lines.extend(section_lines)
-    return _clean_korean_briefing_text("\n".join(lines).strip() or stripped)
+        return None
+    return payload
 
 
 def _clean_korean_briefing_text(text: str) -> str:
@@ -343,30 +333,128 @@ def _clean_korean_briefing_text(text: str) -> str:
     return cleaned
 
 
-def _fallback_briefing(radar: ResourceRadar, provider: str, raw: dict | None = None) -> PLBriefing:
+def _normalize_string_list(values: object) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    return [_clean_korean_briefing_text(str(value).strip()) for value in values if str(value).strip()]
+
+
+def _normalize_dict_list(values: object) -> list[dict]:
+    if not isinstance(values, list):
+        return []
+    result: list[dict] = []
+    for value in values:
+        if isinstance(value, dict):
+            normalized: dict[str, str] = {}
+            for key, item in value.items():
+                if item is None:
+                    continue
+                if isinstance(item, list):
+                    item_text = ", ".join(str(part).strip() for part in item if str(part).strip())
+                else:
+                    item_text = str(item).strip()
+                if item_text:
+                    normalized[str(key)] = _clean_korean_briefing_text(item_text)
+            if normalized:
+                result.append(normalized)
+        elif str(value).strip():
+            result.append({"text": _clean_korean_briefing_text(str(value).strip())})
+    return result
+
+
+def _briefing_from_payload(
+    payload: dict,
+    *,
+    provider: str,
+    model: str | None,
+    used_llm: bool,
+    raw: dict,
+) -> PLBriefing:
+    title = _clean_korean_briefing_text(str(payload.get("title") or "PL 주간 점검 브리핑").strip())
+    summary = _clean_korean_briefing_text(str(payload.get("summary") or payload.get("요약") or "").strip())
+    priority_items = _normalize_dict_list(payload.get("priority_items") or payload.get("우선 확인 항목"))
+    meeting_questions = _normalize_string_list(payload.get("meeting_questions") or payload.get("회의 질문"))
+    next_actions = _normalize_dict_list(payload.get("next_actions") or payload.get("다음 액션 순서"))
+    text = render_pl_briefing_markdown(title, summary, priority_items, meeting_questions, next_actions)
+    return PLBriefing(
+        text=text,
+        provider=provider,
+        model=model,
+        mode="LLM 생성" if used_llm else "규칙 기반 fallback",
+        used_llm=used_llm,
+        raw=raw,
+        title=title,
+        summary=summary,
+        priority_items=priority_items,
+        meeting_questions=meeting_questions,
+        next_actions=next_actions,
+    )
+
+
+def render_pl_briefing_markdown(
+    title: str,
+    summary: str,
+    priority_items: list[dict],
+    meeting_questions: list[str],
+    next_actions: list[dict],
+) -> str:
+    lines = [f"## {title}", "### 요약", summary or "우선 검토 항목을 확인하세요."]
+    if priority_items:
+        lines.extend(["", "### 우선 확인 항목"])
+        for index, item in enumerate(priority_items, start=1):
+            name = item.get("program_name") or item.get("program_id") or item.get("text") or "항목"
+            reason = item.get("reason") or item.get("reasons") or item.get("근거")
+            owner = item.get("owner") or item.get("developer") or item.get("담당자")
+            detail = f" - {reason}" if reason else ""
+            owner_text = f" (담당자: {owner})" if owner else ""
+            lines.append(f"{index}. **{name}**{owner_text}{detail}")
+    if meeting_questions:
+        lines.extend(["", "### 회의 질문"])
+        lines.extend(f"- {question}" for question in meeting_questions)
+    if next_actions:
+        lines.extend(["", "### 다음 액션"])
+        for index, action in enumerate(next_actions, start=1):
+            program = action.get("program_name") or action.get("program_id")
+            action_text = action.get("action") or action.get("text") or str(action)
+            prefix = f"**{program}**: " if program else ""
+            lines.append(f"{index}. {prefix}{action_text}")
+    return "\n".join(lines)
+
+
+def _fallback_briefing(radar: ResourceRadar, provider: str, model: str | None, raw: dict | None = None) -> PLBriefing:
     if not radar.items:
-        return PLBriefing(
-            text="현재 AI Resource Radar에 표시할 우선 검토 항목이 없습니다. Git 동기화, Mapping, Risk Analysis 실행 상태를 먼저 확인하세요.",
+        return _briefing_from_payload(
+            {
+                "summary": "현재 AI Resource Radar에 표시할 우선 검토 항목이 없습니다. Git 동기화, Mapping, Risk Analysis 실행 상태를 먼저 확인하세요.",
+            },
             provider=provider,
+            model=model,
             used_llm=False,
             raw=raw or {"fallback": "empty_radar"},
         )
     top = radar.items[:3]
-    lines = ["### 요약", f"- 우선 검토 항목 {len(radar.items)}개가 감지되었습니다."]
-    lines.append("### 우선 확인 항목")
-    for item in top:
-        lines.append(
-            f"- {item.rank}. {item.program_name}({item.priority_level}, {item.priority_score}점): "
-            f"{', '.join(item.reasons)}. {item.recommended_action}"
-        )
-    lines.append("### 회의 질문")
-    for item in top:
-        lines.append(f"- {item.program_name}: {item.reasons[0]}에 대해 담당자 확인이 끝났나요?")
-    lines.append("### 다음 액션")
-    lines.append("- Dashboard의 Radar 항목에서 Program Detail, Risk Analysis, AI Code Review 근거를 순서대로 확인하세요.")
-    return PLBriefing(
-        text="\n".join(lines),
+    payload = {
+        "summary": f"우선 검토 항목 {len(radar.items)}개가 감지되었습니다.",
+        "priority_items": [
+            {
+                "program_id": item.program_id,
+                "program_name": item.program_name,
+                "owner": item.developer,
+                "reason": f"{', '.join(item.reasons)}. {item.recommended_action}",
+            }
+            for item in top
+        ],
+        "meeting_questions": [
+            f"{item.program_name}: {item.reasons[0]}에 대해 담당자 확인이 끝났나요?" for item in top
+        ],
+        "next_actions": [
+            {"action": "Dashboard의 Radar 항목에서 Program Detail, Risk Analysis, AI Code Review 근거를 순서대로 확인하세요."}
+        ],
+    }
+    return _briefing_from_payload(
+        payload,
         provider=provider,
+        model=model,
         used_llm=False,
         raw=raw or {"fallback": "deterministic"},
     )
@@ -375,19 +463,77 @@ def _fallback_briefing(radar: ResourceRadar, provider: str, raw: dict | None = N
 def generate_pl_briefing(radar: ResourceRadar, llm_client: BriefingLLM | None = None) -> PLBriefing:
     llm = llm_client or LLMClient(max_tokens=900)
     provider = getattr(llm, "provider", "unknown")
+    model = getattr(llm, "model", None)
     if provider == "mock":
-        return _fallback_briefing(radar, provider, {"provider": provider, "mode": "mock_fallback"})
+        return _fallback_briefing(radar, provider, model, {"provider": provider, "mode": "mock_fallback"})
     try:
         response = llm.generate(_build_briefing_prompt(radar))
     except Exception as exc:
-        return _fallback_briefing(radar, provider, {"provider": provider, "error": str(exc)})
+        return _fallback_briefing(radar, provider, model, {"provider": provider, "error": str(exc)})
 
-    text = _normalize_llm_briefing_text((getattr(response, "text", "") or "").strip())
-    if not text:
-        return _fallback_briefing(radar, provider, {"provider": provider, "empty_response": True})
-    return PLBriefing(
-        text=text,
+    raw_text = (getattr(response, "text", "") or "").strip()
+    payload = _parse_structured_briefing(raw_text)
+    if not payload:
+        return _fallback_briefing(radar, provider, model, {"provider": provider, "unstructured_response": raw_text})
+    return _briefing_from_payload(
+        payload,
         provider=provider,
+        model=model,
         used_llm=True,
         raw=getattr(response, "raw", {"provider": provider}),
+    )
+
+
+def save_pl_briefing(db: Session, radar: ResourceRadar, briefing: PLBriefing) -> PLBriefingHistoryRow:
+    record = PLBriefingHistory(
+        project_id=radar.project_id,
+        provider=briefing.provider,
+        model=briefing.model,
+        mode=briefing.mode,
+        title=briefing.title,
+        summary=briefing.summary,
+        priority_items=briefing.priority_items,
+        meeting_questions=briefing.meeting_questions,
+        next_actions=briefing.next_actions,
+        rendered_text=briefing.text,
+        evidence_payload=_briefing_payload(radar),
+        raw_response=briefing.raw,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return _briefing_history_row(record)
+
+
+def get_latest_pl_briefing(db: Session, project_id: int) -> PLBriefingHistoryRow | None:
+    record = (
+        db.query(PLBriefingHistory)
+        .filter(PLBriefingHistory.project_id == project_id)
+        .order_by(PLBriefingHistory.generated_at.desc(), PLBriefingHistory.id.desc())
+        .first()
+    )
+    return _briefing_history_row(record) if record else None
+
+
+def get_pl_briefing_history(db: Session, project_id: int, limit: int = 5) -> list[PLBriefingHistoryRow]:
+    records = (
+        db.query(PLBriefingHistory)
+        .filter(PLBriefingHistory.project_id == project_id)
+        .order_by(PLBriefingHistory.generated_at.desc(), PLBriefingHistory.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [_briefing_history_row(record) for record in records]
+
+
+def _briefing_history_row(record: PLBriefingHistory) -> PLBriefingHistoryRow:
+    return PLBriefingHistoryRow(
+        id=int(record.id),
+        generated_at=record.generated_at,
+        provider=record.provider,
+        model=record.model,
+        mode=record.mode,
+        title=record.title,
+        summary=record.summary,
+        rendered_text=record.rendered_text,
     )
