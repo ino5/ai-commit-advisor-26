@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### AX 자원관리 로드맵 등록
+
+- AX Use Case 명세 대비 현재 제품의 충족/미충족 항목을 바탕으로 자원관리 정렬 작업을 `ROADMAP.md`에 등록했습니다.
+- 첫 실행 단위인 `AX resource management metrics foundation`을 `In Progress`로 두고, 예상 종료 일정, 개발자 업무량/난이도 대시보드, 고객가치 KPI 문서화를 후속 작업으로 분리했습니다.
+- `AGENTS.md`의 문서 영향도 검토, 사용자-facing 문서 갱신, `AI_CHANGELOG.md` 갱신 정책이 이미 존재함을 반영해 별도 정책 변경은 하지 않았습니다.
+- 주요 파일: `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "AX resource management metrics foundation|Forecasted completion|Developer workload and difficulty|AX customer value" ROADMAP.md AI_CHANGELOG.md` 통과; `git diff --check` 통과.
+
 ### 샘플 프로젝트 사용 가이드 실제 검증 결과 추가
 
 - `AGENTS.md`에 샘플 프로젝트 사용 가이드의 end-to-end 검증 증거를 사용자용 가이드와 분리해 보관하는 정책을 추가했습니다.

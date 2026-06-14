@@ -30,6 +30,10 @@
 | P1 | CI | Git default branch deterministic tests | Done | CI Git default branch test fix | eef1643 |
 | P1 | DB | Alembic migration stabilization | Done | Alembic DB 마이그레이션 도입 | a3892bd |
 | P1 | Ops | LLM/Embedding batch safety and estimated runtime | Done | LLM/Embedding 배치 안전장치와 예상시간 표시 | a151133 |
+| P1 | AX / Resource Planning | AX resource management metrics foundation | In Progress |  |  |
+| P1 | Forecast / Risk | Forecasted completion and proactive delay risk | Pending |  |  |
+| P1 | Resource UX | Developer workload and difficulty dashboard | Pending |  |  |
+| P2 | Docs / Business Value | AX customer value KPI documentation | Pending |  |  |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 | 0312a0a |
 | P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping | 60dd64c |
 | P2 | Ops | CI test workflow | Done | CI 테스트 워크플로우 추가 | 562da8a |
@@ -79,6 +83,75 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P2 | UX | Program management project flow cleanup | `프로그램 관리` now defaults to the global current project, but it still keeps an explicit `새 프로젝트명으로 저장` option for legacy upload/create flows. This preserves compatibility but makes the page slightly less direct than other project-scoped screens. | Consider making program management strictly current-project based and moving new project creation to `프로젝트/Git 설정`. If keeping the exception, make the create-new-project path visually secondary and explain when it should be used. | Check sample data and Excel upload workflows before removing the exception. |
 | P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P1 - AX Resource Management Metrics Foundation
+
+Status: In Progress
+
+Goal:
+Define the shared metric model needed to align AI Commit Advisor with the AX use case for AI commit analysis based project resource management.
+
+Rationale:
+The current product already covers commit collection, program mapping, AI progress, risk analysis, developer activity, and AI code review. The main AX gaps are forecasted completion dates, developer workload/capacity indicators, developer-level difficulty indicators, and quantified business-value KPIs. This foundation task keeps the first implementation focused on reusable metric definitions before spreading calculations across dashboards.
+
+Checklist:
+
+- [x] Confirm `AGENTS.md` already requires documentation impact checks and user-facing documentation updates for feature/UX/behavior changes.
+- [x] Record the AX use case gap analysis as roadmap-tracked work.
+- [ ] Define metric names, formulas, confidence labels, and interpretation boundaries for workload, difficulty, forecast, and value KPIs.
+- [ ] Decide whether the first implementation is computed-only or needs stored metric snapshots and Alembic migration.
+- [ ] Add or update the reusable service layer for project/program/developer resource metrics.
+- [ ] Add focused tests for formula boundaries and empty/partial data behavior.
+- [ ] Update `docs/engineering-decisions.md` if the metric formula policy becomes a repeatable product convention.
+- [ ] Update `docs/architecture.md`, `docs/feature-guide.md`, and `docs/ai-technical-overview.md` as implementation changes require.
+- [ ] Update `AI_CHANGELOG.md`.
+
+## P1 - Forecasted Completion And Proactive Delay Risk
+
+Status: Pending
+
+Goal:
+Estimate program-level completion outlook and surface likely schedule delay before the planned end date is missed.
+
+Checklist:
+
+- [ ] Calculate `forecast_end_date`, expected delay days, confidence, and evidence from plan dates, AI progress, mapping evidence, and recent commit activity.
+- [ ] Add a proactive delay risk type to Risk Analysis without replacing the existing overdue/progress-gap rules.
+- [ ] Show forecast evidence in AI Progress, Program Detail, and Home/Risk summaries where useful.
+- [ ] Add tests for no-activity, partial-progress, completed, overdue, and low-confidence cases.
+- [ ] Update user-facing docs and screenshots when the UI is added.
+- [ ] Update `AI_CHANGELOG.md`.
+
+## P1 - Developer Workload And Difficulty Dashboard
+
+Status: Pending
+
+Goal:
+Give PLs a developer-level view of assigned workload, implementation progress, difficulty, and risk concentration.
+
+Checklist:
+
+- [ ] Define workload score from assigned programs, unfinished programs, progress gap, unresolved risks, and recent Git activity.
+- [ ] Define difficulty score from changed files, diff size, touched module breadth, DB/API/UI impact, cross-program impact, and risk evidence.
+- [ ] Add a dashboard view or extend Dashboard with developer-level workload, progress, difficulty, and risk charts.
+- [ ] Keep metric labels clear that scores are planning indicators, not personnel evaluation truth.
+- [ ] Add tests for aggregation by assigned developer and Git author fallback behavior.
+- [ ] Update feature guide, architecture, Application Preview, and `AI_CHANGELOG.md`.
+
+## P2 - AX Customer Value KPI Documentation
+
+Status: Pending
+
+Goal:
+Document how the PoC expresses AX customer value such as risk reduction, workload visibility, review productivity, and estimated resource savings.
+
+Checklist:
+
+- [ ] Define PoC-safe formulas for early risk count, estimated review time saved, forecasted delay count, and estimated extra MM avoided.
+- [ ] Add user-facing explanation that these are decision-support estimates, not contractual financial measurements.
+- [ ] Link the value KPIs to the relevant screens and sample project evidence.
+- [ ] Update README or feature guide if the value KPI becomes visible in the app.
+- [ ] Update `AI_CHANGELOG.md`.
 
 ## P2 - Demo User Guide
 
