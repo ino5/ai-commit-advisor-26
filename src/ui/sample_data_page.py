@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from scripts.generate_sample_development_data import SEED, find_program_csv_candidates, generate_sample_data
+from scripts.generate_sample_development_data import find_program_csv_candidates, generate_sample_data
 
 
 def _to_excel_bytes(df: pd.DataFrame) -> bytes:
@@ -25,7 +25,7 @@ def render_sample_data_page() -> None:
     st.title("샘플 데이터 생성")
     st.caption(
         "앱 서버에서 접근 가능한 Git 저장소의 commit author, commit date, 변경 파일 경로를 분석해 업로드 테스트용 가상 Excel 데이터를 생성합니다. "
-        f"실제 업무 데이터가 아니며 랜덤성은 고정 seed({SEED})로 재현 가능합니다."
+        "실제 업무 데이터가 아닌 업로드 테스트용 샘플입니다."
     )
 
     repo_path = st.text_input("앱 서버 Git 저장소 경로", value=r"C:\dev\ai-advisor-sample-shop")

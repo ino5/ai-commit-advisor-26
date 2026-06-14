@@ -2,6 +2,13 @@
 
 ## 2026-06-14
 
+### 샘플 데이터 생성 안내 문구 정리
+
+- 샘플 데이터 생성 화면의 caption에서 고정 seed 재현성 문구를 제거하고, 사용자가 알아야 할 업로드 테스트용 샘플이라는 설명만 남겼습니다.
+- 생성 로직의 seed 값은 유지하고, UI에서 구현 세부사항만 노출하지 않도록 `SEED` import를 정리했습니다.
+- 주요 파일: `src/ui/sample_data_page.py`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\sample_data_page.py` 통과; `rg -n "랜덤성|seed\\(|SEED" src\ui\sample_data_page.py` 결과 없음; `git diff --check` 통과.
+
 ### Server-managed clone/fetch workflow
 
 - `projects`에 `git_remote_url`, `git_branch`를 추가하는 Alembic migration을 만들고, 프로젝트/Git 설정에서 Git remote URL과 branch를 저장할 수 있게 했습니다.
