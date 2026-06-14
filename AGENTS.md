@@ -4,6 +4,10 @@
 
 When making code, schema, test, documentation, or behavior changes, update `AI_CHANGELOG.md` before finishing.
 
+Write new `AI_CHANGELOG.md` entries in Korean by default, including headings, summaries, important files/modules, and verification results. Keep file paths, commands, environment variables, API names, model/provider names, table/class/function names, and conventional product labels in their original form when that is clearer.
+
+Historical English entries do not need to be translated retroactively unless the user explicitly asks to rewrite those entries or the entry is already being edited for another reason.
+
 Each entry should include:
 
 - date

@@ -45,6 +45,72 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-14 - AI change log uses Korean by default
+
+### 배경
+
+프로젝트의 사용자 문서는 이미 한국어 우선 정책을 따르고 있지만, `AI_CHANGELOG.md`에는 영문 항목과 한국어 항목이 섞여 있었습니다. changelog는 개발자와 기획자가 변경 흐름과 검증 결과를 같이 확인하는 문서이므로, 설명 문장이 영어로 계속 쌓이면 팀 내 공유성이 떨어질 수 있습니다.
+
+반대로 기존 전체 이력을 한 번에 번역하면 오래된 검증 문구나 commit 맥락이 불필요하게 크게 흔들리고, 실제 기능 변경과 무관한 diff가 과도하게 커집니다.
+
+### 결정
+
+새 `AI_CHANGELOG.md` 항목은 기본적으로 한국어로 작성합니다. 항목 제목, 변경 요약, 주요 파일 설명, 검증 결과 설명을 한국어로 쓰되, 파일 경로, 명령어, 환경 변수, API 이름, model/provider 이름, table/class/function 이름 같은 기술 식별자는 원문을 유지합니다.
+
+기존 영문 이력은 전체 소급 번역하지 않습니다. 다만 사용자가 명시적으로 요청하거나 해당 항목을 다른 이유로 수정하는 경우에는 자연스러운 한국어로 정리합니다.
+
+### 이유
+
+- 변경 의도와 검증 결과를 팀원이 빠르게 읽을 수 있습니다.
+- 기술 식별자는 원문을 유지하므로 검색성과 정확성을 해치지 않습니다.
+- 과거 이력을 대량 번역하지 않아 불필요한 문서 churn을 줄입니다.
+
+### 검토한 대안
+
+- 기존 `AI_CHANGELOG.md` 전체를 즉시 번역: 일관성은 높지만 실제 변경과 무관한 diff가 커지고 검증 이력 추적이 어려워질 수 있습니다.
+- 계속 영어/한국어 혼용 허용: 작성자는 편하지만 문서 품질과 읽는 흐름이 일정하지 않습니다.
+
+### 영향과 tradeoff
+
+- 오래된 changelog에는 영문 항목이 남습니다.
+- 새 항목은 한국어가 기본이므로, 영어 제목이 필요한 경우에도 설명 문장은 한국어로 작성합니다.
+
+### 관련 문서
+
+- `AGENTS.md`
+- `AI_CHANGELOG.md`의 `AI 변경 이력 한국어 작성 정책`
+
+## 2026-06-14 - Roadmap owns commit hash tracking
+
+### 배경
+
+로드맵 작업은 `ROADMAP.md`, `AI_CHANGELOG.md`, commit history가 함께 움직입니다. `AI_CHANGELOG.md`에도 commit hash를 넣고 `ROADMAP.md`에도 같은 hash를 넣으면 추적 지점이 중복되고, amend/rebase/squash 같은 Git 정리 후 문서를 여러 곳에서 다시 맞춰야 합니다.
+
+### 결정
+
+완료된 로드맵 작업의 commit hash는 `ROADMAP.md`의 `Commit` 컬럼에 기록합니다. `AI_CHANGELOG.md`는 변경 요약, 주요 파일, 검증 명령과 결과를 기록하고, commit hash는 기본적으로 넣지 않습니다.
+
+### 이유
+
+- `ROADMAP.md`는 작업 상태와 완료 commit을 한 표에서 추적하기에 적합합니다.
+- `AI_CHANGELOG.md`는 코드와 문서가 어떻게 바뀌었는지, 무엇으로 검증했는지에 집중하는 편이 읽기 쉽습니다.
+- commit hash 중복 기록을 줄이면 후속 amend/rebase/squash 이후 문서 불일치 가능성이 줄어듭니다.
+
+### 검토한 대안
+
+- `AI_CHANGELOG.md`와 `ROADMAP.md`에 모두 commit hash 기록: 추적성은 높지만 중복 관리 비용이 큽니다.
+- commit hash를 어디에도 기록하지 않음: changelog와 Git log를 직접 대조해야 하므로 완료된 로드맵 작업 추적성이 떨어집니다.
+
+### 영향과 tradeoff
+
+- 로드맵에 없는 작은 변경은 commit hash 문서 연결이 없을 수 있습니다.
+- 특정 장애, 릴리스, 외부 감사처럼 commit hash 자체가 설명에 필요한 경우에는 해당 문서에 예외적으로 남길 수 있습니다.
+
+### 관련 문서
+
+- `ROADMAP.md` Management Rules
+- `AI_CHANGELOG.md`의 `로드맵 커밋 해시 기록 정책`
+
 ## 2026-06-10 - App-server Git repository operating model
 
 ### 배경

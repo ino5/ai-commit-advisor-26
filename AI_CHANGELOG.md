@@ -1,40 +1,56 @@
-# AI Change Log
+# AI 변경 이력
 
 ## 2026-06-14
 
-### Project developer membership model
+### AI 변경 이력 한국어 작성 정책
 
-- Added `project_developers` as a project-to-global-developer membership table while keeping `developers` and `programs.developer_id` backward-compatible.
-- Added project developer membership helpers and project-scoped developer listing, with Git author extraction, manual creation, and Excel upload now linking developers to the current project when available.
-- Updated the developer management UI so the default view shows current-project developers and a separate `전역 마스터` tab still exposes the full global developer master.
-- Added DB-backed tests for membership creation, duplicate prevention, cross-project developer reuse, project/developer cascade cleanup, and project deletion impact.
-- Documented the global developer master vs project membership distinction in architecture, feature, engineering decision, and DB migration docs.
-- Important files: `migrations/versions/20260614_0005_add_project_developers.py`, `src/db/models.py`, `src/services/project_developer_service.py`, `src/services/developer_service.py`, `src/services/developer_management_service.py`, `src/ui/developer_upload_page.py`, `tests/test_developer_management_service.py`, `tests/test_project_management_service.py`, `docs/architecture.md`, `docs/feature-guide.md`, `docs/engineering-decisions.md`, `docs/db-migrations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
-- Verification: `docker compose up -d postgres` passed; `.\.venv\Scripts\python.exe -m py_compile src\db\models.py src\services\developer_service.py src\services\developer_management_service.py src\services\project_developer_service.py src\ui\developer_upload_page.py migrations\versions\20260614_0005_add_project_developers.py` passed; `.\.venv\Scripts\alembic.exe upgrade head` passed; `.\.venv\Scripts\alembic.exe heads` and `.\.venv\Scripts\alembic.exe current` both reported `20260614_0005 (head)`; `.\.venv\Scripts\python.exe -m compileall src app.py tests` passed; `.\.venv\Scripts\python.exe -m pytest tests\test_developer_management_service.py tests\test_project_management_service.py -q` passed with 11 tests; `.\.venv\Scripts\python.exe -m pytest -q` passed with 102 tests; `git diff --check` passed with only Windows line-ending warnings.
+- 새 `AI_CHANGELOG.md` 항목은 기본적으로 한국어로 작성하도록 agent 작업 정책을 명확히 했습니다.
+- 경로, 명령어, 환경 변수, API 이름, model/provider 이름, table/class/function 이름처럼 원문이 더 정확한 기술 식별자는 그대로 유지하도록 했습니다.
+- 기존 영문 이력은 전체 소급 번역하지 않고, 수정하는 항목부터 한국어로 정리하는 기준을 남겼습니다.
+- 주요 파일: `AGENTS.md`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
+- 검증: `git diff --check` 통과. Windows 줄바꿈 경고만 확인했습니다.
 
-### Project delete and demo reset safety
+### 로드맵 커밋 해시 기록 정책
 
-- Added a project management service that reports project deletion impact counts and deletes project-owned data while preserving the global `developers` master.
-- Added a guarded `프로젝트/Git 설정` delete flow that shows impact counts, requires the project name as confirmation, and recovers the current project selection after deletion.
-- Added focused DB-backed tests for deletion impact, cascade cleanup, other-project preservation, and developer preservation.
-- Documented the deletion policy in the feature guide, demo user guide, architecture, and engineering decisions.
-- Important files: `src/services/project_management_service.py`, `src/ui/project_page.py`, `tests/test_project_management_service.py`, `docs/feature-guide.md`, `docs/demo-user-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
-- Verification: `docker compose up -d postgres` passed; `.\.venv\Scripts\python.exe -c "from src.db.init_db import init_db; init_db(); print('init ok')"` passed; `.\.venv\Scripts\python.exe -m py_compile src\services\project_management_service.py src\ui\project_page.py tests\test_project_management_service.py` passed; `.\.venv\Scripts\python.exe -m compileall src app.py tests` passed; `.\.venv\Scripts\python.exe -m pytest tests\test_project_management_service.py tests\test_project_context.py -q` passed with 5 tests; `.\.venv\Scripts\python.exe -m pytest -q` passed with 97 tests; `git diff --check` passed with only Windows line-ending warnings.
+- 완료된 로드맵 작업의 commit hash는 `ROADMAP.md`에 기록하고, `AI_CHANGELOG.md`는 변경 요약, 주요 파일, 검증 결과에 집중하도록 정책을 명확히 했습니다.
+- 완료된 `프로젝트 개발자 연결 모델` 작업의 commit hash를 로드맵에 추가했습니다.
+- 문서 정책을 나눈 이유를 engineering decision log에 기록했습니다.
+- 주요 파일: `ROADMAP.md`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
+- 검증: `git diff --check` 통과. Windows 줄바꿈 경고만 확인했습니다.
 
-### Project deletion and developer scope roadmap
+### 프로젝트 개발자 연결 모델
 
-- Recorded the proposed safe implementation sequence for repeatable sample-project demos: add project delete/demo reset safety first, then introduce project developer membership without breaking the global developer master.
-- Updated the developer scope candidate from a broad open question to a concrete compatibility-first direction using a future `project_developers` membership table.
-- Important files: `ROADMAP.md`, `AI_CHANGELOG.md`.
-- Verification: `rg -n "Project delete and demo reset safety|Project developer membership model|project_developers" ROADMAP.md AI_CHANGELOG.md` passed; `git diff --check` reported only Windows line-ending warnings and no whitespace errors.
+- `developers`와 `programs.developer_id`의 기존 호환성을 유지하면서, 프로젝트와 전역 개발자를 연결하는 `project_developers` membership 테이블을 추가했습니다.
+- 프로젝트 개발자 연결 helper와 프로젝트 범위 개발자 목록 조회를 추가했고, Git author 추출, 직접 추가, Excel 업로드가 현재 프로젝트가 있을 때 개발자를 프로젝트에 연결하도록 했습니다.
+- 개발자 관리 UI의 기본 화면은 현재 프로젝트 개발자를 보여주고, 별도 `전역 마스터` 탭에서 전체 전역 개발자 마스터를 볼 수 있게 했습니다.
+- membership 생성, 중복 방지, 여러 프로젝트에서 같은 개발자 재사용, 프로젝트/개발자 삭제 cascade, 프로젝트 삭제 영향 범위를 DB 기반 테스트로 검증했습니다.
+- 전역 개발자 마스터와 프로젝트 개발자 연결의 차이를 architecture, feature guide, engineering decision, DB migration 문서에 정리했습니다.
+- 주요 파일: `migrations/versions/20260614_0005_add_project_developers.py`, `src/db/models.py`, `src/services/project_developer_service.py`, `src/services/developer_service.py`, `src/services/developer_management_service.py`, `src/ui/developer_upload_page.py`, `tests/test_developer_management_service.py`, `tests/test_project_management_service.py`, `docs/architecture.md`, `docs/feature-guide.md`, `docs/engineering-decisions.md`, `docs/db-migrations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `docker compose up -d postgres` 통과; `.\.venv\Scripts\python.exe -m py_compile src\db\models.py src\services\developer_service.py src\services\developer_management_service.py src\services\project_developer_service.py src\ui\developer_upload_page.py migrations\versions\20260614_0005_add_project_developers.py` 통과; `.\.venv\Scripts\alembic.exe upgrade head` 통과; `.\.venv\Scripts\alembic.exe heads`와 `.\.venv\Scripts\alembic.exe current` 모두 `20260614_0005 (head)` 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_developer_management_service.py tests\test_project_management_service.py -q` 11개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 102개 테스트 통과; `git diff --check` 통과. Windows 줄바꿈 경고만 확인했습니다.
 
-### Demo user guide
+### 프로젝트 삭제와 데모 재실행 안전장치
 
-- Added a user-facing 시연 사용 가이드 that walks through the sample-project demonstration flow from project registration and Git sync through Mapping, Risk Analysis, AI Progress, Program Detail, Git History, Commit Impact, RAG, Project Chat, and AI Code Review.
-- Linked the guide from README so presenters can find it directly from the documentation hub.
-- Corrected the stale sample walkthrough wording that still described the expected sample commit count as 30 instead of 48.
-- Important files: `docs/demo-user-guide.md`, `README.md`, `docs/rich-sample-demo-walkthrough.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
-- Verification: `rg -n "demo-user-guide|시연 사용 가이드|예상 샘플 commit 수|30입니다|48입니다" README.md docs\demo-user-guide.md docs\rich-sample-demo-walkthrough.md` found the README link, new guide title, and 48-commit wording with no stale 30-commit wording; `git diff --check` reported only Windows line-ending warnings and no whitespace errors.
+- 전역 `developers` 마스터는 유지하면서 프로젝트 소유 데이터를 삭제하고 삭제 영향 건수를 보여주는 project management service를 추가했습니다.
+- 삭제 영향 건수 표시, 프로젝트명 재입력 확인, 삭제 후 현재 프로젝트 선택 복구를 포함한 `프로젝트/Git 설정` 삭제 flow를 추가했습니다.
+- 삭제 영향, cascade cleanup, 다른 프로젝트 보존, 개발자 보존을 DB 기반 focused test로 검증했습니다.
+- 삭제 정책을 feature guide, demo user guide, architecture, engineering decisions에 문서화했습니다.
+- 주요 파일: `src/services/project_management_service.py`, `src/ui/project_page.py`, `tests/test_project_management_service.py`, `docs/feature-guide.md`, `docs/demo-user-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `docker compose up -d postgres` 통과; `.\.venv\Scripts\python.exe -c "from src.db.init_db import init_db; init_db(); print('init ok')"` 통과; `.\.venv\Scripts\python.exe -m py_compile src\services\project_management_service.py src\ui\project_page.py tests\test_project_management_service.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_management_service.py tests\test_project_context.py -q` 5개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 97개 테스트 통과; `git diff --check` 통과. Windows 줄바꿈 경고만 확인했습니다.
+
+### 프로젝트 삭제와 개발자 범위 로드맵
+
+- 샘플 프로젝트 데모를 반복 실행하기 위한 안전한 구현 순서를 기록했습니다. 먼저 프로젝트 삭제/데모 재실행 안전장치를 추가하고, 이후 전역 개발자 마스터를 깨지 않는 프로젝트 개발자 연결을 도입하는 흐름입니다.
+- 개발자 범위 candidate를 넓은 미결 질문에서 향후 `project_developers` membership 테이블을 사용하는 호환성 우선 방향으로 구체화했습니다.
+- 주요 파일: `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "Project delete and demo reset safety|Project developer membership model|project_developers" ROADMAP.md AI_CHANGELOG.md` 통과; `git diff --check`에서 Windows 줄바꿈 경고만 확인했고 공백 오류는 없었습니다.
+
+### 데모 사용자 가이드
+
+- 프로젝트 등록과 Git sync부터 Mapping, Risk Analysis, AI Progress, Program Detail, Git History, Commit Impact, RAG, Project Chat, AI Code Review까지 샘플 프로젝트 시연 흐름을 설명하는 사용자용 시연 가이드를 추가했습니다.
+- 발표자가 문서 허브에서 바로 찾을 수 있도록 README에 가이드 링크를 추가했습니다.
+- 샘플 walkthrough에 남아 있던 예상 commit 수 30개 표현을 48개 기준으로 수정했습니다.
+- 주요 파일: `docs/demo-user-guide.md`, `README.md`, `docs/rich-sample-demo-walkthrough.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "demo-user-guide|시연 사용 가이드|예상 샘플 commit 수|30입니다|48입니다" README.md docs\demo-user-guide.md docs\rich-sample-demo-walkthrough.md`에서 README 링크, 새 가이드 제목, 48-commit 문구를 확인했고 오래된 30-commit 문구는 없었습니다. `git diff --check`에서 Windows 줄바꿈 경고만 확인했고 공백 오류는 없었습니다.
 
 ## 2026-06-10
 

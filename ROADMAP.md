@@ -5,7 +5,7 @@
 - Check this file before starting meaningful feature, UX, schema, test, or documentation work.
 - Move a task to `In Progress` when implementation starts.
 - Move a task to `Done` when implementation, verification, `AI_CHANGELOG.md`, and documentation updates are complete.
-- Record the related `AI_CHANGELOG.md` heading and commit hash after completion.
+- Record the related `AI_CHANGELOG.md` heading and commit hash in the roadmap after completion. Do not duplicate commit hashes in `AI_CHANGELOG.md` unless a specific historical note needs it.
 - Keep tasks small enough to complete and verify in one focused change set when practical.
 - Use `Candidate Tasks` for known product/UX/engineering concerns that are worth preserving but not yet approved for implementation.
 - When starting a candidate task, promote it into the priority overview and add a detailed task section before implementation.
@@ -66,7 +66,7 @@
 | P2 | Git Ops | Server repository status display | Done | Server repository status display |  |
 | P2 | Docs | Demo user guide | Done | Demo user guide |  |
 | P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety |  |
-| P2 | UX / Data Model | Project developer membership model | Done | Project developer membership model |  |
+| P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 | 8f4ad22 |
 
 ## Candidate Tasks
 
