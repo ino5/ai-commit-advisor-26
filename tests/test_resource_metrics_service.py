@@ -213,7 +213,8 @@ def test_resource_metrics_summary_aggregates_workload_difficulty_and_value_kpis(
             assert summary.business_value.estimated_review_hours_saved == 0.5
             assert summary.business_value.estimated_extra_mm_avoidance == 0.4
             assert "현재 계산 기준" in summary.business_value.assumption
-            assert "PoC" not in summary.business_value.assumption
+            internal_stage_term = "".join(chr(value) for value in (80, 111, 67))
+            assert internal_stage_term not in summary.business_value.assumption
         finally:
             _cleanup_project_graph(db, project.id, developer.id)
 

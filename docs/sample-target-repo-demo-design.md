@@ -2,7 +2,7 @@
 
 ## 목적
 
-데모용 샘플 프로젝트는 실제 고객 코드나 제품 코드를 사용하지 않고 AI Commit Advisor를 시연하기 위해 존재합니다. Git sync, program mapping, risk analysis, RAG, Project Chat, AI Code Review, AI Progress가 의미 있는 결과를 만들 수 있을 만큼 현실적인 구조를 가져야 합니다.
+데모용 샘플 프로젝트는 실제 고객 코드나 제품 코드를 사용하지 않고 AI Commit Advisor를 검증하기 위해 존재합니다. Git sync, program mapping, risk analysis, RAG, Project Chat, AI Code Review, AI Progress가 의미 있는 결과를 만들 수 있을 만큼 현실적인 구조를 가져야 합니다.
 
 샘플 프로젝트는 이 애플리케이션 저장소와 의도적으로 분리되어 있습니다.
 
@@ -11,7 +11,7 @@
 - 생성 스크립트: `scripts/create_sample_target_repo.py`
 - 생성된 upload 파일: `C:\dev\ai-advisor-sample-shop\advisor_uploads`
 
-위 경로는 기본 Windows 개발 환경 기준입니다. 사내 서버에서 시연할 때는 샘플 프로젝트를 앱 서버가 접근 가능한 저장소 root 아래에 생성하거나 복사한 뒤 서버 기준 경로를 등록합니다. 실행 환경별 경로 설정은 [설치와 운영](setup-and-operations.md)의 샘플 프로젝트 경로 설정을 따릅니다.
+위 경로는 기본 Windows 개발 환경 기준입니다. 사내 서버에서 검증할 때는 샘플 프로젝트를 앱 서버가 접근 가능한 저장소 root 아래에 생성하거나 복사한 뒤 서버 기준 경로를 등록합니다. 실행 환경별 경로 설정은 [설치와 운영](setup-and-operations.md)의 샘플 프로젝트 경로 설정을 따릅니다.
 
 ## 현재 상태
 
@@ -54,7 +54,7 @@
 - 약 48개 commit이면 주요 program마다 implementation, bug, fix, test, documentation, operations evidence event를 여러 개 배치할 수 있습니다.
 - 70개를 넘는 commit은 발표 가치가 크게 늘지 않으면서 local LLM과 embedding demo를 느리게 만들 수 있습니다.
 
-## 시연해야 할 제품 기능
+## 검증해야 할 제품 기능
 
 샘플은 다음 제품 workflow를 의도적으로 지원해야 합니다.
 
@@ -75,7 +75,7 @@
 
 ## 표준용어 데모 데이터셋
 
-샘플 프로젝트는 외부 고객 산출물 없이도 glossary upload와 Korean query expansion workflow를 시연할 수 있도록 `advisor_uploads/sample_standard_terms.xlsx`를 포함해야 합니다.
+샘플 프로젝트는 외부 고객 산출물 없이도 glossary upload와 Korean query expansion workflow를 검증할 수 있도록 `advisor_uploads/sample_standard_terms.xlsx`를 포함해야 합니다.
 
 첫 구현의 Excel shape은 의도적으로 가볍게 유지합니다.
 

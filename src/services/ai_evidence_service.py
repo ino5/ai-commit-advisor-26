@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -20,10 +21,20 @@ from src.db.models import (
     RiskFinding,
     VectorItem,
 )
-from src.rag.source_index_service import get_source_index_status
+from src.rag.chunker import SOURCE_FILE_TYPE
+from src.rag.embedding_client import EmbeddingClient
+from src.rag.source_index_service import get_source_index_status, refresh_source_file_index
+from src.rag.vector_store import VectorStore
 from src.services.ai_invocation_service import list_ai_invocations, summarize_ai_invocations
-from src.services.ai_resource_radar_service import build_ai_resource_radar, get_latest_pl_briefing
+from src.services.ai_resource_radar_service import (
+    build_ai_resource_radar,
+    generate_pl_briefing,
+    get_latest_pl_briefing,
+    save_pl_briefing,
+)
+from src.services.mapping_service import MappingService
 from src.services.resource_metrics_service import get_resource_metrics_summary
+from src.services.risk_service import run_risk_analysis
 from src.utils.config import settings
 
 
@@ -41,12 +52,36 @@ class EvidenceStatusRow:
 
 
 @dataclass(frozen=True)
+class EvidenceStatusSummary:
+    total_count: int
+    pass_count: int
+    warn_count: int
+    fail_count: int
+
+    @property
+    def attention_count(self) -> int:
+        return self.warn_count + self.fail_count
+
+
+@dataclass(frozen=True)
 class EvidenceTrace:
     latest_pl_briefing: dict | None
     recent_mappings: list[dict]
     recent_chat_answers: list[dict]
     recent_code_reviews: list[dict]
     recent_invocations: list[dict]
+
+
+@dataclass(frozen=True)
+class EvidenceActionResult:
+    title: str
+    summary: str
+    status: str = "completed"
+    details: dict = field(default_factory=dict)
+    errors: list[str] = field(default_factory=list)
+
+
+_STATUS_PRIORITY = {FAIL: 0, WARN: 1, PASS: 2}
 
 
 def _status(ok: bool, *, warn: bool = False) -> str:
@@ -59,7 +94,253 @@ def _format_dt(value) -> str:
     return value.strftime("%Y-%m-%d %H:%M") if value else "-"
 
 
-def get_poc_readiness_rows(db: Session, project_id: int) -> list[EvidenceStatusRow]:
+def summarize_status_rows(rows: list[EvidenceStatusRow]) -> EvidenceStatusSummary:
+    counter = Counter(row.status for row in rows)
+    return EvidenceStatusSummary(
+        total_count=len(rows),
+        pass_count=counter.get(PASS, 0),
+        warn_count=counter.get(WARN, 0),
+        fail_count=counter.get(FAIL, 0),
+    )
+
+
+def priority_status_rows(rows: list[EvidenceStatusRow], *, include_pass: bool = False) -> list[EvidenceStatusRow]:
+    visible_rows = rows if include_pass else [row for row in rows if row.status != PASS]
+    return sorted(visible_rows, key=lambda row: (_STATUS_PRIORITY.get(row.status, 99), row.area))
+
+
+def get_ai_operations_status_rows(db: Session, project_id: int) -> list[EvidenceStatusRow]:
+    project = db.get(Project, project_id)
+    if project is None:
+        return [EvidenceStatusRow("프로젝트", FAIL, "-", "프로젝트를 다시 선택하세요.")]
+
+    llm_provider = settings.llm_provider or "mock"
+    llm_model = settings.llm_model or "-"
+    embedding_provider = settings.embedding_provider or "mock"
+    embedding_model = settings.embedding_model or "-"
+
+    latest_invocation = list_ai_invocations(db, project_id, limit=1)
+    telemetry = summarize_ai_invocations(db, project_id)
+    if latest_invocation:
+        latest = latest_invocation[0]
+        invocation_status = FAIL if latest.status == "failed" else WARN if latest.fallback_used else PASS
+        latest_value = f"{latest.feature} / {latest.provider} / {latest.model or '-'} / fallback={latest.fallback_used}"
+        latest_action = "실패나 fallback이 있으면 호출 기록을 확인하세요."
+    else:
+        invocation_status = WARN
+        latest_value = "호출 없음"
+        latest_action = "AI 기능을 한 번 실행하면 기록됩니다."
+
+    try:
+        source_status = get_source_index_status(db, project)
+    except Exception as exc:
+        source_status = None
+        source_value = str(exc)
+        source_row_status = WARN
+    else:
+        embedding_models = sorted(
+            {
+                model or "-"
+                for (model,) in (
+                    db.query(VectorItem.embedding_model)
+                    .join(DocumentChunk, VectorItem.chunk_id == DocumentChunk.id)
+                    .filter(DocumentChunk.project_id == project_id, DocumentChunk.source_type == SOURCE_FILE_TYPE)
+                    .distinct()
+                    .all()
+                )
+            }
+        )
+        source_row_status = _status(
+            source_status.source_chunk_count > 0
+            and source_status.source_vector_count > 0
+            and source_status.missing_embedding_count == 0
+            and not source_status.needs_reindex,
+            warn=source_status.source_chunk_count > 0 or source_status.source_vector_count > 0,
+        )
+        model_count = len(embedding_models)
+        source_value = (
+            f"chunks={source_status.source_chunk_count}, vectors={source_status.source_vector_count}, "
+            f"missing={source_status.missing_embedding_count}, models={model_count}"
+        )
+
+    return [
+        EvidenceStatusRow(
+            "LLM",
+            _status(llm_provider != "mock", warn=True),
+            f"{llm_provider} / {llm_model}",
+            "chat model 설정을 확인하세요.",
+        ),
+        EvidenceStatusRow(
+            "Embedding",
+            _status(embedding_provider != "mock", warn=True),
+            f"{embedding_provider} / {embedding_model} / {settings.pgvector_dimension}d",
+            "embedding model과 dimension을 확인하세요.",
+        ),
+        EvidenceStatusRow(
+            "최근 AI 호출",
+            invocation_status,
+            latest_value,
+            latest_action,
+        ),
+        EvidenceStatusRow(
+            "검색 준비",
+            source_row_status,
+            source_value,
+            "소스 근거와 검색 준비 상태를 맞추세요.",
+        ),
+        EvidenceStatusRow(
+            "호출 요약",
+            _status(telemetry.total_count > 0, warn=True),
+            f"total={telemetry.total_count}, failed={telemetry.failed_count}, fallback={telemetry.fallback_count}, avg={telemetry.average_duration_ms}ms",
+            "AI 기능 실행 뒤 상태를 다시 확인하세요.",
+        ),
+    ]
+
+
+def run_mapping_shortcut(db: Session, project_id: int) -> EvidenceActionResult:
+    result = MappingService().analyze_commits(
+        db,
+        project_id=project_id,
+        candidates_per_commit=10,
+        skip_completed=True,
+    )
+    status = "completed_with_warnings" if result.errors else "completed"
+    return EvidenceActionResult(
+        title="Mapping 실행",
+        summary=(
+            "Mapping 완료: "
+            f"분석 {result.analyzed_count}건, 생성 {result.created_count}건, "
+            f"갱신 {result.updated_count}건, 건너뜀 {result.skipped_count}건, 실패 {result.failed_count}건"
+        ),
+        status=status,
+        details={
+            "analyzed_count": result.analyzed_count,
+            "created_count": result.created_count,
+            "updated_count": result.updated_count,
+            "skipped_count": result.skipped_count,
+            "failed_count": result.failed_count,
+            "recent_results": result.recent_results[:10],
+        },
+        errors=result.errors[:20],
+    )
+
+
+def run_risk_analysis_shortcut(db: Session, project_id: int) -> EvidenceActionResult:
+    result = run_risk_analysis(db, project_id)
+    return EvidenceActionResult(
+        title="Risk Analysis 실행",
+        summary=(
+            "Risk Analysis 완료: "
+            f"감지 {result.detected_count}건, 생성 {result.created_count}건, "
+            f"갱신 {result.updated_count}건, 자동 해결 {result.auto_resolved_count}건"
+        ),
+        details={
+            "detected_count": result.detected_count,
+            "created_count": result.created_count,
+            "updated_count": result.updated_count,
+            "auto_resolved_count": result.auto_resolved_count,
+        },
+    )
+
+
+def run_pl_briefing_shortcut(db: Session, project_id: int) -> EvidenceActionResult:
+    resource_summary = get_resource_metrics_summary(db, project_id)
+    radar = build_ai_resource_radar(db, resource_summary, limit=5)
+    briefing = generate_pl_briefing(radar)
+    saved = save_pl_briefing(db, radar, briefing)
+    return EvidenceActionResult(
+        title="PL Briefing 생성",
+        summary=(
+            "PL Briefing 저장 완료: "
+            f"provider={briefing.provider}, model={briefing.model or '-'}, mode={briefing.mode}"
+        ),
+        details={
+            "history_id": saved.id,
+            "provider": briefing.provider,
+            "model": briefing.model or "-",
+            "mode": briefing.mode,
+            "validation_status": briefing.validation_status,
+            "repair_attempted": briefing.repair_attempted,
+            "radar_item_count": len(radar.items),
+            "summary": saved.summary,
+        },
+    )
+
+
+def run_search_ready_shortcut(db: Session, project_id: int, *, embedding_limit: int = 50) -> EvidenceActionResult:
+    project = db.get(Project, project_id)
+    if project is None:
+        return EvidenceActionResult("검색 준비 생성", "프로젝트를 찾을 수 없습니다.", status="failed")
+    if not project.git_repo_path:
+        return EvidenceActionResult(
+            "검색 준비 생성",
+            "앱 서버 Git 저장소 경로가 없어 현재 소스 기준 검색 준비를 만들 수 없습니다.",
+            status="failed",
+        )
+
+    status_before = get_source_index_status(db, project)
+    if status_before.source_chunk_count == 0 or status_before.needs_reindex:
+        refresh_result = refresh_source_file_index(
+            db,
+            project,
+            embed_after_refresh=True,
+            embedding_limit=embedding_limit,
+        )
+        return EvidenceActionResult(
+            title="검색 준비 생성",
+            summary=(
+                "현재 소스 다시 읽기와 검색 준비 완료: "
+                f"새 근거 {refresh_result.chunk_result.created_count}건, "
+                f"검색 준비 {refresh_result.embedding_result.created_count}건, "
+                f"실패 {refresh_result.embedding_result.failed_count}건"
+            ),
+            status="completed_with_warnings" if refresh_result.embedding_result.failed_count else "completed",
+            details={
+                "mode": "refresh_source_file_index",
+                "source_chunk_count": refresh_result.status.source_chunk_count,
+                "source_vector_count": refresh_result.status.source_vector_count,
+                "missing_embedding_count": refresh_result.status.missing_embedding_count,
+                "deleted_unverified_count": refresh_result.deleted_unverified_count,
+                "chunk_created_count": refresh_result.chunk_result.created_count,
+                "chunk_skipped_count": refresh_result.chunk_result.skipped_count,
+                "embedding_created_count": refresh_result.embedding_result.created_count,
+                "embedding_skipped_count": refresh_result.embedding_result.skipped_count,
+                "embedding_failed_count": refresh_result.embedding_result.failed_count,
+            },
+            errors=refresh_result.embedding_result.errors[:20],
+        )
+
+    client = EmbeddingClient()
+    embedding_result = VectorStore(db).embed_missing_chunks(
+        client,
+        project_id=project_id,
+        source_types=[SOURCE_FILE_TYPE],
+        limit=embedding_limit,
+    )
+    status_after = get_source_index_status(db, project)
+    return EvidenceActionResult(
+        title="검색 준비 생성",
+        summary=(
+            "검색 준비 완료: "
+            f"생성 {embedding_result.created_count}건, 이미 준비됨 {embedding_result.skipped_count}건, "
+            f"실패 {embedding_result.failed_count}건"
+        ),
+        status="completed_with_warnings" if embedding_result.failed_count else "completed",
+        details={
+            "mode": "embed_missing_source_file_chunks",
+            "embedding_model": client.embedding_model_name,
+            "source_chunk_count": status_after.source_chunk_count,
+            "source_vector_count": status_after.source_vector_count,
+            "missing_embedding_count": status_after.missing_embedding_count,
+            "embedding_created_count": embedding_result.created_count,
+            "embedding_skipped_count": embedding_result.skipped_count,
+            "embedding_failed_count": embedding_result.failed_count,
+        },
+        errors=embedding_result.errors[:20],
+    )
+
+
+def get_ai_readiness_rows(db: Session, project_id: int) -> list[EvidenceStatusRow]:
     project = db.get(Project, project_id)
     if project is None:
         return [EvidenceStatusRow("프로젝트", FAIL, "-", "프로젝트를 다시 선택하세요.")]
@@ -119,19 +400,19 @@ def get_poc_readiness_rows(db: Session, project_id: int) -> list[EvidenceStatusR
             "Risk Analysis",
             _status(risk_count > 0, warn=program_count > 0),
             f"risk_findings={risk_count}",
-            "Risk Analysis를 실행해 데모용 리스크 근거를 저장하세요.",
+            "Risk Analysis를 실행해 리스크 근거를 저장하세요.",
         ),
         EvidenceStatusRow(
             "LLM 설정",
             _status(settings.llm_provider != "mock", warn=settings.llm_provider == "mock"),
             f"provider={settings.llm_provider}, model={settings.llm_model or '-'}",
-            "실제 AI 품질 시연 전 local_openai와 모델 로드를 확인하세요.",
+            "실제 AI 품질 검증 전 local_openai와 모델 로드를 확인하세요.",
         ),
         EvidenceStatusRow(
             "Embedding 설정",
             _status(settings.embedding_provider != "mock", warn=settings.embedding_provider == "mock"),
             f"provider={settings.embedding_provider}, model={settings.embedding_model or '-'}, dimension={settings.pgvector_dimension}",
-            "RAG 품질 시연 전 embedding provider/model/dimension을 확인하세요.",
+            "RAG 품질 검증 전 embedding provider/model/dimension을 확인하세요.",
         ),
     ]
     if source_status is None:
@@ -225,7 +506,7 @@ def get_ai_evaluation_scorecard(db: Session, project_id: int) -> list[EvidenceSt
             "Risk Analysis",
             _status(risk_count > 0, warn=True),
             f"risk_findings={risk_count}",
-            "NO_COMMIT, PROGRESS_GAP, FORECAST_DELAY 같은 시연 리스크가 있어야 합니다.",
+            "NO_COMMIT, PROGRESS_GAP, FORECAST_DELAY 같은 리스크 신호가 있어야 합니다.",
         ),
         EvidenceStatusRow(
             "RAG / Project Chat",
@@ -363,7 +644,7 @@ def generate_weekly_ai_report(db: Session, project_id: int) -> str:
         return "# 주간 AI 점검 보고서\n\n프로젝트를 찾을 수 없습니다.\n"
 
     generated_at = datetime.now(timezone.utc)
-    readiness = get_poc_readiness_rows(db, project_id)
+    readiness = get_ai_readiness_rows(db, project_id)
     scorecard = get_ai_evaluation_scorecard(db, project_id)
     resource_summary = get_resource_metrics_summary(db, project_id)
     radar = build_ai_resource_radar(db, resource_summary, limit=5)
@@ -390,7 +671,7 @@ def generate_weekly_ai_report(db: Session, project_id: int) -> str:
         f"- 생성 시각(UTC): {generated_at.strftime('%Y-%m-%d %H:%M')}",
         f"- Git 저장소: {project.git_repo_path or '-'}",
         "",
-        "## PoC 준비 상태",
+        "## 운영 준비 상태",
         "| 영역 | 상태 | 현재 값 | 다음 조치 |",
         "|---|---|---|---|",
     ]

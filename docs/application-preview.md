@@ -54,18 +54,18 @@ PL Briefing 회의 질문, 다음 action, 이력 확인
 </details>
 
 <details>
-<summary>AI Evidence</summary>
+<summary>AI 운영 현황</summary>
 
-AX PoC 시연 전에 AI/검색 준비 상태를 확인하고, 저장된 AI 결과가 어떤 근거와 provider/model/fallback 상태로 만들어졌는지 추적하는 화면입니다. 같은 화면에서 sample project 기준 AI scorecard, 주간 점검 보고서 다운로드, AI 호출 telemetry를 확인할 수 있습니다.
+연결된 LLM/embedding 설정, 최근 AI 호출, 검색 준비 상태를 먼저 확인하고 필요한 AI 실행을 바로 시작하는 화면입니다. 준비 상태와 품질 점검은 요약 지표와 `주의/실패 우선 확인` 영역으로 먼저 보여주며, 같은 화면에서 저장된 AI 결과가 어떤 근거와 provider/model/fallback 상태로 만들어졌는지 추적할 수 있습니다.
 
-![AI Evidence](images/features/ai-evidence.png)
+![AI 운영 현황](images/features/ai-evidence.png)
 
 </details>
 
 <details>
 <summary>Project</summary>
 
-프로젝트 기본 정보와 앱 서버 Git 저장소 경로를 저장하고, 같은 화면에서 서버 저장소 준비와 반복 시연용 분석 데이터 초기화를 이어서 실행할 수 있습니다.
+프로젝트 기본 정보와 앱 서버 Git 저장소 경로를 저장하고, 같은 화면에서 서버 저장소 준비와 반복 검증용 분석 데이터 초기화를 이어서 실행할 수 있습니다.
 
 ![Project](images/features/project.png)
 

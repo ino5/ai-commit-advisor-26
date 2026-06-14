@@ -85,7 +85,7 @@ def _render_project_reset_section(project: Project) -> None:
     st.subheader("분석 데이터 초기화")
     st.info(
         "프로젝트명, Git 저장소 경로, 프로그램/개발계획, 프로젝트 개발자 연결, 표준용어/표준단어는 유지하고 "
-        "Git 수집 결과와 분석 결과만 지웁니다. 같은 프로젝트로 시연이나 검증을 다시 시작할 때 사용하세요."
+        "Git 수집 결과와 분석 결과만 지웁니다. 같은 프로젝트로 검증이나 검증을 다시 시작할 때 사용하세요."
     )
 
     with SessionLocal() as db:

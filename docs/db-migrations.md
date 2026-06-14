@@ -47,7 +47,7 @@ Baseline 이후 revision은 정상적으로 실행됩니다. 예를 들어 mappi
 
 `20260615_0008`은 Dashboard `AI Resource Radar`에서 생성한 PL Briefing을 다시 확인할 수 있도록 `pl_briefing_history`를 추가합니다. 이 테이블은 provider/model/mode, 구조화된 briefing 섹션, 화면 표시용 Markdown, Radar evidence payload, raw LLM response를 저장하며, 프로젝트 삭제나 분석 데이터 초기화 시 함께 삭제됩니다.
 
-`20260615_0009`는 AI Evidence와 운영 관측을 위해 `ai_invocation_logs`를 추가합니다. 이 테이블은 Mapping, Project Chat, AI Code Review, PL Briefing 같은 AI 호출의 provider/model, feature, latency, prompt/response length, validation status, fallback/error metadata를 저장하며, 프로젝트 삭제나 분석 데이터 초기화 시 함께 삭제됩니다.
+`20260615_0009`는 AI 검증과 운영 관측을 위해 `ai_invocation_logs`를 추가합니다. 이 테이블은 Mapping, Project Chat, AI Code Review, PL Briefing 같은 AI 호출의 provider/model, feature, latency, prompt/response length, validation status, fallback/error metadata를 저장하며, 프로젝트 삭제나 분석 데이터 초기화 시 함께 삭제됩니다.
 
 ## 새 마이그레이션 생성
 

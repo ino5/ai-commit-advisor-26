@@ -23,16 +23,42 @@ from src.db.models import (
     VectorItem,
 )
 from src.services.ai_evidence_service import (
+    FAIL,
     PASS,
+    WARN,
+    EvidenceStatusRow,
     generate_weekly_ai_report,
     get_ai_evaluation_scorecard,
+    get_ai_operations_status_rows,
     get_evidence_trace,
-    get_poc_readiness_rows,
+    get_ai_readiness_rows,
+    priority_status_rows,
+    summarize_status_rows,
 )
 
 
 def _unique(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4()}"
+
+
+def test_ai_evidence_status_summary_prioritizes_attention_rows():
+    rows = [
+        EvidenceStatusRow("통과 영역", PASS, "ok", "없음"),
+        EvidenceStatusRow("주의 영역", WARN, "partial", "확인"),
+        EvidenceStatusRow("실패 영역", FAIL, "missing", "조치"),
+    ]
+
+    summary = summarize_status_rows(rows)
+    focused = priority_status_rows(rows)
+    all_rows = priority_status_rows(rows, include_pass=True)
+
+    assert summary.total_count == 3
+    assert summary.pass_count == 1
+    assert summary.warn_count == 1
+    assert summary.fail_count == 1
+    assert summary.attention_count == 2
+    assert [row.area for row in focused] == ["실패 영역", "주의 영역"]
+    assert [row.status for row in all_rows] == [FAIL, WARN, PASS]
 
 
 def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report():
@@ -177,12 +203,17 @@ def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report():
         db.commit()
 
         try:
-            readiness = get_poc_readiness_rows(db, project.id)
+            readiness = get_ai_readiness_rows(db, project.id)
+            operations = get_ai_operations_status_rows(db, project.id)
             scorecard = get_ai_evaluation_scorecard(db, project.id)
             trace = get_evidence_trace(db, project.id)
             report = generate_weekly_ai_report(db, project.id)
 
             assert any(row.area == "AI Telemetry" and row.status == PASS for row in readiness)
+            assert any(row.area == "LLM" for row in operations)
+            assert any(row.area == "Embedding" and row.value.endswith("d") for row in operations)
+            assert any(row.area == "최근 AI 호출" and "pl_briefing" in row.value for row in operations)
+            assert any(row.area == "검색 준비" and "vectors=1" in row.value for row in operations)
             assert any(row.area == "PL Briefing" and row.status == PASS for row in scorecard)
             assert trace.latest_pl_briefing is not None
             assert trace.latest_pl_briefing["validation_status"] == "valid"

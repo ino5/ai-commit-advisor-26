@@ -110,7 +110,7 @@ DB schema는 Alembic migration으로 관리됩니다. 빈 DB는 최신 migration
 
 Docker Compose 기본 설정도 Windows host의 `C:/dev`를 컨테이너의 `/host-dev`로 mount하고, `REPO_STORAGE_ROOT`, `REPO_PATH_HOST_PREFIX`, `REPO_PATH_CONTAINER_PREFIX`를 `C:\dev` 기준으로 맞춰 둡니다. 따라서 기본 샘플 경로를 쓰면 Docker 앱도 같은 샘플 프로젝트를 읽을 수 있습니다.
 
-사내 서버에서 샘플 프로젝트를 시연하려면 샘플 프로젝트를 사내 서버의 저장소 root 아래에 생성하거나 복사한 뒤, 서버 기준 경로를 프로젝트/Git 설정에 등록하세요.
+사내 서버에서 샘플 프로젝트를 검증하려면 샘플 프로젝트를 사내 서버의 저장소 root 아래에 생성하거나 복사한 뒤, 서버 기준 경로를 프로젝트/Git 설정에 등록하세요.
 
 ```text
 /srv/ai-commit-advisor/repos/ai-advisor-sample-shop

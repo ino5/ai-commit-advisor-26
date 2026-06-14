@@ -39,7 +39,7 @@ PAGE_GROUPS = {
         "Home": render_home_page,
         "Dashboard": render_dashboard_page,
         "AI Progress": render_ai_progress_page,
-        "AI Evidence": render_ai_evidence_page,
+        "AI 운영 현황": render_ai_evidence_page,
     },
     "프로젝트 설정": {
         "프로젝트/Git 설정": render_project_page,

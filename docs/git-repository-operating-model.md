@@ -71,7 +71,7 @@ git clone <remote-url> /srv/ai-commit-advisor/repos/order-system
 REPO_STORAGE_ROOT=/srv/ai-commit-advisor/repos
 ```
 
-이 값이 설정되면 프로젝트/Git 설정 화면은 해당 루트 밖의 Git 저장소 경로 등록을 막습니다. 설정하지 않으면 기존 로컬 PoC와 샘플 프로젝트 흐름처럼 자유 경로를 사용할 수 있습니다.
+이 값이 설정되면 프로젝트/Git 설정 화면은 해당 루트 밖의 Git 저장소 경로 등록을 막습니다. 설정하지 않으면 기존 로컬 검증 범위와 샘플 프로젝트 흐름처럼 자유 경로를 사용할 수 있습니다.
 
 Docker 예시:
 

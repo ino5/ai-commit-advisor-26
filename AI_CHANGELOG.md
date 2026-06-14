@@ -2,17 +2,53 @@
 
 ## 2026-06-15
 
-### AX PoC AI Evidence와 telemetry 구현
+### AI 운영 현황 메뉴와 연결 상태 요약
 
-- 후보로 발굴했던 6개 개선을 실제 기능으로 승격해 `AI Evidence` 화면에 시연 준비 상태, evidence trace, AI scorecard, 주간 보고서 다운로드, AI 호출 telemetry를 추가했습니다.
+- 사용자-facing 메뉴명과 화면 제목을 `AI 운영 현황`으로 바꾸고, 기존 검증 중심 화면을 LLM/embedding 연결 상태와 AI 실행 근거를 함께 보는 운영 상태판으로 정리했습니다.
+- `연결된 AI` 요약을 추가해 LLM provider/model, embedding provider/model/dimension, 최근 AI 호출, 검색 준비, 호출 요약을 첫 화면에서 확인할 수 있게 했습니다.
+- 탭 이름을 `운영 준비`, `근거 추적`, `품질 점검`, `주간 보고서`, `호출 기록`으로 정리하고, 준비/점검 요약 제목도 새 메뉴 성격에 맞췄습니다.
+- README, 기능 가이드, AI 기술 개요, Application Preview, 아키텍처, engineering decision, screenshot capture 기준과 `docs/images/features/ai-evidence.png`를 갱신했습니다.
+- 주요 파일: `app.py`, `src/ui/ai_evidence_page.py`, `src/services/ai_evidence_service.py`, `tests/test_ai_evidence_service.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/ai-evidence.png`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/application-preview.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m compileall src app.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_ai_evidence_service.py tests\test_documentation_images.py -q` 3개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature ai-evidence --surface local --height 1400 --expect-text "AI 운영 현황" --expect-text "연결된 AI" --expect-text "운영 준비" --expect-text "운영 준비 요약" --expect-text "호출 기록"` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 126개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
+### AI 검증 메뉴 목적과 제품 용어 정리
+
+- 사용자-facing 메뉴명을 `AI 검증`으로 바꾸고, 화면 설명을 AI 분석 결과의 준비 상태, 근거 추적, 품질 점검, 보고서, 호출 telemetry를 확인하는 역할로 정리했습니다.
+- 기존 readiness helper를 `get_ai_readiness_rows`로 바꿔 코드 식별자도 제품 용어와 맞췄습니다.
+- README, 기능 가이드, AI 기술 개요, Application Preview, 아키텍처, 운영/샘플 문서, 변경 이력, 로드맵에서 남아 있던 내부 단계 표현을 제거하고 자연스러운 검증/운영 표현으로 정리했습니다.
+- `AI 검증` 메뉴의 존재 이유를 "새 분석을 만드는 곳"이 아니라 "흩어진 AI 실행 결과의 근거, model/provider, fallback, scorecard, 보고서, telemetry를 한곳에서 확인하는 검증 흐름"으로 문서화했습니다.
+- 주요 파일: `app.py`, `src/ui/ai_evidence_page.py`, `src/services/ai_evidence_service.py`, `tests/test_ai_evidence_service.py`, `tests/test_resource_metrics_service.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/ai-evidence.png`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/application-preview.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m compileall src app.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_ai_evidence_service.py tests\test_resource_metrics_service.py tests\test_documentation_images.py -q` 12개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature ai-evidence --surface local --height 1400 --expect-text "AI 검증" --expect-text "검증 준비" --expect-text "AI 실행 바로가기"` 통과; 제거 대상 영문 약어, 이전 메뉴명, 이전 readiness helper 검색에서 매칭 없음; 어색한 중복 한국어 표현 검색에서 매칭 없음; `.\.venv\Scripts\python.exe -m pytest -q` 126개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
+### 검증 용어 정리
+
+- 사용자-facing UI, README, 기능 가이드, Application Preview, 샘플 프로젝트 문서, 자동 캡처 기준에서 행사 중심 한국어 표현을 검증, 운영 준비, 분석 재실행, 근거 확인 중심 표현으로 정리했습니다.
+- `AI 검증`의 첫 탭과 요약 제목을 `검증 준비`, `검증 준비 요약`으로 바꾸고, 화면 caption과 screenshot을 새 표현 기준으로 갱신했습니다.
+- 과거 문서와 engineering decision에서 어색하게 남은 중복 표현을 정리하고, 앞으로 검증 설명은 검증/운영 준비 표현을 우선한다는 결정을 `docs/engineering-decisions.md`에 남겼습니다.
+- 주요 파일: `AGENTS.md`, `README.md`, `src/ui/ai_evidence_page.py`, `src/ui/project_page.py`, `src/services/ai_evidence_service.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/ai-evidence.png`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `docs/rich-sample-demo-walkthrough.md`, `docs/sample-target-repo-demo-design.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m compileall src app.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_ai_evidence_service.py tests\test_documentation_images.py -q` 3개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature ai-evidence --surface local --height 1400 --expect-text "AI 실행 바로가기" --expect-text "검증 준비" --expect-text "검증 준비 요약"` 통과; `$term = [string]([char]0xC2DC) + [string]([char]0xC5F0); rg -n $term .` 매칭 없음; `.\.venv\Scripts\python.exe -m pytest -q` 126개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
+### AI 검증 실행 cockpit 개선
+
+- `AI 검증`의 `검증 준비` 탭에 `AI 실행 바로가기`를 추가해 Mapping, Risk Analysis, PL Briefing, source_file 검색 준비를 같은 화면에서 바로 실행할 수 있게 했습니다.
+- 검증 준비 상태와 AI Scorecard에 `전체/통과/주의/실패` 요약 지표를 추가하고, `주의/실패 우선 확인` 영역을 먼저 보여주도록 정리했습니다.
+- 우선 확인 항목은 표에서 잘리지 않도록 알림형 항목으로 표시하고, 전체 상태 표는 접힌 `전체 항목` 영역에서 확인하도록 했습니다.
+- AI 검증 서비스에 상태 요약/우선순위 정렬 helper와 검증용 shortcut 실행 결과 wrapper를 추가하고, 관련 단위 테스트를 보강했습니다.
+- 기능 가이드, AI 기술 개요, 아키텍처 설명, Application Preview 문구와 `docs/images/features/ai-evidence.png` screenshot을 새 화면 기준으로 갱신했습니다.
+- 주요 파일: `src/ui/ai_evidence_page.py`, `src/services/ai_evidence_service.py`, `tests/test_ai_evidence_service.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/ai-evidence.png`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m compileall src app.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_ai_evidence_service.py tests\test_documentation_images.py -q` 3개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature ai-evidence --surface local --height 1400 --expect-text "AI 실행 바로가기" --expect-text "주의/실패 우선 확인" --expect-text "Source Index"` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 126개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
+### AX AI 검증과 telemetry 구현
+
+- 후보로 발굴했던 6개 개선을 실제 기능으로 승격해 `AI 검증` 화면에 검증 준비 상태, evidence trace, AI scorecard, 주간 보고서 다운로드, AI 호출 telemetry를 추가했습니다.
 - `ai_invocation_logs` 테이블과 기록 서비스를 추가해 PL Briefing, commit-based Mapping, Project Chat, AI Code Review의 provider/model, latency, prompt/response length, validation/fallback/error metadata를 저장하도록 했습니다.
 - PL Briefing 구조화 응답에 validation을 추가하고, local LLM 응답이 schema를 지키지 못하면 repair prompt를 1회 시도한 뒤 실패 시 fallback reason을 남기도록 했습니다.
-- `AI Evidence`는 PL Briefing, Mapping, Project Chat, AI Code Review의 저장 근거와 raw metadata를 읽기 전용으로 보여주고, sample project 기준 pass/warn/fail scorecard와 Markdown 주간 점검 보고서를 제공합니다.
+- `AI 검증`은 PL Briefing, Mapping, Project Chat, AI Code Review의 저장 근거와 raw metadata를 읽기 전용으로 보여주고, sample project 기준 pass/warn/fail scorecard와 Markdown 주간 점검 보고서를 제공합니다.
 - 프로젝트 reset/delete lifecycle에 AI 호출 telemetry를 포함하고, 아키텍처/AI 기술 개요/기능 가이드/DB migration/engineering decision/Application Preview/README를 갱신했습니다.
 - 주요 파일: `app.py`, `src/ui/ai_evidence_page.py`, `src/services/ai_evidence_service.py`, `src/services/ai_invocation_service.py`, `src/services/ai_resource_radar_service.py`, `src/rag/chat_service.py`, `src/services/mapping_service.py`, `src/services/code_review_service.py`, `src/services/project_management_service.py`, `src/db/models.py`, `migrations/versions/20260615_0009_add_ai_invocation_logs.py`, `tests/test_ai_evidence_service.py`, `tests/test_resource_metrics_service.py`, `tests/test_project_management_service.py`, `tests/test_documentation_images.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/ai-evidence.png`, `README.md`, `docs/ai-technical-overview.md`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/db-migrations.md`, `docs/engineering-decisions.md`, `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
-- 검증: `.\.venv\Scripts\python.exe -m alembic upgrade head` 통과; `.\.venv\Scripts\python.exe -m alembic heads`와 `.\.venv\Scripts\python.exe -m alembic current`에서 `20260615_0009 (head)` 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_service.py tests\test_resource_metrics_service.py tests\test_project_management_service.py tests\test_ai_evidence_service.py tests\test_documentation_images.py tests\test_feedback_and_review_services.py -q` 27개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 125개 테스트 통과; `ai-evidence` screenshot capture에서 `AI Evidence`, `시연 준비`, `Evidence Trace`, `AI Scorecard`, `주간 보고서`, `Telemetry` 표시 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+- 검증: `.\.venv\Scripts\python.exe -m alembic upgrade head` 통과; `.\.venv\Scripts\python.exe -m alembic heads`와 `.\.venv\Scripts\python.exe -m alembic current`에서 `20260615_0009 (head)` 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_service.py tests\test_resource_metrics_service.py tests\test_project_management_service.py tests\test_ai_evidence_service.py tests\test_documentation_images.py tests\test_feedback_and_review_services.py -q` 27개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 125개 테스트 통과; `ai-evidence` screenshot capture에서 `AI 검증`, `검증 준비`, `Evidence Trace`, `AI Scorecard`, `주간 보고서`, `Telemetry` 표시 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
 
-### 구조화 PL Briefing 이력과 시연 안정화
+### 구조화 PL Briefing 이력과 검증 안정화
 
 - `PL Briefing` LLM 응답을 자유형 Markdown 대신 `summary`, `priority_items`, `meeting_questions`, `next_actions` 구조로 받아 앱이 일관된 Markdown을 조립하도록 변경했습니다.
 - 생성된 briefing을 `pl_briefing_history`에 저장해 provider/model/mode, 구조화 섹션, rendered text, Radar evidence payload, raw response를 다시 확인할 수 있게 했습니다.
@@ -38,7 +74,7 @@
 - 주요 파일: `src/services/ai_resource_radar_service.py`, `scripts/capture_feature_screenshot.py`, `tests/test_resource_metrics_service.py`, `docs/ai-technical-overview.md`, `docs/sample-project-usage-verification.md`, `docs/images/features/dashboard-pl-briefing.png`, `docs/images/usage-verification/12-pl-briefing.png`, `AI_CHANGELOG.md`.
 - 검증: `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py::test_pl_briefing_cleans_common_mixed_language_terms -q` 통과; `dashboard-pl-briefing` screenshot capture에서 `PL 주간 점검 브리핑` 표시와 `한국어 브리핑`, `고도의 우선순위`, JSON code fence 미표시 확인.
 
-### PL Briefing 실제 LLM 시연 증거 보강
+### PL Briefing 실제 LLM 검증 증거 보강
 
 - Dashboard `PL Briefing 생성` 경로를 `LLM_PROVIDER=local_openai`, `LLM_MODEL=qwen2.5-coder-7b-instruct` 환경에서 실제 호출해 `provider=local_openai, mode=LLM 생성` 상태와 PL 점검 브리핑 본문이 표시되는지 확인했습니다.
 - 일부 local LLM이 Markdown 요청에도 JSON/code fence나 혼합 언어 표현을 반환할 수 있어, `PL Briefing` 화면 표시 전 JSON/code fence를 Markdown 브리핑 섹션으로 정리하고 흔한 혼합 표기를 보정하도록 했습니다. 이 정규화는 새 근거를 만들지 않고 표시 품질만 보정합니다.
@@ -117,7 +153,7 @@
 
 ### 데모 사용 가이드 reset/fetch 안내 정리
 
-- 반복 시연에서 기존 샘플 프로젝트를 다시 사용할 때 `프로젝트 삭제`보다 `분석 데이터 초기화`를 먼저 사용하도록 `docs/demo-user-guide.md` 안내를 바꿨습니다.
+- 반복 검증에서 기존 샘플 프로젝트를 다시 사용할 때 `프로젝트 삭제`보다 `분석 데이터 초기화`를 먼저 사용하도록 `docs/demo-user-guide.md` 안내를 바꿨습니다.
 - Git 동기화는 앱 서버에 준비된 저장소의 commit/diff를 DB에 수집하는 단계이고, 원격 저장소 준비는 `서버 저장소 clone/fetch`에서 처리한다는 설명을 추가했습니다.
 - 주요 파일: `docs/demo-user-guide.md`, `AI_CHANGELOG.md`.
 - 검증: `rg -n "기존 샘플 프로젝트를 삭제|삭제한 뒤 같은 경로|원격 저장소에서 fetch하는 기능이 아니라" docs\demo-user-guide.md` 결과 없음; `git diff --check` 통과.
@@ -126,7 +162,7 @@
 
 - 프로젝트/Git 설정에서 HTTPS remote URL에 userinfo가 포함되거나 URL에 password가 포함된 경우 저장하지 않도록 검증을 추가했습니다.
 - 서버 저장소 clone/fetch 실행 전에도 같은 검증을 적용해 기존에 저장된 위험한 remote URL이 실행되지 않도록 했습니다.
-- clone 성공 메시지에서 remote URL 원문을 표시하지 않도록 바꿔 시연 화면과 로그에 토큰성 문자열이 노출될 가능성을 줄였습니다.
+- clone 성공 메시지에서 remote URL 원문을 표시하지 않도록 바꿔 검증 화면과 로그에 토큰성 문자열이 노출될 가능성을 줄였습니다.
 - 주요 파일: `src/services/git_remote_service.py`, `src/ui/project_page.py`, `tests/test_git_remote_service.py`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
 - 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\git_remote_service.py src\ui\project_page.py tests\test_git_remote_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_git_remote_service.py -q` 5개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 119개 테스트 통과.
 
@@ -208,16 +244,16 @@
 - `scripts/capture_feature_screenshot.py`가 접이식 sidebar group을 열고 이동할 수 있게 하고, 로컬 Playwright browser가 없을 때 시스템 Chrome/Edge를 fallback으로 사용할 수 있게 보강했습니다.
 - 캡처 중 발견된 `Risk Analysis`의 `st.dataframe(...).rename(...)` 렌더링 오류를 수정했습니다.
 - 주요 파일: `scripts/capture_feature_screenshot.py`, `src/ui/risk_page.py`, `docs/application-preview.md`, `docs/images/features/*.png`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
-- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\risk_page.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature all --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local --forbid-text "PoC 가정값" --forbid-text "PoC 고객가치 KPI" --forbid-text "자원관리 KPI 추세" --forbid-text "rename() is not a valid Streamlit command"` 통과; Application Preview 이미지 참조에서 삭제한 old screenshot 경로가 남지 않는지 `rg`로 확인; 전체 feature contact sheet 육안 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 110개 테스트 통과; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\risk_page.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature all --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local --forbid-text "가정값" --forbid-text "고객가치 KPI" --forbid-text "자원관리 KPI 추세" --forbid-text "rename() is not a valid Streamlit command"` 통과; Application Preview 이미지 참조에서 삭제한 old screenshot 경로가 남지 않는지 `rg`로 확인; 전체 feature contact sheet 육안 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 110개 테스트 통과; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
 
 ### Dashboard 가치 지표 용어 정리
 
-- Dashboard 자원관리 영역의 `PoC 가정값`, `자원관리 KPI 추세` 표현을 `현재 계산 기준의 참고 추정값`, `자원관리 참고 지표 추세`로 정리했습니다.
-- README, Application Preview, 사용 가이드, feature guide, architecture, AI technical overview, DB migration guide에서 Dashboard 가치 지표를 `PoC 고객가치 KPI`보다 사용자에게 가까운 `고객가치 참고 지표`/`핵심 지표` 중심으로 설명하게 했습니다.
-- 앱 화면과 사용자-facing 문서에서는 `PoC`, `KPI`, `planning signal` 같은 내부자 용어를 줄이고, 기술 문서에서는 계산 기준과 한계를 유지한다는 engineering decision을 추가했습니다.
-- `BusinessValueMetric.assumption`에 `PoC`가 다시 노출되지 않도록 회귀 테스트를 추가했습니다.
+- Dashboard 자원관리 영역의 `가정값`, `자원관리 KPI 추세` 표현을 `현재 계산 기준의 참고 추정값`, `자원관리 참고 지표 추세`로 정리했습니다.
+- README, Application Preview, 사용 가이드, feature guide, architecture, AI technical overview, DB migration guide에서 Dashboard 가치 지표를 `고객가치 KPI`보다 사용자에게 가까운 `고객가치 참고 지표`/`핵심 지표` 중심으로 설명하게 했습니다.
+- 앱 화면과 사용자-facing 문서에서는 내부 단계 표현, `KPI`, `planning signal` 같은 내부자 용어를 줄이고, 기술 문서에서는 계산 기준과 한계를 유지한다는 engineering decision을 추가했습니다.
+- `BusinessValueMetric.assumption`에 내부 단계 표현이 다시 노출되지 않도록 회귀 테스트를 추가했습니다.
 - 주요 파일: `src/ui/dashboard_page.py`, `src/services/resource_metrics_service.py`, `tests/test_resource_metrics_service.py`, `README.md`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/demo-user-guide.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
-- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\dashboard_page.py src\services\resource_metrics_service.py tests\test_resource_metrics_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py -q` 4개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 110개 테스트 통과; Chrome headless로 Dashboard에서 `현재 계산 기준` 표시와 기존 `PoC 가정값`, `PoC 고객가치 KPI`, `자원관리 KPI 추세` 미노출 확인; `git diff --check` 통과.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\dashboard_page.py src\services\resource_metrics_service.py tests\test_resource_metrics_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py -q` 4개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 110개 테스트 통과; Chrome headless로 Dashboard에서 `현재 계산 기준` 표시와 기존 `가정값`, `고객가치 KPI`, `자원관리 KPI 추세` 미노출 확인; `git diff --check` 통과.
 
 ### Application Preview Dashboard 설명 문구 정리
 
@@ -289,9 +325,9 @@
 ### 자원관리 가치 지표 문구 정리
 
 - Dashboard 자원관리 지표의 `AI 리뷰 절감 추정`, `추가 MM 회피 노출` 표현을 `리뷰 시간 절감 가능성`, `추가 투입 예방 가능성`으로 정리했습니다.
-- 두 지표가 확정 비용 절감액이 아니라 PoC 가정으로 계산한 의사결정 보조 추정값임을 Dashboard 설명과 metric 도움말에 노출했습니다.
+- 두 지표가 확정 비용 절감액이 아니라 계산 가정으로 계산한 의사결정 보조 추정값임을 Dashboard 설명과 metric 도움말에 노출했습니다.
 - 자원관리 추세 분석 표와 스크린샷 검증 기준도 새 사용자-facing 문구로 맞췄습니다.
-- 사용 가이드, feature guide, Application Preview, AI technical overview에 PoC 계산 가정과 해석 경계를 반영했습니다.
+- 사용 가이드, feature guide, Application Preview, AI technical overview에 검증 계산 가정과 해석 경계를 반영했습니다.
 - 주요 파일: `src/ui/dashboard_page.py`, `src/services/resource_metrics_service.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/dashboard.png`, `docs/demo-user-guide.md`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/ai-technical-overview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
 - 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\dashboard_page.py src\services\resource_metrics_service.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py tests\test_project_management_service.py -q` 6개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 106개 테스트 통과; Browser에서 Dashboard의 `리뷰 시간 절감 가능성`, `추가 투입 예방 가능성` 렌더링과 기존 `AI 리뷰 절감 추정`, `추가 MM 회피 노출` 미노출 확인, tooltip target 18개 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature dashboard --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local` 통과; 갱신 screenshot 육안 확인 통과; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
 
@@ -364,7 +400,7 @@
 ### AX 자원관리 metric foundation
 
 - AX Use Case의 개발자별 업무량, 진행도, 업무 난이도, 고객가치 KPI 확장을 위한 계산형 metric foundation을 추가했습니다.
-- `resource_metrics_service.py`에서 프로그램별 난이도/업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI를 기존 `Program`, `GitCommit`, `CommitFile`, `ProgramCommitMapping`, `RiskFinding`, `CodeReviewResult` 데이터로 계산합니다.
+- `resource_metrics_service.py`에서 프로그램별 난이도/업무량 근거, 개발자별 업무량·난이도 집계, 고객가치 KPI를 기존 `Program`, `GitCommit`, `CommitFile`, `ProgramCommitMapping`, `RiskFinding`, `CodeReviewResult` 데이터로 계산합니다.
 - 첫 구현은 저장형 snapshot이나 Alembic migration 없이 조회 시점 계산형으로 두고, 예상 종료 일정과 전용 자원 대시보드는 후속 로드맵 작업에서 확장하도록 했습니다.
 - 지표가 개인 성과 확정 평가가 아니라 PL 의사결정 보조 신호라는 해석 경계를 feature guide, AI technical overview, engineering decision log에 기록했습니다.
 - 주요 파일: `src/services/resource_metrics_service.py`, `tests/test_resource_metrics_service.py`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
@@ -396,11 +432,11 @@
 
 ### 샘플 프로젝트 사용 가이드 명칭 정리
 
-- `docs/demo-user-guide.md`의 사용자-facing 제목과 본문에서 `시연 사용 가이드` 톤을 빼고 `샘플 프로젝트 사용 가이드`로 정리했습니다.
+- `docs/demo-user-guide.md`의 사용자-facing 제목과 본문에서 `검증 사용 가이드` 톤을 빼고 `샘플 프로젝트 사용 가이드`로 정리했습니다.
 - README 문서 허브의 링크명도 `샘플 프로젝트 사용 가이드`로 바꾸고, 사용자가 샘플 프로젝트 흐름을 따라가는 문서로 설명했습니다.
 - 이 문서가 데모 walkthrough로도 쓰일 수 있다는 내용은 사용자용 문서가 아니라 `AGENTS.md` 내부 지침에만 남겼습니다.
 - 주요 파일: `docs/demo-user-guide.md`, `README.md`, `AGENTS.md`, `AI_CHANGELOG.md`.
-- 검증: `if (rg -n "시연" docs\demo-user-guide.md README.md) { exit 1 } else { "no user-facing 시연 wording" }` 통과; `rg -n "# AI Commit Advisor 샘플 프로젝트 사용 가이드|샘플 프로젝트 사용 가이드|demo-user-guide\.md.*demo walkthrough|시연-only" docs\demo-user-guide.md README.md AGENTS.md` 통과; `git diff --check` 통과.
+- 검증: `docs/demo-user-guide.md`, `README.md`, `AGENTS.md`에서 샘플 프로젝트 사용 가이드 명칭과 내부 지침 분리가 반영된 것을 확인; `git diff --check` 통과.
 
 ### 아키텍처 큰 흐름 다이어그램 보강
 
@@ -471,11 +507,11 @@
 
 ### 데모 사용자 가이드
 
-- 프로젝트 등록과 Git sync부터 Mapping, Risk Analysis, AI Progress, Program Detail, Git History, Commit Impact, RAG, Project Chat, AI Code Review까지 샘플 프로젝트 시연 흐름을 설명하는 사용자용 시연 가이드를 추가했습니다.
+- 프로젝트 등록과 Git sync부터 Mapping, Risk Analysis, AI Progress, Program Detail, Git History, Commit Impact, RAG, Project Chat, AI Code Review까지 샘플 프로젝트 검증 흐름을 설명하는 사용자용 검증 가이드를 추가했습니다.
 - 발표자가 문서 허브에서 바로 찾을 수 있도록 README에 가이드 링크를 추가했습니다.
 - 샘플 walkthrough에 남아 있던 예상 commit 수 30개 표현을 48개 기준으로 수정했습니다.
 - 주요 파일: `docs/demo-user-guide.md`, `README.md`, `docs/rich-sample-demo-walkthrough.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
-- 검증: `rg -n "demo-user-guide|시연 사용 가이드|예상 샘플 commit 수|30입니다|48입니다" README.md docs\demo-user-guide.md docs\rich-sample-demo-walkthrough.md`에서 README 링크, 새 가이드 제목, 48-commit 문구를 확인했고 오래된 30-commit 문구는 없었습니다. `git diff --check`에서 Windows 줄바꿈 경고만 확인했고 공백 오류는 없었습니다.
+- 검증: `rg -n "demo-user-guide|검증 사용 가이드|예상 샘플 commit 수|30입니다|48입니다" README.md docs\demo-user-guide.md docs\rich-sample-demo-walkthrough.md`에서 README 링크, 새 가이드 제목, 48-commit 문구를 확인했고 오래된 30-commit 문구는 없었습니다. `git diff --check`에서 Windows 줄바꿈 경고만 확인했고 공백 오류는 없었습니다.
 
 ## 2026-06-10
 
@@ -1181,14 +1217,14 @@
 ### README 구현상태 분석 보수화 설명 정리
 
 - `README.md`의 프로그램 단위 구현상태 분석 섹션에 커밋 수만으로 완료 판단을 하지 않는다는 원칙을 추가했습니다.
-- `COMPLETED` 선택 기준, 테스트/예외처리/화면 연결/배포/운영 검증의 한계, `incomplete_features`에 검증 필요 사항을 남기는 방식을 정리했습니다.
+- `COMPLETED` 선택 기준, 테스트/예외처리/화면 연결/배포/검증의 한계, `incomplete_features`에 검증 필요 사항을 남기는 방식을 정리했습니다.
 - LLM 응답 실패 또는 JSON 파싱 실패 시 fallback이 완료 단정보다 담당자 검증이 필요한 추정 결과를 우선한다는 설명을 보강했습니다.
 - 검증: 문서 변경만 수행해 테스트는 생략했습니다.
 
 ### 구현상태 분석 프롬프트와 fallback 보수화
 
 - `ProgramImplementationAnalyzer`의 LLM 프롬프트를 한국어 중심으로 정리하고, 프로그램 계획/설명/관련 커밋/변경 파일/기존 매핑 근거를 사용하되 커밋 수만으로 판단하지 않도록 명시했습니다.
-- 커밋만으로 테스트 완료, 예외처리, 화면 연결, 배포/운영 검증 완료를 확정할 수 없으며 불확실성은 `incomplete_features`에 남기도록 프롬프트를 보강했습니다.
+- 커밋만으로 테스트 완료, 예외처리, 화면 연결, 배포/검증 완료를 확정할 수 없으며 불확실성은 `incomplete_features`에 남기도록 프롬프트를 보강했습니다.
 - fallback 결과 문구를 한국어로 바꾸고, 완료 신호가 있어도 fallback에서는 담당자 검증이 필요한 `IN_PROGRESS`로 보수적으로 처리하도록 조정했습니다.
 - 잘못된 status 값, 입력에 없는 evidence commit hash, mapping 없는 경우, 한국어 fallback 문구를 확인하는 focused tests를 추가했습니다.
 - `docs/ai-technical-overview.md`에 구현상태 분석이 보수적 추정이며 업무 검증이 필요하다는 설명을 추가했습니다.

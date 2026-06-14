@@ -13,7 +13,7 @@ def is_repo_path_allowed(repo_path: str | Path) -> bool:
     """Return whether a project repository path stays inside the configured root.
 
     If REPO_STORAGE_ROOT is not set, repository path registration remains
-    unrestricted for local PoC and existing demo workflows.
+    unrestricted for local 검증 and existing demo workflows.
     """
     storage_root = settings.repo_storage_root
     if not storage_root:

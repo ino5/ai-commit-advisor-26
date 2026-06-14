@@ -132,7 +132,7 @@ Pandas 변환은 Streamlit 렌더링 호출 전에 끝냅니다. `st.dataframe()
 
 - `.\.venv\Scripts\python.exe -m py_compile src\ui\risk_page.py scripts\capture_feature_screenshot.py` 통과.
 - `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature risk-analysis --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local --forbid-text "rename() is not a valid Streamlit command"` 통과.
-- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature all --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local --forbid-text "PoC 가정값" --forbid-text "PoC 고객가치 KPI" --forbid-text "자원관리 KPI 추세" --forbid-text "rename() is not a valid Streamlit command"` 통과.
+- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature all --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local --forbid-text "가정값" --forbid-text "고객가치 KPI" --forbid-text "자원관리 KPI 추세" --forbid-text "rename() is not a valid Streamlit command"` 통과.
 
 ## 2026-06-14 - Existing Windows `.venv` binary packages broke Quick Start
 
@@ -202,7 +202,7 @@ Docker app을 중지하고 로컬 Python 실행을 확인하는 과정도 늦게
 
 이번에는 증상 발생 직전 어떤 설치 작업이 `.venv`를 깨뜨렸는지 확정하지 못했습니다. Windows 파일 잠금, 중단된 pip 실행, 백신/동기화 도구, 기존 `.venv` 위 재설치 등이 가능한 원인입니다.
 
-새 PC에서 빈 `.venv`를 처음부터 만드는 end-to-end Quick Start 검증은 별도로 수행하지 않았습니다. 문서 보강 후에는 깨끗한 `.venv` 생성, dependency install, DB init, Streamlit health check까지 한 번에 확인하는 명령을 운영 검증에 포함하는 것이 좋습니다.
+새 PC에서 빈 `.venv`를 처음부터 만드는 end-to-end Quick Start 검증은 별도로 수행하지 않았습니다. 문서 보강 후에는 깨끗한 `.venv` 생성, dependency install, DB init, Streamlit health check까지 한 번에 확인하는 명령을 검증에 포함하는 것이 좋습니다.
 
 ### 검증 명령과 결과
 

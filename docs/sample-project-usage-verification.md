@@ -119,5 +119,5 @@ Invoke-RestMethod -Uri http://127.0.0.1:1234/v1/models -Method Get
 
 - 검증은 local LM Studio의 현재 모델 응답에 의존합니다. 같은 코드라도 모델, prompt template, GPU/CPU 상태에 따라 Mapping reason, Code Review summary, Project Chat wording은 달라질 수 있습니다.
 - PL Briefing 추가 리허설은 기존 검증 데이터 위에서 Dashboard 브리핑 생성 경로만 다시 확인했습니다. 전체 데이터 적재와 Mapping/RAG/Code Review 전 과정을 2026-06-15에 재실행한 것은 아닙니다.
-- 스크린샷은 local Python surface 기준입니다. Docker path mapping이나 사내 서버 storage root 정책은 별도 운영 검증이 필요합니다.
+- 스크린샷은 local Python surface 기준입니다. Docker path mapping이나 사내 서버 storage root 정책은 별도 검증이 필요합니다.
 - `Project Chat` 검증은 저장된 대화 session을 화면에서 확인했습니다. 질문 실행 자동화는 별도 UI 자동화가 아니라 서비스 실행 후 DB history를 화면에서 캡처하는 방식입니다.

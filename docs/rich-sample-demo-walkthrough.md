@@ -2,7 +2,7 @@
 
 ## 목적
 
-이 가이드는 데모용 샘플 프로젝트로 AI Commit Advisor를 검증하거나 시연할 때, local LLM 또는 embedding 작업을 과도하게 실행하지 않는 방법을 설명합니다.
+이 가이드는 샘플 프로젝트로 AI Commit Advisor의 주요 흐름을 확인할 때, local LLM 또는 embedding 작업을 과도하게 실행하지 않는 방법을 설명합니다.
 
 다음을 사용할 때 이 문서를 확인하세요.
 

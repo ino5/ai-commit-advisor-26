@@ -35,7 +35,7 @@
 | P1 | Resource UX | Developer workload and difficulty dashboard | Done | 예상 종료일과 자원관리 Dashboard |
 | P2 | Docs / Business Value | AX customer value KPI documentation | Done | 예상 종료일과 자원관리 Dashboard |
 | P1 | AX / AI Resource Planning | AI Resource Radar and PL Briefing | Done | AI Resource Radar와 PL Briefing 추가 |
-| P2 | Demo / AI Evidence | PL Briefing live LLM demo evidence | Done | PL Briefing 실제 LLM 시연 증거 보강 |
+| P2 | Validation / AI 검증 | PL Briefing live LLM verification evidence | Done | PL Briefing 실제 LLM 검증 증거 보강 |
 | P2 | Docs / AI Positioning | AI technology application summary | Done | AI 기술 적용 요약 문서화 |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 |
 | P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping |
@@ -73,7 +73,7 @@
 | P2 | Git Ops | Server repository status display | Done | Server repository status display |
 | P2 | Docs | Demo user guide | Done | Demo user guide |
 | P2 | Docs / Verification | Sample project usage guide verification evidence | Done | 샘플 프로젝트 사용 가이드 실제 검증 결과 추가 |
-| P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety |
+| P2 | Data UX | Project delete and reset safety | Done | Project delete and reset safety |
 | P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 |
 | P2 | Code Review UX | AI Code Review server repository target wording | Done | AI Code Review 서버 저장소 대상 설명 정리 |
 | P1 | Resource Analytics | Resource metric snapshot and trend dashboard | Done | 자원관리 지표 시계열 snapshot과 추세 분석 |
@@ -94,26 +94,30 @@
 | P2 | Docs UX | Sidebar menu map documentation | Done | Sidebar 메뉴 구조 문서화 |
 | P2 | Docs / Screenshot UX | Application Preview lower-section coverage | Done | Application Preview 하단 기능 screenshot 보강 |
 | P2 | Docs / Screenshot UX | Application Preview scroll coverage refresh | Done | Application Preview 스크롤 영역 screenshot 보강 |
-| P1 | AX / AI Evidence | Structured PL Briefing history and demo hardening | Done | 구조화 PL Briefing 이력과 시연 안정화 |
+| P1 | AX / AI 검증 | Structured PL Briefing history and validation hardening | Done | 구조화 PL Briefing 이력과 검증 안정화 |
 | P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
-| P2 | Demo / Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
+| P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
 | P3 | Git Ops | Server-managed clone/fetch workflow | Done | Server-managed clone/fetch workflow |
-| P1 | AX / AI Evidence | AI evidence trace view | Done | AX PoC AI Evidence와 telemetry 구현 |
-| P1 | Demo / Readiness | PoC demo readiness cockpit | Done | AX PoC AI Evidence와 telemetry 구현 |
-| P1 | AI Quality | Sample project AI evaluation scorecard | Done | AX PoC AI Evidence와 telemetry 구현 |
-| P1 | AI Reliability | Strict structured-output validation and retry | Done | AX PoC AI Evidence와 telemetry 구현 |
-| P2 | PL Workflow | Exportable weekly AI report | Done | AX PoC AI Evidence와 telemetry 구현 |
-| P2 | AI Ops | AI invocation telemetry | Done | AX PoC AI Evidence와 telemetry 구현 |
+| P1 | AX / AI 검증 | AI evidence trace view | Done | AX AI 검증과 telemetry 구현 |
+| P1 | Readiness | AI readiness cockpit | Done | AX AI 검증과 telemetry 구현 |
+| P1 | AI Quality | Sample project AI evaluation scorecard | Done | AX AI 검증과 telemetry 구현 |
+| P1 | AI Reliability | Strict structured-output validation and retry | Done | AX AI 검증과 telemetry 구현 |
+| P2 | PL Workflow | Exportable weekly AI report | Done | AX AI 검증과 telemetry 구현 |
+| P2 | AI Ops | AI invocation telemetry | Done | AX AI 검증과 telemetry 구현 |
+| P1 | AX / AI 검증 | AI validation action cockpit | Done | AI 검증 실행 cockpit 개선 |
+| P2 | Docs / Product Wording | Product wording cleanup | Done | 제품 용어 정리 |
+| P2 | UX / Product Wording | AI validation menu purpose cleanup | Done | AI 검증 메뉴 목적과 제품 용어 정리 |
+| P2 | UX / AI Ops | AI operations status menu | Done | AI 운영 현황 메뉴와 연결 상태 요약 |
 
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
 
-현재 승인 대기 중인 후보 작업은 없습니다. AX PoC 후보 6개는 priority overview의 활성 작업으로 승격했습니다.
+현재 승인 대기 중인 후보 작업은 없습니다. AX 검증 후보 6개는 priority overview의 활성 작업으로 승격했습니다.
 
-## P1 - AI Evidence Trace View
+## P1 - AI 검증 Trace View
 
 Status: Done
 
@@ -127,12 +131,12 @@ Checklist:
 - [x] Link trace data to stored model/provider/fallback metadata.
 - [x] Document and verify the trace surface.
 
-## P1 - PoC Demo Readiness Cockpit
+## P1 - AI Readiness Cockpit
 
 Status: Done
 
 Goal:
-Give demo operators a single pass/warn/fail view for DB, Git, sample data, LLM, embedding, source index, vectors, and recent AI outputs.
+Give operators a single pass/warn/fail view for DB, Git, sample data, LLM, embedding, source index, vectors, and recent AI outputs.
 
 Checklist:
 
@@ -145,7 +149,7 @@ Checklist:
 Status: Done
 
 Goal:
-Evaluate stored sample project AI outputs against small demo expectations so PoC quality is visible as pass/partial/fail signals.
+Evaluate stored sample project AI outputs against expected analysis signals so AI quality is visible as pass/partial/fail status.
 
 Checklist:
 
@@ -195,15 +199,85 @@ Checklist:
 - [x] Include telemetry summary and recent call table in the AI evidence surface.
 - [x] Include reset/delete lifecycle cleanup, docs, migration guidance, and tests.
 
-## P1 - Structured PL Briefing History And Demo Hardening
+## P1 - AI Validation Action Cockpit
 
 Status: Done
 
 Goal:
-Make `PL Briefing` more stable for AX PoC demos by generating structured briefing sections, storing generated briefing history, tightening UI smoke verification, and cleaning stale limitation wording.
+Make AI 검증 useful as an AI validation cockpit by highlighting the most urgent readiness/quality gaps first and letting the operator run core AI preparation actions from the same screen.
 
 Rationale:
-The current live LLM briefing demonstrates real AI use, but the output is still rendered from free-form text and disappears after generation. For demos and review, PLs should see consistent sections, inspect the latest saved briefing, and trust that screenshots and documentation represent current behavior.
+AI 검증 already proves that Mapping, RAG, PL Briefing, scorecard, and telemetry exist, but the first view still looks like a passive evidence table. For an AX Use Case review, the screen should show AI readiness at a glance and make the next AI action obvious when a warning or failure is visible.
+
+Checklist:
+
+- [x] Show pass/warn/fail summary metrics and warning/fail-first tables for readiness and scorecard rows.
+- [x] Add shortcut actions for Mapping, Risk Analysis, PL Briefing, and source search readiness.
+- [x] Update user-facing documentation and Application Preview screenshot.
+- [x] Run focused tests and UI screenshot verification.
+
+## P2 - Product Wording Cleanup
+
+Status: Done
+
+Goal:
+Keep product-facing language focused on validation, operating readiness, and review workflows instead of event-oriented wording.
+
+Rationale:
+The application should read like an AX product/workflow tool, not a one-off presentation artifact. Product docs and screens should describe what users prepare, verify, and operate.
+
+Checklist:
+
+- [x] Replace event-oriented Korean wording in UI, services, docs, automation text, and recent change records.
+- [x] Refresh affected Application Preview screenshot.
+- [x] Verify no remaining Korean event-oriented wording is present in tracked text files.
+- [x] Run focused tests and documentation checks.
+
+## P2 - AI Validation Menu Purpose Cleanup
+
+Status: Done
+
+Goal:
+Make the AI validation area explain why it exists: checking whether AI-generated analysis is grounded, traceable, and operationally ready.
+
+Rationale:
+The current English menu label can read like an internal artifact bucket. The product surface should make it clear that this area is the control point for AI analysis evidence, model/provider state, fallback behavior, scorecard status, reports, and telemetry.
+
+Checklist:
+
+- [x] Rename the user-facing menu and tab copy to product-facing AI validation wording.
+- [x] Remove the remaining internal validation-stage abbreviation from tracked project text and code identifiers.
+- [x] Update AI validation purpose in user-facing and technical documentation.
+- [x] Refresh the Application Preview screenshot and verification text.
+- [x] Run text search, focused tests, screenshot capture, and full test suite.
+
+## P2 - AI Operations Status Menu
+
+Status: Done
+
+Goal:
+Rename the AI validation surface into an operations-oriented status area and make connected LLM/embedding configuration visible before the detailed evidence tabs.
+
+Rationale:
+`AI 검증` explained the purpose more clearly than the old English label, but it can still read like an internal inspection task. For a PL or reviewer, the first question is whether AI is currently connected and what model/configuration is producing the results. The menu should therefore read as a status surface, not only as a validation artifact list.
+
+Checklist:
+
+- [x] Rename the user-facing menu/title to `AI 운영 현황`.
+- [x] Add a top-level connected AI summary for LLM, embedding, recent invocation, and search readiness.
+- [x] Update user-facing and technical documentation to explain the status surface.
+- [x] Refresh the Application Preview screenshot and capture criteria.
+- [x] Run focused tests, screenshot capture, text search, and diff checks.
+
+## P1 - Structured PL Briefing History And Validation Hardening
+
+Status: Done
+
+Goal:
+Make `PL Briefing` more stable for AX validation reviews by generating structured briefing sections, storing generated briefing history, tightening UI smoke verification, and cleaning stale limitation wording.
+
+Rationale:
+The current live LLM briefing demonstrates real AI use, but the output is still rendered from free-form text and disappears after generation. For validation and review, PLs should see consistent sections, inspect the latest saved briefing, and trust that screenshots and documentation represent current behavior.
 
 Checklist:
 
@@ -232,21 +306,21 @@ Checklist:
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run screenshot/documentation verification.
 
-## P2 - PL Briefing Live LLM Demo Evidence
+## P2 - PL Briefing Live LLM Verification Evidence
 
 Status: Done
 
 Goal:
-Show that the AX-oriented `PL Briefing` demo path uses the configured local LLM and leaves visible screenshot/evidence for reviewers.
+Show that the AX-oriented `PL Briefing` verification path uses the configured local LLM and leaves visible screenshot/evidence for reviewers.
 
 Rationale:
-`AI Resource Radar` already ranks resource and schedule signals, but a PoC demonstration needs to show the AI-generated briefing result itself, not only the button that triggers it. Capturing the live local LLM result and recording a short rehearsal makes the AI use case easier to inspect before a demo.
+`AI Resource Radar` already ranks resource and schedule signals, but validation needs to show the AI-generated briefing result itself, not only the button that triggers it. Capturing the live local LLM result and recording a short rehearsal makes the AI use case easier to inspect before a review.
 
 Checklist:
 
 - [x] Verify `PL Briefing` generation with the configured local LLM.
 - [x] Add or refresh an Application Preview screenshot that shows the generated briefing result.
-- [x] Record a short end-to-end demo rehearsal result.
+- [x] Record a short end-to-end validation rehearsal result.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run focused tests and documentation verification.
 
@@ -395,7 +469,7 @@ Goal:
 Make the Dashboard preview description easier to understand on first read.
 
 Rationale:
-The previous paragraph combined the screen purpose, resource metric caveat, PoC value assumptions, and snapshot trend behavior in one dense sentence. Application Preview should help readers recognize the screen quickly before they dive into detailed feature documentation.
+The previous paragraph combined the screen purpose, resource metric caveat, 검증 value assumptions, and snapshot trend behavior in one dense sentence. Application Preview should help readers recognize the screen quickly before they dive into detailed feature documentation.
 
 Checklist:
 
@@ -409,17 +483,17 @@ Checklist:
 Status: Done
 
 Goal:
-Make Dashboard resource value metrics read like operational reference signals instead of internal PoC/KPI terminology.
+Make Dashboard resource value metrics read like operational reference signals instead of internal 검증/KPI terminology.
 
 Rationale:
-The Dashboard values are useful because they help PLs spot workload concentration, schedule risk, review burden, and possible extra effort earlier. Labels such as `PoC 가정값`, `PoC 고객가치 KPI`, and `planning signal` explain internal caution but can make the screen feel experimental or like audited performance management. The UI should say what the value helps decide, while documentation keeps the calculation boundary clear.
+The Dashboard values are useful because they help PLs spot workload concentration, schedule risk, review burden, and possible extra effort earlier. Labels such as `가정값`, `고객가치 KPI`, and `planning signal` explain internal caution but can make the screen feel experimental or like audited performance management. The UI should say what the value helps decide, while documentation keeps the calculation boundary clear.
 
 Checklist:
 
-- [x] Replace Dashboard-facing `PoC 가정값` and `KPI` wording with reference-estimate wording.
+- [x] Replace Dashboard-facing `가정값` and `KPI` wording with reference-estimate wording.
 - [x] Update README, Application Preview, feature guide, demo user guide, architecture, AI technical overview, and DB migration wording where the old Dashboard value terms appeared.
 - [x] Add an engineering decision for UI/reference-metric terminology.
-- [x] Add a regression assertion that the Dashboard value assumption does not expose `PoC`.
+- [x] Add a regression assertion that the Dashboard value assumption does not expose `검증`.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run compile/tests and diff verification.
 
@@ -623,7 +697,7 @@ Checklist:
 Status: Done
 
 Goal:
-Make Dashboard resource value KPI labels understandable as PoC planning estimates instead of confirmed savings or cost avoidance.
+Make Dashboard resource value KPI labels understandable as 검증 planning estimates instead of confirmed savings or cost avoidance.
 
 Rationale:
 Labels such as `AI 리뷰 절감 추정` and `추가 MM 회피 노출` expose internal formula intent but do not tell users what action or interpretation is expected. The AX resource dashboard should show these values as decision-support possibilities with visible assumptions, so PLs do not read them as audited financial results.
@@ -631,7 +705,7 @@ Labels such as `AI 리뷰 절감 추정` and `추가 MM 회피 노출` expose in
 Checklist:
 
 - [x] Rename Dashboard value KPI labels and trend columns to user-facing possibility wording.
-- [x] Add contextual help that explains the PoC assumptions and limits.
+- [x] Add contextual help that explains the 검증 assumptions and limits.
 - [x] Update user-facing documentation and screenshot verification criteria.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Verify compile/tests, Browser rendering, and Dashboard screenshot capture.
@@ -698,7 +772,7 @@ Goal:
 Persist AX resource management KPI snapshots and show project trend analysis so PLs can compare risk, workload, difficulty, forecast delay, and AI review value over time.
 
 Rationale:
-The current resource metrics are calculated at read time, which is useful for the current state but cannot answer whether delay risk, workload concentration, or review productivity is improving. A lightweight manual snapshot flow gives the PoC traceable trend evidence without introducing background scheduling or webhook operations.
+The current resource metrics are calculated at read time, which is useful for the current state but cannot answer whether delay risk, workload concentration, or review productivity is improving. A lightweight manual snapshot flow gives the 검증 traceable trend evidence without introducing background scheduling or webhook operations.
 
 Checklist:
 
@@ -717,7 +791,7 @@ Goal:
 Make the AI Code Review screen and documentation match the central app-server Git repository model, where commit history is the normal review target and working tree/staged review only applies to local changes inside the server clone.
 
 Rationale:
-The app does not read each developer's personal working tree. In the shared PoC/server model, developers usually push commits and the app reviews the server-accessible repository history. Presenting working tree and staged changes as equal primary targets can make users think the app can inspect local developer machines.
+The app does not read each developer's personal working tree. In the shared 검증/server model, developers usually push commits and the app reviews the server-accessible repository history. Presenting working tree and staged changes as equal primary targets can make users think the app can inspect local developer machines.
 
 Checklist:
 
@@ -786,11 +860,11 @@ Checklist:
 Status: Done
 
 Goal:
-Document how the PoC expresses AX customer value such as risk reduction, workload visibility, review productivity, and estimated resource savings.
+Document how the 검증 expresses AX customer value such as risk reduction, workload visibility, review productivity, and estimated resource savings.
 
 Checklist:
 
-- [x] Define PoC-safe formulas for early risk count, estimated review time saved, forecasted delay count, and estimated extra MM avoided.
+- [x] Define 검증용 formulas for early risk count, estimated review time saved, forecasted delay count, and estimated extra MM avoided.
 - [x] Add user-facing explanation that these are decision-support estimates, not contractual financial measurements.
 - [x] Link the value KPIs to the relevant screens and sample project evidence.
 - [x] Update README or feature guide if the value KPI becomes visible in the app.
@@ -805,7 +879,7 @@ Create a user-facing guide for demonstrating AI Commit Advisor with the sample p
 
 Checklist:
 
-- [x] Add a 시연 사용 가이드 for the sample-project demo flow.
+- [x] Add a 검증 사용 가이드 for the sample-project demo flow.
 - [x] Explain project registration, Git sync, artifact upload, Mapping, Risk Analysis, AI Progress, Program Detail, Git History, Commit Impact, RAG, Project Chat, and AI Code Review in demo order.
 - [x] Link the guide from README.
 - [x] Fix the stale sample walkthrough commit-count wording.

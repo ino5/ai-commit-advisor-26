@@ -5,18 +5,31 @@ import streamlit as st
 
 from src.db.database import SessionLocal
 from src.services.ai_evidence_service import (
+    EvidenceActionResult,
+    FAIL,
+    WARN,
     generate_weekly_ai_report,
     get_ai_evaluation_scorecard,
+    get_ai_operations_status_rows,
     get_evidence_trace,
-    get_poc_readiness_rows,
+    get_ai_readiness_rows,
+    priority_status_rows,
+    run_mapping_shortcut,
+    run_pl_briefing_shortcut,
+    run_risk_analysis_shortcut,
+    run_search_ready_shortcut,
+    summarize_status_rows,
 )
 from src.services.ai_invocation_service import list_ai_invocations, summarize_ai_invocations
-from src.ui.project_context import require_project_context
+from src.ui.project_context import ProjectContext, project_scoped_key, require_project_context
 
 
 def _rows_to_df(rows) -> pd.DataFrame:
+    columns = {"area": "영역", "status": "상태", "value": "현재 값", "action": "다음 조치"}
+    if not rows:
+        return pd.DataFrame(columns=columns.values())
     return pd.DataFrame([row.__dict__ for row in rows]).rename(
-        columns={"area": "영역", "status": "상태", "value": "현재 값", "action": "다음 조치"}
+        columns=columns
     )
 
 
@@ -25,16 +38,129 @@ def _json_block(label: str, payload: dict | list) -> None:
         st.json(payload)
 
 
-def _render_readiness(project_id: int) -> None:
+def _render_action_result(result: EvidenceActionResult) -> None:
+    if result.status == "failed":
+        st.error(result.summary)
+    elif result.status == "completed_with_warnings":
+        st.warning(result.summary)
+    else:
+        st.success(result.summary)
+
+    if result.details or result.errors:
+        with st.expander(f"{result.title} 상세", expanded=bool(result.errors)):
+            if result.details:
+                st.json(result.details)
+            for error in result.errors:
+                st.error(error)
+
+
+def _run_shortcut(title: str, action) -> None:
+    try:
+        with st.spinner(f"{title} 중입니다."):
+            with SessionLocal() as db:
+                result = action(db)
+    except Exception as exc:
+        st.error(f"{title} 실패: {exc}")
+        return
+    _render_action_result(result)
+
+
+def _render_action_shortcuts(context: ProjectContext) -> None:
+    st.markdown("#### AI 실행 바로가기")
+    cols = st.columns(4)
+    if cols[0].button(
+        "Mapping 실행",
+        key=project_scoped_key(context.project_id, "ai_evidence_run_mapping"),
+        use_container_width=True,
+    ):
+        _run_shortcut("Mapping 실행", lambda db: run_mapping_shortcut(db, context.project_id))
+
+    if cols[1].button(
+        "Risk Analysis 실행",
+        key=project_scoped_key(context.project_id, "ai_evidence_run_risk"),
+        use_container_width=True,
+    ):
+        _run_shortcut("Risk Analysis 실행", lambda db: run_risk_analysis_shortcut(db, context.project_id))
+
+    if cols[2].button(
+        "PL Briefing 생성",
+        key=project_scoped_key(context.project_id, "ai_evidence_run_pl_briefing"),
+        use_container_width=True,
+    ):
+        _run_shortcut("PL Briefing 생성", lambda db: run_pl_briefing_shortcut(db, context.project_id))
+
+    if cols[3].button(
+        "검색 준비 생성",
+        disabled=not bool(context.git_repo_path),
+        key=project_scoped_key(context.project_id, "ai_evidence_run_search_ready"),
+        use_container_width=True,
+    ):
+        _run_shortcut(
+            "검색 준비 생성",
+            lambda db: run_search_ready_shortcut(db, context.project_id, embedding_limit=50),
+        )
+
+
+def _render_status_focus(title: str, rows) -> None:
+    summary = summarize_status_rows(rows)
+    st.markdown(f"#### {title}")
+    cols = st.columns(4)
+    cols[0].metric("전체", summary.total_count)
+    cols[1].metric("통과", summary.pass_count)
+    cols[2].metric("주의", summary.warn_count)
+    cols[3].metric("실패", summary.fail_count)
+
+    focused_rows = priority_status_rows(rows)
+    st.markdown("##### 주의/실패 우선 확인")
+    if focused_rows:
+        for row in focused_rows:
+            message = f"**{row.area}** · `{row.value}`\n\n{row.action}"
+            if row.status == FAIL:
+                st.error(message)
+            elif row.status == WARN:
+                st.warning(message)
+            else:
+                st.info(message)
+    else:
+        st.success("주의/실패 항목이 없습니다.")
+
+    with st.expander("전체 항목", expanded=False):
+        st.dataframe(
+            _rows_to_df(priority_status_rows(rows, include_pass=True)),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
+def _render_ai_operations_status(project_id: int) -> None:
     with SessionLocal() as db:
-        rows = get_poc_readiness_rows(db, project_id)
-    st.dataframe(_rows_to_df(rows), use_container_width=True, hide_index=True)
+        rows = get_ai_operations_status_rows(db, project_id)
+
+    st.markdown("#### 연결된 AI")
+    cols = st.columns(len(rows))
+    for col, row in zip(cols, rows):
+        col.metric(row.area, row.status)
+        col.caption(row.value)
+        if row.status == FAIL:
+            col.error(row.action)
+        elif row.status == WARN:
+            col.warning(row.action)
+        else:
+            col.success("정상")
+
+
+def _render_readiness(context: ProjectContext) -> None:
+    _render_action_shortcuts(context)
+    st.divider()
+    with SessionLocal() as db:
+        rows = get_ai_readiness_rows(db, context.project_id)
+    _render_status_focus("운영 준비 요약", rows)
 
 
 def _render_scorecard(project_id: int) -> None:
     with SessionLocal() as db:
         rows = get_ai_evaluation_scorecard(db, project_id)
-    st.dataframe(_rows_to_df(rows), use_container_width=True, hide_index=True)
+    _render_status_focus("품질 점검 요약", rows)
 
 
 def _render_trace(project_id: int) -> None:
@@ -171,18 +297,21 @@ def _render_report(project_id: int) -> None:
 
 
 def render_ai_evidence_page() -> None:
-    st.title("AI Evidence")
-    st.caption("AX PoC 시연을 위한 AI 준비 상태, 근거 추적, 품질 점검, 보고서, 호출 telemetry를 확인합니다.")
+    st.title("AI 운영 현황")
+    st.caption("연결된 LLM/embedding 설정과 AI 분석 결과의 준비 상태, 근거, 품질, 호출 기록을 확인합니다.")
 
     context = require_project_context("먼저 프로젝트를 등록해 주세요.")
     if context is None:
         return
 
+    _render_ai_operations_status(context.project_id)
+    st.divider()
+
     readiness_tab, trace_tab, scorecard_tab, report_tab, telemetry_tab = st.tabs(
-        ["시연 준비", "Evidence Trace", "AI Scorecard", "주간 보고서", "Telemetry"]
+        ["운영 준비", "근거 추적", "품질 점검", "주간 보고서", "호출 기록"]
     )
     with readiness_tab:
-        _render_readiness(context.project_id)
+        _render_readiness(context)
     with trace_tab:
         _render_trace(context.project_id)
     with scorecard_tab:

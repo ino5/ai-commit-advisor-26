@@ -1,6 +1,6 @@
 # AI Commit Advisor
 
-AI Commit Advisor는 앱 서버에서 접근 가능한 Git 저장소의 커밋, 변경 파일, diff, 개발계획 데이터를 연결해 프로그램-커밋 매핑, 영향도 분석, 리스크 탐지, RAG 검색, Project Chat, AI 코드리뷰를 지원하는 Streamlit 기반 PoC입니다.
+AI Commit Advisor는 앱 서버에서 접근 가능한 Git 저장소의 커밋, 변경 파일, diff, 개발계획 데이터를 연결해 프로그램-커밋 매핑, 영향도 분석, 리스크 탐지, RAG 검색, Project Chat, AI 코드리뷰를 지원하는 Streamlit 기반 분석 도구입니다.
 
 기본값은 mock 분석이며, LM Studio 같은 OpenAI-compatible 로컬 LLM/embedding 서버를 연결하면 Mapping, AI Code Review, Project Chat, RAG 검색에서 실제 AI 기반 분석을 실행할 수 있습니다.
 
@@ -60,7 +60,7 @@ flowchart TB
 - Git History 화면에서 프로젝트별 커밋 목록, 변경 파일, diff 탐색
 - 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
 - Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, 고객가치 참고 지표와 저장형 추세 확인
-- AI Evidence에서 PoC 시연 준비 상태, AI 근거 추적, scorecard, 주간 보고서, 호출 telemetry 확인
+- AI 운영 현황에서 LLM/embedding 연결 상태, AI 분석 준비 상태, 근거 추적, 품질 점검, 주간 보고서, 호출 기록 확인
 - 현재 소스 검증형 RAG Search와 저장형 Project Chat
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
 - 앱 서버 Git 저장소의 최신/특정 커밋 중심 AI Code Review
