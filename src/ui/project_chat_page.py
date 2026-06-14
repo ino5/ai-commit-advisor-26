@@ -168,7 +168,7 @@ def _render_source_index_status(project: Project) -> None:
     action_col1, action_col2 = st.columns(2)
     if action_col1.button(
         "최신 변경분 반영",
-        type="primary",
+        type="primary" if status.needs_reindex else "secondary",
         disabled=not bool(project.git_repo_path),
         use_container_width=True,
         help=PROJECT_CHAT_HELP["refresh_changed"],

@@ -211,7 +211,12 @@ def _render_source_index_status(project: Project) -> None:
     for error in status.errors:
         st.warning(error)
 
-    if st.button("최신 변경분 반영", type="primary", disabled=not bool(project.git_repo_path), help=RAG_HELP["refresh_changed"]):
+    if st.button(
+        "최신 변경분 반영",
+        type="primary" if status.needs_reindex else "secondary",
+        disabled=not bool(project.git_repo_path),
+        help=RAG_HELP["refresh_changed"],
+    ):
         with SessionLocal() as db:
             current_project = db.get(Project, project.id)
             if current_project is None:
@@ -301,10 +306,16 @@ def _render_index_controls(project: Project) -> None:
     source_types = _selected_source_types("준비할 근거 종류", SOURCE_TYPE_OPTIONS, help_text=RAG_HELP["source_filter"])
     _, pending_count = _embedding_workload(project.id, source_types)
     _render_runtime_notice("embedding", pending_count, int(limit))
+    if pending_count == 0:
+        st.success("선택한 근거 종류의 검색 준비가 완료되어 있습니다. 다시 만들 필요가 있을 때만 실행하세요.")
     if "source_file" in source_types and not project.git_repo_path:
         st.warning("현재 소스 파일을 근거로 준비하려면 프로젝트에 앱 서버 Git 저장소 경로가 필요합니다.")
 
-    if st.button("근거 만들고 검색 준비 실행", type="primary", help=RAG_HELP["run_all"]):
+    if st.button(
+        "근거 만들고 검색 준비 실행",
+        type="secondary" if pending_count == 0 else "primary",
+        help=RAG_HELP["run_all"],
+    ):
         with st.spinner("현재 소스, 프로그램, 커밋, 변경 파일/diff를 질문 검색에 사용할 근거로 준비하는 중입니다."):
             chunk_result = _run_chunking(project, source_types, int(chunk_size), int(overlap))
             client, embedding_result = _run_embedding(project.id, source_types, int(limit))

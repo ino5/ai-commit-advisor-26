@@ -28,7 +28,7 @@ def _render_sync_result(result) -> None:
 
 
 def render_git_page() -> None:
-    st.title("Git")
+    st.title("Git 동기화")
     st.caption("프로젝트에 등록된 앱 서버 Git 저장소의 전체 커밋을 수집하고 이후 새 커밋만 증분 동기화합니다.")
 
     context = require_project_context("먼저 프로젝트/Git 설정에서 프로젝트와 앱 서버 Git 저장소 경로를 등록해 주세요.")
@@ -44,7 +44,7 @@ def render_git_page() -> None:
         st.text_input("앱 서버 Git 저장소 경로", value=project.git_repo_path or "", disabled=True)
         st.write("마지막 동기화 커밋:", project.last_synced_commit_hash or "-")
         st.write("마지막 동기화 시각:", project.last_synced_at or "-")
-        render_repository_status(project)
+        status = render_repository_status(project)
 
         if not project.git_repo_path:
             st.warning("이 프로젝트에는 앱 서버 Git 저장소 경로가 등록되어 있지 않습니다.")
@@ -54,8 +54,10 @@ def render_git_page() -> None:
             return
 
         full_col, incremental_col = st.columns(2)
-        run_full = full_col.button("전체 수집", type="primary")
-        run_incremental = incremental_col.button("증분 동기화")
+        run_incremental = incremental_col.button("증분 동기화", type="primary", use_container_width=True)
+        run_full = full_col.button("전체 수집", type="secondary", use_container_width=True)
+        if status.db_matches_head is True:
+            st.success("DB가 현재 서버 저장소 HEAD 기준으로 최신입니다. 새 commit을 가져온 뒤에는 증분 동기화를 실행하세요.")
 
         if run_full:
             with st.spinner("전체 Git 커밋을 수집하는 중입니다."):

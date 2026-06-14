@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### 완료 상태 액션 우선순위 정리
+
+- Git 동기화 화면 제목을 메뉴명과 맞추고, 일반 운영 흐름의 기본 액션을 `증분 동기화` primary로 정리했습니다. `전체 수집`은 보조 액션으로 낮추고 DB가 Repo HEAD와 같을 때 최신 상태 안내를 표시합니다.
+- Mapping 커밋 기준 분석에서 미완료/실패 커밋이 없으면 완료 메시지를 먼저 보여주고, 재분석/선택 분석 컨트롤은 접힌 영역으로 이동했습니다.
+- RAG 검색과 Project Chat에서 코드 근거가 최신이면 `최신 변경분 반영` 버튼을 secondary로 낮추고, RAG 한 번에 준비 화면에서 남은 검색 준비가 0건이면 완료 안내를 표시합니다.
+- feature guide에 증분 동기화와 완료 상태 재실행 기준을 반영했습니다.
+- 주요 파일: `src/ui/git_page.py`, `src/ui/mapping_page.py`, `src/ui/rag_page.py`, `src/ui/project_chat_page.py`, `docs/feature-guide.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\git_page.py src\ui\mapping_page.py src\ui\rag_page.py src\ui\project_chat_page.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 108개 테스트 통과; Browser에서 Git 동기화 최신 안내, Mapping 완료/재분석 접힘, RAG 검색 준비 완료 안내, Project Chat 준비 완료 렌더링 확인; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### 분석 화면 표시 정리
 
 - AI Code Review, Git History, Commit Impact, AI Progress, Program Detail, Risk Analysis의 기본 화면에서 raw dictionary/JSON과 내부 risk/code label 노출을 줄였습니다.
