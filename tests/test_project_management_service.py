@@ -24,7 +24,12 @@ from src.db.models import (
     StandardTerm,
     VectorItem,
 )
-from src.services.project_management_service import delete_project, get_project_delete_impact
+from src.services.project_management_service import (
+    delete_project,
+    get_project_delete_impact,
+    get_project_reset_impact,
+    reset_project_analysis_data,
+)
 
 
 def _unique(prefix: str) -> str:
@@ -39,7 +44,12 @@ def _create_project_graph(db):
         developer_name="Demo Developer",
         email=f"{uuid.uuid4()}@example.local",
     )
-    target_project = Project(name=_unique("delete-target"), git_repo_path=None)
+    target_project = Project(
+        name=_unique("delete-target"),
+        git_repo_path=None,
+        last_synced_commit_hash="abc123",
+        last_synced_at=datetime(2026, 6, 14, tzinfo=timezone.utc),
+    )
     other_project = Project(name=_unique("delete-other"), git_repo_path=None)
     db.add_all([developer, target_project, other_project])
     db.flush()
@@ -238,3 +248,82 @@ def test_delete_project_returns_none_for_missing_project():
     with SessionLocal() as db:
         assert get_project_delete_impact(db, -1) is None
         assert delete_project(db, -1) is None
+
+
+def test_reset_project_analysis_data_preserves_project_and_artifacts():
+    init_db()
+    with SessionLocal() as db:
+        target_project_id, other_project_id, developer_pk, marker, chat_message_id, vector_id = _create_project_graph(
+            db
+        )
+        try:
+            impact = get_project_reset_impact(db, target_project_id)
+
+            assert impact is not None
+            assert impact.preserved_program_count == 1
+            assert impact.preserved_standard_term_count == 1
+            assert impact.preserved_project_developer_count == 1
+            assert impact.git_commit_count == 1
+            assert impact.commit_file_count == 1
+            assert impact.mapping_count == 1
+            assert impact.analysis_run_count == 1
+            assert impact.implementation_status_count == 1
+            assert impact.risk_finding_count == 1
+            assert impact.code_review_count == 1
+            assert impact.resource_metric_snapshot_count == 1
+            assert impact.chat_session_count == 1
+            assert impact.chat_message_count == 1
+            assert impact.document_chunk_count == 1
+            assert impact.vector_item_count == 1
+
+            reset = reset_project_analysis_data(db, target_project_id)
+
+            assert reset is not None
+            target_project = db.get(Project, target_project_id)
+            assert target_project is not None
+            assert target_project.last_synced_commit_hash is None
+            assert target_project.last_synced_at is None
+            assert db.get(Project, other_project_id) is not None
+            assert db.get(Developer, developer_pk) is not None
+            assert db.query(ProjectDeveloper).filter(ProjectDeveloper.project_id == target_project_id).count() == 1
+            assert db.query(Program).filter(Program.project_id == target_project_id).count() == 1
+            assert db.query(StandardTerm).filter(StandardTerm.project_id == target_project_id).count() == 1
+            assert db.query(GitCommit).filter(GitCommit.project_id == target_project_id).count() == 0
+            assert db.query(CommitFile).filter(CommitFile.file_path == f"src/{marker}_target.py").count() == 0
+            assert db.query(ProgramCommitMapping).filter(ProgramCommitMapping.reason == marker).count() == 0
+            assert (
+                db.query(ProgramImplementationStatus).filter(ProgramImplementationStatus.summary == marker).count()
+                == 0
+            )
+            assert db.query(AnalysisRun).filter(AnalysisRun.project_id == target_project_id).count() == 0
+            assert db.query(RiskFinding).filter(RiskFinding.project_id == target_project_id).count() == 0
+            assert db.query(CodeReviewResult).filter(CodeReviewResult.project_id == target_project_id).count() == 0
+            assert (
+                db.query(ResourceMetricSnapshot)
+                .filter(ResourceMetricSnapshot.project_id == target_project_id)
+                .count()
+                == 0
+            )
+            assert db.query(ProjectChatSession).filter(ProjectChatSession.project_id == target_project_id).count() == 0
+            assert db.get(ProjectChatMessage, chat_message_id) is None
+            assert db.query(DocumentChunk).filter(DocumentChunk.project_id == target_project_id).count() == 0
+            assert db.get(VectorItem, vector_id) is None
+            assert db.query(Program).filter(Program.project_id == other_project_id).count() == 1
+            assert db.query(GitCommit).filter(GitCommit.project_id == other_project_id).count() == 1
+            assert db.query(CommitFile).filter(CommitFile.file_path == f"src/{marker}_other.py").count() == 1
+        finally:
+            for project_id in (target_project_id, other_project_id):
+                remaining_project = db.get(Project, project_id)
+                if remaining_project is not None:
+                    db.delete(remaining_project)
+            remaining_developer = db.get(Developer, developer_pk)
+            if remaining_developer is not None:
+                db.delete(remaining_developer)
+            db.commit()
+
+
+def test_reset_project_analysis_data_returns_none_for_missing_project():
+    init_db()
+    with SessionLocal() as db:
+        assert get_project_reset_impact(db, -1) is None
+        assert reset_project_analysis_data(db, -1) is None

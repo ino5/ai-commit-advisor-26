@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Project reset action after delete flow
+
+- `프로젝트/Git 설정`에 `분석 데이터 초기화` action을 추가해 프로젝트명, Git 저장소 경로, 프로그램/개발계획, 표준용어/표준단어, 프로젝트 개발자 연결은 유지하고 분석/수집 결과만 삭제할 수 있게 했습니다.
+- `get_project_reset_impact`, `reset_project_analysis_data`를 추가해 초기화 전 유지/삭제 대상 건수를 보여주고, Git commit, 변경 파일/diff, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, RAG chunk/vector, Project Chat, AI Code Review, 마지막 Git 동기화 상태를 정리합니다.
+- 프로젝트 삭제와 분석 데이터 초기화의 사용 시점과 보존 정책을 feature guide, architecture, engineering decision에 문서화했습니다.
+- 주요 파일: `src/services/project_management_service.py`, `src/ui/project_page.py`, `tests/test_project_management_service.py`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\project_management_service.py src\ui\project_page.py tests\test_project_management_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_management_service.py -q` 4개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 114개 테스트 통과; `git diff --check` 통과.
+
 ### Project-scoped UI state namespacing
 
 - `project_scoped_key(project_id, name)` helper를 추가해 프로젝트별 Streamlit widget state key를 일관되게 만들 수 있게 했습니다.

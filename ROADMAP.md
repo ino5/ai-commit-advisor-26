@@ -93,6 +93,7 @@
 | P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
+| P2 | Demo / Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
 
 ## Candidate Tasks
 
@@ -100,8 +101,27 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters | Possible Direction | Notes |
 |---|---|---|---|---|---|
-| P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - Project Reset Action After Delete Flow
+
+Status: Done
+
+Goal:
+Add a guarded project reset action that keeps the project and uploaded artifact data but clears collected analysis/runtime data for repeatable demo and verification runs.
+
+Rationale:
+Project deletion already provides a clean-slate path, but repeated demos often need to keep the same project name, Git path, programs, developers, plans, and standard terms while clearing Git sync and analysis outputs. A separate reset action avoids using full deletion for a less destructive workflow.
+
+Checklist:
+
+- [x] Define reset policy for preserved artifact data versus cleared analysis/runtime data.
+- [x] Add service impact/count and reset execution helpers.
+- [x] Add focused tests proving reset clears only resettable project-owned data and preserves project/artifact data.
+- [x] Add guarded UI action to `프로젝트/Git 설정`.
+- [x] Update user-facing, architecture, and engineering decision documentation.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile/tests and documentation diff verification.
 
 ## P2 - Project-Scoped UI State Namespacing
 
