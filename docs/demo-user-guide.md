@@ -45,7 +45,7 @@ C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_standard_terms.xlsx
 
 앱 실행과 DB 준비가 필요하면 [설치와 운영](setup-and-operations.md)의 설치 및 실행 절차를 먼저 따릅니다.
 
-이미 같은 샘플 프로젝트를 사용한 적이 있다면 `프로젝트 설정 > 프로젝트/Git 설정`에서 기존 샘플 프로젝트를 선택한 뒤 `프로젝트 삭제`를 사용할 수 있습니다. 이 기능은 프로젝트의 프로그램, Git 이력, 매핑, 리스크, 자원관리 snapshot, RAG 인덱스, Project Chat, AI Code Review 결과를 삭제하지만 전역 개발자 마스터는 삭제하지 않습니다.
+이미 같은 샘플 프로젝트를 사용한 적이 있다면 `프로젝트 설정 > 프로젝트/Git 설정`에서 기존 샘플 프로젝트를 선택한 뒤 `분석 데이터 초기화`를 먼저 사용합니다. 이 기능은 프로젝트명, Git 저장소 경로, 업로드한 프로그램/개발계획, 프로젝트 개발자 연결, 표준용어는 유지하고 Git 수집 결과와 분석 결과만 지웁니다. 프로젝트 자체와 업로드 산출물까지 모두 지우고 다시 등록해야 할 때만 `프로젝트 삭제`를 사용합니다.
 
 ## 1. 프로젝트 등록
 
@@ -86,7 +86,8 @@ C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_standard_terms.xlsx
 
 이 화면에서 강조할 점:
 
-- Git 동기화는 원격 저장소에서 fetch하는 기능이 아니라, 이미 준비된 Git 저장소의 commit과 diff를 앱 DB로 수집하는 단계입니다.
+- Git 동기화는 앱 서버에 준비된 Git 저장소의 commit과 diff를 앱 DB로 수집하는 단계입니다.
+- 원격 저장소를 앱 서버 경로에 먼저 준비해야 한다면 `프로젝트 설정 > 프로젝트/Git 설정`의 `서버 저장소 clone/fetch`를 사용합니다. 이미 로컬 샘플 경로가 준비된 walkthrough에서는 이 단계를 생략해도 됩니다.
 - 이후 Mapping, Git History, Commit Impact, Risk Analysis는 이 수집 데이터를 근거로 동작합니다.
 
 ## 3. 산출물 업로드
@@ -409,7 +410,7 @@ AI 진척도는 Git commit과 매핑 결과를 바탕으로 한 보조 지표입
 | Mapping 결과가 기대와 다름 | mock 모드인지 확인합니다. 실제 판단 품질을 보려면 local LLM 설정이 필요합니다. |
 | Project Chat이 근거 부족이라고 답함 | source_file 인덱싱과 embedding 생성 여부, 현재 Git HEAD와 indexed HEAD가 맞는지 확인합니다. |
 | Docker에서 샘플 경로를 못 읽음 | 기본 Compose는 `C:/dev`를 `/host-dev`로 mount합니다. 샘플이 다른 경로에 있으면 mount와 `REPO_PATH_*` 값을 함께 바꿔야 합니다. |
-| 같은 샘플 프로젝트를 다시 처음부터 사용하고 싶음 | `프로젝트/Git 설정`에서 기존 샘플 프로젝트를 삭제한 뒤 같은 경로로 다시 등록합니다. 개발자 마스터는 전역 데이터라 삭제되지 않습니다. |
+| 같은 샘플 프로젝트를 다시 처음부터 사용하고 싶음 | `프로젝트/Git 설정`에서 기존 샘플 프로젝트의 `분석 데이터 초기화`를 실행합니다. 프로젝트와 업로드 산출물까지 없애야 할 때만 `프로젝트 삭제`를 사용합니다. |
 
 ## 관련 문서
 

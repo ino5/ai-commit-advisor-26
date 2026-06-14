@@ -2,6 +2,13 @@
 
 ## 2026-06-14
 
+### 데모 사용 가이드 reset/fetch 안내 정리
+
+- 반복 시연에서 기존 샘플 프로젝트를 다시 사용할 때 `프로젝트 삭제`보다 `분석 데이터 초기화`를 먼저 사용하도록 `docs/demo-user-guide.md` 안내를 바꿨습니다.
+- Git 동기화는 앱 서버에 준비된 저장소의 commit/diff를 DB에 수집하는 단계이고, 원격 저장소 준비는 `서버 저장소 clone/fetch`에서 처리한다는 설명을 추가했습니다.
+- 주요 파일: `docs/demo-user-guide.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "기존 샘플 프로젝트를 삭제|삭제한 뒤 같은 경로|원격 저장소에서 fetch하는 기능이 아니라" docs\demo-user-guide.md` 결과 없음; `git diff --check` 통과.
+
 ### Git remote URL 인증정보 차단
 
 - 프로젝트/Git 설정에서 HTTPS remote URL에 userinfo가 포함되거나 URL에 password가 포함된 경우 저장하지 않도록 검증을 추가했습니다.
