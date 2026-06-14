@@ -2,45 +2,58 @@
 
 이 문서는 `ai-commit-advisor` 프로젝트 작성자가 전체 구조와 처리 흐름을 빠르게 이해할 수 있도록 정리한 아키텍처 문서입니다.
 
-## 0. 한눈에 보는 큰 흐름
+## 0. 한 장으로 보는 큰 구조
 
-AI Commit Advisor는 사용자가 업로드한 업무 산출물과 앱 서버에서 접근 가능한 Git 저장소를 같은 프로젝트 기준으로 모아 분석합니다. 분석 실행 화면은 DB에 저장된 프로그램, 계획, 개발자, commit/diff, RAG chunk를 읽고, 필요한 경우 LLM/Embedding provider를 호출한 뒤 결과를 다시 DB에 저장합니다. 사용자는 Home, Dashboard, AI Progress, Program Detail, Project Chat 같은 화면에서 저장된 결과와 근거를 확인합니다.
+AI Commit Advisor는 사용자가 보는 Streamlit 앱을 중심으로, 업무 산출물과 대상 프로젝트 Git 저장소를 모아 DB/RAG/LLM 분석을 수행하고 결과 화면으로 돌려주는 구조입니다. 처음 볼 때는 아래 다섯 덩어리만 잡으면 됩니다.
 
 ```mermaid
 flowchart TB
-    User["사용자<br/>관리자 / PL / 개발 리더"] --> Browser["브라우저<br/>Streamlit 화면 접속"]
-    Browser --> App["우리 프로젝트<br/>AI Commit Advisor App<br/>app.py + src/services"]
+    subgraph People["사용자 영역"]
+        User["관리자 / PL / 개발 리더<br/>브라우저로 접속"]
+    end
 
-    App --> ProjectSetup["프로젝트/Git 설정<br/>대상 프로젝트 경로 등록"]
-    App --> Upload["산출물 관리<br/>프로그램 / 개발계획 / 개발자 / 표준용어 업로드"]
-    App --> Analysis["분석 실행<br/>Mapping / Risk / Code Review / Project Chat"]
-    App --> Results["분석 결과 확인<br/>Home / Dashboard / AI Progress / Program Detail / Git History"]
+    subgraph AppArea["우리 프로젝트"]
+        App["AI Commit Advisor<br/>Streamlit UI + Python services"]
+    end
 
-    TargetRemote["GitHub / 사내 Git<br/>대상 프로젝트 원격 저장소"] --> ServerClone["앱 서버 대상 프로젝트 clone<br/>projects.git_repo_path"]
-    ServerClone --> GitSync["Git 동기화<br/>commit / file / diff 수집"]
-    ServerClone --> SourceIndex["RAG source_file 인덱싱<br/>현재 HEAD source"]
+    subgraph Inputs["분석 대상과 입력"]
+        Artifacts["업무 산출물<br/>프로그램 / 개발계획 / 개발자 / 표준용어"]
+        Target["대상 프로젝트 Git<br/>GitHub 또는 사내 Git<br/>앱 서버 clone"]
+    end
 
-    Upload --> DB[(PostgreSQL + pgvector)]
-    GitSync --> DB
-    SourceIndex --> Rag["RAG Layer<br/>chunk / embedding / retrieval"]
-    Rag --> DB
-    DB --> Analysis
-    Analysis --> LLM["LLM / Embedding provider<br/>Mock / LM Studio / OpenAI-compatible API"]
-    LLM --> Analysis
-    Analysis --> DB
-    DB --> Results
-    Results --> Browser
+    subgraph Intelligence["저장소와 AI 분석 계층"]
+        DB[(PostgreSQL + pgvector<br/>업무 데이터 / Git 데이터 / 분석 결과)]
+        Rag["RAG<br/>source / commit / diff chunk<br/>embedding / retrieval"]
+        LLM["LLM / Embedding provider<br/>Mock / LM Studio / OpenAI-compatible API"]
+    end
+
+    subgraph Output["사용자가 보는 결과"]
+        Result["Home / Dashboard / Mapping<br/>Risk / AI Progress / Code Review<br/>RAG Search / Project Chat"]
+    end
+
+    User --> App
+    App --> Artifacts
+    App --> Target
+    Artifacts --> DB
+    Target --> DB
+    Target --> Rag
+    DB <--> Rag
+    Rag <--> LLM
+    App <--> DB
+    App <--> LLM
+    DB --> Result
+    LLM --> Result
+    Result --> User
 ```
 
-큰 흐름은 다음 순서로 이해하면 됩니다.
+큰 구조는 다음처럼 읽으면 됩니다.
 
-- 사용자가 브라우저로 AI Commit Advisor에 접속합니다.
-- `프로젝트/Git 설정`에서 프로젝트와 앱 서버 Git 저장소 경로를 등록합니다.
-- `산출물 관리` 화면에서 프로그램, 개발계획, 개발자, 표준용어 데이터를 넣습니다.
-- `Git 동기화`가 commit, 변경 파일, diff를 DB에 수집합니다.
-- `RAG 검색`이 현재 source와 산출물/commit 정보를 chunk와 vector로 준비합니다.
-- `Mapping`, `Risk Analysis`, `AI Code Review`, `Project Chat`이 DB 데이터와 LLM/Embedding provider를 사용해 분석 결과를 저장합니다.
-- `Home`, `Dashboard`, `Program Detail`, `AI Progress`, `Git History`가 저장된 결과를 업무 검토 화면으로 보여줍니다.
+- 사용자는 브라우저에서 `AI Commit Advisor` 화면만 사용합니다.
+- 우리 앱은 업무 산출물과 대상 프로젝트 Git 저장소를 같은 프로젝트 기준으로 묶습니다.
+- DB는 업로드 데이터, Git 수집 데이터, RAG vector, 분석 결과를 저장하는 중심 저장소입니다.
+- RAG는 대상 프로젝트 source/commit/diff를 검색 가능한 근거로 바꿉니다.
+- LLM/Embedding provider는 매핑, 리스크 근거, 코드 리뷰, Project Chat 답변에 필요한 판단과 embedding을 제공합니다.
+- 결과 화면은 저장된 데이터와 AI 분석 결과를 업무 검토용으로 보여줍니다.
 
 ## 0.1 우리 프로젝트와 대상 프로젝트의 관계
 
