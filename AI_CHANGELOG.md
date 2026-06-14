@@ -2,6 +2,13 @@
 
 ## 2026-06-14
 
+### README 대표 아키텍처 구조도 추가
+
+- README 상단에 `Python App: AI Commit Advisor`, 저장소, 분석 대상 프로젝트, AI Provider를 큰 덩어리로 보여주는 Mermaid 구조도를 추가했습니다.
+- 상세 모듈과 데이터 흐름은 기존 `docs/architecture.md`로 이어지도록 링크를 함께 남겼습니다.
+- 주요 파일: `README.md`, `AI_CHANGELOG.md`.
+- 검증: `npx -y @mermaid-js/mermaid-cli -i .tmp\readme-architecture.mmd -o .tmp\readme-architecture.svg` 통과; `git diff --check` 통과; GitHub README에서 Mermaid diagram 렌더링 확인.
+
 ### 샘플 프로젝트 사용 가이드 명칭 정리
 
 - `docs/demo-user-guide.md`의 사용자-facing 제목과 본문에서 `시연 사용 가이드` 톤을 빼고 `샘플 프로젝트 사용 가이드`로 정리했습니다.

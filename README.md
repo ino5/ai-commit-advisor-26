@@ -6,6 +6,51 @@ AI Commit Advisor는 앱 서버에서 접근 가능한 Git 저장소의 커밋, 
 
 ![AI Commit Advisor dashboard](docs/images/ai-commit-advisor-home-48.png)
 
+## 아키텍처 요약
+
+AI Commit Advisor는 Python App 안의 화면단, 백단, RAG 계층이 분석 대상 프로젝트와 저장소, AI Provider를 연결하는 구조입니다. 자세한 모듈과 데이터 흐름은 [아키텍처](docs/architecture.md)에서 확인할 수 있습니다.
+
+```mermaid
+flowchart TB
+    User["관리자 / PL / 개발 리더<br/>Browser"]
+
+    subgraph PythonApp["Python App: AI Commit Advisor"]
+        UI["화면단<br/>Streamlit pages"]
+        Services["백단<br/>Python services"]
+        RAG["RAG<br/>chunking / embedding / retrieval"]
+
+        UI --> Services
+        Services --> RAG
+    end
+
+    subgraph Storage["저장소"]
+        DB[(PostgreSQL + pgvector<br/>업무 데이터 / Git 데이터 / vector / 분석 결과)]
+    end
+
+    subgraph TargetProject["분석 대상 프로젝트"]
+        RemoteGit["GitHub 또는 사내 Git<br/>원격 저장소"]
+        ServerClone["app-server clone<br/>projects.git_repo_path"]
+        Artifacts["업무 산출물<br/>프로그램 / 개발계획 / 개발자 / 표준용어"]
+
+        RemoteGit --> ServerClone
+    end
+
+    subgraph AIProvider["AI Provider"]
+        LLM["LLM / Embedding provider<br/>Mock / LM Studio / OpenAI-compatible API"]
+    end
+
+    User --> UI
+    UI --> User
+    Services --> ServerClone
+    ServerClone --> Services
+    Services --> Artifacts
+    Artifacts --> Services
+    Services <--> DB
+    RAG <--> DB
+    Services <--> LLM
+    RAG <--> LLM
+```
+
 ## 주요 기능
 
 - 앱 서버 Git 저장소 커밋, 변경 파일, diff 수집과 증분 동기화
