@@ -391,6 +391,7 @@ AI 진척도는 Git commit과 매핑 결과를 바탕으로 한 보조 지표입
 - [README](../README.md): 프로젝트 소개와 빠른 시작.
 - [설치와 운영](setup-and-operations.md): 로컬 실행, Docker 실행, LLM/embedding 설정.
 - [기능 가이드](feature-guide.md): 화면별 기능 설명.
+- [샘플 프로젝트 사용 가이드 검증 결과](sample-project-usage-verification.md): local LLM/embedding 환경에서 이 가이드를 실제 실행한 결과와 화면 증거.
 - [샘플 프로젝트 검증 가이드](rich-sample-demo-walkthrough.md): 검증자용 상세 실행 기준.
 - [Application Preview](application-preview.md): 샘플 프로젝트 기준 주요 화면 미리보기.
 - [Git 저장소 운영 모델](git-repository-operating-model.md): 앱 서버 기준 Git 저장소 접근 방식.

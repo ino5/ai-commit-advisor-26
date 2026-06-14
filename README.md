@@ -135,6 +135,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 
 - [AI Agent 작업 안내](docs/agent-onboarding.md): 이 프로젝트에서 Agent로 작업할 때 참고할 흐름, 문서 규칙, 프롬프트 예시를 정리합니다.
 - [샘플 프로젝트 사용 가이드](docs/demo-user-guide.md): 샘플 프로젝트로 AI Commit Advisor의 주요 화면과 분석 흐름을 따라가는 사용자용 가이드입니다.
+- [샘플 프로젝트 사용 가이드 검증 결과](docs/sample-project-usage-verification.md): local LLM/embedding 환경에서 사용 가이드를 실제 실행한 결과와 화면 증거입니다.
 - [기능 가이드](docs/feature-guide.md): 주요 화면, 기능 흐름, 분석 결과가 무엇을 의미하는지 설명합니다.
 - [Git 저장소 운영 모델](docs/git-repository-operating-model.md): 앱 서버 기준 Git 저장소 접근 방식, 사내 서버 운영 구조, 경로 제한 정책을 설명합니다.
 - [서버 Git 저장소 갱신 Runbook](docs/server-repository-update-runbook.md): 사내 서버에 준비된 Git 저장소를 fetch/reset한 뒤 앱 Git 동기화를 실행하는 절차입니다.

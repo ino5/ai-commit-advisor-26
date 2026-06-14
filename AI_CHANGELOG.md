@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### 샘플 프로젝트 사용 가이드 실제 검증 결과 추가
+
+- `AGENTS.md`에 샘플 프로젝트 사용 가이드의 end-to-end 검증 증거를 사용자용 가이드와 분리해 보관하는 정책을 추가했습니다.
+- `AAA Sample Shop Usage Verification 20260614` 프로젝트를 새로 만들고 local LLM/embedding 환경에서 Git sync, Excel 데이터 저장, RAG chunk/vector 생성, Mapping, Risk Analysis, Project Chat, AI Code Review를 실제 실행했습니다.
+- 검증 결과를 `docs/sample-project-usage-verification.md`에 정리하고, 단계별 화면 증거를 `docs/images/usage-verification/`에 저장했습니다.
+- README와 샘플 프로젝트 사용 가이드의 관련 문서 목록에서 검증 결과 문서로 이동할 수 있게 링크를 추가했습니다.
+- 주요 파일: `AGENTS.md`, `ROADMAP.md`, `README.md`, `docs/demo-user-guide.md`, `docs/sample-project-usage-verification.md`, `docs/images/usage-verification/*.png`, `AI_CHANGELOG.md`.
+- 검증: local LM Studio `/v1/models`에서 `qwen2.5-coder-7b-instruct`와 `text-embedding-nomic-embed-text-v1.5` 확인; `docker compose ps`에서 PostgreSQL healthy 확인; 사용 가이드 실행 결과 Git commit 48개, 변경 파일 105개, 프로그램 8개, 표준용어 10개, chunk/vector 296개, Mapping 실패 0개, risk 14개, Project Chat `PaymentService.java` 근거 답변, AI Code Review completed 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py ...` 캡처 명령 통과; `Get-ChildItem docs\images\usage-verification | Measure-Object` 11개 확인; `rg -n "sample-project-usage-verification|usage-verification|AAA Sample Shop Usage Verification 20260614" README.md docs\demo-user-guide.md docs\sample-project-usage-verification.md AI_CHANGELOG.md ROADMAP.md AGENTS.md` 통과; `git diff --check` 통과.
+
 ### README 대표 아키텍처 구조도 추가
 
 - README 상단에 `Python App: AI Commit Advisor`, 저장소, 분석 대상 프로젝트, AI Provider를 큰 덩어리로 보여주는 Mermaid 구조도를 추가했습니다.

@@ -65,6 +65,7 @@
 | P2 | Docs | Git History Application Preview screenshot | Done | Git History Application Preview screenshot |  |
 | P2 | Git Ops | Server repository status display | Done | Server repository status display |  |
 | P2 | Docs | Demo user guide | Done | Demo user guide |  |
+| P2 | Docs / Verification | Sample project usage guide verification evidence | Done | 샘플 프로젝트 사용 가이드 실제 검증 결과 추가 | 408cb08 |
 | P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety |  |
 | P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 | 8f4ad22 |
 
@@ -93,6 +94,23 @@ Checklist:
 - [x] Link the guide from README.
 - [x] Fix the stale sample walkthrough commit-count wording.
 - [x] Run documentation link and whitespace checks.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Sample Project Usage Guide Verification Evidence
+
+Status: Done
+
+Goal:
+Run the sample project usage guide against the current application with real local LLM/embedding providers and keep separate verification evidence so the user-facing guide stays concise.
+
+Checklist:
+
+- [x] Add an agent policy for preserving usage-guide verification evidence outside the user-facing guide.
+- [x] Execute the sample project flow with local LLM and local embedding settings, not mock providers.
+- [x] Capture representative screenshots under `docs/images/usage-verification/`.
+- [x] Add a verification result document with environment, execution results, screenshots, and limitations.
+- [x] Link or reference the verification result from the appropriate documentation hub if useful.
+- [x] Run screenshot/documentation verification checks.
 - [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Project Delete And Demo Reset Safety
