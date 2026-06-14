@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### Application Preview 현재 메뉴 screenshot 갱신
+
+- Application Preview와 README 대표 화면이 현재 접이식 sidebar 메뉴 구조를 보여주도록 `docs/images/features` 주요 screenshot을 다시 캡처했습니다.
+- 현재 캡처 자동화가 재현하지 못하는 예전 세부 상태 screenshot(`AI Code Review` 결과/상세, `Commit Impact` summary/detail, 업로드 검증 결과 이미지)은 Application Preview 참조에서 제거하고 파일도 정리했습니다.
+- `scripts/capture_feature_screenshot.py`가 접이식 sidebar group을 열고 이동할 수 있게 하고, 로컬 Playwright browser가 없을 때 시스템 Chrome/Edge를 fallback으로 사용할 수 있게 보강했습니다.
+- 캡처 중 발견된 `Risk Analysis`의 `st.dataframe(...).rename(...)` 렌더링 오류를 수정했습니다.
+- 주요 파일: `scripts/capture_feature_screenshot.py`, `src/ui/risk_page.py`, `docs/application-preview.md`, `docs/images/features/*.png`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\risk_page.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature all --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local --forbid-text "PoC 가정값" --forbid-text "PoC 고객가치 KPI" --forbid-text "자원관리 KPI 추세" --forbid-text "rename() is not a valid Streamlit command"` 통과; Application Preview 이미지 참조에서 삭제한 old screenshot 경로가 남지 않는지 `rg`로 확인; 전체 feature contact sheet 육안 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 110개 테스트 통과; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### Dashboard 가치 지표 용어 정리
 
 - Dashboard 자원관리 영역의 `PoC 가정값`, `자원관리 KPI 추세` 표현을 `현재 계산 기준의 참고 추정값`, `자원관리 참고 지표 추세`로 정리했습니다.

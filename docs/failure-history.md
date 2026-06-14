@@ -31,6 +31,59 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-14 - Risk Analysis screenshot verification exposed Streamlit `rename()` error
+
+분류:
+
+- UI rendering
+- Screenshot verification
+- Streamlit dataframe usage
+
+관련 기능 및 문서:
+
+- `Risk Analysis`
+- `src/ui/risk_page.py`
+- `scripts/capture_feature_screenshot.py`
+- `docs/application-preview.md`
+
+### 증상
+
+Application Preview screenshot을 현재 접이식 sidebar 메뉴 기준으로 갱신하던 중 `Risk Analysis` 화면에서 unresolved risk table을 렌더링할 때 다음 오류가 표시됐습니다.
+
+```text
+streamlit.errors.StreamlitAPIException: rename() is not a valid Streamlit command.
+```
+
+### 직접 원인
+
+`src/ui/risk_page.py`의 `_render_findings()`가 Pandas `DataFrame.rename()`을 `st.dataframe(...)` 호출 뒤에 체이닝했습니다. 이 경우 `rename()`은 Pandas 객체가 아니라 Streamlit `DeltaGenerator`에 호출되어 Streamlit command로 해석됩니다.
+
+### 배경 또는 구조적 원인
+
+Risk Analysis 표시는 한국어 업무 라벨로 정리하는 과정에서 dataframe 변환과 Streamlit 렌더링 경계가 섞였습니다. Pandas chain이 길어질 때 마지막 렌더링 호출까지 같은 chain에 포함되면, UI에서만 드러나는 런타임 오류가 생길 수 있습니다.
+
+### 사전 검증에서 놓친 이유
+
+기존 단위 테스트와 compile 검증은 `risk_page.py`의 실제 Streamlit 렌더링 경로를 실행하지 않았습니다. 또 Application Preview 캡처가 메뉴 구조 변경 뒤 전체 화면을 다시 돌기 전까지 해당 table까지 도달하지 않았습니다.
+
+### 수정 내용
+
+컬럼 rename을 먼저 적용한 `display_df`를 만든 뒤 `st.dataframe(display_df, ...)`에 넘기도록 수정했습니다. 캡처 자동화는 접이식 sidebar 그룹을 열고 이동할 수 있게 보강했습니다.
+
+### 재발 방지 규칙
+
+Pandas 변환은 Streamlit 렌더링 호출 전에 끝냅니다. `st.dataframe()`, `st.table()`, `st.plotly_chart()` 같은 렌더링 함수 뒤에 Pandas/DataFrame method를 체이닝하지 않습니다. Application Preview screenshot을 갱신할 때는 최소한 관련 화면의 실제 렌더링까지 확인합니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+현재 screenshot 자동화는 대표 분석 화면 중심입니다. 개발자/프로그램/개발계획 업로드 검증 같은 일부 Application Preview 이미지는 별도 수동 또는 후속 자동화가 필요할 수 있습니다.
+
+### 검증 명령과 결과
+
+- `.\.venv\Scripts\python.exe -m py_compile src\ui\risk_page.py scripts\capture_feature_screenshot.py` 통과.
+- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature risk-analysis --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local --forbid-text "rename() is not a valid Streamlit command"` 통과.
+- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature all --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local --forbid-text "PoC 가정값" --forbid-text "PoC 고객가치 KPI" --forbid-text "자원관리 KPI 추세" --forbid-text "rename() is not a valid Streamlit command"` 통과.
+
 ## 2026-06-14 - Existing Windows `.venv` binary packages broke Quick Start
 
 분류:

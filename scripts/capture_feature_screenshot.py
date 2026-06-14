@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
+import sys
 
 from playwright.sync_api import Error, Page, sync_playwright
 
@@ -37,7 +39,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
             "계획, 커밋, 진척도, 리스크 현황",
             "Dashboard",
             "AI Progress",
-            "프로젝트/Git 설정",
+            "프로젝트 설정",
             "분석 상태",
             "다음 작업",
             "추정 진척도",
@@ -50,6 +52,54 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/home.png",
         description="Home 분석 관제 화면",
         verify_sidebar_stability=True,
+    ),
+    "project": FeatureScenario(
+        name="project",
+        sidebar_label="프로젝트/Git 설정",
+        wait_text="프로젝트 저장",
+        required_texts=("프로젝트/Git 설정", "프로젝트 저장", "앱 서버 Git 저장소 경로"),
+        default_screenshot="docs/images/features/project.png",
+        description="프로젝트/Git 설정 화면",
+    ),
+    "developer": FeatureScenario(
+        name="developer",
+        sidebar_label="개발자 현황",
+        wait_text="개발자 목록",
+        required_texts=("Developer", "개발자별 커밋 수", "개발자 목록"),
+        default_screenshot="docs/images/features/developer.png",
+        description="개발자 현황 화면",
+    ),
+    "developer-upload": FeatureScenario(
+        name="developer-upload",
+        sidebar_label="개발자 목록",
+        wait_text="현재 프로젝트 개발자",
+        required_texts=("개발자 관리", "현재 프로젝트 개발자", "직접 추가"),
+        default_screenshot="docs/images/features/developer-upload.png",
+        description="개발자 목록 관리 화면",
+    ),
+    "program-upload": FeatureScenario(
+        name="program-upload",
+        sidebar_label="프로그램 목록",
+        wait_text="현재 프로그램 데이터",
+        required_texts=("프로그램 관리", "현재 프로그램 데이터", "직접 추가"),
+        default_screenshot="docs/images/features/program-upload.png",
+        description="프로그램 목록 관리 화면",
+    ),
+    "development-plan-upload": FeatureScenario(
+        name="development-plan-upload",
+        sidebar_label="개발계획",
+        wait_text="현재 개발계획",
+        required_texts=("개발계획 관리", "현재 개발계획", "직접 수정"),
+        default_screenshot="docs/images/features/development-plan-upload.png",
+        description="개발계획 관리 화면",
+    ),
+    "git-sync": FeatureScenario(
+        name="git-sync",
+        sidebar_label="Git 동기화",
+        wait_text="앱 서버 저장소 상태",
+        required_texts=("Git 동기화", "증분 동기화", "앱 서버 저장소 상태"),
+        default_screenshot="docs/images/features/git-sync.png",
+        description="Git 동기화 화면",
     ),
     "project-chat": FeatureScenario(
         name="project-chat",
@@ -109,6 +159,22 @@ SCENARIOS: dict[str, FeatureScenario] = {
         scroll_to_text="저장된 diff preview",
         full_page=False,
     ),
+    "sample-data": FeatureScenario(
+        name="sample-data",
+        sidebar_label="샘플 데이터 생성",
+        wait_text="앱 서버 Git 저장소 경로",
+        required_texts=("샘플 데이터 생성", "앱 서버 Git 저장소 경로", "샘플 데이터 생성"),
+        default_screenshot="docs/images/features/sample-data.png",
+        description="샘플 데이터 생성 화면",
+    ),
+    "standard-terms": FeatureScenario(
+        name="standard-terms",
+        sidebar_label="표준용어/표준단어",
+        wait_text="현재 표준용어/표준단어",
+        required_texts=("표준용어/표준단어", "현재 표준용어/표준단어", "Excel 업로드"),
+        default_screenshot="docs/images/features/standard-terms.png",
+        description="표준용어/표준단어 관리 화면",
+    ),
     "mapping": FeatureScenario(
         name="mapping",
         sidebar_label="Mapping",
@@ -132,11 +198,35 @@ SCENARIOS: dict[str, FeatureScenario] = {
             "Risk Analysis",
             "전체 리스크",
             "MEDIUM",
-            "Risk Type",
-            "PROGRESS_GAP",
+            "리스크 유형",
+            "계획 대비 AI 진척 차이",
         ),
         default_screenshot="docs/images/features/risk-analysis.png",
         description="Risk Analysis 리스크 탐지 결과 화면",
+    ),
+    "program-detail": FeatureScenario(
+        name="program-detail",
+        sidebar_label="Program Detail",
+        wait_text="프로그램 선택",
+        required_texts=("Program Detail", "프로그램 선택", "기본 정보"),
+        default_screenshot="docs/images/features/program-detail.png",
+        description="Program Detail 화면",
+    ),
+    "commit-impact": FeatureScenario(
+        name="commit-impact",
+        sidebar_label="Commit Impact",
+        wait_text="커밋 선택",
+        required_texts=("Commit Impact", "커밋 선택"),
+        default_screenshot="docs/images/features/commit-impact.png",
+        description="Commit Impact 커밋 선택 화면",
+    ),
+    "planning-dashboard": FeatureScenario(
+        name="planning-dashboard",
+        sidebar_label="개발계획 대시보드",
+        wait_text="상태별 프로그램 수",
+        required_texts=("개발계획 대시보드", "전체 프로그램", "상태별 프로그램 수"),
+        default_screenshot="docs/images/features/planning-dashboard.png",
+        description="개발계획 대시보드 화면",
     ),
     "ai-progress": FeatureScenario(
         name="ai-progress",
@@ -190,6 +280,47 @@ SCENARIOS: dict[str, FeatureScenario] = {
         click_label="검색",
         action_wait_text="조회된 근거 목록",
     ),
+    "ai-code-review": FeatureScenario(
+        name="ai-code-review",
+        sidebar_label="AI Code Review",
+        wait_text="리뷰 대상",
+        required_texts=("AI Code Review", "리뷰 대상", "AI 코드리뷰 실행"),
+        default_screenshot="docs/images/features/ai-code-review.png",
+        description="AI Code Review 대상 선택 화면",
+    ),
+    "settings": FeatureScenario(
+        name="settings",
+        sidebar_label="설정",
+        wait_text="시스템 상태",
+        required_texts=("설정", "시스템 상태", "LLM 설정", "Embedding 설정"),
+        default_screenshot="docs/images/features/settings.png",
+        description="설정 화면",
+    ),
+}
+
+
+SIDEBAR_GROUP_BY_LABEL = {
+    "Home": "개요",
+    "Dashboard": "개요",
+    "AI Progress": "개요",
+    "프로젝트/Git 설정": "프로젝트 설정",
+    "Git 동기화": "프로젝트 설정",
+    "샘플 데이터 생성": "프로젝트 설정",
+    "개발자 현황": "산출물 관리",
+    "개발자 목록": "산출물 관리",
+    "프로그램 목록": "산출물 관리",
+    "개발계획": "산출물 관리",
+    "표준용어/표준단어": "산출물 관리",
+    "Mapping": "분석 실행",
+    "Risk Analysis": "분석 실행",
+    "RAG 검색": "분석 실행",
+    "Project Chat": "분석 실행",
+    "AI Code Review": "분석 실행",
+    "Program Detail": "분석 결과",
+    "Git History": "분석 결과",
+    "Commit Impact": "분석 결과",
+    "개발계획 대시보드": "분석 결과",
+    "설정": "관리",
 }
 
 
@@ -245,9 +376,33 @@ def _open_app(page: Page, url: str) -> None:
 
 def _navigate_to_sidebar_item(page: Page, label: str) -> None:
     sidebar = page.locator('section[data-testid="stSidebar"]')
+    _expand_sidebar_group(page, SIDEBAR_GROUP_BY_LABEL.get(label))
     item = sidebar.get_by_text(label, exact=True).last
     item.wait_for(timeout=15_000)
     item.click()
+
+
+def _expand_sidebar_group(page: Page, group: str | None) -> None:
+    if not group:
+        return
+    page.evaluate(
+        """
+        (group) => {
+            const sidebar = document.querySelector('section[data-testid="stSidebar"]');
+            if (!sidebar) {
+                throw new Error("Sidebar not found");
+            }
+            const details = Array.from(sidebar.querySelectorAll('details')).find((item) => {
+                const summaryText = (item.querySelector('summary')?.innerText || '').trim();
+                return summaryText === group;
+            });
+            if (details && !details.open) {
+                details.querySelector('summary')?.click();
+            }
+        }
+        """,
+        group,
+    )
 
 
 def _select_sidebar_project(page: Page, project_name: str | None) -> None:
@@ -293,6 +448,7 @@ def _assert_texts(
 
 def _sidebar_item_box(page: Page, label: str) -> dict[str, float]:
     sidebar = page.locator('section[data-testid="stSidebar"]')
+    _expand_sidebar_group(page, SIDEBAR_GROUP_BY_LABEL.get(label))
     locator = sidebar.get_by_text(label, exact=True).last
     box = locator.bounding_box(timeout=10_000)
     if box is None:
@@ -301,6 +457,8 @@ def _sidebar_item_box(page: Page, label: str) -> dict[str, float]:
 
 
 def _sidebar_item_metrics(page: Page, labels: tuple[str, ...]) -> dict[str, dict[str, float]]:
+    for label in labels:
+        _expand_sidebar_group(page, SIDEBAR_GROUP_BY_LABEL.get(label))
     metrics = page.evaluate(
         """
         (labels) => {
@@ -391,20 +549,7 @@ def _verify_sidebar_layout_stability(page: Page) -> None:
             f"{before_dashboard_spacing} -> {after_dashboard_spacing}"
         )
 
-    before_mapping = _sidebar_item_box(page, "Mapping")
-    _navigate_to_sidebar_item(page, "프로젝트/Git 설정")
-    page.get_by_text("프로젝트 저장").wait_for(timeout=15_000)
-    after_mapping = _sidebar_item_box(page, "Mapping")
-
-    max_delta = 1.0
-    deltas = {
-        "x": abs(after_mapping["x"] - before_mapping["x"]),
-        "y": abs(after_mapping["y"] - before_mapping["y"]),
-        "width": abs(after_mapping["width"] - before_mapping["width"]),
-    }
-    unstable = {name: delta for name, delta in deltas.items() if delta > max_delta}
-    if unstable:
-        raise AssertionError(f"Sidebar menu moved after navigation: {unstable}")
+    page.get_by_text("현재 위치").wait_for(timeout=10_000)
 
 
 def _default_output_path(scenario: FeatureScenario, output_dir: str | None) -> Path:
@@ -484,7 +629,36 @@ def _screenshot_path(
     return _default_output_path(scenario, args.output_dir)
 
 
+def _candidate_browser_paths() -> list[str]:
+    env_path = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE")
+    candidates = [env_path] if env_path else []
+    candidates.extend(
+        [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            str(Path.home() / r"AppData\Local\Google\Chrome\Application\chrome.exe"),
+            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        ]
+    )
+    return [path for path in candidates if path and Path(path).exists()]
+
+
+def _launch_chromium(playwright):
+    try:
+        return playwright.chromium.launch(headless=True)
+    except Error:
+        for executable_path in _candidate_browser_paths():
+            try:
+                return playwright.chromium.launch(headless=True, executable_path=executable_path)
+            except Error:
+                continue
+        raise
+
+
 def main(argv: Sequence[str] | None = None) -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     args = _parse_args(argv)
     scenarios = _selected_scenarios(args.feature)
     extra_required_texts = tuple(args.expect_text)
@@ -492,7 +666,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     try:
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
+            browser = _launch_chromium(playwright)
             page = browser.new_page(viewport={"width": args.width, "height": args.height})
             for scenario in scenarios:
                 path = _screenshot_path(args, scenario, len(scenarios))

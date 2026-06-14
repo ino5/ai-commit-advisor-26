@@ -1,6 +1,6 @@
 # Application Preview
 
-이 문서는 README를 가볍게 유지하기 위해 주요 화면과 기능 상태를 미리 볼 수 있도록 정리한 Application Preview입니다. 캡처는 48개 commit 샘플 프로젝트 `AAA Sample Shop Rich Demo 48` 기준의 의미 있는 workflow 상태를 우선합니다.
+이 문서는 README를 가볍게 유지하기 위해 주요 화면과 기능 상태를 미리 볼 수 있도록 정리한 Application Preview입니다. 캡처는 샘플 프로젝트 기준의 의미 있는 workflow 상태를 우선합니다.
 
 ## Preview Screens
 
@@ -41,10 +41,6 @@
 
 ![개발자 목록](images/features/developer-upload.png)
 
-업로드 검증 결과
-
-![개발자 목록 업로드 검증](images/features/developer-upload-validation.png)
-
 </details>
 
 <details>
@@ -54,10 +50,6 @@
 
 ![프로그램 목록](images/features/program-upload.png)
 
-업로드 검증 결과
-
-![프로그램 목록 업로드 검증](images/features/program-upload-validation.png)
-
 </details>
 
 <details>
@@ -66,10 +58,6 @@
 현재 개발계획
 
 ![개발계획](images/features/development-plan-upload.png)
-
-업로드 검증 결과
-
-![개발계획 업로드 검증](images/features/development-plan-upload-validation.png)
 
 </details>
 
@@ -126,17 +114,9 @@
 <details>
 <summary>Commit Impact</summary>
 
-커밋 선택
+커밋 선택과 영향도 요약
 
 ![Commit Impact](images/features/commit-impact.png)
-
-영향도 요약
-
-![Commit Impact Summary](images/features/commit-impact-summary.png)
-
-상세 분석
-
-![Commit Impact Detail](images/features/commit-impact-detail.png)
 
 </details>
 
@@ -164,14 +144,6 @@
 커밋 이력 중심 리뷰 대상 선택
 
 ![AI Code Review](images/features/ai-code-review.png)
-
-리뷰 결과 요약
-
-![AI Code Review Result](images/features/ai-code-review-result.png)
-
-리뷰 상세
-
-![AI Code Review Detail](images/features/ai-code-review-detail.png)
 
 </details>
 

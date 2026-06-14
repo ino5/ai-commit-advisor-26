@@ -124,27 +124,23 @@ def _render_findings(project_id: int, findings) -> None:
         & df["risk_type"].isin(selected_types)
         & df["developer"].fillna("미지정").isin(selected_developers)
     ]
-    st.dataframe(
-        filtered[
-            [
-                "id",
-                "risk_level_label",
-                "risk_type_label",
-                "program_id",
-                "program_name",
-                "developer",
-                "title",
-                "description",
-                "plan_progress_rate",
-                "ai_progress_rate",
-                "progress_gap",
-                "related_commit_count",
-                "detected_at",
-            ]
-        ],
-        use_container_width=True,
-        hide_index=True,
-    ).rename(
+    display_df = filtered[
+        [
+            "id",
+            "risk_level_label",
+            "risk_type_label",
+            "program_id",
+            "program_name",
+            "developer",
+            "title",
+            "description",
+            "plan_progress_rate",
+            "ai_progress_rate",
+            "progress_gap",
+            "related_commit_count",
+            "detected_at",
+        ]
+    ].rename(
         columns={
             "id": "ID",
             "risk_level_label": "리스크 수준",
@@ -161,6 +157,7 @@ def _render_findings(project_id: int, findings) -> None:
             "detected_at": "탐지 시각",
         }
     )
+    st.dataframe(display_df, use_container_width=True, hide_index=True)
 
     st.subheader("Resolved 처리")
     resolve_options = {

@@ -87,6 +87,7 @@
 | P2 | Sample Data UX | Sample commit date normalization | Done | 샘플 프로젝트 commit 날짜 정규화 |  |
 | P2 | Docs UX | Application Preview Dashboard wording cleanup | Done | Application Preview Dashboard 설명 문구 정리 |  |
 | P2 | Dashboard UX | Dashboard value terminology cleanup | Done | Dashboard 가치 지표 용어 정리 |  |
+| P2 | Docs / Screenshot UX | Application Preview current sidebar screenshots | Done | Application Preview 현재 메뉴 screenshot 갱신 |  |
 
 ## Candidate Tasks
 
@@ -151,6 +152,26 @@ Checklist:
 - [x] Add a regression assertion that the Dashboard value assumption does not expose `PoC`.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run compile/tests and diff verification.
+
+## P2 - Application Preview Current Sidebar Screenshots
+
+Status: Done
+
+Goal:
+Refresh Application Preview screenshots so the visible sidebar matches the current collapsible menu structure.
+
+Rationale:
+After the sidebar moved to grouped expanders, older Application Preview screenshots still showed the previous always-expanded menu. Mixed screenshots make the documentation feel stale and can mislead readers about where pages live in the current navigation.
+
+Checklist:
+
+- [x] Review Application Preview image references and existing feature screenshots for old sidebar states.
+- [x] Extend screenshot capture automation for collapsible sidebar groups and system Chrome fallback.
+- [x] Refresh current representative feature screenshots.
+- [x] Remove old Application Preview references and obsolete image files for states that are not currently reproduced by automation.
+- [x] Fix the Risk Analysis rendering bug discovered during screenshot verification.
+- [x] Update `AI_CHANGELOG.md` and `docs/failure-history.md`.
+- [x] Run compile, screenshot, reference, and diff verification.
 
 ## P2 - Sidebar Group Collapse Cleanup
 
