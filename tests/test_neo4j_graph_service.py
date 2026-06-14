@@ -7,8 +7,10 @@ from src.db.init_db import init_db
 from src.db.models import CommitFile, GitCommit, Program, ProgramCommitMapping, Project
 from src.services import neo4j_graph_service
 from src.services.neo4j_graph_service import (
+    build_graph_evidence_seeds,
     build_project_graph_payload,
     extract_java_symbols,
+    find_project_graph_evidence,
     get_neo4j_project_preview,
     sync_project_graph_to_neo4j,
 )
@@ -36,6 +38,32 @@ def test_extract_java_symbols_detects_package_class_domain_and_imports() -> None
     assert symbol.qualified_name == "com.example.market.payment.service.PaymentService"
     assert symbol.domain == "payment"
     assert "com.example.market.order.mapper.OrderMapper" in symbol.imports
+
+
+def test_build_graph_evidence_seeds_uses_question_expansion_and_source_symbols() -> None:
+    seeds = build_graph_evidence_seeds(
+        "결제 변경이 주문 쪽에 영향을 줄 수 있는 근거가 뭐야?",
+        [
+            {
+                "source_type": "source_file",
+                "source_id": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                "text": """
+                    package com.example.market.payment.service;
+                    import com.example.market.order.mapper.OrderMapper;
+                    public class PaymentService {}
+                """,
+                "metadata": {
+                    "file_path": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                },
+            }
+        ],
+        expanded_queries=["payment service order mapper"],
+    )
+
+    assert "결제" in seeds
+    assert "paymentservice" in seeds
+    assert "payment" in seeds
+    assert "ordermapper" in seeds
 
 
 def test_build_project_graph_payload_links_program_commit_file_class_and_domain(tmp_path) -> None:
@@ -261,3 +289,93 @@ def test_get_neo4j_project_preview_reads_saved_class_and_impact_paths(monkeypatc
     assert len(result.impact_rows) == 1
     assert result.impact_rows[0].commit == "abcdef123456"
     assert result.impact_rows[0].class_name.endswith("PaymentService")
+
+
+def test_find_project_graph_evidence_reads_impact_import_and_domain_paths(monkeypatch) -> None:
+    class FakeTx:
+        def run(self, query, **params):
+            if "MAPPED_TO_COMMIT" in query:
+                return [
+                    {
+                        "matched_seeds": ["paymentservice", "payment"],
+                        "program": "PAY Payment Program",
+                        "program_id": "PAY-001",
+                        "commit_hash": "abcdef1234567890",
+                        "commit_message": "Update payment service",
+                        "file_path": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                        "class_name": "com.example.market.payment.service.PaymentService",
+                        "domain": "payment",
+                        "committed_at": "2026-06-15T00:00:00",
+                    }
+                ]
+            if "IMPORTS_CLASS" in query:
+                return [
+                    {
+                        "matched_seeds": ["paymentservice", "ordermapper"],
+                        "source_class": "com.example.market.payment.service.PaymentService",
+                        "target_class": "com.example.market.order.mapper.OrderMapper",
+                        "source_file": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                        "target_file": "src/main/java/com/example/market/order/mapper/OrderMapper.java",
+                        "source_domain": "payment",
+                        "target_domain": "order",
+                    }
+                ]
+            if "OWNS_PROGRAM" in query:
+                return [
+                    {
+                        "matched_seeds": ["payment"],
+                        "domain": "payment",
+                        "program_count": 1,
+                        "file_count": 2,
+                        "class_count": 2,
+                    }
+                ]
+            return []
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute_read(self, fn, *args):
+            return fn(FakeTx(), *args)
+
+    class FakeDriver:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def session(self, **kwargs):
+            return FakeSession()
+
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_enabled", True)
+    monkeypatch.setattr(neo4j_graph_service, "_driver", lambda: FakeDriver())
+
+    result = find_project_graph_evidence(
+        123,
+        "결제 변경이 주문 쪽에 영향을 줄 수 있는 근거가 뭐야?",
+        [
+            {
+                "source_type": "source_file",
+                "source_id": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                "text": "package com.example.market.payment.service; public class PaymentService {}",
+                "metadata": {
+                    "file_path": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                },
+            }
+        ],
+        expanded_queries=["payment service order mapper"],
+    )
+
+    assert result.status == "completed"
+    assert [row["evidence_type"] for row in result.evidence] == [
+        "impact_path",
+        "class_import",
+        "domain_summary",
+    ]
+    assert result.evidence[0]["commit"] == "abcdef123456"
+    assert result.evidence[1]["target_class"].endswith("OrderMapper")

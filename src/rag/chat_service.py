@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -13,6 +14,7 @@ from src.rag.retriever import Retriever
 from src.rag.source_verifier import annotate_retrieval_result
 from src.services.ai_invocation_service import record_ai_invocation
 from src.services.llm_client import LLMClient
+from src.services.neo4j_graph_service import find_project_graph_evidence
 
 
 INSUFFICIENT_EVIDENCE_ANSWER = (
@@ -30,6 +32,8 @@ class RagChatAnswer:
     excluded_count: int = 0
     used_source_count: int = 0
     insufficient_evidence: bool = False
+    graph_evidence: list[dict] = field(default_factory=list)
+    graph_evidence_metadata: dict = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
 
 
@@ -51,7 +55,45 @@ def _format_context_block(index: int, source: dict, *, heading: str) -> str:
     )
 
 
-def _build_prompt(question: str, current_sources: list[dict], historical_sources: list[dict]) -> str:
+def _format_graph_context_block(index: int, evidence: dict) -> str:
+    path = " -> ".join(str(part) for part in evidence.get("path") or [] if part)
+    matched_seeds = ", ".join(str(seed) for seed in evidence.get("matched_seeds") or [])
+    lines = [
+        f"[Graph relationship {index}]",
+        f"evidence_type: {evidence.get('evidence_type')}",
+        f"title: {evidence.get('title')}",
+        f"path: {path or '-'}",
+        f"matched_seeds: {matched_seeds or '-'}",
+    ]
+    for key in (
+        "program",
+        "program_id",
+        "commit",
+        "commit_message",
+        "file_path",
+        "class_name",
+        "domain",
+        "source_class",
+        "target_class",
+        "source_file",
+        "target_file",
+        "source_domain",
+        "target_domain",
+        "program_count",
+        "file_count",
+        "class_count",
+    ):
+        if evidence.get(key) is not None:
+            lines.append(f"{key}: {evidence.get(key)}")
+    return "\n".join(lines)
+
+
+def _build_prompt(
+    question: str,
+    current_sources: list[dict],
+    historical_sources: list[dict],
+    graph_evidence: list[dict] | None = None,
+) -> str:
     current_blocks = [
         _format_context_block(index, source, heading="Verified current source")
         for index, source in enumerate(current_sources, start=1)
@@ -60,7 +102,12 @@ def _build_prompt(question: str, current_sources: list[dict], historical_sources
         _format_context_block(index, source, heading="Historical/reference evidence")
         for index, source in enumerate(historical_sources, start=1)
     ]
+    graph_blocks = [
+        _format_graph_context_block(index, evidence)
+        for index, evidence in enumerate(graph_evidence or [], start=1)
+    ]
     historical_context = "\n\n".join(historical_blocks) if historical_blocks else "None"
+    graph_context = "\n\n".join(graph_blocks) if graph_blocks else "None"
 
     return f"""
 You answer questions about the current source code.
@@ -70,6 +117,9 @@ If the verified source_file context does not contain enough evidence, answer exa
 Do not speculate or fill gaps from general knowledge.
 Do not describe commit history or deleted diff lines as current source code.
 Commit and commit_file evidence, when present, is historical/reference evidence only.
+Graph relationship evidence, when present, is supporting evidence for relationships among programs, commits, files, classes, and domains.
+Do not use graph relationship evidence as a substitute for verified current source code.
+When using graph relationship evidence, separate it from source-code claims and cite it as Graph 1, Graph 2, etc.
 Always mention file path and line range for claims about code.
 Answer in Korean.
 For normal answers, use Markdown prose and bullets.
@@ -85,6 +135,9 @@ Copy file paths and line ranges only from the provided context metadata. Do not 
 
 [Historical/reference context]
 {historical_context}
+
+[Graph relationship context]
+{graph_context}
 """.strip()
 
 
@@ -97,6 +150,12 @@ def _summarize_source(source: dict) -> str:
     source_type = source.get("source_type") or "-"
     status = source.get("verification_status") or "-"
     return f"- {file_path}:{line_range} ({source_type}, {status})"
+
+
+def _summarize_graph_evidence(evidence: dict) -> str:
+    path = " -> ".join(str(part) for part in evidence.get("path") or [] if part)
+    evidence_type = evidence.get("evidence_type") or "-"
+    return f"- {path or evidence.get('title') or '-'} ({evidence_type})"
 
 
 def _expand_question(db: Session | None, project: Project, question: str):
@@ -123,6 +182,45 @@ def _retrieve_with_expansion(retriever: Retriever, expansion, *, top_k: int, pro
         project_id=project_id,
         source_types=source_types,
     )
+
+
+def _collect_graph_evidence(
+    db: Session | None,
+    project: Project,
+    question: str,
+    sources: list[dict],
+    expanded_queries: list[str],
+    *,
+    top_k: int,
+    provider: Callable[..., object] | None = None,
+) -> tuple[list[dict], dict]:
+    if project.id is None:
+        return [], {"status": "skipped", "summary": "project id가 없어 graph evidence를 조회하지 않았습니다."}
+    if db is None and provider is None:
+        return [], {"status": "skipped", "summary": "db가 없어 기본 graph evidence 조회를 건너뜁니다."}
+
+    graph_provider = provider or find_project_graph_evidence
+    try:
+        result = graph_provider(
+            project.id,
+            question,
+            sources,
+            expanded_queries=expanded_queries,
+            limit=max(3, min(int(top_k), 8)),
+        )
+    except Exception as exc:
+        return [], {"status": "failed", "summary": "Project Chat graph evidence 조회 실패", "errors": [str(exc)]}
+
+    evidence = list(getattr(result, "evidence", []) or [])
+    metadata = {
+        "status": getattr(result, "status", "unknown"),
+        "summary": getattr(result, "summary", ""),
+        "seed_count": len(getattr(result, "seeds", []) or []),
+        "seeds": list(getattr(result, "seeds", []) or [])[:20],
+        "errors": list(getattr(result, "errors", []) or []),
+        "evidence_count": len(evidence),
+    }
+    return evidence, metadata
 
 
 def clean_llm_answer(text: str) -> str:
@@ -216,6 +314,7 @@ def answer_source_question(
     include_history: bool = False,
     retriever: Retriever | None = None,
     llm_client: LLMClient | None = None,
+    graph_evidence_provider: Callable[..., object] | None = None,
 ) -> RagChatAnswer:
     retriever = retriever or Retriever(db)
     llm_client = llm_client or LLMClient(max_tokens=900)
@@ -281,11 +380,24 @@ def answer_source_question(
             insufficient_evidence=True,
         )
 
-    prompt = _build_prompt(question, verified_sources, historical_sources)
+    graph_evidence, graph_metadata = _collect_graph_evidence(
+        db,
+        project,
+        question,
+        [*verified_sources, *historical_sources],
+        list(expansion.expanded_queries),
+        top_k=top_k,
+        provider=graph_evidence_provider,
+    )
+    prompt = _build_prompt(question, verified_sources, historical_sources, graph_evidence)
     if llm_client.provider == "mock":
         mock_answer = "Mock answer. 검증된 현재 소스 근거:\n" + "\n".join(
             _summarize_source(source) for source in verified_sources[:3]
         )
+        if graph_evidence:
+            mock_answer += "\n\n그래프 관계 근거:\n" + "\n".join(
+                _summarize_graph_evidence(evidence) for evidence in graph_evidence[:3]
+            )
         _log_project_chat_invocation(
             db,
             project,
@@ -296,7 +408,13 @@ def answer_source_question(
             prompt_length=len(prompt),
             response_length=len(mock_answer),
             fallback_used=True,
-            raw_metadata={"used_source_count": len(verified_sources), "include_history": include_history},
+            raw_metadata={
+                "used_source_count": len(verified_sources),
+                "include_history": include_history,
+                "graph_evidence_count": len(graph_evidence),
+                "graph_status": graph_metadata.get("status"),
+                "graph_errors": graph_metadata.get("errors", []),
+            },
         )
         return RagChatAnswer(
             answer=mock_answer,
@@ -305,6 +423,8 @@ def answer_source_question(
             matched_terms=expansion.matched_terms,
             excluded_count=excluded_count,
             used_source_count=len(verified_sources),
+            graph_evidence=graph_evidence,
+            graph_evidence_metadata=graph_metadata,
         )
 
     try:
@@ -320,7 +440,13 @@ def answer_source_question(
             prompt_length=len(prompt),
             fallback_used=True,
             error_message=str(exc),
-            raw_metadata={"used_source_count": len(verified_sources), "include_history": include_history},
+            raw_metadata={
+                "used_source_count": len(verified_sources),
+                "include_history": include_history,
+                "graph_evidence_count": len(graph_evidence),
+                "graph_status": graph_metadata.get("status"),
+                "graph_errors": graph_metadata.get("errors", []),
+            },
         )
         return RagChatAnswer(
             answer="",
@@ -329,6 +455,8 @@ def answer_source_question(
             matched_terms=expansion.matched_terms,
             excluded_count=excluded_count,
             used_source_count=len(verified_sources),
+            graph_evidence=graph_evidence,
+            graph_evidence_metadata=graph_metadata,
             errors=[f"LLM generation failed: {exc}"],
         )
 
@@ -343,7 +471,13 @@ def answer_source_question(
         prompt_length=len(prompt),
         response_length=len(response.text or ""),
         fallback_used=False,
-        raw_metadata={"used_source_count": len(verified_sources), "include_history": include_history},
+        raw_metadata={
+            "used_source_count": len(verified_sources),
+            "include_history": include_history,
+            "graph_evidence_count": len(graph_evidence),
+            "graph_status": graph_metadata.get("status"),
+            "graph_errors": graph_metadata.get("errors", []),
+        },
     )
     return RagChatAnswer(
         answer=final_answer,
@@ -352,4 +486,6 @@ def answer_source_question(
         matched_terms=expansion.matched_terms,
         excluded_count=excluded_count,
         used_source_count=len(verified_sources),
+        graph_evidence=graph_evidence,
+        graph_evidence_metadata=graph_metadata,
     )

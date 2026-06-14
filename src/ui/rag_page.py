@@ -632,6 +632,23 @@ def _render_chat(project: Project) -> None:
     st.write(answer.answer)
     if answer.excluded_count:
         st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 근거 {answer.excluded_count}건은 답변 근거에서 제외했습니다.")
+    if answer.graph_evidence:
+        st.markdown("#### 그래프 관계 근거")
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "rank": rank,
+                        "type": evidence.get("evidence_type") or "-",
+                        "path": " -> ".join(str(part) for part in evidence.get("path") or [] if part),
+                        "matched": ", ".join(str(seed) for seed in evidence.get("matched_seeds") or []) or "-",
+                    }
+                    for rank, evidence in enumerate(answer.graph_evidence, start=1)
+                ]
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
 
     if not answer.sources:
         return

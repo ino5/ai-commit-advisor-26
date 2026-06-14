@@ -196,6 +196,19 @@ def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report():
                     sources=[{"source_type": "source_file", "verification_status": "verified"}],
                     used_source_count=1,
                     excluded_count=0,
+                    raw_metadata={
+                        "graph_evidence": [
+                            {
+                                "evidence_type": "impact_path",
+                                "program": "Evidence Program",
+                                "commit": commit.commit_hash[:12],
+                                "file_path": "src/evidence/EvidenceService.java",
+                                "class_name": "EvidenceService",
+                                "path": ["Evidence Program", commit.commit_hash[:12], "EvidenceService"],
+                            }
+                        ],
+                        "graph_evidence_metadata": {"status": "completed", "evidence_count": 1},
+                    },
                 ),
                 VectorItem(chunk_id=chunk.id, embedding_model="mock", embedding=None),
             ]
@@ -219,6 +232,8 @@ def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report():
             assert trace.latest_pl_briefing["validation_status"] == "valid"
             assert trace.recent_mappings
             assert trace.recent_chat_answers
+            assert trace.recent_chat_answers[0]["graph_evidence_count"] == 1
+            assert trace.recent_chat_answers[0]["graph_status"] == "completed"
             assert trace.recent_code_reviews
             assert "# 주간 AI 점검 보고서" in report
             assert "Evidence Program" in report

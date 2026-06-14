@@ -110,6 +110,7 @@ def append_chat_message(
 
 
 def message_to_ui_dict(message: ProjectChatMessage) -> dict:
+    metadata = message.raw_metadata or {}
     return {
         "role": message.role,
         "content": message.content,
@@ -119,6 +120,8 @@ def message_to_ui_dict(message: ProjectChatMessage) -> dict:
         "excluded_count": message.excluded_count or 0,
         "used_source_count": message.used_source_count or 0,
         "insufficient_evidence": bool(message.insufficient_evidence),
+        "graph_evidence": metadata.get("graph_evidence") or [],
+        "graph_evidence_metadata": metadata.get("graph_evidence_metadata") or {},
     }
 
 
@@ -142,15 +145,51 @@ def format_sources_for_export(sources: list[dict]) -> str:
     return "\n".join(lines) if lines else "근거 없음"
 
 
+def format_graph_evidence_for_export(graph_evidence: list[dict]) -> str:
+    lines: list[str] = []
+    for rank, evidence in enumerate(graph_evidence, start=1):
+        evidence_type = evidence.get("evidence_type") or "-"
+        path = " -> ".join(str(part) for part in evidence.get("path") or [] if part)
+        matched = ", ".join(str(seed) for seed in evidence.get("matched_seeds") or [])
+        if evidence_type == "impact_path":
+            detail = (
+                f"program={evidence.get('program') or '-'}, "
+                f"commit={evidence.get('commit') or '-'}, "
+                f"file={evidence.get('file_path') or '-'}, "
+                f"class={evidence.get('class_name') or '-'}, "
+                f"domain={evidence.get('domain') or '-'}"
+            )
+        elif evidence_type == "class_import":
+            detail = (
+                f"source={evidence.get('source_class') or '-'}, "
+                f"target={evidence.get('target_class') or '-'}, "
+                f"files={evidence.get('source_file') or '-'} -> {evidence.get('target_file') or '-'}"
+            )
+        elif evidence_type == "domain_summary":
+            detail = (
+                f"domain={evidence.get('domain') or '-'}, "
+                f"programs={evidence.get('program_count') or 0}, "
+                f"files={evidence.get('file_count') or 0}, "
+                f"classes={evidence.get('class_count') or 0}"
+            )
+        else:
+            detail = evidence.get("title") or "-"
+        lines.append(f"{rank}. {path or detail} ({evidence_type}; matched={matched or '-'})")
+    return "\n".join(lines) if lines else "근거 없음"
+
+
 def format_message_citation_export(message: dict | ProjectChatMessage) -> str:
     if isinstance(message, ProjectChatMessage):
         content = message.content
         sources = message.sources or []
         used_source_count = message.used_source_count or 0
+        metadata = message.raw_metadata or {}
+        graph_evidence = metadata.get("graph_evidence") or []
     else:
         content = str(message.get("content") or "")
         sources = message.get("sources") or []
         used_source_count = int(message.get("used_source_count") or 0)
+        graph_evidence = message.get("graph_evidence") or []
 
     current_sources = [
         source
@@ -170,5 +209,7 @@ def format_message_citation_export(message: dict | ProjectChatMessage) -> str:
             format_sources_for_export(current_sources[: used_source_count or len(current_sources)]),
             "## 이력/참고 근거",
             format_sources_for_export(reference_sources),
+            "## 그래프 관계 근거",
+            format_graph_evidence_for_export(graph_evidence),
         ]
     )

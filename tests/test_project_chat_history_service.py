@@ -46,6 +46,18 @@ def test_project_chat_session_persists_messages_in_order():
                 ],
                 expanded_queries=["결제 금액 검증", "payment amount validation"],
                 used_source_count=1,
+                raw_metadata={
+                    "graph_evidence": [
+                        {
+                            "evidence_type": "class_import",
+                            "source_class": "PaymentService",
+                            "target_class": "OrderMapper",
+                            "path": ["PaymentService", "OrderMapper"],
+                            "matched_seeds": ["paymentservice"],
+                        }
+                    ],
+                    "graph_evidence_metadata": {"status": "completed", "evidence_count": 1},
+                },
             )
 
             sessions = list_chat_sessions(db, project.id)
@@ -58,6 +70,8 @@ def test_project_chat_session_persists_messages_in_order():
             assert [message.message_index for message in messages] == [1, 2]
             assert ui_messages[1]["sources"][0]["metadata"]["file_path"] == "src/payment.py"
             assert ui_messages[1]["expanded_queries"] == ["결제 금액 검증", "payment amount validation"]
+            assert ui_messages[1]["graph_evidence"][0]["target_class"] == "OrderMapper"
+            assert ui_messages[1]["graph_evidence_metadata"]["status"] == "completed"
         finally:
             db.delete(project)
             db.commit()
@@ -84,9 +98,22 @@ def test_format_message_citation_export_groups_current_and_reference_sources():
                     "metadata": {"file_path": "src/payment.py", "commit_hash": "abc123"},
                 },
             ],
+            "graph_evidence": [
+                {
+                    "evidence_type": "class_import",
+                    "source_class": "PaymentService",
+                    "target_class": "OrderMapper",
+                    "source_file": "src/payment.py",
+                    "target_file": "src/order.py",
+                    "path": ["PaymentService", "OrderMapper"],
+                    "matched_seeds": ["paymentservice"],
+                }
+            ],
         }
     )
 
     assert "## Project Chat 답변" in export
     assert "`src/payment.py:1-3` (source_file, verified, score=0.9100)" in export
     assert "`src/payment.py:-` (commit_file, historical, score=0.7200)" in export
+    assert "## 그래프 관계 근거" in export
+    assert "PaymentService -> OrderMapper" in export

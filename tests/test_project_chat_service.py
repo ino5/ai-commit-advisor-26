@@ -28,6 +28,29 @@ class MockLLM:
     provider = "mock"
 
 
+class FakeGraphResult:
+    status = "completed"
+    summary = "graph evidence found"
+    seeds = ["paymentservice", "ordermapper"]
+    errors = []
+
+    evidence = [
+        {
+            "evidence_type": "class_import",
+            "title": "class -> imports -> class",
+            "matched_seeds": ["paymentservice", "ordermapper"],
+            "source_class": "com.example.market.payment.service.PaymentService",
+            "target_class": "com.example.market.order.mapper.OrderMapper",
+            "source_file": "src/main/java/com/example/market/payment/service/PaymentService.java",
+            "target_file": "src/main/java/com/example/market/order/mapper/OrderMapper.java",
+            "path": [
+                "com.example.market.payment.service.PaymentService",
+                "com.example.market.order.mapper.OrderMapper",
+            ],
+        }
+    ]
+
+
 def _init_git_repo(repo: Path) -> str:
     subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
     subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
@@ -164,3 +187,89 @@ def test_answer_source_question_keeps_verified_source_citation_metadata(tmp_path
     assert answer.sources[0]["metadata"]["file_path"] == "src/app.py"
     assert answer.sources[0]["metadata"]["line_start"] == 1
     assert "src/app.py:1-2" in answer.answer
+
+
+def test_answer_source_question_adds_graph_evidence_without_replacing_source_verification(tmp_path):
+    repo = tmp_path
+    source_path = repo / "src" / "main" / "java" / "com" / "example" / "market" / "payment" / "service" / "PaymentService.java"
+    source_path.parent.mkdir(parents=True)
+    source_text = "\n".join(
+        [
+            "package com.example.market.payment.service;",
+            "import com.example.market.order.mapper.OrderMapper;",
+            "public class PaymentService {}",
+        ]
+    )
+    source_path.write_text(source_text + "\n", encoding="utf-8")
+    head_hash = _init_git_repo(repo)
+    chunk_hash = hash_text(source_text.strip())
+    provider_calls = []
+
+    def graph_provider(project_id, question, sources, *, expanded_queries=None, limit=8):
+        provider_calls.append(
+            {
+                "project_id": project_id,
+                "question": question,
+                "sources": sources,
+                "expanded_queries": expanded_queries,
+                "limit": limit,
+            }
+        )
+        return FakeGraphResult()
+
+    project = Project(id=1, git_repo_path=str(repo))
+    answer = answer_source_question(
+        None,
+        project,
+        "결제 변경이 주문 쪽에 영향을 줄 수 있는 근거가 뭐야?",
+        retriever=FakeRetriever(
+            [
+                {
+                    "id": 13,
+                    "source_type": "source_file",
+                    "source_id": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                    "text": source_text,
+                    "metadata": {
+                        "file_path": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                        "line_start": 1,
+                        "line_end": 3,
+                        "chunk_content_hash": chunk_hash,
+                        "indexed_head_hash": head_hash,
+                    },
+                    "similarity": 0.95,
+                }
+            ]
+        ),
+        llm_client=MockLLM(),
+        graph_evidence_provider=graph_provider,
+    )
+
+    assert provider_calls
+    assert provider_calls[0]["sources"][0]["verification_status"] == "verified"
+    assert answer.used_source_count == 1
+    assert answer.graph_evidence == FakeGraphResult.evidence
+    assert answer.graph_evidence_metadata["status"] == "completed"
+    assert "그래프 관계 근거" in answer.answer
+    assert "PaymentService" in answer.answer
+
+
+def test_answer_source_question_does_not_use_graph_evidence_without_verified_sources():
+    provider_calls = []
+
+    def graph_provider(*args, **kwargs):
+        provider_calls.append((args, kwargs))
+        return FakeGraphResult()
+
+    project = Project(id=1, git_repo_path=None)
+    answer = answer_source_question(
+        None,
+        project,
+        "결제와 주문 관계를 알려줘",
+        retriever=FakeRetriever([]),
+        llm_client=MockLLM(),
+        graph_evidence_provider=graph_provider,
+    )
+
+    assert answer.insufficient_evidence is True
+    assert answer.graph_evidence == []
+    assert provider_calls == []

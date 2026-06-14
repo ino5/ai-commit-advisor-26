@@ -273,6 +273,50 @@ def _render_sources(sources: list[dict], message_index: int, used_source_count: 
         _render_source_group("이력/참고 근거", reference_sources, message_index, "reference")
 
 
+def _graph_evidence_row(evidence: dict, rank: int) -> dict:
+    path = " -> ".join(str(part) for part in evidence.get("path") or [] if part)
+    matched = ", ".join(str(seed) for seed in evidence.get("matched_seeds") or [])
+    evidence_type = evidence.get("evidence_type") or "-"
+    if evidence_type == "impact_path":
+        detail = (
+            f"{evidence.get('program') or '-'} / {evidence.get('commit') or '-'} / "
+            f"{evidence.get('file_path') or '-'} / {evidence.get('class_name') or '-'}"
+        )
+    elif evidence_type == "class_import":
+        detail = f"{evidence.get('source_class') or '-'} -> {evidence.get('target_class') or '-'}"
+    elif evidence_type == "domain_summary":
+        detail = (
+            f"{evidence.get('domain') or '-'} "
+            f"(program {evidence.get('program_count') or 0}, "
+            f"file {evidence.get('file_count') or 0}, class {evidence.get('class_count') or 0})"
+        )
+    else:
+        detail = evidence.get("title") or "-"
+    return {
+        "rank": rank,
+        "type": evidence_type,
+        "path": path or detail,
+        "detail": detail,
+        "matched": matched or "-",
+    }
+
+
+def _render_graph_evidence(graph_evidence: list[dict], message_index: int, key_prefix: str) -> None:
+    if not graph_evidence:
+        return
+
+    rows = [_graph_evidence_row(evidence, rank) for rank, evidence in enumerate(graph_evidence, start=1)]
+    with st.expander("그래프 관계 근거 보기", expanded=False):
+        st.caption("Neo4j graph read model에서 조회한 program, commit, file, class, domain 관계 근거입니다.")
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        for rank, evidence in enumerate(graph_evidence, start=1):
+            st.markdown(f"**Graph {rank}: {rows[rank - 1]['path']}**")
+            st.json(
+                evidence,
+                expanded=False,
+            )
+
+
 def _render_expansion_context(message: dict) -> None:
     expanded_queries = message.get("expanded_queries") or []
     matched_terms = message.get("matched_terms") or []
@@ -299,12 +343,16 @@ def _render_chat_history(messages: list[dict]) -> None:
                     st.warning("근거 부족으로 추측성 답변을 생성하지 않았습니다.")
                 elif used_source_count:
                     st.caption(f"답변에 사용된 현재 소스 근거 {used_source_count}건")
+                graph_evidence = message.get("graph_evidence") or []
+                if graph_evidence:
+                    st.caption(f"답변에 사용된 그래프 관계 근거 {len(graph_evidence)}건")
 
                 excluded_count = int(message.get("excluded_count") or 0)
                 if excluded_count:
                     st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 근거 {excluded_count}건은 답변에서 제외했습니다.")
                 _render_expansion_context(message)
                 _render_sources(message.get("sources") or [], index, used_source_count)
+                _render_graph_evidence(graph_evidence, index, "history")
                 st.text_area(
                     "근거 복사용 Markdown",
                     value=format_message_citation_export(message),
@@ -439,6 +487,8 @@ def render_project_chat_page() -> None:
                     st.write(content)
                     if answer.used_source_count:
                         st.caption(f"답변에 사용된 현재 소스 근거 {answer.used_source_count}건")
+                    if answer.graph_evidence:
+                        st.caption(f"답변에 사용된 그래프 관계 근거 {len(answer.graph_evidence)}건")
                 if answer.excluded_count:
                     st.caption(f"검증되지 않았거나 현재 코드 근거가 아닌 근거 {answer.excluded_count}건은 답변에서 제외했습니다.")
                 _render_expansion_context(
@@ -448,6 +498,7 @@ def render_project_chat_page() -> None:
                     }
                 )
                 _render_sources(answer.sources, len(messages), answer.used_source_count)
+                _render_graph_evidence(answer.graph_evidence, len(messages), "live")
                 st.text_area(
                     "근거 복사용 Markdown",
                     value=format_message_citation_export(
@@ -455,6 +506,7 @@ def render_project_chat_page() -> None:
                             "content": content,
                             "sources": answer.sources,
                             "used_source_count": answer.used_source_count,
+                            "graph_evidence": answer.graph_evidence,
                         }
                     ),
                     height=180,
@@ -472,6 +524,17 @@ def render_project_chat_page() -> None:
             excluded_count=0 if answer.errors else answer.excluded_count,
             used_source_count=0 if answer.errors else answer.used_source_count,
             insufficient_evidence=False if answer.errors else answer.insufficient_evidence,
-            raw_metadata={"errors": answer.errors} if answer.errors else None,
+            raw_metadata=(
+                {
+                    "errors": answer.errors,
+                    "graph_evidence": answer.graph_evidence,
+                    "graph_evidence_metadata": answer.graph_evidence_metadata,
+                }
+                if answer.errors
+                else {
+                    "graph_evidence": answer.graph_evidence,
+                    "graph_evidence_metadata": answer.graph_evidence_metadata,
+                }
+            ),
         )
     st.rerun()

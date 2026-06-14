@@ -592,9 +592,13 @@ def get_evidence_trace(db: Session, project_id: int, limit: int = 10) -> Evidenc
             "message_index": message.message_index,
             "used_sources": message.used_source_count or 0,
             "excluded_sources": message.excluded_count or 0,
+            "graph_evidence_count": len(((message.raw_metadata or {}).get("graph_evidence") or [])),
+            "graph_status": ((message.raw_metadata or {}).get("graph_evidence_metadata") or {}).get("status") or "-",
             "insufficient_evidence": bool(message.insufficient_evidence),
             "answer": message.content[:500],
             "sources": message.sources or [],
+            "graph_evidence": (message.raw_metadata or {}).get("graph_evidence") or [],
+            "graph_evidence_metadata": (message.raw_metadata or {}).get("graph_evidence_metadata") or {},
         }
         for message, session in chat_messages
     ]

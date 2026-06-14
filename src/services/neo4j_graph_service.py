@@ -23,6 +23,31 @@ except ImportError:  # pragma: no cover - exercised when dependency is not insta
 PACKAGE_RE = re.compile(r"(?m)^\s*package\s+([A-Za-z_][\w.]*)\s*;")
 IMPORT_RE = re.compile(r"(?m)^\s*import\s+(?:static\s+)?([A-Za-z_][\w.]*)(?:\.\*)?\s*;")
 TYPE_RE = re.compile(r"\b(class|interface|enum|record)\s+([A-Z][A-Za-z0-9_]*)\b")
+GRAPH_SEED_RE = re.compile(r"[A-Za-z가-힣][A-Za-z0-9가-힣_.$:/\\-]{1,}")
+GRAPH_SEED_STOPWORDS = {
+    "about",
+    "answer",
+    "class",
+    "code",
+    "current",
+    "file",
+    "where",
+    "with",
+    "가능",
+    "근거",
+    "기준",
+    "뭐야",
+    "무엇",
+    "변경",
+    "설명",
+    "알려",
+    "어디",
+    "어떤",
+    "영향",
+    "있나",
+    "있는",
+    "있어",
+}
 
 
 @dataclass(frozen=True)
@@ -144,6 +169,15 @@ class Neo4jGraphPreview:
     errors: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class GraphEvidenceSearchResult:
+    status: str
+    summary: str
+    evidence: list[dict[str, Any]] = field(default_factory=list)
+    seeds: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+
+
 def _node_id(project_id: int, node_type: str, key: str | int) -> str:
     return f"p{project_id}:{node_type}:{str(key).strip()}"
 
@@ -159,6 +193,81 @@ def _clean_key(value: str | None, fallback: str) -> str:
 
 def _short_commit(commit_hash: str | None) -> str:
     return (commit_hash or "-")[:12]
+
+
+def _normalize_graph_seed(value: Any) -> str:
+    seed = str(value or "").strip().replace("\\", "/").lower()
+    seed = re.sub(r"^[^\w가-힣]+|[^\w가-힣]+$", "", seed)
+    return seed
+
+
+def _add_graph_seed(seeds: list[str], seen: set[str], value: Any) -> None:
+    seed = _normalize_graph_seed(value)
+    if len(seed) < 2 or seed in seen or seed in GRAPH_SEED_STOPWORDS:
+        return
+    seen.add(seed)
+    seeds.append(seed)
+
+
+def _add_graph_seed_variants(seeds: list[str], seen: set[str], value: Any) -> None:
+    raw = str(value or "").strip()
+    if not raw:
+        return
+    normalized = raw.replace("\\", "/")
+    _add_graph_seed(seeds, seen, normalized)
+    path = Path(normalized)
+    if path.name:
+        _add_graph_seed(seeds, seen, path.name)
+        _add_graph_seed(seeds, seen, path.stem)
+    for part in re.split(r"[/.\s:_-]+", normalized):
+        _add_graph_seed(seeds, seen, part)
+
+
+def build_graph_evidence_seeds(
+    question: str,
+    sources: list[dict],
+    *,
+    expanded_queries: list[str] | None = None,
+    limit: int = 30,
+) -> list[str]:
+    seeds: list[str] = []
+    seen: set[str] = set()
+
+    for text in [question, *(expanded_queries or [])]:
+        for match in GRAPH_SEED_RE.finditer(text or ""):
+            _add_graph_seed_variants(seeds, seen, match.group(0))
+            if len(seeds) >= limit:
+                return seeds[:limit]
+
+    for source in sources:
+        metadata = source.get("metadata") or {}
+        for key in (
+            "file_path",
+            "commit_hash",
+            "program_id",
+            "program_name",
+            "screen_name",
+            "module",
+            "class_name",
+            "qualified_name",
+            "domain",
+        ):
+            _add_graph_seed_variants(seeds, seen, metadata.get(key))
+        _add_graph_seed_variants(seeds, seen, source.get("source_id"))
+
+        file_path = metadata.get("file_path") or source.get("source_id") or ""
+        text = source.get("text") or ""
+        if file_path and text and str(file_path).endswith(".java"):
+            for symbol in extract_java_symbols(str(file_path).replace("\\", "/"), text):
+                _add_graph_seed_variants(seeds, seen, symbol.file_path)
+                _add_graph_seed_variants(seeds, seen, symbol.class_name)
+                _add_graph_seed_variants(seeds, seen, symbol.qualified_name)
+                _add_graph_seed_variants(seeds, seen, symbol.domain)
+                for imported in symbol.imports:
+                    _add_graph_seed_variants(seeds, seen, imported)
+        if len(seeds) >= limit:
+            return seeds[:limit]
+    return seeds[:limit]
 
 
 def _neo4j_value(value: Any) -> Any:
@@ -666,6 +775,230 @@ def _read_project_summary_tx(tx, project_id: int) -> tuple[dict[str, int], dict[
     node_counts = {str(row["node_type"]): int(row["count"]) for row in node_rows}
     edge_counts = {str(row["edge_type"]): int(row["count"]) for row in edge_rows}
     return node_counts, edge_counts
+
+
+def find_project_graph_evidence(
+    project_id: int,
+    question: str,
+    sources: list[dict],
+    *,
+    expanded_queries: list[str] | None = None,
+    limit: int = 8,
+) -> GraphEvidenceSearchResult:
+    seeds = build_graph_evidence_seeds(question, sources, expanded_queries=expanded_queries)
+    if not seeds:
+        return GraphEvidenceSearchResult("skipped", "GraphRAG seed 후보가 없어 graph evidence 조회를 건너뜁니다.")
+    if not settings.neo4j_enabled:
+        return GraphEvidenceSearchResult(
+            "skipped",
+            "Neo4j가 비활성화되어 Project Chat graph evidence를 조회하지 않았습니다.",
+            seeds=seeds,
+        )
+
+    safe_limit = max(1, min(int(limit), 20))
+    try:
+        with _driver() as driver:
+            with driver.session(**_session_kwargs()) as session:
+                evidence = session.execute_read(_read_project_graph_evidence_tx, project_id, seeds, safe_limit)
+    except Exception as exc:
+        return GraphEvidenceSearchResult(
+            "failed",
+            "Project Chat graph evidence 조회 실패",
+            seeds=seeds,
+            errors=[str(exc)],
+        )
+
+    return GraphEvidenceSearchResult(
+        "completed",
+        f"Project Chat graph evidence {len(evidence)}건 조회",
+        evidence=evidence,
+        seeds=seeds,
+    )
+
+
+def _read_project_graph_evidence_tx(tx, project_id: int, seeds: list[str], limit: int) -> list[dict[str, Any]]:
+    impact_rows = tx.run(
+        """
+        MATCH (program:KnowledgeNode {project_id: $project_id, node_type: 'program'})
+              -[mapping:RELATED {edge_type: 'MAPPED_TO_COMMIT'}]->
+              (commit_node:KnowledgeNode {project_id: $project_id, node_type: 'commit'})
+        MATCH (commit_node)
+              -[touch:RELATED {edge_type: 'TOUCHES_FILE'}]->
+              (file:KnowledgeNode {project_id: $project_id, node_type: 'file'})
+        OPTIONAL MATCH (file)
+              -[contains:RELATED {edge_type: 'CONTAINS_CLASS'}]->
+              (class_node:KnowledgeNode {project_id: $project_id, node_type: 'class'})
+        WITH program, commit_node, file, class_node,
+             [seed IN $seeds WHERE
+                toLower(coalesce(program.label, '')) CONTAINS seed OR
+                toLower(coalesce(program.program_id, '')) CONTAINS seed OR
+                toLower(coalesce(program.program_name, '')) CONTAINS seed OR
+                toLower(coalesce(commit_node.label, '')) CONTAINS seed OR
+                toLower(coalesce(commit_node.commit_hash, '')) CONTAINS seed OR
+                toLower(coalesce(commit_node.message, '')) CONTAINS seed OR
+                toLower(coalesce(file.label, '')) CONTAINS seed OR
+                toLower(coalesce(file.file_path, '')) CONTAINS seed OR
+                toLower(coalesce(file.domain, '')) CONTAINS seed OR
+                toLower(coalesce(class_node.label, '')) CONTAINS seed OR
+                toLower(coalesce(class_node.class_name, '')) CONTAINS seed OR
+                toLower(coalesce(class_node.file_path, '')) CONTAINS seed OR
+                toLower(coalesce(class_node.domain, '')) CONTAINS seed
+             ] AS matched_seeds
+        WHERE size(matched_seeds) > 0
+        RETURN matched_seeds,
+               program.label AS program,
+               coalesce(program.program_id, '-') AS program_id,
+               coalesce(commit_node.commit_hash, commit_node.label) AS commit_hash,
+               coalesce(commit_node.message, '-') AS commit_message,
+               coalesce(file.file_path, file.label) AS file_path,
+               coalesce(class_node.label, '-') AS class_name,
+               coalesce(class_node.domain, file.domain, '-') AS domain,
+               coalesce(commit_node.committed_at, '') AS committed_at
+        ORDER BY size(matched_seeds) DESC, committed_at DESC, commit_hash, program, file_path, class_name
+        LIMIT $limit
+        """,
+        project_id=int(project_id),
+        seeds=seeds,
+        limit=limit,
+    )
+    evidence: list[dict[str, Any]] = []
+    for row in impact_rows:
+        commit_hash = str(row["commit_hash"] or "-")
+        path = [
+            str(row["program"] or "-"),
+            _short_commit(commit_hash),
+            str(row["file_path"] or "-"),
+        ]
+        class_name = str(row["class_name"] or "-")
+        if class_name != "-":
+            path.append(class_name)
+        evidence.append(
+            {
+                "evidence_type": "impact_path",
+                "title": "program -> commit -> file -> class",
+                "matched_seeds": list(row["matched_seeds"] or []),
+                "program": str(row["program"] or "-"),
+                "program_id": str(row["program_id"] or "-"),
+                "commit": _short_commit(commit_hash),
+                "commit_hash": commit_hash,
+                "commit_message": str(row["commit_message"] or "-"),
+                "file_path": str(row["file_path"] or "-"),
+                "class_name": class_name,
+                "domain": str(row["domain"] or "-"),
+                "path": path,
+            }
+        )
+
+    import_rows = tx.run(
+        """
+        MATCH (source:KnowledgeNode {project_id: $project_id, node_type: 'class'})
+              -[rel:RELATED {edge_type: 'IMPORTS_CLASS'}]->
+              (target:KnowledgeNode {project_id: $project_id, node_type: 'class'})
+        WITH source, target,
+             [seed IN $seeds WHERE
+                toLower(coalesce(source.label, '')) CONTAINS seed OR
+                toLower(coalesce(source.class_name, '')) CONTAINS seed OR
+                toLower(coalesce(source.file_path, '')) CONTAINS seed OR
+                toLower(coalesce(source.domain, '')) CONTAINS seed OR
+                toLower(coalesce(target.label, '')) CONTAINS seed OR
+                toLower(coalesce(target.class_name, '')) CONTAINS seed OR
+                toLower(coalesce(target.file_path, '')) CONTAINS seed OR
+                toLower(coalesce(target.domain, '')) CONTAINS seed
+             ] AS matched_seeds
+        WHERE size(matched_seeds) > 0
+        RETURN matched_seeds,
+               source.label AS source_class,
+               target.label AS target_class,
+               coalesce(source.file_path, '-') AS source_file,
+               coalesce(target.file_path, '-') AS target_file,
+               coalesce(source.domain, '-') AS source_domain,
+               coalesce(target.domain, '-') AS target_domain
+        ORDER BY size(matched_seeds) DESC, source_class, target_class
+        LIMIT $limit
+        """,
+        project_id=int(project_id),
+        seeds=seeds,
+        limit=limit,
+    )
+    for row in import_rows:
+        evidence.append(
+            {
+                "evidence_type": "class_import",
+                "title": "class -> imports -> class",
+                "matched_seeds": list(row["matched_seeds"] or []),
+                "source_class": str(row["source_class"] or "-"),
+                "target_class": str(row["target_class"] or "-"),
+                "source_file": str(row["source_file"] or "-"),
+                "target_file": str(row["target_file"] or "-"),
+                "source_domain": str(row["source_domain"] or "-"),
+                "target_domain": str(row["target_domain"] or "-"),
+                "path": [str(row["source_class"] or "-"), str(row["target_class"] or "-")],
+            }
+        )
+
+    domain_rows = tx.run(
+        """
+        MATCH (domain:KnowledgeNode {project_id: $project_id, node_type: 'domain'})
+        WITH domain,
+             [seed IN $seeds WHERE
+                toLower(coalesce(domain.label, '')) CONTAINS seed OR
+                toLower(coalesce(domain.domain, '')) CONTAINS seed
+             ] AS matched_seeds
+        WHERE size(matched_seeds) > 0
+        OPTIONAL MATCH (domain)-[:RELATED {edge_type: 'OWNS_PROGRAM'}]->
+                       (program:KnowledgeNode {project_id: $project_id, node_type: 'program'})
+        WITH domain, matched_seeds, count(DISTINCT program) AS program_count
+        OPTIONAL MATCH (domain)-[:RELATED {edge_type: 'HAS_FILE'}]->
+                       (file:KnowledgeNode {project_id: $project_id, node_type: 'file'})
+        WITH domain, matched_seeds, program_count, count(DISTINCT file) AS file_count
+        OPTIONAL MATCH (domain)-[:RELATED {edge_type: 'CONTAINS_CLASS'}]->
+                       (class_node:KnowledgeNode {project_id: $project_id, node_type: 'class'})
+        RETURN matched_seeds,
+               domain.label AS domain,
+               program_count,
+               file_count,
+               count(DISTINCT class_node) AS class_count
+        ORDER BY size(matched_seeds) DESC, class_count DESC, file_count DESC, domain
+        LIMIT $limit
+        """,
+        project_id=int(project_id),
+        seeds=seeds,
+        limit=limit,
+    )
+    for row in domain_rows:
+        evidence.append(
+            {
+                "evidence_type": "domain_summary",
+                "title": "domain summary",
+                "matched_seeds": list(row["matched_seeds"] or []),
+                "domain": str(row["domain"] or "-"),
+                "program_count": int(row["program_count"] or 0),
+                "file_count": int(row["file_count"] or 0),
+                "class_count": int(row["class_count"] or 0),
+                "path": [str(row["domain"] or "-")],
+            }
+        )
+
+    deduped: list[dict[str, Any]] = []
+    seen: set[tuple] = set()
+    for item in evidence:
+        key = (
+            item.get("evidence_type"),
+            item.get("program"),
+            item.get("commit_hash"),
+            item.get("file_path"),
+            item.get("class_name"),
+            item.get("source_class"),
+            item.get("target_class"),
+            item.get("domain"),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+        if len(deduped) >= limit:
+            break
+    return deduped
 
 
 def get_neo4j_project_preview(project_id: int, limit: int = 100) -> Neo4jGraphPreview:

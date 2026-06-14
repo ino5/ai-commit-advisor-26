@@ -222,6 +222,8 @@ def _render_trace(project_id: int) -> None:
                         "message_index": row["message_index"],
                         "used_sources": row["used_sources"],
                         "excluded_sources": row["excluded_sources"],
+                        "graph_evidence": row["graph_evidence_count"],
+                        "graph_status": row["graph_status"],
                         "insufficient_evidence": row["insufficient_evidence"],
                         "answer": row["answer"],
                     }
@@ -232,6 +234,16 @@ def _render_trace(project_id: int) -> None:
             hide_index=True,
         )
         _json_block("최근 Project Chat source metadata", [row["sources"] for row in trace.recent_chat_answers[:3]])
+        _json_block(
+            "최근 Project Chat graph evidence",
+            [
+                {
+                    "graph_evidence": row["graph_evidence"],
+                    "graph_evidence_metadata": row["graph_evidence_metadata"],
+                }
+                for row in trace.recent_chat_answers[:3]
+            ],
+        )
     else:
         st.info("Project Chat 답변 evidence가 없습니다.")
 
