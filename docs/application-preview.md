@@ -229,7 +229,7 @@ PL Briefing 회의 질문, 다음 action, 이력 확인
 <details>
 <summary>Knowledge Graph</summary>
 
-프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인을 Neo4j 관계 그래프로 동기화하기 전에 PostgreSQL 기준 preview를 확인하는 화면입니다. 도메인별 묶음, 클래스 관계도, 커밋-프로그램-클래스 영향 경로를 함께 보며, Neo4j 연결을 켜면 같은 화면에서 그래프 read model로 저장합니다.
+프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인을 Neo4j 관계 그래프로 동기화한 상태입니다. 화면 상단에서 Neo4j 연결과 사용 설정을 확인하고, `Neo4j 동기화` 실행 결과로 저장된 node/edge 수를 확인합니다. 아래 탭에서는 도메인 묶음, 클래스 관계도, 커밋-프로그램-클래스 영향 경로를 이어서 볼 수 있습니다.
 
 ![Knowledge Graph](images/features/knowledge-graph.png)
 

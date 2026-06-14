@@ -2,6 +2,13 @@
 
 ## 2026-06-15
 
+### Knowledge Graph preview 증거 보강
+
+- `Application Preview`의 Knowledge Graph 설명과 screenshot을 Neo4j 미연결 preview가 아니라 실제 Neo4j 연결/동기화 완료 상태로 갱신했습니다.
+- screenshot capture 기준도 `NEO4J_ENABLED=false` 상태를 금지하고, `Neo4j 동기화` 버튼 실행 후 `Neo4j에 node ... edge ... 동기화` 성공 메시지와 node/edge count가 보이도록 강화했습니다.
+- 주요 파일: `scripts/capture_feature_screenshot.py`, `docs/application-preview.md`, `docs/images/features/knowledge-graph.png`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8502 --feature knowledge-graph --surface local --height 1400 --project-name "AAA Sample Shop Rich Demo (4)" --expect-text "Neo4j에 node" --expect-text "연결" --expect-text "ON" --forbid-text "NEO4J_ENABLED=false"` 통과; 캡처 결과에서 Neo4j `연결`, `ON`, `neo4j` database, `node 158개`, `edge 442개` 동기화 성공 메시지와 node/edge count 표를 확인했습니다. `.\.venv\Scripts\python.exe -m py_compile scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Neo4j Knowledge Graph 기반 추가
 
 - Neo4j를 프로젝트 관계 탐색용 read model로 추가하고, `Knowledge Graph` 화면에서 프로젝트, 프로그램, 커밋, 파일, Java class, 도메인 관계를 preview하거나 Neo4j에 동기화할 수 있게 했습니다.
