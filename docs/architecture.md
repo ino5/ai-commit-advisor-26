@@ -215,7 +215,7 @@ flowchart LR
 
 대부분의 프로젝트 단위 화면은 각 화면 안에서 프로젝트를 다시 고르지 않고, 사이드바의 현재 프로젝트 컨텍스트를 사용합니다. `프로젝트/Git 설정`은 프로젝트 생성, 수정, 삭제를 담당하므로 자체 선택 UI를 유지하고, `프로그램 목록`은 기존 프로젝트에 데이터를 넣는 흐름과 새 프로젝트명으로 저장하는 예외 흐름을 분리합니다.
 
-프로젝트 삭제는 프로젝트 소유 데이터만 정리합니다. 프로그램, Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어, 프로젝트 개발자 연결은 삭제 대상입니다. `developers`는 전역 개발자 마스터이므로 프로젝트 삭제 시 자동 삭제하지 않습니다.
+프로젝트 삭제는 프로젝트 소유 데이터만 정리합니다. 프로그램, Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어, 프로젝트 개발자 연결은 삭제 대상입니다. `developers`는 전역 개발자 마스터이므로 프로젝트 삭제 시 자동 삭제하지 않습니다.
 
 ## 2.1 Git 저장소 접근 모델
 
@@ -452,6 +452,7 @@ erDiagram
 | `program_implementation_status` | 프로그램별 관련 커밋 묶음을 기반으로 LLM이 판단한 구현 상태, 완료/미완료 기능, 근거 커밋을 저장한다. |
 | `analysis_runs` | Mapping 분석 실행 이력. 실행 상태, 처리 수, 실패 수, 파라미터, 요약을 저장한다. |
 | `code_review_results` | AI Code Review 실행 결과. 리뷰 대상, 요약, 커밋 분석, 버그 발견, 리팩토링 제안을 저장한다. |
+| `resource_metric_snapshots` | Dashboard 자원관리 지표의 수동 저장 snapshot. 핵심 KPI, 평균 업무량/난이도, raw summary를 저장해 추세 분석에 사용한다. |
 | `risk_findings` | 리스크 분석 결과. 리스크 유형/등급, 설명, 근거, 해결 여부를 저장한다. |
 | `project_chat_sessions` | Project Chat의 프로젝트별 대화 session 제목, 상태, 마지막 메시지 시각을 저장한다. |
 | `project_chat_messages` | Project Chat user/assistant message와 검색 근거, 확장 쿼리, 근거 부족 여부, 복사용 citation metadata를 저장한다. |
@@ -479,7 +480,7 @@ erDiagram
 | `git_history_service.py` | 프로젝트별 커밋 이력, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff 조회를 처리한다. |
 | `commit_impact_service.py` | 특정 커밋이 영향을 줄 가능성이 있는 프로그램, 파일, 개발자 범위를 계산한다. |
 | `code_review_service.py` | 앱 서버 Git 저장소의 최근 커밋, 특정 커밋 diff를 중심으로 LLM 리뷰를 실행하고 `code_review_results`에 저장한다. 서버 clone local 변경 점검용으로 working tree/staged diff 리뷰도 지원한다. |
-| `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI를 계산한다. 현재는 저장형 snapshot이 아니라 조회 시점 계산 결과를 반환한다. |
+| `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI를 계산하고, 사용자가 요청한 기준 시점 snapshot을 저장/조회한다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
 | `vector_store.py` | embedding 저장, 중복 방지, embedding 실패 기록, pgvector cosine 검색. |
@@ -647,7 +648,7 @@ LLM 출력 예시:
 - Commit Impact 분석.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
-- Dashboard 자원관리 지표: 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, PoC 고객가치 KPI 표시.
+- Dashboard 자원관리 지표: 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, PoC 고객가치 KPI 표시, 수동 snapshot 저장과 추세 분석.
 - RAG chunk 생성: source_file, program, commit, commit_file.
 - mock/openai/local embedding client 구조.
 - pgvector vector 저장 및 cosine 검색.

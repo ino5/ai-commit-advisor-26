@@ -37,6 +37,10 @@ class Project(Base, TimestampMixin):
         back_populates="project",
         cascade="all, delete-orphan",
     )
+    resource_metric_snapshots: Mapped[list["ResourceMetricSnapshot"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
     chat_sessions: Mapped[list["ProjectChatSession"]] = relationship(
         back_populates="project",
         cascade="all, delete-orphan",
@@ -231,6 +235,28 @@ class CodeReviewResult(Base, TimestampMixin):
     raw_response: Mapped[dict | None] = mapped_column(JSONB)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ResourceMetricSnapshot(Base, TimestampMixin):
+    __tablename__ = "resource_metric_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    snapshot_label: Mapped[str | None] = mapped_column(String(255))
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    unresolved_risk_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    high_risk_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    forecasted_delay_program_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    ai_code_review_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    estimated_review_hours_saved: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    estimated_extra_mm_avoidance: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    average_workload_score: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    average_difficulty_score: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    developer_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    program_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    raw_summary: Mapped[dict | None] = mapped_column(JSONB)
+
+    project: Mapped["Project"] = relationship(back_populates="resource_metric_snapshots")
 
 
 class ProjectChatSession(Base, TimestampMixin):

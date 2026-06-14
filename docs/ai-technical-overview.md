@@ -163,7 +163,7 @@ AI Progress는 두 개념을 분리합니다. AI progress rate는 여전히 `pro
 
 ## 자원관리 metric
 
-`resource_metrics_service.py`는 AX 자원관리 기능을 위한 계산형 metric layer입니다. 이 layer는 새 LLM 판단을 만들지 않고, 이미 저장된 Mapping, AI Progress 근거, Git commit/file/diff metadata, unresolved risk, AI Code Review 실행 기록을 조합합니다. 계산 결과는 Dashboard의 자원관리 지표와 Risk Analysis의 `FORECAST_DELAY` 리스크에서 사용됩니다.
+`resource_metrics_service.py`는 AX 자원관리 기능을 위한 metric layer입니다. 이 layer는 새 LLM 판단을 만들지 않고, 이미 저장된 Mapping, AI Progress 근거, Git commit/file/diff metadata, unresolved risk, AI Code Review 실행 기록을 조합합니다. 계산 결과는 Dashboard의 자원관리 지표와 Risk Analysis의 `FORECAST_DELAY` 리스크에서 사용되며, 사용자가 저장한 기준 시점은 `resource_metric_snapshots`에 보관됩니다.
 
 주요 산출물:
 
@@ -172,8 +172,9 @@ AI Progress는 두 개념을 분리합니다. AI progress rate는 여전히 `pro
 - 프로그램별 예상 종료 상태: 계획 시작/종료일, AI 진척도, 관련 commit 수를 사용해 예상 종료일, 예상 지연일, 신뢰도를 계산합니다. 예상 지연일이 7일 이상이면 `DELAY_EXPECTED`로 표시하고 Risk Analysis는 `FORECAST_DELAY` 리스크를 저장합니다.
 - 개발자별 집계: 담당 프로그램 기준으로 업무량, 미완료 프로그램 수, 리스크 프로그램 수, 평균 계획/AI 진척도, 평균 난이도를 계산합니다.
 - PoC 고객가치 KPI: HIGH risk 노출, 예상 지연 프로그램, AI Code Review 실행 기록을 기반으로 추정 리뷰 절감 시간과 추가 MM 회피 노출을 계산합니다.
+- 저장형 snapshot: PL이 Dashboard에서 현재 지표를 저장하면 핵심 KPI와 raw summary를 함께 보관해 이후 추세 차트와 테이블에서 비교합니다.
 
-이 지표는 현재 DB 상태에서 계산되는 planning signal이며 저장형 시계열 snapshot은 아닙니다. 따라서 "업무 난이도"나 "업무량"은 코드와 산출물에서 관측 가능한 신호를 요약한 값이지, 개발자 개인의 실제 역량이나 성과를 확정하는 AI 판단이 아닙니다. 예상 종료일도 일정 관리 보조 신호이며, 계획 변경·배포 범위·테스트 완료 여부는 PL이 함께 검토해야 합니다.
+이 지표는 planning signal입니다. 현재 화면의 값은 조회 시점 계산 결과이고, 저장된 snapshot은 사용자가 기준 시점을 남긴 기록입니다. 따라서 "업무 난이도"나 "업무량"은 코드와 산출물에서 관측 가능한 신호를 요약한 값이지, 개발자 개인의 실제 역량이나 성과를 확정하는 AI 판단이 아닙니다. 예상 종료일도 일정 관리 보조 신호이며, 계획 변경·배포 범위·테스트 완료 여부는 PL이 함께 검토해야 합니다.
 
 ## 현재 한계
 
@@ -181,7 +182,7 @@ AI Progress는 두 개념을 분리합니다. AI progress rate는 여전히 `pro
 - RAG 품질은 embedding model과 configured vector dimension에 크게 의존합니다.
 - Source verification과 re-index warning은 outdated source chunk가 current code evidence로 쓰이는 것을 막지만, LLM answer의 semantic correctness를 증명하지는 않습니다.
 - Commit diff는 historical evidence이며 deleted line을 포함할 수 있습니다.
-- Resource Metrics는 현재 조회 시점 계산 결과이며 metric 산식과 snapshot 보관 정책은 후속 추세 분석 구현에서 조정될 수 있습니다.
+- Resource Metrics snapshot은 사용자가 저장한 시점만 남깁니다. 자동 배치나 webhook 기반 주기 저장은 아직 제공하지 않습니다.
 
 ## 공개 소개 요약
 

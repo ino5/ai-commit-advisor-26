@@ -2,6 +2,16 @@
 
 ## 2026-06-14
 
+### 자원관리 지표 시계열 snapshot과 추세 분석
+
+- `resource_metric_snapshots` 테이블과 Alembic migration을 추가해 Dashboard 자원관리 지표의 기준 시점 snapshot을 저장할 수 있게 했습니다.
+- `resource_metrics_service.py`에 현재 지표 snapshot 저장, 최근 snapshot 조회, JSON-safe raw summary payload 생성을 추가했습니다.
+- Dashboard 자원관리 지표에 `현재 지표 저장` 수동 저장 영역과 `추세 분석` 탭을 추가해 예상 지연 프로그램, HIGH/미해결 리스크, 평균 업무량, 평균 난이도, AI 리뷰 절감 추정, 추가 MM 회피 노출을 시간순으로 볼 수 있게 했습니다.
+- 프로젝트 삭제 영향 계산과 삭제 처리에 자원관리 snapshot을 포함했습니다.
+- README, 사용 가이드, feature guide, architecture, AI technical overview, DB migration guide, Application Preview, engineering decisions, roadmap을 저장형 snapshot과 수동 추세 분석 기준으로 갱신했습니다.
+- 주요 파일: `migrations/versions/20260614_0006_add_resource_metric_snapshots.py`, `src/db/models.py`, `src/services/resource_metrics_service.py`, `src/services/project_management_service.py`, `src/ui/dashboard_page.py`, `src/ui/project_page.py`, `tests/test_resource_metrics_service.py`, `tests/test_project_management_service.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/dashboard.png`, `README.md`, `docs/demo-user-guide.md`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, `docs/application-preview.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\db\models.py src\services\resource_metrics_service.py src\ui\dashboard_page.py tests\test_resource_metrics_service.py migrations\versions\20260614_0006_add_resource_metric_snapshots.py` 통과; `.\.venv\Scripts\alembic.exe upgrade head` 통과; `.\.venv\Scripts\alembic.exe heads`와 `.\.venv\Scripts\alembic.exe current` 모두 `20260614_0006 (head)` 확인; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py tests\test_project_management_service.py -q` 6개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 106개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; Browser에서 Dashboard의 `현재 자원관리 지표 snapshot 저장`, `추세 분석`, `예상 지연 프로그램` 렌더링 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature dashboard --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local` 통과; `git diff --check` 통과.
+
 ### AI Code Review 서버 저장소 대상 설명 정리
 
 - 중앙 앱 서버 모델에서는 AI Code Review의 기본 대상이 개발자 개인 PC의 working tree/staged 변경이 아니라 앱 서버 Git 저장소의 최신/특정 커밋임을 UI와 문서에 명확히 했습니다.

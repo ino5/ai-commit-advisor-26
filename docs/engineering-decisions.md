@@ -45,6 +45,43 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-14 - 자원관리 추세 분석은 수동 snapshot부터 시작한다
+
+### 배경
+
+AX 자원관리 지표는 현재 DB 상태를 계산해 PL에게 일정 리스크, 업무량, 난이도, AI 리뷰 가치 신호를 제공합니다. 하지만 계산형 지표만으로는 지난 점검 대비 리스크가 줄었는지, workload concentration이 계속 높은지, AI 리뷰 효과가 누적되고 있는지를 설명하기 어렵습니다.
+
+### 결정
+
+첫 추세 분석은 Dashboard에서 사용자가 `현재 지표 저장`을 눌러 `resource_metric_snapshots`에 기준 시점을 남기는 방식으로 구현합니다. Snapshot에는 핵심 KPI 컬럼과 raw summary JSON을 함께 저장하고, Dashboard의 `추세 분석` 탭은 최근 snapshot을 시간순으로 비교합니다.
+
+### 이유
+
+- PoC에서는 주간 점검, 리스크 리뷰, 시연 기준점처럼 사람이 의미 있는 시점을 고르는 흐름이 자동 배치보다 설명하기 쉽습니다.
+- 자동 스케줄러, webhook, CI 연동 없이도 추세 분석 가치를 검증할 수 있습니다.
+- 핵심 KPI를 컬럼으로 저장하면 차트와 테이블이 단순하고, raw summary를 함께 남기면 산식 검토와 후속 확장 근거를 보존할 수 있습니다.
+
+### 검토한 대안
+
+- 조회할 때마다 자동 저장: 데이터가 빠르게 불어나고 사용자가 의도하지 않은 snapshot이 추세를 흐릴 수 있습니다.
+- 백그라운드 일/주간 배치: 운영 배포와 스케줄 실패 처리 정책이 필요해 PoC 범위보다 큽니다.
+- raw JSON만 저장: 유연하지만 차트와 쿼리, 검증이 불편합니다.
+
+### 영향과 tradeoff
+
+- 추세는 사용자가 저장한 시점 사이에서만 해석할 수 있습니다.
+- Snapshot은 산식 변경 이후의 재계산값이 아니라 저장 당시 payload입니다.
+- 장기 운영에서는 보관 기간, 자동 저장 주기, 프로젝트별 snapshot 삭제/보존 정책을 별도 결정해야 합니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Resource Metric Snapshot And Trend Dashboard`
+- `docs/feature-guide.md`
+- `docs/architecture.md`
+- `docs/ai-technical-overview.md`
+- `docs/db-migrations.md`
+- `AI_CHANGELOG.md`의 `자원관리 지표 시계열 snapshot과 추세 분석`
+
 ## 2026-06-14 - AI Code Review는 서버 저장소 커밋 이력을 기본 대상으로 둔다
 
 ### 배경

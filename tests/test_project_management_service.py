@@ -19,6 +19,7 @@ from src.db.models import (
     ProjectDeveloper,
     ProjectChatMessage,
     ProjectChatSession,
+    ResourceMetricSnapshot,
     RiskFinding,
     StandardTerm,
     VectorItem,
@@ -112,6 +113,21 @@ def _create_project_graph(db):
                 target_ref=target_commit.commit_hash,
                 status="completed",
             ),
+            ResourceMetricSnapshot(
+                project_id=target_project.id,
+                snapshot_label="delete-test",
+                unresolved_risk_count=1,
+                high_risk_count=1,
+                forecasted_delay_program_count=1,
+                ai_code_review_count=1,
+                estimated_review_hours_saved=0.5,
+                estimated_extra_mm_avoidance=0.4,
+                average_workload_score=50,
+                average_difficulty_score=40,
+                developer_count=1,
+                program_count=1,
+                raw_summary={"marker": marker},
+            ),
             StandardTerm(
                 project_id=target_project.id,
                 korean_term="결제금액",
@@ -167,6 +183,7 @@ def test_delete_project_removes_project_owned_data_and_preserves_developers():
             assert impact.implementation_status_count == 1
             assert impact.risk_finding_count == 1
             assert impact.code_review_count == 1
+            assert impact.resource_metric_snapshot_count == 1
             assert impact.chat_session_count == 1
             assert impact.chat_message_count == 1
             assert impact.document_chunk_count == 1
@@ -192,6 +209,12 @@ def test_delete_project_removes_project_owned_data_and_preserves_developers():
             assert db.query(AnalysisRun).filter(AnalysisRun.project_id == target_project_id).count() == 0
             assert db.query(RiskFinding).filter(RiskFinding.project_id == target_project_id).count() == 0
             assert db.query(CodeReviewResult).filter(CodeReviewResult.project_id == target_project_id).count() == 0
+            assert (
+                db.query(ResourceMetricSnapshot)
+                .filter(ResourceMetricSnapshot.project_id == target_project_id)
+                .count()
+                == 0
+            )
             assert db.query(ProjectChatSession).filter(ProjectChatSession.project_id == target_project_id).count() == 0
             assert db.get(ProjectChatMessage, chat_message_id) is None
             assert db.query(DocumentChunk).filter(DocumentChunk.project_id == target_project_id).count() == 0

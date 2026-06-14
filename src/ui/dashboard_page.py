@@ -6,7 +6,11 @@ from src.db.database import SessionLocal
 from src.db.models import AnalysisRun, GitCommit, Project
 from src.services.developer_service import get_developer_stats
 from src.services.progress_service import get_ai_progress_summary
-from src.services.resource_metrics_service import get_resource_metrics_summary
+from src.services.resource_metrics_service import (
+    get_resource_metric_snapshots,
+    get_resource_metrics_summary,
+    save_resource_metric_snapshot,
+)
 from src.ui.project_context import require_project_context
 
 
@@ -139,10 +143,85 @@ def _render_project_summary(project_id: int) -> None:
             st.info("개발자 Git 통계가 없습니다.")
 
     st.divider()
-    _render_resource_metrics(resource_summary)
+    _render_resource_metrics(project_id, resource_summary)
 
 
-def _render_resource_metrics(resource_summary) -> None:
+def _snapshot_df(project_id: int) -> pd.DataFrame:
+    with SessionLocal() as db:
+        snapshots = get_resource_metric_snapshots(db, project_id, limit=30)
+    return pd.DataFrame([row.__dict__ for row in snapshots])
+
+
+def _render_resource_metric_trends(project_id: int) -> None:
+    trend_df = _snapshot_df(project_id)
+    if trend_df.empty:
+        st.info("저장된 자원관리 snapshot이 없습니다. 현재 지표를 저장하면 이후 추세를 비교할 수 있습니다.")
+        return
+
+    trend_df["captured_label"] = pd.to_datetime(trend_df["captured_at"]).dt.strftime("%m-%d %H:%M")
+    metric_options = {
+        "예상 지연 프로그램": "forecasted_delay_program_count",
+        "HIGH 리스크": "high_risk_count",
+        "미해결 리스크": "unresolved_risk_count",
+        "평균 업무량 점수": "average_workload_score",
+        "평균 난이도": "average_difficulty_score",
+        "AI 리뷰 절감 추정": "estimated_review_hours_saved",
+        "추가 MM 회피 노출": "estimated_extra_mm_avoidance",
+    }
+    selected_metrics = st.multiselect(
+        "추세 지표",
+        list(metric_options.keys()),
+        default=["예상 지연 프로그램", "HIGH 리스크", "평균 업무량 점수"],
+    )
+    if selected_metrics:
+        chart_df = trend_df[["captured_label", *[metric_options[label] for label in selected_metrics]]].melt(
+            id_vars=["captured_label"],
+            var_name="metric",
+            value_name="value",
+        )
+        label_by_column = {column: label for label, column in metric_options.items()}
+        chart_df["metric"] = chart_df["metric"].map(label_by_column)
+        st.plotly_chart(
+            px.line(chart_df, x="captured_label", y="value", color="metric", markers=True, title="자원관리 KPI 추세"),
+            use_container_width=True,
+        )
+
+    st.dataframe(
+        trend_df[
+            [
+                "captured_at",
+                "snapshot_label",
+                "program_count",
+                "developer_count",
+                "unresolved_risk_count",
+                "high_risk_count",
+                "forecasted_delay_program_count",
+                "average_workload_score",
+                "average_difficulty_score",
+                "estimated_review_hours_saved",
+                "estimated_extra_mm_avoidance",
+            ]
+        ].rename(
+            columns={
+                "captured_at": "저장 시각",
+                "snapshot_label": "라벨",
+                "program_count": "프로그램",
+                "developer_count": "개발자",
+                "unresolved_risk_count": "미해결 리스크",
+                "high_risk_count": "HIGH 리스크",
+                "forecasted_delay_program_count": "예상 지연 프로그램",
+                "average_workload_score": "평균 업무량",
+                "average_difficulty_score": "평균 난이도",
+                "estimated_review_hours_saved": "AI 리뷰 절감 추정",
+                "estimated_extra_mm_avoidance": "추가 MM 회피 노출",
+            }
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+
+def _render_resource_metrics(project_id: int, resource_summary) -> None:
     st.subheader("자원관리 지표")
     st.caption(resource_summary.interpretation_note)
 
@@ -154,7 +233,15 @@ def _render_resource_metrics(resource_summary) -> None:
     value_cols[3].metric("AI 리뷰 절감 추정", f"{value.estimated_review_hours_saved}h")
     value_cols[4].metric("추가 MM 회피 노출", f"{value.estimated_extra_mm_avoidance}MM")
 
-    developer_tab, program_tab = st.tabs(["개발자별 부하", "예상 지연/난이도"])
+    with st.expander("현재 자원관리 지표 snapshot 저장", expanded=False):
+        st.caption("저장된 snapshot은 추세 분석에서 시간순 비교에 사용됩니다. 자동 저장이 아니라 PL이 기준 시점을 남기는 수동 저장입니다.")
+        snapshot_label = st.text_input("Snapshot 라벨", value="", placeholder="예: 주간 점검 1차", key="resource_snapshot_label")
+        if st.button("현재 지표 저장", key="save_resource_snapshot"):
+            with SessionLocal() as db:
+                snapshot = save_resource_metric_snapshot(db, project_id, snapshot_label=snapshot_label)
+            st.success(f"자원관리 snapshot을 저장했습니다. 저장 시각: {snapshot.captured_at.strftime('%Y-%m-%d %H:%M')}")
+
+    developer_tab, program_tab, trend_tab = st.tabs(["개발자별 부하", "예상 지연/난이도", "추세 분석"])
 
     with developer_tab:
         if not resource_summary.developer_metrics:
@@ -264,6 +351,9 @@ def _render_resource_metrics(resource_summary) -> None:
                     use_container_width=True,
                     hide_index=True,
                 )
+
+    with trend_tab:
+        _render_resource_metric_trends(project_id)
 
 
 def render_dashboard_page() -> None:

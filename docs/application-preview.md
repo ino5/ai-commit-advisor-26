@@ -176,7 +176,7 @@
 <details>
 <summary>Dashboard</summary>
 
-프로젝트 계획/AI/Git 활동 요약과 함께 개발자별 업무량·난이도, 예상 지연 프로그램, PoC 고객가치 KPI를 확인하는 운영 대시보드입니다. 자원관리 지표는 개인 성과 확정값이 아니라 PL이 병목과 일정 리스크를 먼저 볼 수 있도록 돕는 planning signal입니다.
+프로젝트 계획/AI/Git 활동 요약과 함께 개발자별 업무량·난이도, 예상 지연 프로그램, PoC 고객가치 KPI를 확인하는 운영 대시보드입니다. 자원관리 지표는 개인 성과 확정값이 아니라 PL이 병목과 일정 리스크를 먼저 볼 수 있도록 돕는 planning signal이며, 사용자가 저장한 snapshot으로 추세 분석을 확인할 수 있습니다.
 
 ![Dashboard](images/features/dashboard.png)
 

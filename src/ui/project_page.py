@@ -34,6 +34,7 @@ def _render_project_delete_section(project: Project) -> None:
         {"데이터": "구현상태 분석", "건수": impact.implementation_status_count},
         {"데이터": "리스크", "건수": impact.risk_finding_count},
         {"데이터": "AI Code Review", "건수": impact.code_review_count},
+        {"데이터": "자원관리 Snapshot", "건수": impact.resource_metric_snapshot_count},
         {"데이터": "Project Chat 세션", "건수": impact.chat_session_count},
         {"데이터": "Project Chat 메시지", "건수": impact.chat_message_count},
         {"데이터": "RAG chunk", "건수": impact.document_chunk_count},

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
-from datetime import date, timedelta
+from dataclasses import asdict, dataclass, field
+from datetime import date, datetime, timedelta
 from math import ceil
+from typing import Any
 
 from sqlalchemy.orm import Session, joinedload
 
-from src.db.models import CodeReviewResult, GitCommit, Program, ProgramCommitMapping, RiskFinding
+from src.db.models import CodeReviewResult, GitCommit, Program, ProgramCommitMapping, ResourceMetricSnapshot, RiskFinding
 from src.services.progress_service import normalize_implementation_status
 
 
@@ -103,6 +104,65 @@ class ResourceMetricsSummary:
     developer_metrics: list[DeveloperResourceMetric]
     business_value: BusinessValueMetric
     interpretation_note: str
+
+
+@dataclass
+class ResourceMetricSnapshotRow:
+    id: int
+    project_id: int
+    snapshot_label: str | None
+    captured_at: datetime
+    unresolved_risk_count: int
+    high_risk_count: int
+    forecasted_delay_program_count: int
+    ai_code_review_count: int
+    estimated_review_hours_saved: float
+    estimated_extra_mm_avoidance: float
+    average_workload_score: float
+    average_difficulty_score: float
+    developer_count: int
+    program_count: int
+
+
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    return value
+
+
+def _summary_payload(summary: ResourceMetricsSummary) -> dict[str, Any]:
+    return _json_safe(
+        {
+            "project_id": summary.project_id,
+            "program_metrics": [asdict(row) for row in summary.program_metrics],
+            "developer_metrics": [asdict(row) for row in summary.developer_metrics],
+            "business_value": asdict(summary.business_value),
+            "interpretation_note": summary.interpretation_note,
+        }
+    )
+
+
+def _snapshot_row(snapshot: ResourceMetricSnapshot) -> ResourceMetricSnapshotRow:
+    return ResourceMetricSnapshotRow(
+        id=snapshot.id,
+        project_id=snapshot.project_id,
+        snapshot_label=snapshot.snapshot_label,
+        captured_at=snapshot.captured_at,
+        unresolved_risk_count=snapshot.unresolved_risk_count,
+        high_risk_count=snapshot.high_risk_count,
+        forecasted_delay_program_count=snapshot.forecasted_delay_program_count,
+        ai_code_review_count=snapshot.ai_code_review_count,
+        estimated_review_hours_saved=snapshot.estimated_review_hours_saved,
+        estimated_extra_mm_avoidance=snapshot.estimated_extra_mm_avoidance,
+        average_workload_score=snapshot.average_workload_score,
+        average_difficulty_score=snapshot.average_difficulty_score,
+        developer_count=snapshot.developer_count,
+        program_count=snapshot.program_count,
+    )
 
 
 def _developer_name(program: Program) -> str:
@@ -424,3 +484,48 @@ def get_resource_metrics_summary(db: Session, project_id: int) -> ResourceMetric
             "개인 성과를 확정 평가하는 값이 아니며 PL 검토와 함께 사용해야 합니다."
         ),
     )
+
+
+def save_resource_metric_snapshot(
+    db: Session,
+    project_id: int,
+    snapshot_label: str | None = None,
+) -> ResourceMetricSnapshotRow:
+    summary = get_resource_metrics_summary(db, project_id)
+    business_value = summary.business_value
+    average_workload = _round_average([row.workload_score for row in summary.developer_metrics])
+    average_difficulty = _round_average([row.average_difficulty_score for row in summary.developer_metrics])
+    snapshot = ResourceMetricSnapshot(
+        project_id=project_id,
+        snapshot_label=(snapshot_label or "").strip() or None,
+        unresolved_risk_count=business_value.unresolved_risk_count,
+        high_risk_count=business_value.high_risk_count,
+        forecasted_delay_program_count=business_value.forecasted_delay_program_count,
+        ai_code_review_count=business_value.ai_code_review_count,
+        estimated_review_hours_saved=business_value.estimated_review_hours_saved,
+        estimated_extra_mm_avoidance=business_value.estimated_extra_mm_avoidance,
+        average_workload_score=average_workload,
+        average_difficulty_score=average_difficulty,
+        developer_count=len(summary.developer_metrics),
+        program_count=len(summary.program_metrics),
+        raw_summary=_summary_payload(summary),
+    )
+    db.add(snapshot)
+    db.commit()
+    db.refresh(snapshot)
+    return _snapshot_row(snapshot)
+
+
+def get_resource_metric_snapshots(
+    db: Session,
+    project_id: int,
+    limit: int = 30,
+) -> list[ResourceMetricSnapshotRow]:
+    rows = (
+        db.query(ResourceMetricSnapshot)
+        .filter(ResourceMetricSnapshot.project_id == project_id)
+        .order_by(ResourceMetricSnapshot.captured_at.desc(), ResourceMetricSnapshot.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [_snapshot_row(row) for row in reversed(rows)]

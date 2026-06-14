@@ -19,6 +19,7 @@ from src.db.models import (
     ProjectDeveloper,
     ProjectChatMessage,
     ProjectChatSession,
+    ResourceMetricSnapshot,
     RiskFinding,
     StandardTerm,
     VectorItem,
@@ -37,6 +38,7 @@ class ProjectDeleteImpact:
     implementation_status_count: int = 0
     risk_finding_count: int = 0
     code_review_count: int = 0
+    resource_metric_snapshot_count: int = 0
     chat_session_count: int = 0
     chat_message_count: int = 0
     document_chunk_count: int = 0
@@ -56,6 +58,7 @@ class ProjectDeleteImpact:
             + self.implementation_status_count
             + self.risk_finding_count
             + self.code_review_count
+            + self.resource_metric_snapshot_count
             + self.chat_session_count
             + self.chat_message_count
             + self.document_chunk_count
@@ -128,6 +131,9 @@ def get_project_delete_impact(db: Session, project_id: int) -> ProjectDeleteImpa
         ),
         risk_finding_count=db.query(RiskFinding).filter(RiskFinding.project_id == project_id).count(),
         code_review_count=db.query(CodeReviewResult).filter(CodeReviewResult.project_id == project_id).count(),
+        resource_metric_snapshot_count=(
+            db.query(ResourceMetricSnapshot).filter(ResourceMetricSnapshot.project_id == project_id).count()
+        ),
         chat_session_count=db.query(ProjectChatSession).filter(ProjectChatSession.project_id == project_id).count(),
         chat_message_count=(
             db.query(ProjectChatMessage)
@@ -175,6 +181,9 @@ def delete_project(db: Session, project_id: int) -> ProjectDeleteImpact | None:
 
     db.query(RiskFinding).filter(RiskFinding.project_id == project_id).delete(synchronize_session=False)
     db.query(CodeReviewResult).filter(CodeReviewResult.project_id == project_id).delete(synchronize_session=False)
+    db.query(ResourceMetricSnapshot).filter(ResourceMetricSnapshot.project_id == project_id).delete(
+        synchronize_session=False
+    )
     db.query(ProjectChatSession).filter(ProjectChatSession.project_id == project_id).delete(synchronize_session=False)
     db.query(DocumentChunk).filter(DocumentChunk.project_id == project_id).delete(synchronize_session=False)
     db.query(StandardTerm).filter(StandardTerm.project_id == project_id).delete(synchronize_session=False)

@@ -5,8 +5,22 @@ from datetime import date, datetime, timedelta, timezone
 
 from src.db.database import SessionLocal
 from src.db.init_db import init_db
-from src.db.models import CodeReviewResult, CommitFile, Developer, GitCommit, Program, ProgramCommitMapping, Project, RiskFinding
-from src.services.resource_metrics_service import get_resource_metrics_summary
+from src.db.models import (
+    CodeReviewResult,
+    CommitFile,
+    Developer,
+    GitCommit,
+    Program,
+    ProgramCommitMapping,
+    Project,
+    ResourceMetricSnapshot,
+    RiskFinding,
+)
+from src.services.resource_metrics_service import (
+    get_resource_metric_snapshots,
+    get_resource_metrics_summary,
+    save_resource_metric_snapshot,
+)
 from src.services.risk_service import RISK_FORECAST_DELAY, run_risk_analysis
 
 
@@ -15,6 +29,7 @@ def _unique(prefix: str) -> str:
 
 
 def _cleanup_project_graph(db, project_id: int, developer_pk: int | None = None) -> None:
+    db.query(ResourceMetricSnapshot).filter(ResourceMetricSnapshot.project_id == project_id).delete(synchronize_session=False)
     db.query(CodeReviewResult).filter(CodeReviewResult.project_id == project_id).delete(synchronize_session=False)
     db.query(RiskFinding).filter(RiskFinding.project_id == project_id).delete(synchronize_session=False)
     db.query(Project).filter(Project.id == project_id).delete(synchronize_session=False)
@@ -207,6 +222,100 @@ def test_resource_metrics_summary_handles_empty_project():
             assert summary.business_value.estimated_extra_mm_avoidance == 0.0
         finally:
             _cleanup_project_graph(db, project.id)
+
+
+def test_resource_metric_snapshots_persist_current_kpis_in_chronological_order():
+    init_db()
+    with SessionLocal() as db:
+        developer = Developer(
+            developer_key=_unique("snapshot-key"),
+            developer_id=_unique("snapshot-id"),
+            developer_name="Snapshot Owner",
+            email=f"{uuid.uuid4()}@example.local",
+        )
+        project = Project(name=_unique("snapshot-project"), git_repo_path=None)
+        db.add_all([developer, project])
+        db.flush()
+
+        program = Program(
+            project_id=project.id,
+            program_id=_unique("P-S"),
+            program_name="Snapshot Program",
+            developer_id=developer.developer_id,
+            developer=developer.developer_name,
+            status="진행중",
+            progress_rate=90,
+            planned_start_date=date.today() - timedelta(days=40),
+            planned_end_date=date.today() + timedelta(days=5),
+        )
+        commit = GitCommit(
+            project_id=project.id,
+            commit_hash=uuid.uuid4().hex,
+            message="Partial snapshot implementation",
+            author_name="Snapshot Owner",
+            committed_at=datetime.now(timezone.utc),
+        )
+        db.add_all([program, commit])
+        db.flush()
+        db.add_all(
+            [
+                CommitFile(
+                    commit_id=commit.id,
+                    git_commit_id=commit.id,
+                    file_path="src/snapshot/SnapshotService.java",
+                    change_type="Modified",
+                    diff_text="+partial\n-old",
+                ),
+                ProgramCommitMapping(
+                    program_id=program.id,
+                    commit_id=commit.id,
+                    relevance_score=80,
+                    is_related=True,
+                    implementation_status="일부구현",
+                    reason="partial",
+                ),
+                RiskFinding(
+                    project_id=project.id,
+                    program_id=program.id,
+                    risk_type="PROGRESS_GAP",
+                    risk_level="HIGH",
+                    title="gap",
+                    resolved_yn="N",
+                ),
+                CodeReviewResult(
+                    project_id=project.id,
+                    target_type="commit",
+                    target_ref=commit.commit_hash,
+                    status="completed",
+                ),
+            ]
+        )
+        db.commit()
+
+        try:
+            first = save_resource_metric_snapshot(db, project.id, "baseline")
+            second = save_resource_metric_snapshot(db, project.id, "after review")
+            rows = get_resource_metric_snapshots(db, project.id, limit=5)
+
+            assert [row.id for row in rows] == [first.id, second.id]
+            assert rows[0].snapshot_label == "baseline"
+            assert rows[1].snapshot_label == "after review"
+            assert rows[0].unresolved_risk_count == 1
+            assert rows[0].high_risk_count == 1
+            assert rows[0].forecasted_delay_program_count == 1
+            assert rows[0].ai_code_review_count == 1
+            assert rows[0].estimated_review_hours_saved == 0.5
+            assert rows[0].average_workload_score > 0
+            assert rows[0].average_difficulty_score > 0
+            assert rows[0].developer_count == 1
+            assert rows[0].program_count == 1
+
+            stored = db.get(ResourceMetricSnapshot, first.id)
+            assert stored is not None
+            assert stored.raw_summary["business_value"]["high_risk_count"] == 1
+            assert stored.raw_summary["program_metrics"][0]["forecast_end_date"]
+        finally:
+            _cleanup_project_graph(db, project.id, developer.id)
 
 
 def test_risk_analysis_records_forecast_delay_risk():
