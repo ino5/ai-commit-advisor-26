@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### Sidebar 접이식 그룹 정리
+
+- 사이드바의 업무 그룹을 항상 펼쳐진 목록 대신 `st.expander` 기반 접이식 그룹으로 바꿨습니다.
+- 현재 위치의 그룹만 기본으로 펼쳐지게 해 일반 데스크톱 높이에서 하단 메뉴를 찾기 위한 스크롤 부담을 줄였습니다.
+- 기존 sidebar group label CSS를 제거하고 expander summary 스타일을 맞췄습니다.
+- feature guide, Application Preview, architecture 설명을 접이식 sidebar 그룹 기준으로 갱신했습니다.
+- 주요 파일: `app.py`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/architecture.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile app.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 109개 테스트 통과; Browser에서 `개요` 그룹 기본 펼침, `분석 실행` 그룹 수동 펼침, `Project Chat` 이동 후 `분석 실행` 그룹 기본 펼침 확인; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### Home 요약 우선순위 정리
 
 - Home 화면에서 현재 프로젝트 KPI를 분석 상태 표보다 먼저 표시하도록 렌더링 순서를 바꿨습니다.

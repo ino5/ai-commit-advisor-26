@@ -105,19 +105,21 @@ def _inject_sidebar_styles() -> None:
             font-size: 0.86rem;
             line-height: 1.35;
         }
-        section[data-testid="stSidebar"] .nav-group {
-            color: #64748b;
-            font-size: 0.9rem;
-            font-weight: 700;
-            letter-spacing: 0;
-            margin: 0.8rem 0 0.18rem 0;
-        }
         section[data-testid="stSidebar"] .nav-current {
             border-top: 1px solid rgba(49, 51, 63, 0.14);
             color: #475569;
             font-size: 0.82rem;
             margin-top: 0.85rem;
             padding-top: 0.7rem;
+        }
+        section[data-testid="stSidebar"] details {
+            margin: 0.35rem 0;
+        }
+        section[data-testid="stSidebar"] details summary p {
+            color: #475569;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 0;
         }
         </style>
         """,
@@ -151,14 +153,14 @@ def _render_sidebar_navigation() -> tuple[str, str, Callable[[], None]]:
     st.sidebar.caption(f"{state['group']} / {state['page']}")
 
     for group, pages in PAGE_GROUPS.items():
-        st.sidebar.markdown(f'<div class="nav-group">{group}</div>', unsafe_allow_html=True)
-        for page_name in pages:
-            is_active = group == state["group"] and page_name == state["page"]
-            if st.sidebar.button(page_name, key=f"nav_{group}_{page_name}", use_container_width=True):
-                if is_active:
-                    continue
-                _select_page(group, page_name)
-                st.rerun()
+        with st.sidebar.expander(group, expanded=group == state["group"]):
+            for page_name in pages:
+                is_active = group == state["group"] and page_name == state["page"]
+                if st.button(page_name, key=f"nav_{group}_{page_name}", use_container_width=True):
+                    if is_active:
+                        continue
+                    _select_page(group, page_name)
+                    st.rerun()
 
     selected_group = st.session_state[NAV_STATE_KEY]["group"]
     selected_page = st.session_state[NAV_STATE_KEY]["page"]

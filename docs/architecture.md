@@ -683,6 +683,7 @@ LLM 출력 예시:
 - 각 메뉴 항목은 `src/ui/*_page.py`의 render 함수로 연결된다.
 - 사이드바에서 현재 프로젝트를 한 번 선택하고, 프로젝트 단위 화면은 `src/ui/project_context.py`를 통해 같은 프로젝트 컨텍스트를 사용한다.
 - 현재 프로젝트 ID는 Streamlit session state와 URL `project_id` query parameter에 함께 저장해 새로고침이나 공유 URL에서도 같은 프로젝트를 복원한다.
+- 사이드바 메뉴 그룹은 접이식 section으로 렌더링하고, 현재 위치의 그룹만 기본으로 펼친다.
 
 주요 메뉴 그룹:
 

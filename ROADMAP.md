@@ -82,7 +82,8 @@
 | P2 | UX / Analysis Views | User-facing analysis display cleanup | Done | 분석 화면 표시 정리 | 32efaa0 |
 | P2 | UX / Action State | Completed-state action priority cleanup | Done | 완료 상태 액션 우선순위 정리 | 423be58 |
 | P2 | UX / Data Flow | Program management project flow cleanup | Done | 프로그램 관리 현재 프로젝트 저장 흐름 정리 | 987a799 |
-| P2 | Home UX | Home summary priority cleanup | Done | Home 요약 우선순위 정리 |  |
+| P2 | Home UX | Home summary priority cleanup | Done | Home 요약 우선순위 정리 | e38f0e9 |
+| P2 | Navigation UX | Sidebar group collapse cleanup | Done | Sidebar 접이식 그룹 정리 |  |
 
 ## Candidate Tasks
 
@@ -93,6 +94,25 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P2 | UX / State | Project-scoped UI state namespacing | The global project selector changes the data context, but Streamlit widget values with stable keys can remain in `st.session_state` across projects. Text search reuse can be useful, but project-specific selections such as program, commit, mapping, or filter state can feel stale or misleading after switching projects. | Keep intentional global state small (`current_project_id`, sidebar navigation). For project-dependent UI state, include `project_id` in widget keys or provide a shared helper for project-scoped keys. Avoid clearing all inputs blindly because cross-project keyword comparison can be useful. | Review RAG search, Mapping filters, Program Detail filters, Commit Impact filters, and any selected row/commit/program widgets before implementation. |
 | P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - Sidebar Group Collapse Cleanup
+
+Status: Done
+
+Goal:
+Reduce sidebar scrolling by rendering workflow menu groups as collapsible sections, with the current group expanded by default.
+
+Rationale:
+The sidebar now contains enough project, artifact, analysis, and management pages that listing every group and child page at once pushes lower navigation below ordinary desktop viewports. Collapsible groups keep the workflow structure while making the current task area easier to scan.
+
+Checklist:
+
+- [x] Render sidebar menu groups as expanders.
+- [x] Expand the current group by default and keep page selection behavior unchanged.
+- [x] Remove obsolete sidebar group CSS.
+- [x] Update user-facing and architecture documentation.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile/tests and Browser rendering verification.
 
 ## P2 - Home Summary Priority Cleanup
 
