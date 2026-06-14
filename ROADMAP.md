@@ -72,7 +72,7 @@
 | P2 | Docs / Verification | Sample project usage guide verification evidence | Done | 샘플 프로젝트 사용 가이드 실제 검증 결과 추가 | 60dd622 |
 | P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety |  |
 | P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 | 8f4ad22 |
-| P2 | Code Review UX | AI Code Review server repository target wording | Done | AI Code Review 서버 저장소 대상 설명 정리 |  |
+| P2 | Code Review UX | AI Code Review server repository target wording | Done | AI Code Review 서버 저장소 대상 설명 정리 | 1023c11 |
 
 ## Candidate Tasks
 
