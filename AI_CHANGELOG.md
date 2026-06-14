@@ -5,11 +5,11 @@
 ### 아키텍처 큰 흐름 다이어그램 보강
 
 - `docs/architecture.md` 상단에 사용자가 흔히 기대하는 큰 박스/화살표 중심의 전체 흐름 다이어그램을 추가했습니다.
-- 첫 다이어그램을 처음 보는 사람용 최상위 구조도로 재정리해 사용자 영역, 우리 프로젝트, 분석 대상과 입력, 저장소와 AI 분석 계층, 사용자가 보는 결과의 다섯 덩어리만 먼저 보이게 했습니다.
+- 첫 다이어그램을 처음 보는 사람용 최상위 구조도로 재정리하고, `Python App: AI Commit Advisor` 내부를 화면단, 백단, RAG로 나눈 뒤 외부의 저장소, 분석 대상 프로젝트, AI Provider와 어떻게 연결되는지 보이게 했습니다.
 - `ai-commit-advisor` 프로젝트, 분석 대상 프로젝트, GitHub/사내 Git 원격 저장소, 앱 서버 clone, RAG layer가 어떻게 연결되는지 별도 다이어그램으로 보강했습니다.
 - 상세 서비스/ERD 다이어그램은 기존 구조를 유지하고, 빠른 이해용 요약 섹션만 앞에 추가했습니다.
 - 주요 파일: `docs/architecture.md`, `AI_CHANGELOG.md`.
-- 검증: `rg -n "한 장으로 보는 큰 구조|사용자 영역|우리 프로젝트|분석 대상과 입력|저장소와 AI 분석 계층|사용자가 보는 결과" docs\architecture.md AI_CHANGELOG.md` 통과; `git diff --check` 통과.
+- 검증: `rg -n "Python App: AI Commit Advisor|화면단|백단|저장소|분석 대상 프로젝트|AI Provider" docs\architecture.md AI_CHANGELOG.md` 통과; `git diff --check` 통과.
 
 ### Activation 없는 Quick Start 정리
 

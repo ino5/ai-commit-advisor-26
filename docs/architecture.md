@@ -2,58 +2,58 @@
 
 이 문서는 `ai-commit-advisor` 프로젝트 작성자가 전체 구조와 처리 흐름을 빠르게 이해할 수 있도록 정리한 아키텍처 문서입니다.
 
-## 0. 한 장으로 보는 큰 구조
+## 0. Architecture at a glance
 
-AI Commit Advisor는 사용자가 보는 Streamlit 앱을 중심으로, 업무 산출물과 대상 프로젝트 Git 저장소를 모아 DB/RAG/LLM 분석을 수행하고 결과 화면으로 돌려주는 구조입니다. 처음 볼 때는 아래 다섯 덩어리만 잡으면 됩니다.
+AI Commit Advisor는 Streamlit 앱을 중심으로 업무 산출물과 대상 프로젝트 Git 저장소를 모으고, DB/RAG/LLM 계층을 거쳐 분석 결과를 보여주는 구조입니다. 처음 볼 때는 아래 다섯 영역만 잡으면 됩니다.
 
 ```mermaid
 flowchart TB
-    subgraph People["사용자 영역"]
-        User["관리자 / PL / 개발 리더<br/>브라우저로 접속"]
+    User["관리자 / PL / 개발 리더<br/>Browser"]
+
+    subgraph PythonApp["Python App: AI Commit Advisor"]
+        UI["화면단<br/>Streamlit pages<br/>Home / Mapping / RAG / Project Chat"]
+        Services["백단<br/>Python services<br/>Git sync / Mapping / Risk / Code Review"]
+        RAG["RAG<br/>chunking / embedding / retrieval"]
+
+        UI --> Services
+        Services --> RAG
     end
 
-    subgraph AppArea["우리 프로젝트"]
-        App["AI Commit Advisor<br/>Streamlit UI + Python services"]
+    subgraph Storage["저장소"]
+        DB[(PostgreSQL + pgvector<br/>업무 데이터 / Git 데이터 / vector / 분석 결과)]
     end
 
-    subgraph Inputs["분석 대상과 입력"]
+    subgraph TargetProject["분석 대상 프로젝트"]
+        RemoteGit["GitHub 또는 사내 Git<br/>원격 저장소"]
+        ServerClone["app-server clone<br/>projects.git_repo_path"]
         Artifacts["업무 산출물<br/>프로그램 / 개발계획 / 개발자 / 표준용어"]
-        Target["대상 프로젝트 Git<br/>GitHub 또는 사내 Git<br/>앱 서버 clone"]
+
+        RemoteGit --> ServerClone
     end
 
-    subgraph Intelligence["저장소와 AI 분석 계층"]
-        DB[(PostgreSQL + pgvector<br/>업무 데이터 / Git 데이터 / 분석 결과)]
-        Rag["RAG<br/>source / commit / diff chunk<br/>embedding / retrieval"]
+    subgraph AIProvider["AI Provider"]
         LLM["LLM / Embedding provider<br/>Mock / LM Studio / OpenAI-compatible API"]
     end
 
-    subgraph Output["사용자가 보는 결과"]
-        Result["Home / Dashboard / Mapping<br/>Risk / AI Progress / Code Review<br/>RAG Search / Project Chat"]
-    end
-
-    User --> App
-    App --> Artifacts
-    App --> Target
-    Artifacts --> DB
-    Target --> DB
-    Target --> Rag
-    DB <--> Rag
-    Rag <--> LLM
-    App <--> DB
-    App <--> LLM
-    DB --> Result
-    LLM --> Result
-    Result --> User
+    User --> UI
+    UI --> User
+    Services --> ServerClone
+    ServerClone --> Services
+    Services --> Artifacts
+    Artifacts --> Services
+    Services <--> DB
+    RAG <--> DB
+    Services <--> LLM
+    RAG <--> LLM
 ```
 
 큰 구조는 다음처럼 읽으면 됩니다.
 
-- 사용자는 브라우저에서 `AI Commit Advisor` 화면만 사용합니다.
-- 우리 앱은 업무 산출물과 대상 프로젝트 Git 저장소를 같은 프로젝트 기준으로 묶습니다.
-- DB는 업로드 데이터, Git 수집 데이터, RAG vector, 분석 결과를 저장하는 중심 저장소입니다.
-- RAG는 대상 프로젝트 source/commit/diff를 검색 가능한 근거로 바꿉니다.
-- LLM/Embedding provider는 매핑, 리스크 근거, 코드 리뷰, Project Chat 답변에 필요한 판단과 embedding을 제공합니다.
-- 결과 화면은 저장된 데이터와 AI 분석 결과를 업무 검토용으로 보여줍니다.
+- 사용자는 브라우저에서 Python App의 `화면단`을 사용합니다.
+- `화면단`은 Streamlit page 묶음이고, 실제 수집·분석·저장은 `백단` Python service가 처리합니다.
+- `분석 대상 프로젝트`는 이 앱이 분석하는 별도 업무 시스템입니다. GitHub/사내 Git에서 앱 서버 clone으로 내려온 source와 업무 산출물이 입력이 됩니다.
+- `저장소`는 PostgreSQL + pgvector이며, 업무 데이터, Git 수집 데이터, RAG vector, 분석 결과를 보관합니다.
+- `AI Provider`는 LLM 판단과 embedding 생성을 담당하고, 백단 service와 RAG가 필요할 때 호출합니다.
 
 ## 0.1 우리 프로젝트와 대상 프로젝트의 관계
 
