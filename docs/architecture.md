@@ -124,6 +124,7 @@ flowchart TB
     DashboardUI --> DeveloperService["developer_service.py"]
     DashboardUI --> ProgramAnalysisService["program_analysis_service.py"]
     DashboardUI --> ResourceMetricsService["resource_metrics_service.py"]
+    DashboardUI --> ResourceRadarService["ai_resource_radar_service.py"]
 
     MappingService --> LLMClient["llm_client.py"]
     MappingFeedbackService --> DB
@@ -159,6 +160,9 @@ flowchart TB
     DeveloperService --> DB
     ProgramAnalysisService --> DB
     ResourceMetricsService --> DB
+    ResourceRadarService --> ResourceMetricsService
+    ResourceRadarService --> LLMClient
+    ResourceRadarService --> DB
     ImplementationAnalyzer --> DB
     VectorStore --> DB
 
@@ -207,7 +211,7 @@ flowchart LR
 - `Git History`: 현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff를 조회.
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
 - `AI Code Review`: 앱 서버 Git 저장소의 최근 커밋과 특정 커밋을 중심으로 LLM 리뷰를 실행하고 결과를 저장. 서버 clone에 local 변경이 남아 있을 때만 서버 작업트리/staged 변경 리뷰를 보조 옵션으로 사용.
-- `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, 개발자별 업무량·난이도, 예상 지연 프로그램, 고객가치 참고 지표 표시.
+- `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, AI Resource Radar, PL Briefing, 개발자별 업무량·난이도, 예상 지연 프로그램, 고객가치 참고 지표 표시.
 - `개발계획 대시보드`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
 - `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
@@ -483,6 +487,7 @@ erDiagram
 | `commit_impact_service.py` | 특정 커밋이 영향을 줄 가능성이 있는 프로그램, 파일, 개발자 범위를 계산한다. |
 | `code_review_service.py` | 앱 서버 Git 저장소의 최근 커밋, 특정 커밋 diff를 중심으로 LLM 리뷰를 실행하고 `code_review_results`에 저장한다. 서버 clone local 변경 점검용으로 working tree/staged diff 리뷰도 지원한다. |
 | `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 고객가치 참고 지표를 계산하고, 사용자가 요청한 기준 시점 snapshot을 저장/조회한다. |
+| `ai_resource_radar_service.py` | AX 자원관리 Radar. `resource_metrics_service.py` 결과와 미해결 리스크, 관련 commit evidence를 조합해 PL 우선 검토 프로그램을 랭킹하고, LLM 또는 fallback으로 PL Briefing을 생성한다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
 | `vector_store.py` | embedding 저장, 중복 방지, embedding 실패 기록, pgvector cosine 검색. |
@@ -650,7 +655,7 @@ LLM 출력 예시:
 - Commit Impact 분석.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
-- Dashboard 자원관리 지표: 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, 고객가치 참고 지표 표시, 수동 snapshot 저장과 추세 분석.
+- Dashboard 자원관리 지표: AI Resource Radar와 PL Briefing, 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, 고객가치 참고 지표 표시, 수동 snapshot 저장과 추세 분석.
 - RAG chunk 생성: source_file, program, commit, commit_file.
 - mock/openai/local embedding client 구조.
 - pgvector vector 저장 및 cosine 검색.
@@ -747,6 +752,7 @@ LLM 출력 예시:
 | `src/services/commit_impact_service.py` | `list_commit_options`, `get_commit_impact_analysis` |
 | `src/services/code_review_service.py` | `get_review_target`, `CodeReviewService.review_project`, `get_recent_code_reviews` |
 | `src/services/resource_metrics_service.py` | `get_resource_metrics_summary` |
+| `src/services/ai_resource_radar_service.py` | `build_ai_resource_radar`, `generate_pl_briefing` |
 | `src/rag/chunker.py` | `build_project_chunks` |
 | `src/rag/embedding_client.py` | `EmbeddingClient.embed_text` |
 | `src/rag/vector_store.py` | `embed_missing_chunks`, `search_similar` |

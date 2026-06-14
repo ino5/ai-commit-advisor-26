@@ -317,6 +317,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
         required_texts=(
             "Dashboard",
             "프로젝트 현황",
+            "AI Resource Radar",
             "최근 분석 결과",
             "개발자 Git 활동",
         ),
@@ -331,6 +332,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
         required_texts=(
             "Dashboard",
             "프로젝트 현황",
+            "AI Resource Radar",
             "자원관리 지표",
             "예상 지연 프로그램",
             "개발자별 부하",

@@ -21,6 +21,7 @@ from src.services.resource_metrics_service import (
     get_resource_metrics_summary,
     save_resource_metric_snapshot,
 )
+from src.services.ai_resource_radar_service import build_ai_resource_radar, generate_pl_briefing
 from src.services.risk_service import RISK_FORECAST_DELAY, run_risk_analysis
 
 
@@ -204,6 +205,160 @@ def test_resource_metrics_summary_aggregates_workload_difficulty_and_value_kpis(
             assert "PoC" not in summary.business_value.assumption
         finally:
             _cleanup_project_graph(db, project.id, developer.id)
+
+
+def test_ai_resource_radar_ranks_risky_program_and_generates_briefing():
+    init_db()
+    with SessionLocal() as db:
+        developer = Developer(
+            developer_key=_unique("radar-key"),
+            developer_id=_unique("radar-id"),
+            developer_name="Radar Owner",
+            email=f"{uuid.uuid4()}@example.local",
+        )
+        project = Project(name=_unique("radar-project"), git_repo_path=None)
+        db.add_all([developer, project])
+        db.flush()
+
+        risky_program = Program(
+            project_id=project.id,
+            program_id=_unique("P-R"),
+            program_name="Radar Risk Program",
+            developer_id=developer.developer_id,
+            developer=developer.developer_name,
+            status="진행중",
+            progress_rate=90,
+            planned_start_date=date.today() - timedelta(days=40),
+            planned_end_date=date.today() + timedelta(days=5),
+        )
+        normal_program = Program(
+            project_id=project.id,
+            program_id=_unique("P-N"),
+            program_name="Radar Normal Program",
+            developer_id=developer.developer_id,
+            developer=developer.developer_name,
+            status="완료",
+            progress_rate=100,
+            planned_start_date=date.today() - timedelta(days=20),
+            planned_end_date=date.today() + timedelta(days=10),
+        )
+        commit = GitCommit(
+            project_id=project.id,
+            commit_hash=uuid.uuid4().hex,
+            message="Partial risky radar implementation",
+            author_name="Radar Owner",
+            committed_at=datetime.now(timezone.utc),
+        )
+        db.add_all([risky_program, normal_program, commit])
+        db.flush()
+        db.add_all(
+            [
+                CommitFile(
+                    commit_id=commit.id,
+                    git_commit_id=commit.id,
+                    file_path="src/radar/RadarService.java",
+                    change_type="Modified",
+                    diff_text="+partial\n-risk\n+branch",
+                ),
+                ProgramCommitMapping(
+                    program_id=risky_program.id,
+                    commit_id=commit.id,
+                    relevance_score=85,
+                    is_related=True,
+                    implementation_status="일부구현",
+                    reason="partial risky work",
+                ),
+                RiskFinding(
+                    project_id=project.id,
+                    program_id=risky_program.id,
+                    risk_type="PROGRESS_GAP",
+                    risk_level="HIGH",
+                    title="gap",
+                    resolved_yn="N",
+                ),
+            ]
+        )
+        db.commit()
+
+        try:
+            summary = get_resource_metrics_summary(db, project.id)
+            radar = build_ai_resource_radar(db, summary, limit=2)
+
+            assert radar.items
+            assert radar.items[0].program_name == "Radar Risk Program"
+            assert radar.items[0].priority_level == "HIGH"
+            assert any("HIGH 리스크" in reason for reason in radar.items[0].reasons)
+            assert radar.items[0].related_commits
+
+            class MockLLM:
+                provider = "mock"
+
+            briefing = generate_pl_briefing(radar, MockLLM())
+
+            assert briefing.provider == "mock"
+            assert briefing.used_llm is False
+            assert "Radar Risk Program" in briefing.text
+            assert "회의 질문" in briefing.text
+        finally:
+            _cleanup_project_graph(db, project.id, developer.id)
+
+
+def test_pl_briefing_uses_configured_llm_when_available():
+    class FakeResponse:
+        text = "LLM briefing text"
+        raw = {"provider": "fake"}
+
+    class FakeLLM:
+        provider = "local_openai"
+
+        def __init__(self):
+            self.prompt = ""
+
+        def generate(self, prompt: str):
+            self.prompt = prompt
+            return FakeResponse()
+
+    init_db()
+    with SessionLocal() as db:
+        project = Project(name=_unique("briefing-project"), git_repo_path=None)
+        db.add(project)
+        db.flush()
+        program = Program(
+            project_id=project.id,
+            program_id=_unique("P-BR"),
+            program_name="Briefing Program",
+            developer="Briefing Owner",
+            status="진행중",
+            progress_rate=80,
+            planned_start_date=date.today() - timedelta(days=20),
+            planned_end_date=date.today() + timedelta(days=5),
+        )
+        db.add(program)
+        db.flush()
+        db.add(
+            RiskFinding(
+                project_id=project.id,
+                program_id=program.id,
+                risk_type="NO_COMMITS",
+                risk_level="HIGH",
+                title="no commits",
+                resolved_yn="N",
+            )
+        )
+        db.commit()
+
+        try:
+            summary = get_resource_metrics_summary(db, project.id)
+            radar = build_ai_resource_radar(db, summary)
+            fake_llm = FakeLLM()
+            briefing = generate_pl_briefing(radar, fake_llm)
+
+            assert briefing.used_llm is True
+            assert briefing.provider == "local_openai"
+            assert briefing.text == "LLM briefing text"
+            assert "Briefing Program" in fake_llm.prompt
+        finally:
+            _cleanup_project_graph(db, project.id)
 
 
 def test_resource_metrics_summary_handles_empty_project():

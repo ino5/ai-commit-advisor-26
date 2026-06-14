@@ -45,6 +45,43 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-14 - AI Resource Radar는 설명 가능한 점수와 LLM briefing을 분리한다
+
+### 배경
+
+AX Use Case에서는 AI가 프로젝트 자원관리 판단을 어떻게 돕는지가 시연에서 분명해야 합니다. 기존 Dashboard는 자원관리 지표와 리스크를 보여주지만, LLM/RAG/AI Progress 결과가 여러 화면에 흩어져 있어 "AI가 무엇을 먼저 보라고 추천하는지"가 한눈에 드러나지 않았습니다.
+
+### 결정
+
+Dashboard에 `AI Resource Radar`를 추가하되, 우선순위 점수는 HIGH risk, 예상 지연, 계획 대비 AI 진척도 차이, 난이도, cross-program commit, 관련 commit 부재, workload point 같은 설명 가능한 신호로 계산합니다. LLM은 점수를 직접 결정하지 않고, 사용자가 `PL Briefing 생성`을 누를 때 Radar evidence를 한국어 주간 점검 briefing으로 요약하는 역할만 맡깁니다. LLM provider가 `mock`이거나 호출 실패 시 deterministic fallback briefing을 보여줍니다.
+
+### 이유
+
+- PL이 먼저 볼 항목은 근거와 산식이 보여야 하므로 LLM 단독 판정보다 설명 가능한 점수가 안전합니다.
+- LLM은 회의용 요약과 확인 질문 생성에 강점이 있어, evidence 기반 briefing 생성자로 쓰는 편이 AX 시연 가치가 큽니다.
+- mock/local 환경 모두에서 Dashboard가 깨지지 않아야 하므로 fallback이 필요합니다.
+- 기존 `resource_metrics_service.py`를 재사용하면 자원관리 산식이 UI에 흩어지지 않습니다.
+
+### 검토한 대안
+
+- LLM이 전체 우선순위를 직접 산출: 시연상 AI 느낌은 강하지만 재현성, 테스트, 근거 추적이 약합니다.
+- 규칙 기반 Radar만 제공: 안정적이지만 사용자가 기대하는 생성형 AI 활용이 덜 드러납니다.
+- 별도 DB 테이블에 briefing 저장: 감사/이력에는 좋지만 첫 구현에서는 schema와 lifecycle이 커집니다. 현재는 조회 시 계산과 버튼 실행으로 시작합니다.
+
+### 영향과 tradeoff
+
+- Radar score는 의사결정 보조 신호이며 확정 일정 판단이나 개인 평가 지표가 아닙니다.
+- PL Briefing은 LLM 출력이므로 문장 품질은 provider/model에 따라 달라질 수 있습니다. 화면에는 provider와 LLM/fallback mode를 함께 보여줍니다.
+- briefing 이력 저장은 아직 제공하지 않으므로, 회의 기록으로 보존하려면 사용자가 결과를 별도 문서에 옮겨야 합니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `AI Resource Radar And PL Briefing`
+- `docs/ai-technical-overview.md`
+- `docs/feature-guide.md`
+- `docs/architecture.md`
+- `AI_CHANGELOG.md`의 `AI Resource Radar와 PL Briefing 추가`
+
 ## 2026-06-14 - 서버 저장소 clone/fetch는 인증정보 저장 없이 지원한다
 
 ### 배경

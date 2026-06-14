@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### AI Resource Radar와 PL Briefing 추가
+
+- Dashboard에 `AI Resource Radar`를 추가해 AI 매핑/진척도, 미해결 리스크, 예상 지연, 난이도, cross-program commit, 관련 commit 부재, workload 신호를 설명 가능한 우선순위 점수로 보여주게 했습니다.
+- `PL Briefing 생성` action을 추가해 Radar evidence를 LLM이 한국어 주간 점검 브리핑으로 요약하게 했고, `mock` provider나 LLM 실패 시 deterministic fallback briefing을 보여주도록 했습니다.
+- Radar와 briefing 정책을 `docs/ai-technical-overview.md`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `docs/application-preview.md`에 문서화하고 Dashboard screenshot을 갱신했습니다.
+- 주요 파일: `src/services/ai_resource_radar_service.py`, `src/ui/dashboard_page.py`, `tests/test_resource_metrics_service.py`, `scripts/capture_feature_screenshot.py`, `docs/ai-technical-overview.md`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `docs/application-preview.md`, `docs/images/features/dashboard.png`, `docs/images/features/dashboard-overview.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\ai_resource_radar_service.py src\ui\dashboard_page.py tests\test_resource_metrics_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py -q` 6개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature dashboard-overview --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --expect-text "AI Resource Radar" --expect-text "PL Briefing 생성"` 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature dashboard --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --expect-text "AI Resource Radar" --expect-text "자원관리 지표"` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 121개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 테스트 통과.
+
 ### AX AI 후보 작업 기록
 
 - `ROADMAP.md` Candidate Tasks에 `AI Resource Radar`와 `PL Briefing from AI Resource Radar` 후보를 추가했습니다.

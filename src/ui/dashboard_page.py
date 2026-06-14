@@ -11,6 +11,7 @@ from src.services.resource_metrics_service import (
     get_resource_metrics_summary,
     save_resource_metric_snapshot,
 )
+from src.services.ai_resource_radar_service import build_ai_resource_radar, generate_pl_briefing
 from src.ui.project_context import require_project_context
 
 
@@ -238,7 +239,54 @@ def _render_resource_metric_trends(project_id: int) -> None:
     )
 
 
+def _render_ai_resource_radar(project_id: int, resource_summary) -> None:
+    with SessionLocal() as db:
+        radar = build_ai_resource_radar(db, resource_summary, limit=5)
+
+    st.subheader("AI Resource Radar")
+    st.caption(radar.interpretation_note)
+    if not radar.items:
+        st.info("Radar에 표시할 프로그램 데이터가 없습니다. Git 동기화, Mapping, Risk Analysis를 먼저 실행하세요.")
+        return
+
+    radar_df = pd.DataFrame(
+        [
+            {
+                "순위": item.rank,
+                "프로그램 ID": item.program_id or "-",
+                "프로그램명": item.program_name,
+                "우선도": item.priority_level,
+                "점수": item.priority_score,
+                "담당자": item.developer,
+                "주요 이유": ", ".join(item.reasons),
+                "권장 액션": item.recommended_action,
+            }
+            for item in radar.items
+        ]
+    )
+    st.dataframe(radar_df, use_container_width=True, hide_index=True)
+
+    with st.expander("Radar 근거 상세", expanded=False):
+        for item in radar.items:
+            st.markdown(f"**{item.rank}. {item.program_name} - {item.priority_score}점**")
+            evidence_df = pd.DataFrame([evidence.__dict__ for evidence in item.evidence])
+            st.dataframe(evidence_df.rename(columns={"label": "근거", "value": "값"}), use_container_width=True, hide_index=True)
+            if item.related_commits:
+                st.caption("관련 commit 근거")
+                st.write("\n".join(f"- {commit}" for commit in item.related_commits))
+
+    if st.button("PL Briefing 생성", key=f"generate_pl_briefing_{project_id}"):
+        with st.spinner("AI Resource Radar 근거로 PL 브리핑을 생성하는 중입니다."):
+            briefing = generate_pl_briefing(radar)
+        status = "LLM 생성" if briefing.used_llm else "규칙 기반 fallback"
+        st.caption(f"provider={briefing.provider}, mode={status}")
+        st.markdown(briefing.text)
+
+
 def _render_resource_metrics(project_id: int, resource_summary) -> None:
+    _render_ai_resource_radar(project_id, resource_summary)
+    st.divider()
+
     st.subheader("자원관리 지표")
     st.caption(resource_summary.interpretation_note)
 

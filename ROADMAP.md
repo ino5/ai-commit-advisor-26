@@ -34,6 +34,7 @@
 | P1 | Forecast / Risk | Forecasted completion and proactive delay risk | Done | 예상 종료일과 자원관리 Dashboard |
 | P1 | Resource UX | Developer workload and difficulty dashboard | Done | 예상 종료일과 자원관리 Dashboard |
 | P2 | Docs / Business Value | AX customer value KPI documentation | Done | 예상 종료일과 자원관리 Dashboard |
+| P1 | AX / AI Resource Planning | AI Resource Radar and PL Briefing | Done | AI Resource Radar와 PL Briefing 추가 |
 | P2 | Docs / AI Positioning | AI technology application summary | Done | AI 기술 적용 요약 문서화 |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 |
 | P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping |
@@ -103,8 +104,28 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters | Possible Direction | Notes |
 |---|---|---|---|---|---|
-| P1 | AX / AI Resource Planning | AI Resource Radar | AX Use Case에서 AI가 단순 화면 보조가 아니라 PL이 먼저 볼 자원 병목과 일정 위험을 추천한다는 신호가 필요합니다. | AI mapping/progress, unresolved risk, forecast delay, commit activity, diff size, touched area, developer workload를 종합해 위험 프로그램과 지원 필요 항목을 랭킹하고, 이상징후와 유사 근거 검색을 함께 보여줍니다. | LLM이 임의로 판정하기보다 설명 가능한 점수와 evidence를 먼저 만들고, embedding 기반 유사 사례 검색을 붙이면 실제 AI 기술성이 더 분명해집니다. |
-| P1 | AX / AI Briefing | PL Briefing from AI Resource Radar | 시연에서 AI 기술이 흩어진 분석 결과가 아니라 PL 회의에서 바로 읽을 수 있는 판단 보조 산출물로 보여야 합니다. | AI Resource Radar의 랭킹, Risk Analysis, AI Progress, Code Review, 유사 근거를 입력으로 받아 LLM이 이번 주 리스크 요약, 확인 질문, 권장 액션을 한국어 briefing으로 생성합니다. | LLM은 최종 판정자가 아니라 evidence 기반 설명자/요약자로 두고, 출처 링크와 근거 항목을 함께 보여줘야 합니다. |
+현재 승인 대기 중인 후보 작업은 없습니다. 새 concern이나 tradeoff를 보존해야 할 때 이 섹션에 후보 작업을 추가합니다.
+
+## P1 - AI Resource Radar And PL Briefing
+
+Status: Done
+
+Goal:
+Expose a clear AX-oriented AI decision-support surface on Dashboard by ranking resource/schedule risk signals and generating an evidence-based PL briefing.
+
+Rationale:
+The app already has LLM mapping, implementation analysis, RAG, Risk Analysis, Code Review, and resource metrics, but the AI value can look scattered across screens. A Dashboard-level AI Resource Radar should make the AI-derived project signals visible as prioritized PL actions, while PL Briefing uses an LLM to turn those evidence rows into a meeting-ready Korean summary.
+
+Checklist:
+
+- [x] Promote the two candidate ideas into one active roadmap task.
+- [x] Add an AI Resource Radar service that ranks programs from AI-derived resource/risk signals with explainable evidence.
+- [x] Add a PL Briefing generator that uses LLM when configured and has a deterministic fallback.
+- [x] Add focused tests for ranking and briefing behavior.
+- [x] Add Dashboard UI for radar items and briefing generation.
+- [x] Update AI technical overview, feature guide, Application Preview or user-facing docs as needed.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile/tests and documentation verification.
 
 ## P2 - AI Technology Application Summary
 
