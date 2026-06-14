@@ -28,6 +28,7 @@ class FeatureScenario:
     fill_value: str | None = None
     click_label: str | None = None
     button_label: str | None = None
+    button_before_tab: bool = False
     action_wait_text: str | None = None
     crop_box: tuple[int, int, int, int] | None = None
 
@@ -281,6 +282,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
             "연결",
             "ON",
             "Neo4j에 node",
+            "Neo4j 저장 확인",
             "동기화 대상 요약",
             "도메인 묶음",
             "클래스 관계도",
@@ -292,6 +294,73 @@ SCENARIOS: dict[str, FeatureScenario] = {
         description="Neo4j Knowledge Graph 동기화 완료 화면",
         button_label="Neo4j 동기화",
         action_wait_text="Neo4j에 node",
+    ),
+    "knowledge-graph-class": FeatureScenario(
+        name="knowledge-graph-class",
+        sidebar_label="Knowledge Graph",
+        wait_text="Neo4j 저장 그래프 기준",
+        required_texts=(
+            "Knowledge Graph",
+            "Neo4j에 node",
+            "클래스 관계도",
+            "Neo4j 저장 그래프 기준",
+            "PaymentService",
+            "OrderMapper",
+        ),
+        forbidden_texts=("NEO4J_ENABLED=false",),
+        default_screenshot="docs/images/features/knowledge-graph-class.png",
+        description="Neo4j Knowledge Graph 클래스 관계도 화면",
+        tab_label="클래스 관계도",
+        button_label="Neo4j 동기화",
+        button_before_tab=True,
+        action_wait_text="Neo4j 저장 확인",
+    ),
+    "knowledge-graph-impact": FeatureScenario(
+        name="knowledge-graph-impact",
+        sidebar_label="Knowledge Graph",
+        wait_text="Neo4j 저장 그래프 기준",
+        required_texts=(
+            "Knowledge Graph",
+            "Neo4j에 node",
+            "영향 경로",
+            "Neo4j 저장 그래프 기준",
+            "커밋",
+            "프로그램",
+            "파일",
+            "클래스",
+            "도메인",
+        ),
+        forbidden_texts=("NEO4J_ENABLED=false",),
+        default_screenshot="docs/images/features/knowledge-graph-impact.png",
+        description="Neo4j Knowledge Graph 영향 경로 화면",
+        tab_label="영향 경로",
+        button_label="Neo4j 동기화",
+        button_before_tab=True,
+        action_wait_text="Neo4j 저장 확인",
+    ),
+    "knowledge-graph-nodes-edges": FeatureScenario(
+        name="knowledge-graph-nodes-edges",
+        sidebar_label="Knowledge Graph",
+        wait_text="Neo4j에서 조회한 저장 상태입니다.",
+        required_texts=(
+            "Knowledge Graph",
+            "Neo4j 저장 확인",
+            "노드/엣지",
+            "Neo4j에서 조회한 저장 상태입니다.",
+            "Node",
+            "Edge",
+            "class",
+            "commit",
+            "IMPORTS_CLASS",
+            "MAPPED_TO_COMMIT",
+        ),
+        forbidden_texts=("NEO4J_ENABLED=false",),
+        default_screenshot="docs/images/features/knowledge-graph-nodes-edges.png",
+        description="Neo4j Knowledge Graph 노드/엣지 저장 상태 화면",
+        tab_label="노드/엣지",
+        button_label="Neo4j 동기화",
+        button_before_tab=True,
+        action_wait_text="Neo4j 저장 확인",
     ),
     "planning-dashboard": FeatureScenario(
         name="planning-dashboard",
@@ -825,6 +894,10 @@ def _capture_scenario(
     if scenario.sidebar_label:
         _navigate_to_sidebar_item(page, scenario.sidebar_label)
 
+    if scenario.button_label and scenario.button_before_tab:
+        page.get_by_role("button", name=scenario.button_label).click()
+        if scenario.action_wait_text:
+            _wait_for_body_text(page, scenario.action_wait_text, timeout=180_000)
     if scenario.tab_label:
         page.get_by_role("tab", name=scenario.tab_label).click()
     if scenario.fill_label and scenario.fill_value is not None:
@@ -832,9 +905,9 @@ def _capture_scenario(
         page.keyboard.press("Tab")
     if scenario.click_label:
         page.locator('[data-testid="stTabs"]').get_by_role("button", name=scenario.click_label).click()
-    if scenario.button_label:
+    if scenario.button_label and not scenario.button_before_tab:
         page.get_by_role("button", name=scenario.button_label).click()
-    if scenario.action_wait_text:
+    if scenario.action_wait_text and not scenario.button_before_tab:
         _wait_for_body_text(page, scenario.action_wait_text, timeout=180_000)
 
     _wait_for_texts(page, scenario.required_texts + extra_required_texts)

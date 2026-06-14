@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Knowledge Graph 저장 그래프 조회와 탭별 screenshot 보강
+
+- `Knowledge Graph` 화면의 클래스 관계도, 영향 경로, 노드/엣지 탭이 Neo4j에 저장된 graph read model을 우선 조회하도록 변경했습니다. 저장된 graph가 없을 때만 기존 동기화 대상 preview를 fallback으로 보여줍니다.
+- Neo4j 저장 graph에서 class import 관계와 commit-program-file-class 영향 경로를 읽는 `get_neo4j_project_preview`를 추가하고, Cypher alias 충돌로 impact path 조회가 실패하던 문제를 수정했습니다.
+- `Application Preview`에 Neo4j 연결/동기화 화면뿐 아니라 클래스 관계도, 커밋 영향 경로, 노드/엣지 저장 상태 screenshot을 각각 추가했습니다. screenshot 자동화도 `Neo4j 저장 그래프 기준`, `Neo4j에서 조회한 저장 상태입니다.`, `IMPORTS_CLASS`, `MAPPED_TO_COMMIT` 같은 실제 readback 증거를 확인하도록 강화했습니다.
+- README, 기능 가이드, AI 기술 개요, 아키텍처, 실패 이력, Application Preview 설명을 저장 graph 재조회 기준으로 갱신했습니다.
+- 주요 파일: `src/services/neo4j_graph_service.py`, `src/ui/knowledge_graph_page.py`, `tests/test_neo4j_graph_service.py`, `scripts/capture_feature_screenshot.py`, `docs/application-preview.md`, `docs/images/features/knowledge-graph.png`, `docs/images/features/knowledge-graph-class.png`, `docs/images/features/knowledge-graph-impact.png`, `docs/images/features/knowledge-graph-nodes-edges.png`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\neo4j_graph_service.py src\ui\knowledge_graph_page.py scripts\capture_feature_screenshot.py tests\test_neo4j_graph_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py tests\test_documentation_images.py -q` 5개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 130개 테스트 통과; `get_neo4j_project_preview(4)`에서 `status=completed`, class 관계 17개, 영향 경로 47개 조회 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8502 --feature knowledge-graph --surface local --height 1400 --project-name "AAA Sample Shop Rich Demo (4)" --expect-text "Neo4j 저장 확인" --expect-text "Neo4j에 node" --expect-text "연결" --expect-text "ON" --forbid-text "NEO4J_ENABLED=false"` 통과; `knowledge-graph-class`, `knowledge-graph-impact`, `knowledge-graph-nodes-edges` screenshot 캡처 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Knowledge Graph preview 증거 보강
 
 - `Application Preview`의 Knowledge Graph 설명과 screenshot을 Neo4j 미연결 preview가 아니라 실제 Neo4j 연결/동기화 완료 상태로 갱신했습니다.

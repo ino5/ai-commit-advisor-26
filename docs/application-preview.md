@@ -229,9 +229,23 @@ PL Briefing 회의 질문, 다음 action, 이력 확인
 <details>
 <summary>Knowledge Graph</summary>
 
-프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인을 Neo4j 관계 그래프로 동기화한 상태입니다. 화면 상단에서 Neo4j 연결과 사용 설정을 확인하고, `Neo4j 동기화` 실행 결과로 저장된 node/edge 수를 확인합니다. 아래 탭에서는 도메인 묶음, 클래스 관계도, 커밋-프로그램-클래스 영향 경로를 이어서 볼 수 있습니다.
+프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인을 Neo4j 관계 그래프로 동기화한 상태입니다. 화면 상단에서 Neo4j 연결과 사용 설정을 확인하고, `Neo4j 동기화` 실행 결과와 Neo4j에서 다시 조회한 저장 node/edge 수를 확인합니다. 아래 탭에서는 Neo4j에 저장된 그래프를 기준으로 클래스 관계도, 커밋-프로그램-클래스 영향 경로, node/edge 저장 상태를 이어서 볼 수 있습니다.
+
+Neo4j 연결, 동기화, 저장 확인
 
 ![Knowledge Graph](images/features/knowledge-graph.png)
+
+클래스 관계도
+
+![Knowledge Graph Class](images/features/knowledge-graph-class.png)
+
+커밋 영향 경로
+
+![Knowledge Graph Impact](images/features/knowledge-graph-impact.png)
+
+노드/엣지 저장 상태
+
+![Knowledge Graph Nodes And Edges](images/features/knowledge-graph-nodes-edges.png)
 
 </details>
 

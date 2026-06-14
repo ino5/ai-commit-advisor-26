@@ -6,8 +6,12 @@ import streamlit as st
 from src.db.database import SessionLocal
 from src.services.neo4j_graph_service import (
     GraphPayload,
+    ImpactPathRow,
+    Neo4jGraphPreview,
+    Neo4jSyncResult,
     build_project_graph_payload,
     get_neo4j_connection_status,
+    get_neo4j_project_preview,
     get_neo4j_project_summary,
     sync_project_graph_to_neo4j,
 )
@@ -34,7 +38,7 @@ def _domain_df(payload: GraphPayload) -> pd.DataFrame:
     )
 
 
-def _impact_df(payload: GraphPayload) -> pd.DataFrame:
+def _impact_rows_df(rows: list[ImpactPathRow]) -> pd.DataFrame:
     return pd.DataFrame(
         [
             {
@@ -44,13 +48,28 @@ def _impact_df(payload: GraphPayload) -> pd.DataFrame:
                 "클래스": row.class_name,
                 "도메인": row.domain,
             }
-            for row in payload.impact_rows
+            for row in rows
         ]
     )
 
 
+def _impact_df(payload: GraphPayload) -> pd.DataFrame:
+    return _impact_rows_df(payload.impact_rows)
+
+
 def _dot_escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _class_graph_dot_from_rows(rows: list[dict[str, str]], limit: int = 24) -> str:
+    rows = rows[:limit]
+    lines = ["digraph G {", '  rankdir="LR";', '  node [shape=box, style="rounded,filled", fillcolor="#eef6ff"];']
+    for row in rows:
+        source = _dot_escape(row["source"].split(".")[-1])
+        target = _dot_escape(row["target"].split(".")[-1])
+        lines.append(f'  "{source}" -> "{target}";')
+    lines.append("}")
+    return "\n".join(lines)
 
 
 def _class_graph_dot(payload: GraphPayload, limit: int = 24) -> str:
@@ -65,13 +84,7 @@ def _class_graph_dot(payload: GraphPayload, limit: int = 24) -> str:
         labels = {node.node_id: node.label for node in payload.nodes}
         rows = [{"source": labels.get(edge.from_node_id, edge.from_node_id), "target": labels.get(edge.to_node_id, edge.to_node_id)} for edge in class_edges]
 
-    lines = ["digraph G {", '  rankdir="LR";', '  node [shape=box, style="rounded,filled", fillcolor="#eef6ff"];']
-    for row in rows:
-        source = _dot_escape(row["source"].split(".")[-1])
-        target = _dot_escape(row["target"].split(".")[-1])
-        lines.append(f'  "{source}" -> "{target}";')
-    lines.append("}")
-    return "\n".join(lines)
+    return _class_graph_dot_from_rows(rows)
 
 
 def _render_sync_result(result) -> None:
@@ -87,6 +100,31 @@ def _render_sync_result(result) -> None:
         st.dataframe(_counter_df(result.edge_counts), hide_index=True, use_container_width=True)
     for error in result.errors:
         st.warning(error)
+
+
+def _render_neo4j_saved_summary(project_id: int) -> Neo4jSyncResult:
+    summary = get_neo4j_project_summary(project_id)
+    if summary.status != "completed":
+        _render_sync_result(summary)
+        return summary
+
+    st.success(f"Neo4j 저장 확인: node {summary.node_count}개, edge {summary.edge_count}개를 조회했습니다.")
+    left, right = st.columns(2)
+    left.markdown("##### Neo4j 저장 Node")
+    left.dataframe(_counter_df(summary.node_counts), hide_index=True, use_container_width=True)
+    right.markdown("##### Neo4j 저장 Edge")
+    right.dataframe(_counter_df(summary.edge_counts), hide_index=True, use_container_width=True)
+    return summary
+
+
+def _read_neo4j_preview(status_connected: bool, project_id: int) -> tuple[Neo4jSyncResult | None, Neo4jGraphPreview | None]:
+    if not status_connected:
+        return None, None
+    return get_neo4j_project_summary(project_id), get_neo4j_project_preview(project_id)
+
+
+def _uses_saved_graph(preview: Neo4jGraphPreview | None, rows: list) -> bool:
+    return bool(preview and preview.status == "completed" and rows)
 
 
 def render_knowledge_graph_page() -> None:
@@ -123,8 +161,16 @@ def render_knowledge_graph_page() -> None:
         with SessionLocal() as db:
             result = sync_project_graph_to_neo4j(db, context.project_id)
         _render_sync_result(result)
+        if result.status == "completed":
+            _render_neo4j_saved_summary(context.project_id)
     if action_cols[1].button("Neo4j 저장 상태 조회", use_container_width=True):
-        _render_sync_result(get_neo4j_project_summary(context.project_id))
+        _render_neo4j_saved_summary(context.project_id)
+
+    neo4j_summary, neo4j_preview = _read_neo4j_preview(status.connected, context.project_id)
+    if neo4j_preview and neo4j_preview.status == "failed":
+        st.warning(neo4j_preview.summary)
+        for error in neo4j_preview.errors:
+            st.warning(error)
 
     if payload.errors:
         with st.expander("동기화 준비 경고", expanded=True):
@@ -135,16 +181,39 @@ def render_knowledge_graph_page() -> None:
     with domain_tab:
         st.dataframe(_domain_df(payload), hide_index=True, use_container_width=True)
     with class_tab:
-        st.graphviz_chart(_class_graph_dot(payload), use_container_width=True)
-        if payload.class_import_rows:
+        neo4j_class_rows = neo4j_preview.class_import_rows if neo4j_preview else []
+        if _uses_saved_graph(neo4j_preview, neo4j_class_rows):
+            st.caption("Neo4j 저장 그래프 기준")
+            st.graphviz_chart(_class_graph_dot_from_rows(neo4j_class_rows), use_container_width=True)
+            st.dataframe(pd.DataFrame(neo4j_class_rows), hide_index=True, use_container_width=True)
+        elif payload.class_import_rows:
+            st.caption("동기화 대상 preview 기준")
+            st.graphviz_chart(_class_graph_dot(payload), use_container_width=True)
             st.dataframe(pd.DataFrame(payload.class_import_rows), hide_index=True, use_container_width=True)
         else:
+            st.caption("동기화 대상 preview 기준")
+            st.graphviz_chart(_class_graph_dot(payload), use_container_width=True)
             st.info("프로젝트 내부 import 관계가 아직 충분히 추출되지 않아 파일-클래스 관계를 표시했습니다.")
     with impact_tab:
-        st.dataframe(_impact_df(payload), hide_index=True, use_container_width=True)
+        neo4j_impact_rows = neo4j_preview.impact_rows if neo4j_preview else []
+        if _uses_saved_graph(neo4j_preview, neo4j_impact_rows):
+            st.caption("Neo4j 저장 그래프 기준")
+            st.dataframe(_impact_rows_df(neo4j_impact_rows), hide_index=True, use_container_width=True)
+        else:
+            st.caption("동기화 대상 preview 기준")
+            st.dataframe(_impact_df(payload), hide_index=True, use_container_width=True)
     with count_tab:
-        left, right = st.columns(2)
-        left.markdown("##### Node")
-        left.dataframe(_counter_df(payload.node_counts), hide_index=True, use_container_width=True)
-        right.markdown("##### Edge")
-        right.dataframe(_counter_df(payload.edge_counts), hide_index=True, use_container_width=True)
+        if neo4j_summary and neo4j_summary.status == "completed" and (neo4j_summary.node_count or neo4j_summary.edge_count):
+            st.caption("Neo4j에서 조회한 저장 상태입니다.")
+            left, right = st.columns(2)
+            left.markdown("##### Neo4j 저장 Node")
+            left.table(_counter_df(neo4j_summary.node_counts))
+            right.markdown("##### Neo4j 저장 Edge")
+            right.table(_counter_df(neo4j_summary.edge_counts))
+        else:
+            st.caption("동기화 대상 preview 기준")
+            left, right = st.columns(2)
+            left.markdown("##### Node")
+            left.table(_counter_df(payload.node_counts))
+            right.markdown("##### Edge")
+            right.table(_counter_df(payload.edge_counts))

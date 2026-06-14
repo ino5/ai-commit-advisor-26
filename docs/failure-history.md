@@ -31,6 +31,64 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-15 - Neo4j impact path 조회에서 Cypher alias가 node 변수와 충돌했다
+
+분류:
+
+- Neo4j query failure
+- Screenshot verification gap
+- Graph read model readback
+
+관련 기능 및 문서:
+
+- `src/services/neo4j_graph_service.py`
+- `src/ui/knowledge_graph_page.py`
+- `scripts/capture_feature_screenshot.py`
+- `AI_CHANGELOG.md`의 `Knowledge Graph 저장 그래프 조회와 탭별 screenshot 보강`
+
+### 증상
+
+Knowledge Graph 탭별 screenshot 기준을 `Neo4j 저장 그래프 기준` 문구로 강화한 뒤, 클래스 관계도/영향 경로 캡처가 실패했습니다. 실제 Neo4j preview 조회를 직접 실행하자 class 관계와 impact path query 중 impact path query가 실패했습니다.
+
+실패 당시 오류:
+
+```text
+Neo.ClientError.Statement.TypeError: Type mismatch: expected a map but was String("...")
+```
+
+### 직접 원인
+
+Cypher query에서 commit node 변수와 `RETURN ... AS commit` alias를 함께 사용했고, `ORDER BY coalesce(commit.committed_at, '')`가 `commit` alias 문자열을 node처럼 참조했습니다. Neo4j가 문자열에 property 접근을 시도하면서 type mismatch가 발생했습니다.
+
+### 배경 또는 구조적 원인
+
+초기 구현은 payload 생성과 graph write 중심으로 검증했고, 저장된 Neo4j graph를 다시 읽어 클래스 관계도와 영향 경로를 구성하는 readback query 검증은 뒤늦게 추가됐습니다. screenshot 자동화도 탭 제목과 일부 데이터만 확인하면 통과할 수 있었기 때문에, 실제 저장 그래프 조회 여부가 충분히 드러나지 않았습니다.
+
+### 사전 검증에서 놓친 이유
+
+`Knowledge Graph` 대표 screenshot은 Neo4j 동기화 성공과 node/edge count만 확인했습니다. 클래스 관계도, 영향 경로, 노드/엣지 탭을 각각 열어 `Neo4j 저장 그래프 기준`과 실제 관계 타입을 확인하는 시나리오가 없었습니다.
+
+### 수정 내용
+
+impact path query의 node 변수를 `commit_node`로 바꾸고, 정렬 기준은 `WITH ... committed_at`으로 분리했습니다. 화면은 저장된 Neo4j graph에서 class import 관계, impact path, node/edge count를 우선 조회하고, 저장 graph가 없을 때만 동기화 대상 preview를 fallback으로 보여주도록 변경했습니다. screenshot 자동화에는 `knowledge-graph-class`, `knowledge-graph-impact`, `knowledge-graph-nodes-edges` 시나리오를 추가했습니다.
+
+### 재발 방지 규칙
+
+- Cypher query에서 node 변수명과 `RETURN` alias를 같은 이름으로 쓰지 않습니다.
+- graph write 기능을 추가하면 저장 성공뿐 아니라 저장된 graph를 다시 읽는 query를 테스트합니다.
+- Application Preview screenshot은 대표 화면만 찍지 말고, 기능 가치가 탭 안에 있으면 탭별 readback 상태까지 캡처합니다.
+
+### 남은 한계 또는 후속 확인
+
+현재 Neo4j graph는 Knowledge Graph 화면에서 관계 탐색 근거로 사용됩니다. Project Chat이나 RAG 답변 context에 graph path를 자동 주입하는 GraphRAG는 아직 후속 확장 범위입니다.
+
+### 검증 명령과 결과
+
+- `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py tests\test_documentation_images.py -q`: 5개 테스트 통과.
+- `.\.venv\Scripts\python.exe -m pytest -q`: 130개 테스트 통과.
+- `get_neo4j_project_preview(4)`: `status=completed`, class 관계 17개, 영향 경로 47개 조회 확인.
+- `scripts\capture_feature_screenshot.py --feature knowledge-graph-class`, `knowledge-graph-impact`, `knowledge-graph-nodes-edges`: 각 screenshot 캡처 통과.
+
 ## 2026-06-15 - Neo4j schema 변경과 graph write를 같은 transaction에서 실행했다
 
 분류:

@@ -135,6 +135,15 @@ class Neo4jSyncResult:
     errors: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class Neo4jGraphPreview:
+    status: str
+    summary: str
+    class_import_rows: list[dict[str, str]] = field(default_factory=list)
+    impact_rows: list[ImpactPathRow] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+
+
 def _node_id(project_id: int, node_type: str, key: str | int) -> str:
     return f"p{project_id}:{node_type}:{str(key).strip()}"
 
@@ -657,3 +666,75 @@ def _read_project_summary_tx(tx, project_id: int) -> tuple[dict[str, int], dict[
     node_counts = {str(row["node_type"]): int(row["count"]) for row in node_rows}
     edge_counts = {str(row["edge_type"]): int(row["count"]) for row in edge_rows}
     return node_counts, edge_counts
+
+
+def get_neo4j_project_preview(project_id: int, limit: int = 100) -> Neo4jGraphPreview:
+    if not settings.neo4j_enabled:
+        return Neo4jGraphPreview("skipped", "Neo4j가 비활성화되어 graph preview를 읽지 않았습니다.")
+    try:
+        with _driver() as driver:
+            with driver.session(**_session_kwargs()) as session:
+                class_rows, impact_rows = session.execute_read(_read_project_preview_tx, project_id, limit)
+    except Exception as exc:
+        return Neo4jGraphPreview("failed", "Neo4j graph preview 조회 실패", errors=[str(exc)])
+    return Neo4jGraphPreview(
+        "completed",
+        f"Neo4j graph preview 조회 완료: class 관계 {len(class_rows)}개, 영향 경로 {len(impact_rows)}개",
+        class_import_rows=class_rows,
+        impact_rows=impact_rows,
+    )
+
+
+def _read_project_preview_tx(tx, project_id: int, limit: int) -> tuple[list[dict[str, str]], list[ImpactPathRow]]:
+    safe_limit = max(1, min(int(limit), 500))
+    class_result = tx.run(
+        """
+        MATCH (source:KnowledgeNode {project_id: $project_id, node_type: 'class'})
+              -[rel:RELATED {edge_type: 'IMPORTS_CLASS'}]->
+              (target:KnowledgeNode {project_id: $project_id, node_type: 'class'})
+        RETURN source.label AS source, target.label AS target
+        ORDER BY source, target
+        LIMIT $limit
+        """,
+        project_id=int(project_id),
+        limit=safe_limit,
+    )
+    class_rows = [
+        {"source": str(row["source"] or "-"), "target": str(row["target"] or "-")}
+        for row in class_result
+    ]
+
+    impact_result = tx.run(
+        """
+        MATCH (program:KnowledgeNode {project_id: $project_id, node_type: 'program'})
+              -[mapping:RELATED {edge_type: 'MAPPED_TO_COMMIT'}]->
+              (commit_node:KnowledgeNode {project_id: $project_id, node_type: 'commit'})
+        MATCH (commit_node)
+              -[touch:RELATED {edge_type: 'TOUCHES_FILE'}]->
+              (file:KnowledgeNode {project_id: $project_id, node_type: 'file'})
+        MATCH (file)
+              -[contains:RELATED {edge_type: 'CONTAINS_CLASS'}]->
+              (class_node:KnowledgeNode {project_id: $project_id, node_type: 'class'})
+        WITH program, commit_node, file, class_node, coalesce(commit_node.committed_at, '') AS committed_at
+        RETURN coalesce(commit_node.commit_hash, commit_node.label) AS commit,
+               program.label AS program,
+               coalesce(file.file_path, file.label) AS file_path,
+               class_node.label AS class_name,
+               coalesce(class_node.domain, file.domain, '-') AS domain
+        ORDER BY committed_at DESC, commit, program, file_path, class_name
+        LIMIT $limit
+        """,
+        project_id=int(project_id),
+        limit=safe_limit,
+    )
+    impact_rows = [
+        ImpactPathRow(
+            commit=_short_commit(str(row["commit"] or "-")),
+            program=str(row["program"] or "-"),
+            file_path=str(row["file_path"] or "-"),
+            class_name=str(row["class_name"] or "-"),
+            domain=str(row["domain"] or "-"),
+        )
+        for row in impact_result
+    ]
+    return class_rows, impact_rows

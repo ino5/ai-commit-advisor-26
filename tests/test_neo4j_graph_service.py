@@ -6,7 +6,12 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import CommitFile, GitCommit, Program, ProgramCommitMapping, Project
 from src.services import neo4j_graph_service
-from src.services.neo4j_graph_service import build_project_graph_payload, extract_java_symbols, sync_project_graph_to_neo4j
+from src.services.neo4j_graph_service import (
+    build_project_graph_payload,
+    extract_java_symbols,
+    get_neo4j_project_preview,
+    sync_project_graph_to_neo4j,
+)
 
 
 def _unique(prefix: str) -> str:
@@ -197,3 +202,62 @@ def test_sync_project_graph_prepares_schema_outside_write_transaction(monkeypatc
             if remaining is not None:
                 db.delete(remaining)
             db.commit()
+
+
+def test_get_neo4j_project_preview_reads_saved_class_and_impact_paths(monkeypatch) -> None:
+    class FakeTx:
+        def run(self, query, **params):
+            if "IMPORTS_CLASS" in query:
+                return [
+                    {
+                        "source": "com.example.market.payment.service.PaymentService",
+                        "target": "com.example.market.order.mapper.OrderMapper",
+                    }
+                ]
+            if "MAPPED_TO_COMMIT" in query:
+                return [
+                    {
+                        "commit": "abcdef1234567890",
+                        "program": "PAY Payment Program",
+                        "file_path": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                        "class_name": "com.example.market.payment.service.PaymentService",
+                        "domain": "payment",
+                    }
+                ]
+            return []
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute_read(self, fn, *args):
+            return fn(FakeTx(), *args)
+
+    class FakeDriver:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def session(self, **kwargs):
+            return FakeSession()
+
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_enabled", True)
+    monkeypatch.setattr(neo4j_graph_service, "_driver", lambda: FakeDriver())
+
+    result = get_neo4j_project_preview(123)
+
+    assert result.status == "completed"
+    assert result.class_import_rows == [
+        {
+            "source": "com.example.market.payment.service.PaymentService",
+            "target": "com.example.market.order.mapper.OrderMapper",
+        }
+    ]
+    assert len(result.impact_rows) == 1
+    assert result.impact_rows[0].commit == "abcdef123456"
+    assert result.impact_rows[0].class_name.endswith("PaymentService")

@@ -227,7 +227,7 @@ flowchart LR
 - `Risk Analysis`: 계획, 매핑, 커밋 활동, 예상 종료일 기반 리스크를 탐지하고 `risk_findings`에 저장/해결 처리.
 - `Git History`: 현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff를 조회.
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
-- `Knowledge Graph`: PostgreSQL 분석 데이터와 앱 서버 Git 저장소의 Java class/import 구조를 Neo4j graph read model로 동기화하고, 도메인 묶음, 클래스 관계도, 커밋 영향 경로를 조회.
+- `Knowledge Graph`: PostgreSQL 분석 데이터와 앱 서버 Git 저장소의 Java class/import 구조를 Neo4j graph read model로 동기화하고, 저장된 Neo4j graph에서 클래스 관계도, 커밋 영향 경로, node/edge 저장 상태를 다시 조회.
 - `AI Code Review`: 앱 서버 Git 저장소의 최근 커밋과 특정 커밋을 중심으로 LLM 리뷰를 실행하고 결과를 저장. 서버 clone에 local 변경이 남아 있을 때만 서버 작업트리/staged 변경 리뷰를 보조 옵션으로 사용.
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, AI Resource Radar, PL Briefing, 개발자별 업무량·난이도, 예상 지연 프로그램, 고객가치 참고 지표 표시.
 - `AI 운영 현황`: LLM/embedding 연결 상태, AI 분석 준비 상태, AI 실행 바로가기, AI 근거 추적, sample project 품질 점검, 주간 보고서 export, AI 호출 기록 표시.
@@ -729,7 +729,7 @@ LLM 출력 예시:
 - Risk Analysis 실행, 리스크 저장, 미해결 리스크 조회 및 해결 처리. 예상 종료일 기준 지연 가능성은 `FORECAST_DELAY` 리스크로 저장한다.
 - Git History 커밋 이력과 diff 탐색.
 - Commit Impact 분석.
-- Neo4j Knowledge Graph preview와 동기화, 도메인 묶음, 클래스 관계도, 커밋 영향 경로 표시.
+- Neo4j Knowledge Graph preview와 동기화, 저장 그래프 기준 클래스 관계도, 커밋 영향 경로, node/edge 저장 상태 표시.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
 - Dashboard 자원관리 지표: AI Resource Radar와 PL Briefing, 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, 고객가치 참고 지표 표시, 수동 snapshot 저장과 추세 분석.
@@ -797,7 +797,7 @@ LLM 출력 예시:
 | `src/ui/risk_page.py` | 프로젝트 리스크 분석, 미해결 리스크 조회 및 해결 처리. |
 | `src/ui/git_history_page.py` | 프로젝트별 Git 커밋 이력, 변경 파일, diff 조회. |
 | `src/ui/commit_impact_page.py` | 특정 커밋의 영향도 분석. |
-| `src/ui/knowledge_graph_page.py` | Neo4j Knowledge Graph preview, 동기화, 도메인/클래스/영향 경로 조회. |
+| `src/ui/knowledge_graph_page.py` | Neo4j Knowledge Graph preview, 동기화, 저장 그래프 기준 도메인/클래스/영향 경로/node-edge 조회. |
 | `src/ui/rag_page.py` | RAG chunk/embedding/search 관리. |
 | `src/ui/project_chat_page.py` | 검증된 현재 소스 RAG 기반 프로젝트 채팅. |
 | `src/ui/code_review_page.py` | AI 코드 리뷰 실행 및 이력 조회. |

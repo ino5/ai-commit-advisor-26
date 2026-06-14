@@ -63,7 +63,7 @@ flowchart TB
 - 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
 - Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, 고객가치 참고 지표와 저장형 추세 확인
 - AI 운영 현황에서 LLM/embedding 연결 상태, AI 분석 준비 상태, 근거 추적, 품질 점검, 주간 보고서, 호출 기록 확인
-- Neo4j Knowledge Graph에서 프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인 관계와 영향 경로 탐색
+- Neo4j Knowledge Graph에서 프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인 관계를 저장하고 영향 경로 탐색
 - 현재 소스 검증형 RAG Search와 저장형 Project Chat
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
 - 앱 서버 Git 저장소의 최신/특정 커밋 중심 AI Code Review
