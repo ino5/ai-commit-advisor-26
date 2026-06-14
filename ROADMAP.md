@@ -65,7 +65,7 @@
 | P2 | Docs | Git History Application Preview screenshot | Done | Git History Application Preview screenshot |  |
 | P2 | Git Ops | Server repository status display | Done | Server repository status display |  |
 | P2 | Docs | Demo user guide | Done | Demo user guide |  |
-| P2 | Docs / Verification | Sample project usage guide verification evidence | Done | 샘플 프로젝트 사용 가이드 실제 검증 결과 추가 | 408cb08 |
+| P2 | Docs / Verification | Sample project usage guide verification evidence | Done | 샘플 프로젝트 사용 가이드 실제 검증 결과 추가 | 60dd622 |
 | P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety |  |
 | P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 | 8f4ad22 |
 
