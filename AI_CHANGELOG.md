@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### Project delete and demo reset safety
+
+- Added a project management service that reports project deletion impact counts and deletes project-owned data while preserving the global `developers` master.
+- Added a guarded `프로젝트/Git 설정` delete flow that shows impact counts, requires the project name as confirmation, and recovers the current project selection after deletion.
+- Added focused DB-backed tests for deletion impact, cascade cleanup, other-project preservation, and developer preservation.
+- Documented the deletion policy in the feature guide, demo user guide, architecture, and engineering decisions.
+- Important files: `src/services/project_management_service.py`, `src/ui/project_page.py`, `tests/test_project_management_service.py`, `docs/feature-guide.md`, `docs/demo-user-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `docker compose up -d postgres` passed; `.\.venv\Scripts\python.exe -c "from src.db.init_db import init_db; init_db(); print('init ok')"` passed; `.\.venv\Scripts\python.exe -m py_compile src\services\project_management_service.py src\ui\project_page.py tests\test_project_management_service.py` passed; `.\.venv\Scripts\python.exe -m compileall src app.py tests` passed; `.\.venv\Scripts\python.exe -m pytest tests\test_project_management_service.py tests\test_project_context.py -q` passed with 5 tests; `.\.venv\Scripts\python.exe -m pytest -q` passed with 97 tests; `git diff --check` passed with only Windows line-ending warnings.
+
 ### Project deletion and developer scope roadmap
 
 - Recorded the proposed safe implementation sequence for repeatable sample-project demos: add project delete/demo reset safety first, then introduce project developer membership without breaking the global developer master.

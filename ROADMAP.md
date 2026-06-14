@@ -65,6 +65,7 @@
 | P2 | Docs | Git History Application Preview screenshot | Done | Git History Application Preview screenshot |  |
 | P2 | Git Ops | Server repository status display | Done | Server repository status display |  |
 | P2 | Docs | Demo user guide | Done | Demo user guide |  |
+| P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety |  |
 
 ## Candidate Tasks
 
@@ -74,7 +75,7 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 |---|---|---|---|---|---|
 | P2 | UX / State | Project-scoped UI state namespacing | The global project selector changes the data context, but Streamlit widget values with stable keys can remain in `st.session_state` across projects. Text search reuse can be useful, but project-specific selections such as program, commit, mapping, or filter state can feel stale or misleading after switching projects. | Keep intentional global state small (`current_project_id`, sidebar navigation). For project-dependent UI state, include `project_id` in widget keys or provide a shared helper for project-scoped keys. Avoid clearing all inputs blindly because cross-project keyword comparison can be useful. | Review RAG search, Mapping filters, Program Detail filters, Commit Impact filters, and any selected row/commit/program widgets before implementation. |
 | P2 | UX | Program management project flow cleanup | `프로그램 관리` now defaults to the global current project, but it still keeps an explicit `새 프로젝트명으로 저장` option for legacy upload/create flows. This preserves compatibility but makes the page slightly less direct than other project-scoped screens. | Consider making program management strictly current-project based and moving new project creation to `프로젝트/Git 설정`. If keeping the exception, make the create-new-project path visually secondary and explain when it should be used. | Check sample data and Excel upload workflows before removing the exception. |
-| P2 | Demo / Data UX | Project delete and demo reset safety | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Full DB reset is unsafe for shared or non-demo data, while creating a new project name every time leaves stale demo rows behind. | Start with a project delete flow in `프로젝트/Git 설정`: show impact counts, require explicit confirmation, delete project-owned data through cascade, and keep the global `developers` master by default. Consider a later project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. | Treat this as the first implementation step before changing developer scope. Verify cascade behavior for programs, commits, mappings, analysis runs, risks, code reviews, chat sessions/messages, chunks/vectors, and standard terms. Document that developers are not deleted unless a later orphan-cleanup policy is added. |
+| P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P2 | UX / Data Model | Project developer membership model | `개발자 목록` is currently closer to a global developer master, while `개발자 현황` is project-aware through Git author activity. As project context becomes more central, users may expect developer assignment and developer management to be project-specific, especially when repeating sample-project demos. Directly adding `project_id` to `developers` would risk breaking existing imports and program assignment behavior. | Preserve the global `developers` master and add a `project_developers` membership table. Git author extraction and developer Excel upload should create/update the global developer row, then link it to the current project. Default UI should show current-project developers with an option to view the global master. Project deletion should remove memberships through cascade but keep global developers. | Requires Alembic migration, architecture/feature/db-migration docs, focused tests, and careful compatibility with existing `programs.developer_id`. Do not make `programs` reference `project_developers` in the first pass; evaluate that as a later migration after membership behavior is stable. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
 
@@ -92,6 +93,25 @@ Checklist:
 - [x] Link the guide from README.
 - [x] Fix the stale sample walkthrough commit-count wording.
 - [x] Run documentation link and whitespace checks.
+- [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Project Delete And Demo Reset Safety
+
+Status: Done
+
+Goal:
+Let users remove a project and its project-owned analysis data so the sample-project demo can be repeated without wiping the whole database or affecting the global developer master.
+
+Checklist:
+
+- [x] Add a project deletion service with impact counts.
+- [x] Add a guarded delete flow to `프로젝트/Git 설정`.
+- [x] Keep global `developers` rows when a project is deleted.
+- [x] Recover the current project selection after deletion.
+- [x] Add focused tests for deletion impact, cascade cleanup, developer preservation, and project context recovery.
+- [x] Update feature/demo/architecture/decision documentation.
+- [x] Run compile and DB-independent focused tests.
+- [x] Run DB-backed focused/full tests when PostgreSQL is available.
 - [x] Update `AI_CHANGELOG.md`.
 
 ## P2 - Server Repository Status Display

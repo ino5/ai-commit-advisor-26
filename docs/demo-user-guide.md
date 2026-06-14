@@ -44,6 +44,8 @@ C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_standard_terms.xlsx
 
 앱 실행과 DB 준비가 필요하면 [설치와 운영](setup-and-operations.md)의 설치 및 실행 절차를 먼저 따릅니다.
 
+이미 같은 샘플 프로젝트를 시연한 적이 있다면 `프로젝트 설정 > 프로젝트/Git 설정`에서 기존 샘플 프로젝트를 선택한 뒤 `프로젝트 삭제`를 사용할 수 있습니다. 이 기능은 프로젝트의 프로그램, Git 이력, 매핑, 리스크, RAG 인덱스, Project Chat, AI Code Review 결과를 삭제하지만 전역 개발자 마스터는 삭제하지 않습니다.
+
 ## 1. 프로젝트 등록
 
 `프로젝트 설정 > 프로젝트/Git 설정`으로 이동합니다.
@@ -382,6 +384,7 @@ AI 진척도는 Git commit과 매핑 결과를 바탕으로 한 보조 지표입
 | Mapping 결과가 기대와 다름 | mock 모드인지 확인합니다. 실제 품질 시연은 local LLM 설정이 필요합니다. |
 | Project Chat이 근거 부족이라고 답함 | source_file 인덱싱과 embedding 생성 여부, 현재 Git HEAD와 indexed HEAD가 맞는지 확인합니다. |
 | Docker에서 샘플 경로를 못 읽음 | 기본 Compose는 `C:/dev`를 `/host-dev`로 mount합니다. 샘플이 다른 경로에 있으면 mount와 `REPO_PATH_*` 값을 함께 바꿔야 합니다. |
+| 같은 샘플 프로젝트를 다시 처음부터 시연하고 싶음 | `프로젝트/Git 설정`에서 기존 샘플 프로젝트를 삭제한 뒤 같은 경로로 다시 등록합니다. 개발자 마스터는 전역 데이터라 삭제되지 않습니다. |
 
 ## 관련 문서
 

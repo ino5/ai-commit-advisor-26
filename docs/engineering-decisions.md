@@ -99,6 +99,54 @@
 - `README.md`
 - `AI_CHANGELOG.md`의 `App-server Git repository operating model`
 
+## 2026-06-14 - Project deletion keeps global developer master
+
+### 배경
+
+샘플 프로젝트 시연 가이드를 반복 수행하려면 기존 샘플 프로젝트를 깨끗하게 지울 수 있어야 합니다. 전체 DB volume을 삭제하면 다른 프로젝트와 분석 결과까지 사라지므로 사내 공유 DB나 장기 검증 환경에는 맞지 않습니다.
+
+동시에 현재 `developers` 테이블은 프로젝트별 데이터가 아니라 전역 개발자 마스터입니다. `programs.developer_id`가 전역 `developers.developer_id`를 참조하고, `개발자 목록` 화면도 프로젝트 필터 없이 전체 개발자를 관리합니다. 따라서 프로젝트 삭제가 개발자 row까지 지우면 다른 프로젝트의 담당자 연결이나 개발자 관리 데이터에 영향을 줄 수 있습니다.
+
+### 결정
+
+프로젝트 삭제 기능은 프로젝트 소유 데이터만 삭제합니다. 프로그램, Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어는 삭제 대상입니다.
+
+전역 `developers` row는 프로젝트 삭제 시 자동 삭제하지 않습니다. 프로젝트별 개발자 범위가 필요하면 `developers`에 `project_id`를 직접 추가하지 않고, 후속 작업에서 `project_developers` membership table을 도입해 점진적으로 연결합니다.
+
+### 이유
+
+- 반복 시연에는 프로젝트 단위 삭제만으로 충분하며, 전체 DB 초기화보다 안전합니다.
+- 기존 개발자 Excel 업로드, Git author 추출, 프로그램 담당자 연결을 깨지 않습니다.
+- 전역 개발자 마스터를 유지하면 여러 프로젝트에 같은 개발자가 등장하는 운영 모델을 보존할 수 있습니다.
+- project-scoped developer UX는 별도 schema migration과 화면 정책이 필요한 작업이므로 삭제 기능과 분리하는 편이 회귀 위험이 작습니다.
+
+### 검토한 대안
+
+- 전체 DB 초기화 버튼: 시연 환경에서는 빠르지만 공유 DB에서 위험하고, 운영 기능으로 노출하기 어렵습니다.
+- 프로젝트 삭제 시 개발자도 삭제: 샘플 정리는 편하지만 현재 전역 developer model과 충돌합니다.
+- `developers.project_id`를 즉시 추가: 직관적이지만 unique constraint, Excel 업로드, 프로그램 담당자 FK, 기존 데이터 migration을 한 번에 바꿔야 합니다.
+- 프로젝트 reset 기능부터 구현: 프로젝트명과 경로를 유지할 수 있지만 산출물/분석 결과 중 무엇을 남길지 정책 결정이 더 필요합니다.
+
+### 영향과 tradeoff
+
+- 샘플 프로젝트를 삭제해도 개발자 목록에는 샘플 개발자가 남을 수 있습니다.
+- 이 동작은 현재 데이터 모델을 보존하는 의도된 제한입니다.
+- 완전히 프로젝트별 개발자 목록을 원하면 후속 `project_developers` membership 작업이 필요합니다.
+
+### 후속 확인
+
+- 프로젝트 삭제 후 현재 프로젝트 선택이 삭제된 ID를 계속 가리키지 않아야 합니다.
+- 삭제 영향 건수와 실제 삭제 결과가 일치하는지 테스트로 검증합니다.
+- 프로젝트 reset action은 삭제 flow가 안정화된 뒤 별도 후보 작업으로 다룹니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Project delete and demo reset safety`
+- `docs/feature-guide.md`
+- `docs/demo-user-guide.md`
+- `docs/architecture.md`
+- `AI_CHANGELOG.md`의 `Project delete and demo reset safety`
+
 ## 2026-06-10 - Roadmap candidate tasks preserve unresolved product concerns
 
 ### 배경
