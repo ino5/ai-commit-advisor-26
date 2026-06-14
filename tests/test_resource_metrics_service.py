@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import (
+    AIInvocationLog,
     CodeReviewResult,
     CommitFile,
     Developer,
@@ -38,6 +39,7 @@ def _unique(prefix: str) -> str:
 
 
 def _cleanup_project_graph(db, project_id: int, developer_pk: int | None = None) -> None:
+    db.query(AIInvocationLog).filter(AIInvocationLog.project_id == project_id).delete(synchronize_session=False)
     db.query(PLBriefingHistory).filter(PLBriefingHistory.project_id == project_id).delete(synchronize_session=False)
     db.query(ResourceMetricSnapshot).filter(ResourceMetricSnapshot.project_id == project_id).delete(synchronize_session=False)
     db.query(CodeReviewResult).filter(CodeReviewResult.project_id == project_id).delete(synchronize_session=False)
@@ -379,11 +381,87 @@ def test_pl_briefing_uses_configured_llm_when_available():
 
             saved = save_pl_briefing(db, radar, briefing)
             latest = get_latest_pl_briefing(db, project.id)
+            invocation = db.query(AIInvocationLog).filter(AIInvocationLog.project_id == project.id).one()
             assert latest is not None
             assert latest.id == saved.id
             assert latest.mode == "LLM 생성"
             assert latest.model == "fake-model"
             assert "Briefing Program은 우선 확인" in (latest.summary or "")
+            assert invocation.feature == "pl_briefing"
+            assert invocation.provider == "local_openai"
+            assert invocation.validation_status == "valid"
+            assert invocation.fallback_used is False
+        finally:
+            _cleanup_project_graph(db, project.id)
+
+
+def test_pl_briefing_repairs_invalid_structured_response_before_fallback():
+    class FakeResponse:
+        def __init__(self, text: str):
+            self.text = text
+            self.raw = {"provider": "fake"}
+
+    class RepairingLLM:
+        provider = "local_openai"
+        model = "repair-model"
+
+        def __init__(self):
+            self.prompts: list[str] = []
+
+        def generate(self, prompt: str):
+            self.prompts.append(prompt)
+            if len(self.prompts) == 1:
+                return FakeResponse('{"title": "PL 주간 점검 브리핑", "summary": "우선 확인 필요"}')
+            return FakeResponse(
+                """{
+                  "title": "PL 주간 점검 브리핑",
+                  "summary": "수정된 구조화 응답입니다.",
+                  "priority_items": [{"program_name": "Repair Program", "reason": "미해결 리스크 1건"}],
+                  "meeting_questions": ["Repair Program의 담당자 확인이 끝났나요?"],
+                  "next_actions": [{"program_name": "Repair Program", "action": "일정 확인"}]
+                }"""
+            )
+
+    init_db()
+    with SessionLocal() as db:
+        project = Project(name=_unique("repair-project"), git_repo_path=None)
+        db.add(project)
+        db.flush()
+        program = Program(
+            project_id=project.id,
+            program_id=_unique("P-RP"),
+            program_name="Repair Program",
+            developer="Repair Owner",
+            status="진행중",
+            progress_rate=70,
+            planned_start_date=date.today() - timedelta(days=20),
+            planned_end_date=date.today() + timedelta(days=5),
+        )
+        db.add(program)
+        db.flush()
+        db.add(
+            RiskFinding(
+                project_id=project.id,
+                program_id=program.id,
+                risk_type="PROGRESS_GAP",
+                risk_level="HIGH",
+                title="repair risk",
+                resolved_yn="N",
+            )
+        )
+        db.commit()
+
+        try:
+            summary = get_resource_metrics_summary(db, project.id)
+            radar = build_ai_resource_radar(db, summary)
+            llm = RepairingLLM()
+            briefing = generate_pl_briefing(radar, llm)
+
+            assert briefing.used_llm is True
+            assert briefing.validation_status == "repaired"
+            assert briefing.repair_attempted is True
+            assert len(llm.prompts) == 2
+            assert "수정된 구조화 응답" in briefing.summary
         finally:
             _cleanup_project_graph(db, project.id)
 

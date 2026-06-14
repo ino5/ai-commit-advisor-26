@@ -47,6 +47,10 @@ class Project(Base, TimestampMixin):
         back_populates="project",
         cascade="all, delete-orphan",
     )
+    ai_invocation_logs: Mapped[list["AIInvocationLog"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
     chat_sessions: Mapped[list["ProjectChatSession"]] = relationship(
         back_populates="project",
         cascade="all, delete-orphan",
@@ -284,6 +288,29 @@ class PLBriefingHistory(Base, TimestampMixin):
     raw_response: Mapped[dict | None] = mapped_column(JSONB)
 
     project: Mapped["Project"] = relationship(back_populates="pl_briefings")
+
+
+class AIInvocationLog(Base, TimestampMixin):
+    __tablename__ = "ai_invocation_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    feature: Mapped[str] = mapped_column(String(100), nullable=False)
+    provider: Mapped[str] = mapped_column(String(100), nullable=False)
+    model: Mapped[str | None] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(50), nullable=False)
+    mode: Mapped[str | None] = mapped_column(String(100))
+    fallback_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    validation_status: Mapped[str | None] = mapped_column(String(100))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    prompt_length: Mapped[int | None] = mapped_column(Integer)
+    response_length: Mapped[int | None] = mapped_column(Integer)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    raw_metadata: Mapped[dict | None] = mapped_column(JSONB)
+
+    project: Mapped["Project | None"] = relationship(back_populates="ai_invocation_logs")
 
 
 class ProjectChatSession(Base, TimestampMixin):

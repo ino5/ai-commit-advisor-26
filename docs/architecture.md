@@ -163,10 +163,12 @@ flowchart TB
     ResourceRadarService --> ResourceMetricsService
     ResourceRadarService --> LLMClient
     ResourceRadarService --> DB
+    AIEvidenceService --> DB
+    AIInvocationService --> DB
     ImplementationAnalyzer --> DB
     VectorStore --> DB
 
-    DB --> Tables["projects, developers, project_developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>program_implementation_status,<br/>code_review_results, resource_metric_snapshots,<br/>pl_briefing_history, risk_findings,<br/>project_chat_sessions, project_chat_messages,<br/>document_chunks, vector_items"]
+    DB --> Tables["projects, developers, project_developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>program_implementation_status,<br/>code_review_results, resource_metric_snapshots,<br/>pl_briefing_history, ai_invocation_logs,<br/>risk_findings, project_chat_sessions,<br/>project_chat_messages, document_chunks, vector_items"]
 ```
 
 ## 2. 화면 흐름도
@@ -194,6 +196,9 @@ flowchart LR
     Mapping --> AIProgress["AI Progress<br/>계획 vs AI 진척도"]
     Risk --> AIProgress
     Dashboard --> AIProgress
+    Dashboard --> AIEvidence["AI Evidence<br/>시연 준비/근거 추적"]
+    ProjectChat --> AIEvidence
+    CodeReview --> AIEvidence
 ```
 
 ### 주요 화면 역할
@@ -212,6 +217,7 @@ flowchart LR
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
 - `AI Code Review`: 앱 서버 Git 저장소의 최근 커밋과 특정 커밋을 중심으로 LLM 리뷰를 실행하고 결과를 저장. 서버 clone에 local 변경이 남아 있을 때만 서버 작업트리/staged 변경 리뷰를 보조 옵션으로 사용.
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, AI Resource Radar, PL Briefing, 개발자별 업무량·난이도, 예상 지연 프로그램, 고객가치 참고 지표 표시.
+- `AI Evidence`: AX PoC 시연 준비 상태, AI evidence trace, sample project AI scorecard, 주간 보고서 export, AI 호출 telemetry 표시.
 - `개발계획 대시보드`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
 - `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
@@ -219,9 +225,9 @@ flowchart LR
 
 대부분의 프로젝트 단위 화면은 각 화면 안에서 프로젝트를 다시 고르지 않고, 사이드바의 현재 프로젝트 컨텍스트를 사용합니다. `프로젝트/Git 설정`은 프로젝트 생성, 수정, 삭제를 담당하므로 자체 선택 UI를 유지하고, `프로그램 목록`은 현재 프로젝트에 프로그램을 조회·추가·업로드하는 흐름만 담당합니다.
 
-프로젝트 분석 데이터 초기화는 프로젝트 record, Git 저장소 경로, 프로그램/개발계획, 표준용어/표준단어, 프로젝트 개발자 연결을 보존하고 Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, RAG chunk/vector, Project Chat, AI Code Review 결과를 삭제합니다. 같은 프로젝트 shell과 산출물을 유지한 채 수집/분석을 다시 실행하기 위한 흐름입니다.
+프로젝트 분석 데이터 초기화는 프로젝트 record, Git 저장소 경로, 프로그램/개발계획, 표준용어/표준단어, 프로젝트 개발자 연결을 보존하고 Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, PL Briefing 이력, AI 호출 telemetry, RAG chunk/vector, Project Chat, AI Code Review 결과를 삭제합니다. 같은 프로젝트 shell과 산출물을 유지한 채 수집/분석을 다시 실행하기 위한 흐름입니다.
 
-프로젝트 삭제는 프로젝트 소유 데이터 전체를 정리합니다. 프로그램, Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어, 프로젝트 개발자 연결은 삭제 대상입니다. `developers`는 전역 개발자 마스터이므로 프로젝트 삭제 시 자동 삭제하지 않습니다.
+프로젝트 삭제는 프로젝트 소유 데이터 전체를 정리합니다. 프로그램, Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, PL Briefing 이력, AI 호출 telemetry, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어, 프로젝트 개발자 연결은 삭제 대상입니다. `developers`는 전역 개발자 마스터이므로 프로젝트 삭제 시 자동 삭제하지 않습니다.
 
 ## 2.1 Git 저장소 접근 모델
 
@@ -251,6 +257,9 @@ erDiagram
     GIT_COMMITS ||--o{ PROGRAM_COMMIT_MAPPINGS : mapped
     ANALYSIS_RUNS ||--o{ PROGRAM_COMMIT_MAPPINGS : produced
     PROJECTS ||--o{ CODE_REVIEW_RESULTS : has
+    PROJECTS ||--o{ RESOURCE_METRIC_SNAPSHOTS : has
+    PROJECTS ||--o{ PL_BRIEFING_HISTORY : has
+    PROJECTS ||--o{ AI_INVOCATION_LOGS : has
     PROJECTS ||--o{ RISK_FINDINGS : has
     PROJECTS ||--o{ PROJECT_CHAT_SESSIONS : has
     PROJECT_CHAT_SESSIONS ||--o{ PROJECT_CHAT_MESSAGES : contains
@@ -388,6 +397,56 @@ erDiagram
         datetime finished_at
     }
 
+    RESOURCE_METRIC_SNAPSHOTS {
+        int id PK
+        int project_id FK
+        string snapshot_label
+        datetime captured_at
+        int unresolved_risk_count
+        int high_risk_count
+        int forecasted_delay_program_count
+        int ai_code_review_count
+        float estimated_review_hours_saved
+        float estimated_extra_mm_avoidance
+        float average_workload_score
+        float average_difficulty_score
+        jsonb raw_summary
+    }
+
+    PL_BRIEFING_HISTORY {
+        int id PK
+        int project_id FK
+        datetime generated_at
+        string provider
+        string model
+        string mode
+        string title
+        text summary
+        jsonb priority_items
+        jsonb meeting_questions
+        jsonb next_actions
+        text rendered_text
+        jsonb evidence_payload
+        jsonb raw_response
+    }
+
+    AI_INVOCATION_LOGS {
+        int id PK
+        int project_id FK
+        string feature
+        string provider
+        string model
+        string status
+        string mode
+        bool fallback_used
+        string validation_status
+        int duration_ms
+        int prompt_length
+        int response_length
+        text error_message
+        jsonb raw_metadata
+    }
+
     RISK_FINDINGS {
         int id PK
         int project_id FK
@@ -460,6 +519,7 @@ erDiagram
 | `code_review_results` | AI Code Review 실행 결과. 리뷰 대상, 요약, 커밋 분석, 버그 발견, 리팩토링 제안을 저장한다. |
 | `resource_metric_snapshots` | Dashboard 자원관리 지표의 수동 저장 snapshot. 핵심 지표, 평균 업무량/난이도, raw summary를 저장해 추세 분석에 사용한다. |
 | `pl_briefing_history` | Dashboard AI Resource Radar에서 생성한 PL Briefing 이력. provider/model/mode, 구조화 섹션, rendered text, Radar evidence payload, raw response를 저장한다. |
+| `ai_invocation_logs` | Mapping, Project Chat, AI Code Review, PL Briefing 같은 AI 호출의 provider/model, latency, prompt/response length, validation/fallback/error metadata를 저장한다. |
 | `risk_findings` | 리스크 분석 결과. 리스크 유형/등급, 설명, 근거, 해결 여부를 저장한다. |
 | `project_chat_sessions` | Project Chat의 프로젝트별 대화 session 제목, 상태, 마지막 메시지 시각을 저장한다. |
 | `project_chat_messages` | Project Chat user/assistant message와 검색 근거, 확장 쿼리, 근거 부족 여부, 복사용 citation metadata를 저장한다. |
@@ -489,6 +549,8 @@ erDiagram
 | `code_review_service.py` | 앱 서버 Git 저장소의 최근 커밋, 특정 커밋 diff를 중심으로 LLM 리뷰를 실행하고 `code_review_results`에 저장한다. 서버 clone local 변경 점검용으로 working tree/staged diff 리뷰도 지원한다. |
 | `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 고객가치 참고 지표를 계산하고, 사용자가 요청한 기준 시점 snapshot을 저장/조회한다. |
 | `ai_resource_radar_service.py` | AX 자원관리 Radar. `resource_metrics_service.py` 결과와 미해결 리스크, 관련 commit evidence를 조합해 PL 우선 검토 프로그램을 랭킹하고, LLM 또는 fallback으로 구조화된 PL Briefing을 생성해 `pl_briefing_history`에 저장한다. |
+| `ai_invocation_service.py` | AI 호출 telemetry 저장과 조회를 담당한다. provider/model, feature, latency, prompt/response length, validation/fallback/error metadata를 `ai_invocation_logs`에 기록한다. |
+| `ai_evidence_service.py` | AI Evidence 화면용 시연 준비 상태, evidence trace, sample scorecard, 주간 보고서 Markdown을 구성한다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
 | `vector_store.py` | embedding 저장, 중복 방지, embedding 실패 기록, pgvector cosine 검색. |
@@ -675,10 +737,10 @@ LLM 출력 예시:
 - 인증/권한 관리가 없다.
 - RAG 검색 품질은 embedding 모델에 크게 의존하며, mock embedding은 테스트용이다.
 - local/openai embedding은 OpenAI-compatible `/embeddings` 형식을 가정하지만 실제 모델별 검증은 별도 필요하다.
-- LLM 응답 JSON 스키마 검증은 엄격한 validator가 아니라 기본 파싱 중심이다.
+- PL Briefing은 구조화 validation과 1회 repair retry를 사용하지만, Mapping 등 일부 LLM 응답 처리는 여전히 pragmatic parsing과 fallback 중심이다.
 - Mapping 실패 재처리 정책은 기본 상태 기록 수준이며 상세 재시도 큐는 없다.
 - 테스트는 핵심 순수 로직 중심이며, Streamlit UI/DB 통합 테스트는 아직 부족하다.
-- 배포 설정, CI, 환경별 설정 분리, 로그 수집/모니터링이 없다.
+- 배포 설정, CI, 환경별 설정 분리는 제한적이다. AI 호출 telemetry는 앱 내부 관측용이며 외부 로그/모니터링 시스템 연계는 아직 없다.
 - vector index 생성 튜닝(HNSW/IVFFlat 등)은 아직 없다.
 
 ## 11. 핵심 진입점

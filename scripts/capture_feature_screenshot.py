@@ -398,6 +398,21 @@ SCENARIOS: dict[str, FeatureScenario] = {
         description="Dashboard 자원관리 지표 화면",
         scroll_to_text="자원관리 지표",
     ),
+    "ai-evidence": FeatureScenario(
+        name="ai-evidence",
+        sidebar_label="AI Evidence",
+        wait_text="AI Evidence",
+        required_texts=(
+            "AI Evidence",
+            "시연 준비",
+            "Evidence Trace",
+            "AI Scorecard",
+            "주간 보고서",
+            "Telemetry",
+        ),
+        default_screenshot="docs/images/features/ai-evidence.png",
+        description="AI Evidence 시연 준비와 근거 추적 화면",
+    ),
     "rag-search": FeatureScenario(
         name="rag-search",
         sidebar_label="RAG 검색",

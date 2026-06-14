@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from src.db.models import AnalysisRun, GitCommit, Program, ProgramCommitMapping
 from src.rag.retriever import Retriever
+from src.services.ai_invocation_service import record_ai_invocation
 from src.services.llm_client import LLMClient
 
 
@@ -345,12 +346,19 @@ class MappingService:
         prompt = _build_commit_based_prompt(commit, candidate_programs)
         fallback_used = False
         raw_response: dict
+        invocation_started_at = datetime.now(timezone.utc)
+        invocation_finished_at: datetime
+        response_length = 0
+        invocation_error: str | None = None
         try:
             response = self.llm_client.generate(prompt)
+            response_length = len(response.text or "")
             related_programs = _parse_commit_based_result(response.text, candidate_programs)
             if related_programs is None:
                 raise ValueError("LLM response did not match commit-based mapping JSON format.")
         except Exception as exc:
+            invocation_finished_at = datetime.now(timezone.utc)
+            invocation_error = str(exc)
             fallback_used = True
             related_programs = _fallback_commit_based_results(commit, candidate_programs, str(exc))
             raw_response = {
@@ -365,12 +373,35 @@ class MappingService:
                 result.skipped_count = 1
                 return result
         else:
+            invocation_finished_at = datetime.now(timezone.utc)
             raw_response = {
                 "llm": response.raw,
                 "text": response.text,
                 "prompt_length": len(prompt),
                 "candidate_program_ids": [_program_identifier(program) for program in candidate_programs],
             }
+        record_ai_invocation(
+            db,
+            project_id=commit.project_id,
+            feature="commit_mapping",
+            provider=self.llm_client.provider,
+            model=self.llm_client.model,
+            status="completed",
+            mode="commit_based",
+            fallback_used=fallback_used,
+            validation_status="fallback" if fallback_used else "parsed",
+            started_at=invocation_started_at,
+            finished_at=invocation_finished_at,
+            duration_ms=int((invocation_finished_at - invocation_started_at).total_seconds() * 1000),
+            prompt_length=len(prompt),
+            response_length=response_length,
+            error_message=invocation_error,
+            raw_metadata={
+                "commit_hash": commit.commit_hash[:12],
+                "candidate_program_count": len(candidate_programs),
+                "analysis_run_id": analysis_run.id,
+            },
+        )
 
         for related in related_programs:
             program = related["program"]

@@ -7,11 +7,13 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import (
     AnalysisRun,
+    AIInvocationLog,
     CodeReviewResult,
     CommitFile,
     Developer,
     DocumentChunk,
     GitCommit,
+    PLBriefingHistory,
     Program,
     ProgramCommitMapping,
     ProgramImplementationStatus,
@@ -138,6 +140,30 @@ def _create_project_graph(db):
                 program_count=1,
                 raw_summary={"marker": marker},
             ),
+            PLBriefingHistory(
+                project_id=target_project.id,
+                provider="local_openai",
+                model="test-model",
+                mode="LLM 생성",
+                title="PL 주간 점검 브리핑",
+                summary=marker,
+                priority_items=[],
+                meeting_questions=[],
+                next_actions=[],
+                rendered_text=marker,
+                evidence_payload={"marker": marker},
+                raw_response={"marker": marker},
+            ),
+            AIInvocationLog(
+                project_id=target_project.id,
+                feature="pl_briefing",
+                provider="local_openai",
+                model="test-model",
+                status="completed",
+                mode="LLM 생성",
+                fallback_used=False,
+                raw_metadata={"marker": marker},
+            ),
             StandardTerm(
                 project_id=target_project.id,
                 korean_term="결제금액",
@@ -194,6 +220,8 @@ def test_delete_project_removes_project_owned_data_and_preserves_developers():
             assert impact.risk_finding_count == 1
             assert impact.code_review_count == 1
             assert impact.resource_metric_snapshot_count == 1
+            assert impact.pl_briefing_count == 1
+            assert impact.ai_invocation_log_count == 1
             assert impact.chat_session_count == 1
             assert impact.chat_message_count == 1
             assert impact.document_chunk_count == 1
@@ -225,6 +253,8 @@ def test_delete_project_removes_project_owned_data_and_preserves_developers():
                 .count()
                 == 0
             )
+            assert db.query(PLBriefingHistory).filter(PLBriefingHistory.project_id == target_project_id).count() == 0
+            assert db.query(AIInvocationLog).filter(AIInvocationLog.project_id == target_project_id).count() == 0
             assert db.query(ProjectChatSession).filter(ProjectChatSession.project_id == target_project_id).count() == 0
             assert db.get(ProjectChatMessage, chat_message_id) is None
             assert db.query(DocumentChunk).filter(DocumentChunk.project_id == target_project_id).count() == 0
@@ -271,6 +301,8 @@ def test_reset_project_analysis_data_preserves_project_and_artifacts():
             assert impact.risk_finding_count == 1
             assert impact.code_review_count == 1
             assert impact.resource_metric_snapshot_count == 1
+            assert impact.pl_briefing_count == 1
+            assert impact.ai_invocation_log_count == 1
             assert impact.chat_session_count == 1
             assert impact.chat_message_count == 1
             assert impact.document_chunk_count == 1
@@ -304,6 +336,8 @@ def test_reset_project_analysis_data_preserves_project_and_artifacts():
                 .count()
                 == 0
             )
+            assert db.query(PLBriefingHistory).filter(PLBriefingHistory.project_id == target_project_id).count() == 0
+            assert db.query(AIInvocationLog).filter(AIInvocationLog.project_id == target_project_id).count() == 0
             assert db.query(ProjectChatSession).filter(ProjectChatSession.project_id == target_project_id).count() == 0
             assert db.get(ProjectChatMessage, chat_message_id) is None
             assert db.query(DocumentChunk).filter(DocumentChunk.project_id == target_project_id).count() == 0

@@ -2,6 +2,7 @@ from collections.abc import Callable
 
 import streamlit as st
 
+from src.ui.ai_evidence_page import render_ai_evidence_page
 from src.ui.ai_progress_page import render_ai_progress_page
 from src.ui.code_review_page import render_code_review_page
 from src.ui.commit_impact_page import render_commit_impact_page
@@ -38,6 +39,7 @@ PAGE_GROUPS = {
         "Home": render_home_page,
         "Dashboard": render_dashboard_page,
         "AI Progress": render_ai_progress_page,
+        "AI Evidence": render_ai_evidence_page,
     },
     "프로젝트 설정": {
         "프로젝트/Git 설정": render_project_page,

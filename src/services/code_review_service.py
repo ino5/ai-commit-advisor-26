@@ -9,6 +9,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from src.db.models import CodeReviewResult, Project
+from src.services.ai_invocation_service import record_ai_invocation
 from src.services.git_service import _run_git, is_git_repository
 from src.services.llm_client import LLMClient
 
@@ -199,10 +200,18 @@ class CodeReviewService:
             payload = _empty_review_payload("리뷰할 변경 사항이 없습니다.")
             raw_response = {"provider": self.llm_client.provider, "empty_diff": True}
             status = "completed"
+            prompt_length = 0
+            response_length = 0
+            fallback_used = False
+            error_message = None
         elif self.llm_client.provider == "mock":
             payload = _mock_review_payload(target)
             raw_response = {"provider": "mock", "target": target.title}
             status = "completed"
+            prompt_length = len(target.diff_text)
+            response_length = len(json.dumps(payload, ensure_ascii=False))
+            fallback_used = True
+            error_message = None
         else:
             prompt = _build_review_prompt(target)
             try:
@@ -210,11 +219,20 @@ class CodeReviewService:
                 payload = _normalize_review_payload(_parse_json_object(response.text))
                 raw_response = {"llm": response.raw, "text": response.text, "prompt_length": len(prompt)}
                 status = "completed"
+                prompt_length = len(prompt)
+                response_length = len(response.text or "")
+                fallback_used = False
+                error_message = None
             except Exception as exc:
                 payload = _empty_review_payload(f"LLM 코드리뷰 호출 실패: {exc}")
                 raw_response = {"llm_error": str(exc)}
                 status = "failed"
+                prompt_length = len(prompt)
+                response_length = 0
+                fallback_used = True
+                error_message = str(exc)
 
+        finished_at = datetime.now(timezone.utc)
         review = CodeReviewResult(
             project_id=project.id,
             target_type=target.target_type,
@@ -226,9 +244,27 @@ class CodeReviewService:
             refactoring_suggestions=payload["refactoring_suggestions"],
             raw_response=raw_response,
             started_at=started_at,
-            finished_at=datetime.now(timezone.utc),
+            finished_at=finished_at,
         )
         db.add(review)
+        record_ai_invocation(
+            db,
+            project_id=project.id,
+            feature="ai_code_review",
+            provider=self.llm_client.provider,
+            model=self.llm_client.model,
+            status=status,
+            mode=target.target_type,
+            fallback_used=fallback_used,
+            validation_status="parsed" if status == "completed" else "failed",
+            started_at=started_at,
+            finished_at=finished_at,
+            duration_ms=int((finished_at - started_at).total_seconds() * 1000),
+            prompt_length=prompt_length,
+            response_length=response_length,
+            error_message=error_message,
+            raw_metadata={"target": target.title, "target_ref": target.target_ref},
+        )
         db.commit()
         db.refresh(review)
         result.review = review

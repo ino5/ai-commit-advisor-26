@@ -45,6 +45,42 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - AX PoC AI 신뢰성은 AI Evidence 화면과 telemetry로 설명한다
+
+### 배경
+
+AX PoC에서 AI 기능이 많아질수록 "AI를 실제로 썼는가", "어떤 근거로 판단했는가", "시연 전에 환경이 준비됐는가"를 한 화면에서 설명할 필요가 커졌습니다. Dashboard, Mapping, Project Chat, AI Code Review, PL Briefing은 각각 결과를 보여주지만, 시연자는 provider/model, fallback, validation, source evidence, latency를 흩어진 화면에서 찾아야 했습니다.
+
+### 결정
+
+`AI Evidence` 화면을 추가해 시연 준비 상태, evidence trace, sample project scorecard, 주간 보고서 export, AI invocation telemetry를 한 곳에 묶습니다. AI 호출 관측값은 `ai_invocation_logs`에 저장하고, PL Briefing은 구조화 validation 실패 시 1회 repair retry를 시도한 뒤 fallback reason을 남깁니다.
+
+### 이유
+
+- PoC에서는 기능 개수보다 AI 판단의 근거와 운영 상태를 즉시 설명하는 것이 설득력에 더 직접적입니다.
+- 별도 화면으로 묶으면 Dashboard의 PL 업무 흐름을 복잡하게 만들지 않으면서도 검증자/시연자가 필요한 근거를 빠르게 찾을 수 있습니다.
+- telemetry를 DB에 남기면 local LLM 품질 차이, fallback 발생, latency 문제를 감각이 아니라 기록으로 설명할 수 있습니다.
+- 주간 보고서 export는 화면 시연을 실제 PL 점검 산출물로 연결합니다.
+
+### 대안
+
+- 각 기능 화면에만 trace expander 추가: 화면별 맥락은 좋지만 시연 준비와 품질 점검이 흩어져 전체 AI 적용 설명이 약해집니다.
+- 외부 observability 도구 연동: 운영적으로는 강하지만 현재 PoC 범위와 배포 복잡도에 비해 무겁습니다.
+- 평가 scorecard를 별도 CLI만으로 제공: 자동화에는 좋지만 시연자가 화면에서 바로 설명하기 어렵습니다.
+
+### 영향과 한계
+
+- `ai_invocation_logs` schema와 reset/delete lifecycle 관리가 추가됩니다.
+- scorecard는 sample project와 현재 저장 데이터 기준의 readiness/evidence 점검이며, 통계적 benchmark가 아닙니다.
+- raw metadata는 debugging/evidence 목적이므로 민감정보를 직접 표시하지 않도록 화면에서는 요약과 접이식 JSON 중심으로 다룹니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `AX PoC AI Evidence와 telemetry 구현`
+- `docs/ai-technical-overview.md`
+- `docs/architecture.md`
+- `docs/db-migrations.md`
+
 ## 2026-06-15 - PL Briefing은 구조화 응답과 저장 이력으로 관리한다
 
 ### 배경

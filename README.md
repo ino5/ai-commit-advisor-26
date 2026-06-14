@@ -60,6 +60,7 @@ flowchart TB
 - Git History 화면에서 프로젝트별 커밋 목록, 변경 파일, diff 탐색
 - 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
 - Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, 고객가치 참고 지표와 저장형 추세 확인
+- AI Evidence에서 PoC 시연 준비 상태, AI 근거 추적, scorecard, 주간 보고서, 호출 telemetry 확인
 - 현재 소스 검증형 RAG Search와 저장형 Project Chat
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
 - 앱 서버 Git 저장소의 최신/특정 커밋 중심 AI Code Review

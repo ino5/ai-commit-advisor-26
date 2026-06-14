@@ -1,0 +1,452 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+
+from sqlalchemy.orm import Session
+
+from src.db.models import (
+    AIInvocationLog,
+    CodeReviewResult,
+    DocumentChunk,
+    GitCommit,
+    PLBriefingHistory,
+    Program,
+    ProgramCommitMapping,
+    ProgramImplementationStatus,
+    Project,
+    ProjectChatMessage,
+    ProjectChatSession,
+    RiskFinding,
+    VectorItem,
+)
+from src.rag.source_index_service import get_source_index_status
+from src.services.ai_invocation_service import list_ai_invocations, summarize_ai_invocations
+from src.services.ai_resource_radar_service import build_ai_resource_radar, get_latest_pl_briefing
+from src.services.resource_metrics_service import get_resource_metrics_summary
+from src.utils.config import settings
+
+
+PASS = "통과"
+WARN = "주의"
+FAIL = "실패"
+
+
+@dataclass(frozen=True)
+class EvidenceStatusRow:
+    area: str
+    status: str
+    value: str
+    action: str
+
+
+@dataclass(frozen=True)
+class EvidenceTrace:
+    latest_pl_briefing: dict | None
+    recent_mappings: list[dict]
+    recent_chat_answers: list[dict]
+    recent_code_reviews: list[dict]
+    recent_invocations: list[dict]
+
+
+def _status(ok: bool, *, warn: bool = False) -> str:
+    if ok:
+        return PASS
+    return WARN if warn else FAIL
+
+
+def _format_dt(value) -> str:
+    return value.strftime("%Y-%m-%d %H:%M") if value else "-"
+
+
+def get_poc_readiness_rows(db: Session, project_id: int) -> list[EvidenceStatusRow]:
+    project = db.get(Project, project_id)
+    if project is None:
+        return [EvidenceStatusRow("프로젝트", FAIL, "-", "프로젝트를 다시 선택하세요.")]
+
+    program_count = db.query(Program).filter(Program.project_id == project_id).count()
+    commit_count = db.query(GitCommit).filter(GitCommit.project_id == project_id).count()
+    analyzed_commit_count = (
+        db.query(GitCommit)
+        .filter(GitCommit.project_id == project_id, GitCommit.mapping_analyzed_at.isnot(None))
+        .count()
+    )
+    implementation_count = (
+        db.query(ProgramImplementationStatus)
+        .join(Program, ProgramImplementationStatus.program_id == Program.id)
+        .filter(Program.project_id == project_id)
+        .count()
+    )
+    risk_count = db.query(RiskFinding).filter(RiskFinding.project_id == project_id).count()
+    latest_briefing = get_latest_pl_briefing(db, project_id)
+    invocation_count = db.query(AIInvocationLog).filter(AIInvocationLog.project_id == project_id).count()
+
+    try:
+        source_status = get_source_index_status(db, project)
+    except Exception as exc:
+        source_status = None
+        source_error = str(exc)
+    else:
+        source_error = "; ".join(source_status.errors)
+
+    rows = [
+        EvidenceStatusRow("DB", PASS, "연결됨", "추가 조치 없음"),
+        EvidenceStatusRow(
+            "Git 저장소",
+            _status(bool(project.git_repo_path and commit_count > 0)),
+            f"repo={project.git_repo_path or '-'}, commits={commit_count}, last_sync={_format_dt(project.last_synced_at)}",
+            "프로젝트/Git 설정과 Git 동기화를 확인하세요.",
+        ),
+        EvidenceStatusRow(
+            "산출물 데이터",
+            _status(program_count > 0),
+            f"programs={program_count}",
+            "프로그램 목록과 개발계획을 업로드하세요.",
+        ),
+        EvidenceStatusRow(
+            "Mapping",
+            _status(commit_count > 0 and analyzed_commit_count >= commit_count, warn=analyzed_commit_count > 0),
+            f"analyzed_commits={analyzed_commit_count}/{commit_count}",
+            "Mapping에서 미분석 commit을 처리하세요.",
+        ),
+        EvidenceStatusRow(
+            "AI Progress",
+            _status(implementation_count > 0, warn=commit_count > 0),
+            f"implementation_status={implementation_count}",
+            "Program Detail 또는 Mapping 후속 구현상태 분석을 실행하세요.",
+        ),
+        EvidenceStatusRow(
+            "Risk Analysis",
+            _status(risk_count > 0, warn=program_count > 0),
+            f"risk_findings={risk_count}",
+            "Risk Analysis를 실행해 데모용 리스크 근거를 저장하세요.",
+        ),
+        EvidenceStatusRow(
+            "LLM 설정",
+            _status(settings.llm_provider != "mock", warn=settings.llm_provider == "mock"),
+            f"provider={settings.llm_provider}, model={settings.llm_model or '-'}",
+            "실제 AI 품질 시연 전 local_openai와 모델 로드를 확인하세요.",
+        ),
+        EvidenceStatusRow(
+            "Embedding 설정",
+            _status(settings.embedding_provider != "mock", warn=settings.embedding_provider == "mock"),
+            f"provider={settings.embedding_provider}, model={settings.embedding_model or '-'}, dimension={settings.pgvector_dimension}",
+            "RAG 품질 시연 전 embedding provider/model/dimension을 확인하세요.",
+        ),
+    ]
+    if source_status is None:
+        rows.append(EvidenceStatusRow("Source Index", WARN, source_error or "-", "RAG 검색에서 전체 소스 다시 읽기를 실행하세요."))
+    else:
+        rows.append(
+            EvidenceStatusRow(
+                "Source Index",
+                _status(source_status.source_chunk_count > 0 and not source_status.needs_reindex, warn=source_status.source_chunk_count > 0),
+                (
+                    f"chunks={source_status.source_chunk_count}, vectors={source_status.source_vector_count}, "
+                    f"missing={source_status.missing_embedding_count}, reindex={source_status.needs_reindex}"
+                ),
+                "Project Chat/RAG 사용 전 최신 변경분 반영 또는 전체 소스 다시 읽기를 실행하세요.",
+            )
+        )
+    rows.extend(
+        [
+            EvidenceStatusRow(
+                "PL Briefing",
+                _status(bool(latest_briefing and latest_briefing.mode == "LLM 생성"), warn=latest_briefing is not None),
+                f"latest={latest_briefing.mode if latest_briefing else '-'}",
+                "Dashboard에서 PL Briefing 생성을 실행하세요.",
+            ),
+            EvidenceStatusRow(
+                "AI Telemetry",
+                _status(invocation_count > 0, warn=True),
+                f"invocations={invocation_count}",
+                "PL Briefing, Project Chat, Mapping, AI Code Review 중 하나를 실행해 호출 로그를 쌓으세요.",
+            ),
+        ]
+    )
+    return rows
+
+
+def get_ai_evaluation_scorecard(db: Session, project_id: int) -> list[EvidenceStatusRow]:
+    project = db.get(Project, project_id)
+    if project is None:
+        return [EvidenceStatusRow("프로젝트", FAIL, "-", "프로젝트를 다시 선택하세요.")]
+
+    commit_count = db.query(GitCommit).filter(GitCommit.project_id == project_id).count()
+    mapping_count = (
+        db.query(ProgramCommitMapping)
+        .join(Program, ProgramCommitMapping.program_id == Program.id)
+        .filter(Program.project_id == project_id)
+        .count()
+    )
+    implementation_count = (
+        db.query(ProgramImplementationStatus)
+        .join(Program, ProgramImplementationStatus.program_id == Program.id)
+        .filter(Program.project_id == project_id)
+        .count()
+    )
+    risk_count = db.query(RiskFinding).filter(RiskFinding.project_id == project_id).count()
+    source_chunk_count = db.query(DocumentChunk).filter(DocumentChunk.project_id == project_id, DocumentChunk.source_type == "source_file").count()
+    vector_count = (
+        db.query(VectorItem)
+        .join(DocumentChunk, VectorItem.chunk_id == DocumentChunk.id)
+        .filter(DocumentChunk.project_id == project_id, DocumentChunk.source_type == "source_file")
+        .count()
+    )
+    chat_evidence_count = (
+        db.query(ProjectChatMessage)
+        .join(ProjectChatSession, ProjectChatMessage.session_id == ProjectChatSession.id)
+        .filter(
+            ProjectChatSession.project_id == project_id,
+            ProjectChatMessage.role == "assistant",
+            ProjectChatMessage.used_source_count > 0,
+        )
+        .count()
+    )
+    review_count = db.query(CodeReviewResult).filter(CodeReviewResult.project_id == project_id, CodeReviewResult.status == "completed").count()
+    latest_briefing = get_latest_pl_briefing(db, project_id)
+    resource_summary = get_resource_metrics_summary(db, project_id)
+    radar = build_ai_resource_radar(db, resource_summary, limit=5)
+
+    return [
+        EvidenceStatusRow(
+            "Mapping",
+            _status(mapping_count > 0, warn=commit_count > 0),
+            f"mappings={mapping_count}, commits={commit_count}",
+            "샘플 commit과 프로그램 연결 결과가 보여야 합니다.",
+        ),
+        EvidenceStatusRow(
+            "AI Progress",
+            _status(implementation_count > 0, warn=mapping_count > 0),
+            f"implementation_status={implementation_count}",
+            "Program Detail 구현상태 분석 결과가 필요합니다.",
+        ),
+        EvidenceStatusRow(
+            "Risk Analysis",
+            _status(risk_count > 0, warn=True),
+            f"risk_findings={risk_count}",
+            "NO_COMMIT, PROGRESS_GAP, FORECAST_DELAY 같은 시연 리스크가 있어야 합니다.",
+        ),
+        EvidenceStatusRow(
+            "RAG / Project Chat",
+            _status(source_chunk_count > 0 and vector_count > 0 and chat_evidence_count > 0, warn=source_chunk_count > 0),
+            f"chunks={source_chunk_count}, vectors={vector_count}, cited_answers={chat_evidence_count}",
+            "source_file 인덱싱, embedding 생성, 대표 질문 1개를 실행하세요.",
+        ),
+        EvidenceStatusRow(
+            "AI Code Review",
+            _status(review_count > 0, warn=True),
+            f"completed_reviews={review_count}",
+            "대표 commit 1개를 AI Code Review로 실행하세요.",
+        ),
+        EvidenceStatusRow(
+            "PL Briefing",
+            _status(bool(latest_briefing and latest_briefing.mode == "LLM 생성"), warn=latest_briefing is not None),
+            f"latest={latest_briefing.mode if latest_briefing else '-'}",
+            "Dashboard에서 local LLM 기반 PL Briefing을 생성하세요.",
+        ),
+        EvidenceStatusRow(
+            "AI Resource Radar",
+            _status(len(radar.items) > 0, warn=len(resource_summary.program_metrics) > 0),
+            f"radar_items={len(radar.items)}",
+            "Dashboard 자원관리 지표와 Risk Analysis 근거를 확인하세요.",
+        ),
+    ]
+
+
+def get_evidence_trace(db: Session, project_id: int, limit: int = 10) -> EvidenceTrace:
+    latest = (
+        db.query(PLBriefingHistory)
+        .filter(PLBriefingHistory.project_id == project_id)
+        .order_by(PLBriefingHistory.generated_at.desc(), PLBriefingHistory.id.desc())
+        .first()
+    )
+    latest_pl = None
+    if latest is not None:
+        latest_pl = {
+            "generated_at": _format_dt(latest.generated_at),
+            "provider": latest.provider,
+            "model": latest.model or "-",
+            "mode": latest.mode,
+            "validation_status": (latest.raw_response or {}).get("validation_status"),
+            "repair_attempted": (latest.raw_response or {}).get("repair_attempted"),
+            "summary": latest.summary or "-",
+            "evidence_payload": latest.evidence_payload or {},
+            "raw_response": latest.raw_response or {},
+        }
+
+    mappings = (
+        db.query(ProgramCommitMapping, Program, GitCommit)
+        .join(Program, ProgramCommitMapping.program_id == Program.id)
+        .join(GitCommit, ProgramCommitMapping.commit_id == GitCommit.id)
+        .filter(Program.project_id == project_id)
+        .order_by(ProgramCommitMapping.updated_at.desc().nullslast(), ProgramCommitMapping.id.desc())
+        .limit(limit)
+        .all()
+    )
+    recent_mappings = [
+        {
+            "program": f"{program.program_id or '-'} {program.program_name}",
+            "commit": f"{commit.commit_hash[:12]} {commit.message or ''}".strip(),
+            "score": mapping.relevance_score,
+            "status": mapping.implementation_status,
+            "fallback": bool((mapping.raw_response or {}).get("fallback")),
+            "reason": mapping.reason or "-",
+            "raw_response": mapping.raw_response or {},
+        }
+        for mapping, program, commit in mappings
+    ]
+
+    chat_messages = (
+        db.query(ProjectChatMessage, ProjectChatSession)
+        .join(ProjectChatSession, ProjectChatMessage.session_id == ProjectChatSession.id)
+        .filter(ProjectChatSession.project_id == project_id, ProjectChatMessage.role == "assistant")
+        .order_by(ProjectChatMessage.created_at.desc(), ProjectChatMessage.id.desc())
+        .limit(limit)
+        .all()
+    )
+    recent_chat = [
+        {
+            "session": session.title or f"Session {session.id}",
+            "message_index": message.message_index,
+            "used_sources": message.used_source_count or 0,
+            "excluded_sources": message.excluded_count or 0,
+            "insufficient_evidence": bool(message.insufficient_evidence),
+            "answer": message.content[:500],
+            "sources": message.sources or [],
+        }
+        for message, session in chat_messages
+    ]
+
+    reviews = (
+        db.query(CodeReviewResult)
+        .filter(CodeReviewResult.project_id == project_id)
+        .order_by(CodeReviewResult.created_at.desc(), CodeReviewResult.id.desc())
+        .limit(limit)
+        .all()
+    )
+    recent_reviews = [
+        {
+            "target": f"{review.target_type}:{review.target_ref or '-'}",
+            "status": review.status,
+            "summary": review.summary or "-",
+            "risk_level": (review.commit_analysis or {}).get("risk_level"),
+            "bug_findings": len(review.bug_findings or []),
+            "raw_response": review.raw_response or {},
+        }
+        for review in reviews
+    ]
+
+    invocations = list_ai_invocations(db, project_id, limit=limit)
+    recent_invocations = [
+        {
+            "feature": row.feature,
+            "provider": row.provider,
+            "model": row.model or "-",
+            "status": row.status,
+            "mode": row.mode or "-",
+            "fallback": row.fallback_used,
+            "duration_ms": row.duration_ms,
+            "prompt_length": row.prompt_length,
+            "response_length": row.response_length,
+            "error": row.error_message or "-",
+            "metadata": row.raw_metadata or {},
+        }
+        for row in invocations
+    ]
+    return EvidenceTrace(latest_pl, recent_mappings, recent_chat, recent_reviews, recent_invocations)
+
+
+def generate_weekly_ai_report(db: Session, project_id: int) -> str:
+    project = db.get(Project, project_id)
+    if project is None:
+        return "# 주간 AI 점검 보고서\n\n프로젝트를 찾을 수 없습니다.\n"
+
+    generated_at = datetime.now(timezone.utc)
+    readiness = get_poc_readiness_rows(db, project_id)
+    scorecard = get_ai_evaluation_scorecard(db, project_id)
+    resource_summary = get_resource_metrics_summary(db, project_id)
+    radar = build_ai_resource_radar(db, resource_summary, limit=5)
+    latest = get_latest_pl_briefing(db, project_id)
+    telemetry = summarize_ai_invocations(db, project_id)
+    risks = (
+        db.query(RiskFinding, Program)
+        .join(Program, RiskFinding.program_id == Program.id)
+        .filter(RiskFinding.project_id == project_id, RiskFinding.resolved_yn == "N")
+        .order_by(RiskFinding.risk_level.desc(), RiskFinding.detected_at.desc().nullslast(), RiskFinding.id.desc())
+        .limit(10)
+        .all()
+    )
+    progress_gaps = [
+        metric
+        for metric in sorted(resource_summary.program_metrics, key=lambda row: row.progress_gap, reverse=True)
+        if metric.progress_gap > 0
+    ][:10]
+
+    lines = [
+        "# 주간 AI 점검 보고서",
+        "",
+        f"- 프로젝트: {project.name} ({project.id})",
+        f"- 생성 시각(UTC): {generated_at.strftime('%Y-%m-%d %H:%M')}",
+        f"- Git 저장소: {project.git_repo_path or '-'}",
+        "",
+        "## PoC 준비 상태",
+        "| 영역 | 상태 | 현재 값 | 다음 조치 |",
+        "|---|---|---|---|",
+    ]
+    lines.extend(f"| {row.area} | {row.status} | {row.value} | {row.action} |" for row in readiness)
+    lines.extend(["", "## AI 평가 Scorecard", "| 영역 | 상태 | 관측값 | 다음 조치 |", "|---|---|---|---|"])
+    lines.extend(f"| {row.area} | {row.status} | {row.value} | {row.action} |" for row in scorecard)
+    lines.extend(
+        [
+            "",
+            "## AI Resource Radar",
+            "| 순위 | 프로그램 | 우선도 | 점수 | 주요 이유 | 권장 action |",
+            "|---|---|---|---:|---|---|",
+        ]
+    )
+    if radar.items:
+        lines.extend(
+            (
+                f"| {item.rank} | {item.program_id or '-'} {item.program_name} | {item.priority_level} | "
+                f"{item.priority_score} | {', '.join(item.reasons)} | {item.recommended_action} |"
+            )
+            for item in radar.items
+        )
+    else:
+        lines.append("| - | - | - | - | Radar 항목 없음 | Git/Mapping/Risk 데이터를 확인하세요. |")
+
+    lines.extend(["", "## 최근 PL Briefing", ""])
+    lines.append(latest.rendered_text if latest else "저장된 PL Briefing이 없습니다.")
+
+    lines.extend(["", "## 미해결 리스크", "| 등급 | 프로그램 | 제목 |", "|---|---|---|"])
+    if risks:
+        lines.extend(f"| {risk.risk_level} | {program.program_id or '-'} {program.program_name} | {risk.title} |" for risk, program in risks)
+    else:
+        lines.append("| - | - | 미해결 리스크 없음 |")
+
+    lines.extend(["", "## AI Progress Gap", "| 프로그램 | 계획 | AI | 차이 |", "|---|---:|---:|---:|"])
+    if progress_gaps:
+        lines.extend(
+            f"| {metric.program_id or '-'} {metric.program_name} | {metric.plan_progress_rate:.1f}% | "
+            f"{metric.ai_progress_rate:.1f}% | {metric.progress_gap:.1f}p |"
+            for metric in progress_gaps
+        )
+    else:
+        lines.append("| - | - | - | 차이 없음 |")
+
+    lines.extend(
+        [
+            "",
+            "## AI 호출 Telemetry",
+            f"- 총 호출: {telemetry.total_count}",
+            f"- 성공/실패: {telemetry.success_count}/{telemetry.failed_count}",
+            f"- fallback 사용: {telemetry.fallback_count}",
+            f"- 평균 지연시간: {telemetry.average_duration_ms}ms",
+            "",
+            "## 해석 기준",
+            "- 이 보고서는 AI output을 확정 판단이 아니라 PL 검토 보조 근거로 묶은 것입니다.",
+            "- 일정, 개인 성과, 배포 가능 여부는 담당자 확인과 테스트 결과를 함께 검토해야 합니다.",
+        ]
+    )
+    return "\n".join(lines) + "\n"

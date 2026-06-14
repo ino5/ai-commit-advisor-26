@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Protocol
 
 from sqlalchemy.orm import Session, joinedload
 
 from src.db.models import GitCommit, PLBriefingHistory, Program, ProgramCommitMapping, RiskFinding
+from src.services.ai_invocation_service import record_ai_invocation
 from src.services.llm_client import LLMClient
 from src.services.resource_metrics_service import ProgramResourceMetric, ResourceMetricsSummary
 
@@ -54,6 +55,14 @@ class PLBriefing:
     priority_items: list[dict] = field(default_factory=list)
     meeting_questions: list[str] = field(default_factory=list)
     next_actions: list[dict] = field(default_factory=list)
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    duration_ms: int | None = None
+    prompt_length: int | None = None
+    response_length: int | None = None
+    validation_status: str | None = None
+    fallback_reason: str | None = None
+    repair_attempted: bool = False
 
 
 @dataclass(frozen=True)
@@ -66,6 +75,11 @@ class PLBriefingHistoryRow:
     title: str
     summary: str | None
     rendered_text: str
+    priority_items: list | None = None
+    meeting_questions: list | None = None
+    next_actions: list | None = None
+    evidence_payload: dict | None = None
+    raw_response: dict | None = None
 
 
 class BriefingLLM(Protocol):
@@ -318,6 +332,44 @@ def _parse_structured_briefing(text: str) -> dict | None:
     return payload
 
 
+def _validate_structured_briefing(payload: dict | None) -> list[str]:
+    if not isinstance(payload, dict):
+        return ["JSON object가 아닙니다."]
+    errors: list[str] = []
+    if not isinstance(payload.get("summary"), str) or not payload.get("summary", "").strip():
+        errors.append("summary 문자열이 필요합니다.")
+    for key in ("priority_items", "meeting_questions", "next_actions"):
+        if not isinstance(payload.get(key), list):
+            errors.append(f"{key} list가 필요합니다.")
+    return errors
+
+
+def _build_briefing_repair_prompt(raw_text: str, errors: list[str]) -> str:
+    return f"""
+아래 응답은 PL 주간 점검 브리핑 JSON schema를 지키지 못했습니다.
+오류를 고쳐 JSON object 하나만 다시 반환하세요. Markdown, code fence, 표를 쓰지 마세요.
+
+필수 schema:
+{{
+  "title": "PL 주간 점검 브리핑",
+  "summary": "한 문단 요약",
+  "priority_items": [{{"program_id": "프로그램 ID", "program_name": "프로그램명", "reason": "근거", "owner": "담당자"}}],
+  "meeting_questions": ["회의 질문"],
+  "next_actions": [{{"program_id": "프로그램 ID", "action": "다음 액션"}}]
+}}
+
+오류:
+{json.dumps(errors, ensure_ascii=False)}
+
+원본 응답:
+{raw_text}
+""".strip()
+
+
+def _duration_ms(started_at: datetime, finished_at: datetime) -> int:
+    return int((finished_at - started_at).total_seconds() * 1000)
+
+
 def _clean_korean_briefing_text(text: str) -> str:
     replacements = {
         "PL 주간 점검용 한국어 브리핑": "PL 주간 점검 브리핑",
@@ -369,6 +421,13 @@ def _briefing_from_payload(
     model: str | None,
     used_llm: bool,
     raw: dict,
+    started_at: datetime | None = None,
+    finished_at: datetime | None = None,
+    prompt_length: int | None = None,
+    response_length: int | None = None,
+    validation_status: str | None = None,
+    fallback_reason: str | None = None,
+    repair_attempted: bool = False,
 ) -> PLBriefing:
     title = _clean_korean_briefing_text(str(payload.get("title") or "PL 주간 점검 브리핑").strip())
     summary = _clean_korean_briefing_text(str(payload.get("summary") or payload.get("요약") or "").strip())
@@ -388,6 +447,14 @@ def _briefing_from_payload(
         priority_items=priority_items,
         meeting_questions=meeting_questions,
         next_actions=next_actions,
+        started_at=started_at,
+        finished_at=finished_at,
+        duration_ms=_duration_ms(started_at, finished_at) if started_at and finished_at else None,
+        prompt_length=prompt_length,
+        response_length=response_length,
+        validation_status=validation_status,
+        fallback_reason=fallback_reason,
+        repair_attempted=repair_attempted,
     )
 
 
@@ -421,16 +488,38 @@ def render_pl_briefing_markdown(
     return "\n".join(lines)
 
 
-def _fallback_briefing(radar: ResourceRadar, provider: str, model: str | None, raw: dict | None = None) -> PLBriefing:
+def _fallback_briefing(
+    radar: ResourceRadar,
+    provider: str,
+    model: str | None,
+    raw: dict | None = None,
+    *,
+    started_at: datetime | None = None,
+    prompt_length: int | None = None,
+    response_length: int | None = None,
+    fallback_reason: str | None = None,
+    repair_attempted: bool = False,
+) -> PLBriefing:
+    finished_at = datetime.now(timezone.utc)
     if not radar.items:
         return _briefing_from_payload(
             {
                 "summary": "현재 AI Resource Radar에 표시할 우선 검토 항목이 없습니다. Git 동기화, Mapping, Risk Analysis 실행 상태를 먼저 확인하세요.",
+                "priority_items": [],
+                "meeting_questions": [],
+                "next_actions": [],
             },
             provider=provider,
             model=model,
             used_llm=False,
             raw=raw or {"fallback": "empty_radar"},
+            started_at=started_at,
+            finished_at=finished_at,
+            prompt_length=prompt_length,
+            response_length=response_length,
+            validation_status="fallback",
+            fallback_reason=fallback_reason or "empty_radar",
+            repair_attempted=repair_attempted,
         )
     top = radar.items[:3]
     payload = {
@@ -457,6 +546,13 @@ def _fallback_briefing(radar: ResourceRadar, provider: str, model: str | None, r
         model=model,
         used_llm=False,
         raw=raw or {"fallback": "deterministic"},
+        started_at=started_at,
+        finished_at=finished_at,
+        prompt_length=prompt_length,
+        response_length=response_length,
+        validation_status="fallback",
+        fallback_reason=fallback_reason or str((raw or {}).get("fallback") or "deterministic"),
+        repair_attempted=repair_attempted,
     )
 
 
@@ -464,23 +560,107 @@ def generate_pl_briefing(radar: ResourceRadar, llm_client: BriefingLLM | None = 
     llm = llm_client or LLMClient(max_tokens=900)
     provider = getattr(llm, "provider", "unknown")
     model = getattr(llm, "model", None)
+    started_at = datetime.now(timezone.utc)
     if provider == "mock":
-        return _fallback_briefing(radar, provider, model, {"provider": provider, "mode": "mock_fallback"})
+        return _fallback_briefing(
+            radar,
+            provider,
+            model,
+            {"provider": provider, "mode": "mock_fallback"},
+            started_at=started_at,
+            fallback_reason="mock_provider",
+        )
+    prompt = _build_briefing_prompt(radar)
     try:
-        response = llm.generate(_build_briefing_prompt(radar))
+        response = llm.generate(prompt)
     except Exception as exc:
-        return _fallback_briefing(radar, provider, model, {"provider": provider, "error": str(exc)})
+        return _fallback_briefing(
+            radar,
+            provider,
+            model,
+            {"provider": provider, "error": str(exc)},
+            started_at=started_at,
+            prompt_length=len(prompt),
+            fallback_reason=f"llm_error: {exc}",
+        )
 
     raw_text = (getattr(response, "text", "") or "").strip()
     payload = _parse_structured_briefing(raw_text)
-    if not payload:
-        return _fallback_briefing(radar, provider, model, {"provider": provider, "unstructured_response": raw_text})
+    errors = _validate_structured_briefing(payload)
+    repair_attempted = False
+    repair_raw = None
+    repair_text = ""
+    prompt_length = len(prompt)
+    response_length = len(raw_text)
+    validation_status = "valid"
+    if errors:
+        repair_attempted = True
+        repair_prompt = _build_briefing_repair_prompt(raw_text, errors)
+        prompt_length += len(repair_prompt)
+        try:
+            repair_response = llm.generate(repair_prompt)
+            repair_text = (getattr(repair_response, "text", "") or "").strip()
+            repair_raw = getattr(repair_response, "raw", None)
+            response_length += len(repair_text)
+            repaired_payload = _parse_structured_briefing(repair_text)
+            repair_errors = _validate_structured_briefing(repaired_payload)
+            if repair_errors:
+                return _fallback_briefing(
+                    radar,
+                    provider,
+                    model,
+                    {
+                        "provider": provider,
+                        "validation_errors": errors,
+                        "repair_errors": repair_errors,
+                        "unstructured_response": raw_text,
+                        "repair_response": repair_text,
+                    },
+                    started_at=started_at,
+                    prompt_length=prompt_length,
+                    response_length=response_length,
+                    fallback_reason="structured_validation_failed",
+                    repair_attempted=True,
+                )
+            payload = repaired_payload
+            validation_status = "repaired"
+        except Exception as exc:
+            return _fallback_briefing(
+                radar,
+                provider,
+                model,
+                {
+                    "provider": provider,
+                    "validation_errors": errors,
+                    "repair_error": str(exc),
+                    "unstructured_response": raw_text,
+                },
+                started_at=started_at,
+                prompt_length=prompt_length,
+                response_length=response_length,
+                fallback_reason=f"repair_error: {exc}",
+                repair_attempted=True,
+            )
+    finished_at = datetime.now(timezone.utc)
     return _briefing_from_payload(
-        payload,
+        payload or {},
         provider=provider,
         model=model,
         used_llm=True,
-        raw=getattr(response, "raw", {"provider": provider}),
+        raw={
+            "llm": getattr(response, "raw", {"provider": provider}),
+            "text": raw_text,
+            "validation_status": validation_status,
+            "repair_attempted": repair_attempted,
+            "repair_raw": repair_raw,
+            "repair_text": repair_text,
+        },
+        started_at=started_at,
+        finished_at=finished_at,
+        prompt_length=prompt_length,
+        response_length=response_length,
+        validation_status=validation_status,
+        repair_attempted=repair_attempted,
     )
 
 
@@ -500,6 +680,28 @@ def save_pl_briefing(db: Session, radar: ResourceRadar, briefing: PLBriefing) ->
         raw_response=briefing.raw,
     )
     db.add(record)
+    record_ai_invocation(
+        db,
+        project_id=radar.project_id,
+        feature="pl_briefing",
+        provider=briefing.provider,
+        model=briefing.model,
+        status="completed",
+        mode=briefing.mode,
+        fallback_used=not briefing.used_llm,
+        validation_status=briefing.validation_status,
+        started_at=briefing.started_at,
+        finished_at=briefing.finished_at,
+        duration_ms=briefing.duration_ms,
+        prompt_length=briefing.prompt_length,
+        response_length=briefing.response_length,
+        error_message=briefing.fallback_reason if not briefing.used_llm else None,
+        raw_metadata={
+            "repair_attempted": briefing.repair_attempted,
+            "fallback_reason": briefing.fallback_reason,
+            "history_title": briefing.title,
+        },
+    )
     db.commit()
     db.refresh(record)
     return _briefing_history_row(record)
@@ -536,4 +738,9 @@ def _briefing_history_row(record: PLBriefingHistory) -> PLBriefingHistoryRow:
         title=record.title,
         summary=record.summary,
         rendered_text=record.rendered_text,
+        priority_items=record.priority_items,
+        meeting_questions=record.meeting_questions,
+        next_actions=record.next_actions,
+        evidence_payload=record.evidence_payload,
+        raw_response=record.raw_response,
     )

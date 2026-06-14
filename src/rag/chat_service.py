@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from src.db.models import Project
 from src.rag.query_expander import expand_query_with_standard_terms
 from src.rag.retriever import Retriever
 from src.rag.source_verifier import annotate_retrieval_result
+from src.services.ai_invocation_service import record_ai_invocation
 from src.services.llm_client import LLMClient
 
 
@@ -168,6 +170,43 @@ def ensure_answer_citations(answer: str, verified_sources: list[dict], *, max_so
     return answer.rstrip() + "\n\n근거:\n" + "\n".join(citation_lines)
 
 
+def _log_project_chat_invocation(
+    db: Session | None,
+    project: Project,
+    llm_client: LLMClient,
+    *,
+    started_at: datetime,
+    status: str,
+    mode: str,
+    prompt_length: int = 0,
+    response_length: int = 0,
+    fallback_used: bool = False,
+    error_message: str | None = None,
+    raw_metadata: dict | None = None,
+) -> None:
+    if db is None or project.id is None:
+        return
+    finished_at = datetime.now(timezone.utc)
+    record_ai_invocation(
+        db,
+        project_id=project.id,
+        feature="project_chat",
+        provider=getattr(llm_client, "provider", "unknown"),
+        model=getattr(llm_client, "model", None),
+        status=status,
+        mode=mode,
+        fallback_used=fallback_used,
+        validation_status="not_applicable",
+        started_at=started_at,
+        finished_at=finished_at,
+        duration_ms=int((finished_at - started_at).total_seconds() * 1000),
+        prompt_length=prompt_length,
+        response_length=response_length,
+        error_message=error_message,
+        raw_metadata=raw_metadata,
+    )
+
+
 def answer_source_question(
     db: Session,
     project: Project,
@@ -180,6 +219,7 @@ def answer_source_question(
 ) -> RagChatAnswer:
     retriever = retriever or Retriever(db)
     llm_client = llm_client or LLMClient(max_tokens=900)
+    started_at = datetime.now(timezone.utc)
     source_types = ["source_file"]
     if include_history:
         source_types.extend(["commit", "commit_file"])
@@ -194,6 +234,16 @@ def answer_source_question(
             source_types=source_types,
         )
     except Exception as exc:
+        _log_project_chat_invocation(
+            db,
+            project,
+            llm_client,
+            started_at=started_at,
+            status="failed",
+            mode="retrieval",
+            fallback_used=True,
+            error_message=str(exc),
+        )
         return RagChatAnswer(answer="", errors=[f"retrieval failed: {exc}"])
 
     annotated = [annotate_retrieval_result(result, project.git_repo_path) for result in results]
@@ -211,6 +261,16 @@ def answer_source_question(
     excluded_count = len(annotated) - len(verified_sources)
 
     if not verified_sources:
+        _log_project_chat_invocation(
+            db,
+            project,
+            llm_client,
+            started_at=started_at,
+            status="completed",
+            mode="insufficient_evidence",
+            fallback_used=True,
+            raw_metadata={"retrieved_count": len(annotated), "excluded_count": excluded_count},
+        )
         return RagChatAnswer(
             answer=INSUFFICIENT_EVIDENCE_ANSWER,
             sources=annotated,
@@ -223,9 +283,23 @@ def answer_source_question(
 
     prompt = _build_prompt(question, verified_sources, historical_sources)
     if llm_client.provider == "mock":
+        mock_answer = "Mock answer. 검증된 현재 소스 근거:\n" + "\n".join(
+            _summarize_source(source) for source in verified_sources[:3]
+        )
+        _log_project_chat_invocation(
+            db,
+            project,
+            llm_client,
+            started_at=started_at,
+            status="completed",
+            mode="mock",
+            prompt_length=len(prompt),
+            response_length=len(mock_answer),
+            fallback_used=True,
+            raw_metadata={"used_source_count": len(verified_sources), "include_history": include_history},
+        )
         return RagChatAnswer(
-            answer="Mock answer. 검증된 현재 소스 근거:\n"
-            + "\n".join(_summarize_source(source) for source in verified_sources[:3]),
+            answer=mock_answer,
             sources=annotated,
             expanded_queries=expansion.expanded_queries,
             matched_terms=expansion.matched_terms,
@@ -236,6 +310,18 @@ def answer_source_question(
     try:
         response = llm_client.generate(prompt)
     except Exception as exc:
+        _log_project_chat_invocation(
+            db,
+            project,
+            llm_client,
+            started_at=started_at,
+            status="failed",
+            mode="llm_generation",
+            prompt_length=len(prompt),
+            fallback_used=True,
+            error_message=str(exc),
+            raw_metadata={"used_source_count": len(verified_sources), "include_history": include_history},
+        )
         return RagChatAnswer(
             answer="",
             sources=annotated,
@@ -246,8 +332,21 @@ def answer_source_question(
             errors=[f"LLM generation failed: {exc}"],
         )
 
+    final_answer = ensure_answer_citations(clean_llm_answer(response.text), verified_sources)
+    _log_project_chat_invocation(
+        db,
+        project,
+        llm_client,
+        started_at=started_at,
+        status="completed",
+        mode="llm_generation",
+        prompt_length=len(prompt),
+        response_length=len(response.text or ""),
+        fallback_used=False,
+        raw_metadata={"used_source_count": len(verified_sources), "include_history": include_history},
+    )
     return RagChatAnswer(
-        answer=ensure_answer_citations(clean_llm_answer(response.text), verified_sources),
+        answer=final_answer,
         sources=annotated,
         expanded_queries=expansion.expanded_queries,
         matched_terms=expansion.matched_terms,

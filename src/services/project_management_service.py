@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from src.db.models import (
     AnalysisRun,
+    AIInvocationLog,
     CodeReviewResult,
     CommitFile,
     Developer,
@@ -41,6 +42,7 @@ class ProjectDeleteImpact:
     code_review_count: int = 0
     resource_metric_snapshot_count: int = 0
     pl_briefing_count: int = 0
+    ai_invocation_log_count: int = 0
     chat_session_count: int = 0
     chat_message_count: int = 0
     document_chunk_count: int = 0
@@ -62,6 +64,7 @@ class ProjectDeleteImpact:
             + self.code_review_count
             + self.resource_metric_snapshot_count
             + self.pl_briefing_count
+            + self.ai_invocation_log_count
             + self.chat_session_count
             + self.chat_message_count
             + self.document_chunk_count
@@ -87,6 +90,7 @@ class ProjectResetImpact:
     code_review_count: int = 0
     resource_metric_snapshot_count: int = 0
     pl_briefing_count: int = 0
+    ai_invocation_log_count: int = 0
     chat_session_count: int = 0
     chat_message_count: int = 0
     document_chunk_count: int = 0
@@ -104,6 +108,7 @@ class ProjectResetImpact:
             + self.code_review_count
             + self.resource_metric_snapshot_count
             + self.pl_briefing_count
+            + self.ai_invocation_log_count
             + self.chat_session_count
             + self.chat_message_count
             + self.document_chunk_count
@@ -178,6 +183,7 @@ def get_project_delete_impact(db: Session, project_id: int) -> ProjectDeleteImpa
             db.query(ResourceMetricSnapshot).filter(ResourceMetricSnapshot.project_id == project_id).count()
         ),
         pl_briefing_count=db.query(PLBriefingHistory).filter(PLBriefingHistory.project_id == project_id).count(),
+        ai_invocation_log_count=db.query(AIInvocationLog).filter(AIInvocationLog.project_id == project_id).count(),
         chat_session_count=db.query(ProjectChatSession).filter(ProjectChatSession.project_id == project_id).count(),
         chat_message_count=(
             db.query(ProjectChatMessage)
@@ -240,6 +246,7 @@ def get_project_reset_impact(db: Session, project_id: int) -> ProjectResetImpact
             db.query(ResourceMetricSnapshot).filter(ResourceMetricSnapshot.project_id == project_id).count()
         ),
         pl_briefing_count=db.query(PLBriefingHistory).filter(PLBriefingHistory.project_id == project_id).count(),
+        ai_invocation_log_count=db.query(AIInvocationLog).filter(AIInvocationLog.project_id == project_id).count(),
         chat_session_count=db.query(ProjectChatSession).filter(ProjectChatSession.project_id == project_id).count(),
         chat_message_count=(
             db.query(ProjectChatMessage)
@@ -288,6 +295,7 @@ def reset_project_analysis_data(db: Session, project_id: int) -> ProjectResetImp
         synchronize_session=False
     )
     db.query(PLBriefingHistory).filter(PLBriefingHistory.project_id == project_id).delete(synchronize_session=False)
+    db.query(AIInvocationLog).filter(AIInvocationLog.project_id == project_id).delete(synchronize_session=False)
     db.query(ProjectChatSession).filter(ProjectChatSession.project_id == project_id).delete(synchronize_session=False)
     db.query(DocumentChunk).filter(DocumentChunk.project_id == project_id).delete(synchronize_session=False)
     db.query(AnalysisRun).filter(AnalysisRun.project_id == project_id).delete(synchronize_session=False)
@@ -338,6 +346,7 @@ def delete_project(db: Session, project_id: int) -> ProjectDeleteImpact | None:
         synchronize_session=False
     )
     db.query(PLBriefingHistory).filter(PLBriefingHistory.project_id == project_id).delete(synchronize_session=False)
+    db.query(AIInvocationLog).filter(AIInvocationLog.project_id == project_id).delete(synchronize_session=False)
     db.query(ProjectChatSession).filter(ProjectChatSession.project_id == project_id).delete(synchronize_session=False)
     db.query(DocumentChunk).filter(DocumentChunk.project_id == project_id).delete(synchronize_session=False)
     db.query(StandardTerm).filter(StandardTerm.project_id == project_id).delete(synchronize_session=False)

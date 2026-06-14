@@ -2,6 +2,16 @@
 
 ## 2026-06-15
 
+### AX PoC AI Evidence와 telemetry 구현
+
+- 후보로 발굴했던 6개 개선을 실제 기능으로 승격해 `AI Evidence` 화면에 시연 준비 상태, evidence trace, AI scorecard, 주간 보고서 다운로드, AI 호출 telemetry를 추가했습니다.
+- `ai_invocation_logs` 테이블과 기록 서비스를 추가해 PL Briefing, commit-based Mapping, Project Chat, AI Code Review의 provider/model, latency, prompt/response length, validation/fallback/error metadata를 저장하도록 했습니다.
+- PL Briefing 구조화 응답에 validation을 추가하고, local LLM 응답이 schema를 지키지 못하면 repair prompt를 1회 시도한 뒤 실패 시 fallback reason을 남기도록 했습니다.
+- `AI Evidence`는 PL Briefing, Mapping, Project Chat, AI Code Review의 저장 근거와 raw metadata를 읽기 전용으로 보여주고, sample project 기준 pass/warn/fail scorecard와 Markdown 주간 점검 보고서를 제공합니다.
+- 프로젝트 reset/delete lifecycle에 AI 호출 telemetry를 포함하고, 아키텍처/AI 기술 개요/기능 가이드/DB migration/engineering decision/Application Preview/README를 갱신했습니다.
+- 주요 파일: `app.py`, `src/ui/ai_evidence_page.py`, `src/services/ai_evidence_service.py`, `src/services/ai_invocation_service.py`, `src/services/ai_resource_radar_service.py`, `src/rag/chat_service.py`, `src/services/mapping_service.py`, `src/services/code_review_service.py`, `src/services/project_management_service.py`, `src/db/models.py`, `migrations/versions/20260615_0009_add_ai_invocation_logs.py`, `tests/test_ai_evidence_service.py`, `tests/test_resource_metrics_service.py`, `tests/test_project_management_service.py`, `tests/test_documentation_images.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/ai-evidence.png`, `README.md`, `docs/ai-technical-overview.md`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/db-migrations.md`, `docs/engineering-decisions.md`, `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m alembic upgrade head` 통과; `.\.venv\Scripts\python.exe -m alembic heads`와 `.\.venv\Scripts\python.exe -m alembic current`에서 `20260615_0009 (head)` 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_service.py tests\test_resource_metrics_service.py tests\test_project_management_service.py tests\test_ai_evidence_service.py tests\test_documentation_images.py tests\test_feedback_and_review_services.py -q` 27개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 125개 테스트 통과; `ai-evidence` screenshot capture에서 `AI Evidence`, `시연 준비`, `Evidence Trace`, `AI Scorecard`, `주간 보고서`, `Telemetry` 표시 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### 구조화 PL Briefing 이력과 시연 안정화
 
 - `PL Briefing` LLM 응답을 자유형 Markdown 대신 `summary`, `priority_items`, `meeting_questions`, `next_actions` 구조로 받아 앱이 일관된 Markdown을 조립하도록 변경했습니다.

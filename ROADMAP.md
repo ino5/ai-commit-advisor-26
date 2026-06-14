@@ -100,12 +100,100 @@
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Demo / Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
 | P3 | Git Ops | Server-managed clone/fetch workflow | Done | Server-managed clone/fetch workflow |
+| P1 | AX / AI Evidence | AI evidence trace view | Done | AX PoC AI Evidence와 telemetry 구현 |
+| P1 | Demo / Readiness | PoC demo readiness cockpit | Done | AX PoC AI Evidence와 telemetry 구현 |
+| P1 | AI Quality | Sample project AI evaluation scorecard | Done | AX PoC AI Evidence와 telemetry 구현 |
+| P1 | AI Reliability | Strict structured-output validation and retry | Done | AX PoC AI Evidence와 telemetry 구현 |
+| P2 | PL Workflow | Exportable weekly AI report | Done | AX PoC AI Evidence와 telemetry 구현 |
+| P2 | AI Ops | AI invocation telemetry | Done | AX PoC AI Evidence와 telemetry 구현 |
 
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
 
-현재 승인 대기 중인 후보 작업은 없습니다. 새 concern이나 tradeoff를 보존해야 할 때 이 섹션에 후보 작업을 추가합니다.
+현재 승인 대기 중인 후보 작업은 없습니다. AX PoC 후보 6개는 priority overview의 활성 작업으로 승격했습니다.
+
+## P1 - AI Evidence Trace View
+
+Status: Done
+
+Goal:
+Show how AI-facing results were produced: input summary, retrieved evidence, provider/model, fallback status, raw response metadata, and stored output.
+
+Checklist:
+
+- [x] Add a read-only evidence trace surface for PL Briefing, Mapping, Project Chat, and AI Code Review.
+- [x] Mask or summarize raw payloads so the view is useful without exposing unnecessary prompt text.
+- [x] Link trace data to stored model/provider/fallback metadata.
+- [x] Document and verify the trace surface.
+
+## P1 - PoC Demo Readiness Cockpit
+
+Status: Done
+
+Goal:
+Give demo operators a single pass/warn/fail view for DB, Git, sample data, LLM, embedding, source index, vectors, and recent AI outputs.
+
+Checklist:
+
+- [x] Add readiness checks for project, Git sync, program/commit counts, local LLM/embedding configuration, source index, vectors, risk/progress, and saved PL Briefing.
+- [x] Show concise remediation hints for warning/fail states.
+- [x] Document and verify the readiness cockpit.
+
+## P1 - Sample Project AI Evaluation Scorecard
+
+Status: Done
+
+Goal:
+Evaluate stored sample project AI outputs against small demo expectations so PoC quality is visible as pass/partial/fail signals.
+
+Checklist:
+
+- [x] Add scorecard checks for Mapping, AI Progress, Risk Analysis, RAG/Project Chat evidence, Code Review, PL Briefing, and AI Resource Radar.
+- [x] Show expected signal, observed value, status, and follow-up action.
+- [x] Document and verify the scorecard.
+
+## P1 - Strict Structured-Output Validation And Retry
+
+Status: Done
+
+Goal:
+Make PL Briefing structured output more reliable by validating required sections, retrying repair once when useful, and recording fallback reasons.
+
+Checklist:
+
+- [x] Validate PL Briefing JSON shape before rendering.
+- [x] Add one repair retry for malformed non-mock LLM responses.
+- [x] Store validation status, repair attempt, and fallback reason in telemetry/evidence.
+- [x] Add tests for valid, repaired, and fallback paths.
+
+## P2 - Exportable Weekly AI Report
+
+Status: Done
+
+Goal:
+Create a reusable Markdown report that combines Dashboard Radar, latest PL Briefing, Risk Analysis, AI Progress gaps, and key citations for weekly PL review.
+
+Checklist:
+
+- [x] Add a report generation service for the current project.
+- [x] Add a download action from the AI evidence surface.
+- [x] Include assumptions and limitations in the generated report.
+- [x] Document and verify report output.
+
+## P2 - AI Invocation Telemetry
+
+Status: Done
+
+Goal:
+Track AI invocation provider/model, latency, prompt/response length, status, error, and fallback use so local AI operation is observable.
+
+Checklist:
+
+- [x] Add `ai_invocation_logs` schema and service.
+- [x] Record telemetry for PL Briefing and high-value AI calls where project context is available.
+- [x] Include telemetry summary and recent call table in the AI evidence surface.
+- [x] Include reset/delete lifecycle cleanup, docs, migration guidance, and tests.
 
 ## P1 - Structured PL Briefing History And Demo Hardening
 
