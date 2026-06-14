@@ -255,12 +255,87 @@ def _build_briefing_prompt(radar: ResourceRadar) -> str:
 규칙:
 - 근거에 없는 사실을 추가하지 마세요.
 - 위험 단정 대신 "확인 필요", "주의", "우선 검토"처럼 보조 판단으로 표현하세요.
+- JSON, code fence, 표가 아니라 Markdown 본문으로만 작성하세요.
 - 1) 요약, 2) 우선 확인 항목, 3) 회의 질문, 4) 다음 액션 순서로 작성하세요.
 - 각 항목에는 program_name 또는 program_id와 근거 숫자를 포함하세요.
 
 AI Resource Radar JSON:
 {payload}
 """.strip()
+
+
+def _strip_code_fence(text: str) -> str:
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    lines = stripped.splitlines()
+    if len(lines) >= 2 and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1]).strip()
+    return stripped
+
+
+def _json_list_lines(values: object) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    lines: list[str] = []
+    for value in values:
+        if isinstance(value, str):
+            lines.append(f"- {value}")
+        elif isinstance(value, dict):
+            name = value.get("program_name") or value.get("program_id") or value.get("action") or "항목"
+            details: list[str] = []
+            for key in ("reasons", "reason", "action", "program_id"):
+                item_value = value.get(key)
+                if not item_value or item_value == name:
+                    continue
+                if isinstance(item_value, list):
+                    details.append(", ".join(str(item) for item in item_value))
+                else:
+                    details.append(str(item_value))
+            suffix = f": {'; '.join(details)}" if details else ""
+            lines.append(f"- {name}{suffix}")
+    return lines
+
+
+def _normalize_llm_briefing_text(text: str) -> str:
+    stripped = _strip_code_fence(text)
+    try:
+        payload = json.loads(stripped)
+    except json.JSONDecodeError:
+        return _clean_korean_briefing_text(stripped)
+    if not isinstance(payload, dict):
+        return _clean_korean_briefing_text(stripped)
+
+    lines: list[str] = []
+    summary = payload.get("요약") or payload.get("summary")
+    if summary:
+        lines.extend(["### 요약", str(summary).strip()])
+
+    sections = (
+        ("### 우선 확인 항목", payload.get("우선 확인 항목") or payload.get("priority_items")),
+        ("### 회의 질문", payload.get("회의 질문") or payload.get("meeting_questions")),
+        ("### 다음 액션", payload.get("다음 액션 순서") or payload.get("next_actions")),
+    )
+    for title, values in sections:
+        section_lines = _json_list_lines(values)
+        if section_lines:
+            if lines:
+                lines.append("")
+            lines.append(title)
+            lines.extend(section_lines)
+    return _clean_korean_briefing_text("\n".join(lines).strip() or stripped)
+
+
+def _clean_korean_briefing_text(text: str) -> str:
+    replacements = {
+        "本周": "이번 주",
+        "고우한": "높은",
+        "기반으로이번": "기반으로 이번",
+    }
+    cleaned = text
+    for source, target in replacements.items():
+        cleaned = cleaned.replace(source, target)
+    return cleaned
 
 
 def _fallback_briefing(radar: ResourceRadar, provider: str, raw: dict | None = None) -> PLBriefing:
@@ -302,7 +377,7 @@ def generate_pl_briefing(radar: ResourceRadar, llm_client: BriefingLLM | None = 
     except Exception as exc:
         return _fallback_briefing(radar, provider, {"provider": provider, "error": str(exc)})
 
-    text = (getattr(response, "text", "") or "").strip()
+    text = _normalize_llm_briefing_text((getattr(response, "text", "") or "").strip())
     if not text:
         return _fallback_briefing(radar, provider, {"provider": provider, "empty_response": True})
     return PLBriefing(

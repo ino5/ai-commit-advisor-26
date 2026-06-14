@@ -35,6 +35,7 @@
 | P1 | Resource UX | Developer workload and difficulty dashboard | Done | 예상 종료일과 자원관리 Dashboard |
 | P2 | Docs / Business Value | AX customer value KPI documentation | Done | 예상 종료일과 자원관리 Dashboard |
 | P1 | AX / AI Resource Planning | AI Resource Radar and PL Briefing | Done | AI Resource Radar와 PL Briefing 추가 |
+| P2 | Demo / AI Evidence | PL Briefing live LLM demo evidence | Done | PL Briefing 실제 LLM 시연 증거 보강 |
 | P2 | Docs / AI Positioning | AI technology application summary | Done | AI 기술 적용 요약 문서화 |
 | P2 | UX | Sidebar navigation UX improvement | Done | Sidebar 메뉴 UX 개선 |
 | P2 | UX | Artifact management menu grouping | Done | Artifact management sidebar grouping |
@@ -103,6 +104,24 @@
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
 
 현재 승인 대기 중인 후보 작업은 없습니다. 새 concern이나 tradeoff를 보존해야 할 때 이 섹션에 후보 작업을 추가합니다.
+
+## P2 - PL Briefing Live LLM Demo Evidence
+
+Status: Done
+
+Goal:
+Show that the AX-oriented `PL Briefing` demo path uses the configured local LLM and leaves visible screenshot/evidence for reviewers.
+
+Rationale:
+`AI Resource Radar` already ranks resource and schedule signals, but a PoC demonstration needs to show the AI-generated briefing result itself, not only the button that triggers it. Capturing the live local LLM result and recording a short rehearsal makes the AI use case easier to inspect before a demo.
+
+Checklist:
+
+- [x] Verify `PL Briefing` generation with the configured local LLM.
+- [x] Add or refresh an Application Preview screenshot that shows the generated briefing result.
+- [x] Record a short end-to-end demo rehearsal result.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run focused tests and documentation verification.
 
 ## P1 - AI Resource Radar And PL Briefing
 

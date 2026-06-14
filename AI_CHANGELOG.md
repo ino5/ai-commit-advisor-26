@@ -1,5 +1,15 @@
 # AI 변경 이력
 
+## 2026-06-15
+
+### PL Briefing 실제 LLM 시연 증거 보강
+
+- Dashboard `PL Briefing 생성` 경로를 `LLM_PROVIDER=local_openai`, `LLM_MODEL=qwen2.5-coder-7b-instruct` 환경에서 실제 호출해 `provider=local_openai, mode=LLM 생성` 상태와 한국어 브리핑 본문이 표시되는지 확인했습니다.
+- 일부 local LLM이 Markdown 요청에도 JSON/code fence나 혼합 언어 표현을 반환할 수 있어, `PL Briefing` 화면 표시 전 JSON/code fence를 Markdown 브리핑 섹션으로 정리하고 흔한 혼합 표기를 보정하도록 했습니다. 이 정규화는 새 근거를 만들지 않고 표시 품질만 보정합니다.
+- `dashboard-pl-briefing` screenshot 시나리오를 추가하고, Application Preview와 사용 가이드 검증 증거에 실제 LLM 브리핑 결과 이미지를 추가했습니다.
+- 주요 파일: `src/services/ai_resource_radar_service.py`, `scripts/capture_feature_screenshot.py`, `tests/test_resource_metrics_service.py`, `tests/test_documentation_images.py`, `docs/application-preview.md`, `docs/ai-technical-overview.md`, `docs/sample-project-usage-verification.md`, `docs/images/features/dashboard-pl-briefing.png`, `docs/images/usage-verification/12-pl-briefing.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `Invoke-RestMethod -Uri http://127.0.0.1:1234/v1/models -Method Get`로 local LLM model 노출 확인; `.\.venv\Scripts\python.exe` 서비스 호출로 `briefing_provider=local_openai`, `briefing_used_llm=True` 확인; `dashboard-pl-briefing` screenshot capture에서 `provider=local_openai, mode=LLM 생성`, `요약`, `회의 질문`, `기반으로 이번` 표시와 JSON code fence/`本周`/`기반으로이번` 미표시 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py tests\test_documentation_images.py -q` 9개 테스트 통과; `git diff --check` 통과(Windows 줄끝 경고만 출력).
+
 ## 2026-06-14
 
 ### Application Preview 메뉴 순서 정렬

@@ -26,6 +26,7 @@ class FeatureScenario:
     fill_label: str | None = None
     fill_value: str | None = None
     click_label: str | None = None
+    button_label: str | None = None
     action_wait_text: str | None = None
 
 
@@ -340,6 +341,27 @@ SCENARIOS: dict[str, FeatureScenario] = {
         scroll_to_text="AI Resource Radar",
         full_page=False,
     ),
+    "dashboard-pl-briefing": FeatureScenario(
+        name="dashboard-pl-briefing",
+        sidebar_label="Dashboard",
+        wait_text="AI Resource Radar",
+        required_texts=(
+            "Dashboard",
+            "AI Resource Radar",
+            "PL Briefing 생성",
+            "provider=local_openai, mode=LLM 생성",
+            "요약",
+            "우선 확인 항목",
+            "회의 질문",
+            "다음 액션",
+        ),
+        default_screenshot="docs/images/features/dashboard-pl-briefing.png",
+        description="Dashboard PL Briefing LLM 생성 결과 화면",
+        scroll_to_text="AI Resource Radar",
+        button_label="PL Briefing 생성",
+        action_wait_text="provider=local_openai, mode=LLM 생성",
+        full_page=False,
+    ),
     "dashboard": FeatureScenario(
         name="dashboard",
         sidebar_label="Dashboard",
@@ -543,9 +565,20 @@ def _select_sidebar_project(page: Page, project_name: str | None) -> None:
     if not project_name:
         return
     sidebar = page.locator('section[data-testid="stSidebar"]')
-    sidebar.get_by_role("combobox").first.click()
-    page.get_by_text(project_name).last.click()
-    page.get_by_text(project_name).first.wait_for(timeout=15_000)
+    selector = sidebar.get_by_role("combobox").first
+    current_label = selector.get_attribute("aria-label", timeout=10_000) or ""
+    if project_name in current_label:
+        return
+    selector.click()
+    option = page.get_by_role("option").filter(has_text=project_name)
+    if option.count() != 1:
+        raise AssertionError(f"Project selector option is not unique for: {project_name}")
+    option.click()
+    page.wait_for_function(
+        "(value) => document.querySelector('section[data-testid=\"stSidebar\"]')?.innerText.includes(value)",
+        arg=project_name,
+        timeout=15_000,
+    )
 
 
 def _wait_for_body_text(page: Page, text: str, timeout: int = 20_000) -> None:
@@ -713,8 +746,10 @@ def _capture_scenario(
         page.keyboard.press("Tab")
     if scenario.click_label:
         page.locator('[data-testid="stTabs"]').get_by_role("button", name=scenario.click_label).click()
+    if scenario.button_label:
+        page.get_by_role("button", name=scenario.button_label).click()
     if scenario.action_wait_text:
-        _wait_for_body_text(page, scenario.action_wait_text, timeout=30_000)
+        _wait_for_body_text(page, scenario.action_wait_text, timeout=180_000)
 
     _wait_for_texts(page, scenario.required_texts + extra_required_texts)
     text = _page_text(page, scenario.wait_text)

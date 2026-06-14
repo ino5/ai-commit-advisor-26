@@ -194,7 +194,7 @@ AI Progress는 두 개념을 분리합니다. AI progress rate는 여전히 `pro
 
 `resource_metrics_service.py`는 AX 자원관리 기능을 위한 metric layer입니다. 이 layer는 새 LLM 판단을 만들지 않고, 이미 저장된 Mapping, AI Progress 근거, Git commit/file/diff metadata, unresolved risk, AI Code Review 실행 기록을 조합합니다. 계산 결과는 Dashboard의 자원관리 지표와 Risk Analysis의 `FORECAST_DELAY` 리스크에서 사용되며, 사용자가 저장한 기준 시점은 `resource_metric_snapshots`에 보관됩니다.
 
-`ai_resource_radar_service.py`는 이 metric layer 위에서 PL 우선 검토 목록을 만듭니다. Radar 점수는 HIGH risk, 예상 지연, 계획 대비 AI 진척도 차이, 난이도, cross-program commit, 관련 commit 부재, workload point를 설명 가능한 방식으로 합산합니다. LLM은 이 점수를 직접 결정하지 않고, 사용자가 `PL Briefing 생성`을 누를 때 Radar evidence를 한국어 회의 브리핑으로 요약하는 역할을 맡습니다. LLM provider가 `mock`이거나 local LLM 호출에 실패하면 deterministic fallback briefing을 보여주므로 Dashboard의 우선순위 표시는 LLM 가용성에 의존하지 않습니다.
+`ai_resource_radar_service.py`는 이 metric layer 위에서 PL 우선 검토 목록을 만듭니다. Radar 점수는 HIGH risk, 예상 지연, 계획 대비 AI 진척도 차이, 난이도, cross-program commit, 관련 commit 부재, workload point를 설명 가능한 방식으로 합산합니다. LLM은 이 점수를 직접 결정하지 않고, 사용자가 `PL Briefing 생성`을 누를 때 Radar evidence를 한국어 회의 브리핑으로 요약하는 역할을 맡습니다. LLM provider가 `mock`이거나 local LLM 호출에 실패하면 deterministic fallback briefing을 보여주므로 Dashboard의 우선순위 표시는 LLM 가용성에 의존하지 않습니다. 일부 local model이 Markdown 요청에도 JSON/code fence나 혼합 언어 표현을 반환할 수 있어, 화면 표시 전 브리핑 섹션과 흔한 혼합 표기를 정리합니다. 이 후처리는 근거를 새로 만들지 않고 presentation 품질만 보정합니다.
 
 주요 산출물:
 
@@ -215,7 +215,7 @@ AI Progress는 두 개념을 분리합니다. AI progress rate는 여전히 `pro
 - Source verification과 re-index warning은 outdated source chunk가 current code evidence로 쓰이는 것을 막지만, LLM answer의 semantic correctness를 증명하지는 않습니다.
 - Commit diff는 historical evidence이며 deleted line을 포함할 수 있습니다.
 - Resource Metrics snapshot은 사용자가 저장한 시점만 남깁니다. 자동 배치나 webhook 기반 주기 저장은 아직 제공하지 않습니다.
-- AI Resource Radar의 priority score는 운영 의사결정 보조 점수이며, 확정 일정 판단이나 개인 평가 지표가 아닙니다. PL Briefing은 Radar evidence를 요약하지만, 근거에 없는 사실을 추가하지 않도록 prompt와 fallback 정책으로 제한합니다.
+- AI Resource Radar의 priority score는 운영 의사결정 보조 점수이며, 확정 일정 판단이나 개인 평가 지표가 아닙니다. PL Briefing은 Radar evidence를 요약하지만, 근거에 없는 사실을 추가하지 않도록 prompt, 표시용 정규화, fallback 정책으로 제한합니다.
 
 ## 공개 소개 요약
 

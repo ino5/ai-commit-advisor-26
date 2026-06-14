@@ -26,6 +26,10 @@ AI Resource Radar 우선순위와 PL Briefing action
 
 ![Dashboard AI Resource Radar](images/features/dashboard-radar.png)
 
+local LLM이 생성한 PL Briefing 결과
+
+![Dashboard PL Briefing](images/features/dashboard-pl-briefing.png)
+
 자원관리 참고 지표
 
 ![Dashboard](images/features/dashboard.png)

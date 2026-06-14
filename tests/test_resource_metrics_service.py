@@ -21,7 +21,11 @@ from src.services.resource_metrics_service import (
     get_resource_metrics_summary,
     save_resource_metric_snapshot,
 )
-from src.services.ai_resource_radar_service import build_ai_resource_radar, generate_pl_briefing
+from src.services.ai_resource_radar_service import (
+    _normalize_llm_briefing_text,
+    build_ai_resource_radar,
+    generate_pl_briefing,
+)
 from src.services.risk_service import RISK_FORECAST_DELAY, run_risk_analysis
 
 
@@ -359,6 +363,38 @@ def test_pl_briefing_uses_configured_llm_when_available():
             assert "Briefing Program" in fake_llm.prompt
         finally:
             _cleanup_project_graph(db, project.id)
+
+
+def test_pl_briefing_normalizes_fenced_json_response():
+    raw = """```json
+{
+  "요약": "우선 검토 항목 2개가 있습니다.",
+  "우선 확인 항목": [
+    {"program_name": "주문 상태 변경", "reasons": ["미해결 리스크 2건", "57일 지연 가능성"]}
+  ],
+  "회의 질문": ["주문 상태 변경의 범위 조정이 필요한가요?"],
+  "다음 액션 순서": [
+    {"action": "담당자와 범위/일정을 확인하세요.", "program_id": ["SMP-ORD-002"]}
+  ]
+}
+```"""
+
+    text = _normalize_llm_briefing_text(raw)
+
+    assert "```" not in text
+    assert "### 요약" in text
+    assert "우선 검토 항목 2개" in text
+    assert "### 우선 확인 항목" in text
+    assert "주문 상태 변경" in text
+    assert "미해결 리스크 2건" in text
+    assert "### 회의 질문" in text
+    assert "### 다음 액션" in text
+
+
+def test_pl_briefing_cleans_common_mixed_language_terms():
+    text = _normalize_llm_briefing_text("本周 점검에서는 고우한 우선순위 항목을 기반으로이번 확인합니다.")
+
+    assert text == "이번 주 점검에서는 높은 우선순위 항목을 기반으로 이번 확인합니다."
 
 
 def test_resource_metrics_summary_handles_empty_project():

@@ -36,6 +36,7 @@
 | Risk Analysis | 14개 risk finding을 생성했습니다. |
 | Project Chat | `결제금액 검증은 어디에서 수행되나요?` 질문에 `PaymentService.java` 근거가 포함된 답변을 생성했습니다. |
 | AI Code Review | `Relax partner payment validation for pilot channel` commit을 실제 LLM으로 리뷰했고 결과를 저장했습니다. |
+| PL Briefing 추가 리허설 | 2026-06-15에 Dashboard `AI Resource Radar`에서 `PL Briefing 생성`을 실행했고, `provider=local_openai, mode=LLM 생성` 상태와 한국어 브리핑 본문을 확인했습니다. |
 
 ## 대표 화면 증거
 
@@ -83,6 +84,10 @@
 
 ![AI Code Review](images/usage-verification/11-code-review.png)
 
+### 12. PL Briefing
+
+![PL Briefing](images/usage-verification/12-pl-briefing.png)
+
 ## 검증 명령
 
 환경 확인:
@@ -103,8 +108,16 @@ Mermaid/문서 검증과 화면 캡처:
 .\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature project-chat --project-name "AAA Sample Shop Usage Verification 20260614" --screenshot docs\images\usage-verification\10-project-chat.png --surface local --expect-text "결제금액 검증은 어디에서 수행되나요?" --expect-text "PaymentService.java" --forbid-text "현재 검증된 소스 근거만으로는 답변하기 어렵습니다"
 ```
 
+2026-06-15 PL Briefing 추가 리허설:
+
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:1234/v1/models -Method Get
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8502 --feature dashboard-pl-briefing --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --screenshot docs\images\usage-verification\12-pl-briefing.png --expect-text "provider=local_openai, mode=LLM 생성" --expect-text "요약" --expect-text "회의 질문" --expect-text "기반으로 이번" --forbid-text "```json" --forbid-text "本周" --forbid-text "기반으로이번"
+```
+
 ## 남은 제한 사항
 
 - 검증은 local LM Studio의 현재 모델 응답에 의존합니다. 같은 코드라도 모델, prompt template, GPU/CPU 상태에 따라 Mapping reason, Code Review summary, Project Chat wording은 달라질 수 있습니다.
+- PL Briefing 추가 리허설은 기존 검증 데이터 위에서 Dashboard 브리핑 생성 경로만 다시 확인했습니다. 전체 데이터 적재와 Mapping/RAG/Code Review 전 과정을 2026-06-15에 재실행한 것은 아닙니다.
 - 스크린샷은 local Python surface 기준입니다. Docker path mapping이나 사내 서버 storage root 정책은 별도 운영 검증이 필요합니다.
 - `Project Chat` 검증은 저장된 대화 session을 화면에서 확인했습니다. 질문 실행 자동화는 별도 UI 자동화가 아니라 서비스 실행 후 DB history를 화면에서 캡처하는 방식입니다.
