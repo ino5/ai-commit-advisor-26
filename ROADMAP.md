@@ -72,6 +72,7 @@
 | P2 | Docs / Verification | Sample project usage guide verification evidence | Done | 샘플 프로젝트 사용 가이드 실제 검증 결과 추가 | 60dd622 |
 | P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety |  |
 | P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 | 8f4ad22 |
+| P2 | Code Review UX | AI Code Review server repository target wording | Done | AI Code Review 서버 저장소 대상 설명 정리 |  |
 
 ## Candidate Tasks
 
@@ -83,6 +84,24 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P2 | UX | Program management project flow cleanup | `프로그램 관리` now defaults to the global current project, but it still keeps an explicit `새 프로젝트명으로 저장` option for legacy upload/create flows. This preserves compatibility but makes the page slightly less direct than other project-scoped screens. | Consider making program management strictly current-project based and moving new project creation to `프로젝트/Git 설정`. If keeping the exception, make the create-new-project path visually secondary and explain when it should be used. | Check sample data and Excel upload workflows before removing the exception. |
 | P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - AI Code Review Server Repository Target Wording
+
+Status: Done
+
+Goal:
+Make the AI Code Review screen and documentation match the central app-server Git repository model, where commit history is the normal review target and working tree/staged review only applies to local changes inside the server clone.
+
+Rationale:
+The app does not read each developer's personal working tree. In the shared PoC/server model, developers usually push commits and the app reviews the server-accessible repository history. Presenting working tree and staged changes as equal primary targets can make users think the app can inspect local developer machines.
+
+Checklist:
+
+- [x] Reorder the AI Code Review target options so latest/specific commit review is the primary path.
+- [x] Clarify in the UI that server working tree/staged review means local changes in the app-server clone.
+- [x] Update README, user guide, feature guide, architecture, AI technical overview, and Application Preview wording.
+- [x] Record the operating-model decision in `docs/engineering-decisions.md`.
+- [x] Update `AI_CHANGELOG.md`.
 
 ## P1 - AX Resource Management Metrics Foundation
 

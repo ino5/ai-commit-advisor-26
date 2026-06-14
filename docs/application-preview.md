@@ -159,7 +159,7 @@
 <details>
 <summary>AI Code Review</summary>
 
-리뷰 대상 선택
+커밋 이력 중심 리뷰 대상 선택
 
 ![AI Code Review](images/features/ai-code-review.png)
 

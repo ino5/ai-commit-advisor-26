@@ -185,7 +185,7 @@ flowchart LR
     Git --> GitHistory["Git History<br/>커밋 이력/diff 탐색"]
     Mapping --> Risk["Risk Analysis<br/>리스크 탐지/저장"]
     Mapping --> Impact["Commit Impact<br/>커밋 영향도 분석"]
-    Git --> CodeReview["AI Code Review<br/>staged/commit 리뷰"]
+    Git --> CodeReview["AI Code Review<br/>커밋 이력 중심 리뷰"]
     Mapping --> Dashboard["Dashboard<br/>프로젝트 분석 요약"]
     Mapping --> AIProgress["AI Progress<br/>계획 vs AI 진척도"]
     Risk --> AIProgress
@@ -206,7 +206,7 @@ flowchart LR
 - `Risk Analysis`: 계획, 매핑, 커밋 활동, 예상 종료일 기반 리스크를 탐지하고 `risk_findings`에 저장/해결 처리.
 - `Git History`: 현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff를 조회.
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
-- `AI Code Review`: staged 변경, 최근 커밋, 특정 커밋을 LLM으로 리뷰하고 결과를 저장.
+- `AI Code Review`: 앱 서버 Git 저장소의 최근 커밋과 특정 커밋을 중심으로 LLM 리뷰를 실행하고 결과를 저장. 서버 clone에 local 변경이 남아 있을 때만 서버 작업트리/staged 변경 리뷰를 보조 옵션으로 사용.
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, 개발자별 업무량·난이도, 예상 지연 프로그램, PoC 고객가치 KPI 표시.
 - `개발계획 대시보드`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
@@ -478,7 +478,7 @@ erDiagram
 | `risk_service.py` | 계획 일정, 담당자, 커밋/매핑 상태를 기반으로 리스크를 탐지하고 `risk_findings`에 저장/해결 처리한다. |
 | `git_history_service.py` | 프로젝트별 커밋 이력, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff 조회를 처리한다. |
 | `commit_impact_service.py` | 특정 커밋이 영향을 줄 가능성이 있는 프로그램, 파일, 개발자 범위를 계산한다. |
-| `code_review_service.py` | staged 변경, 최근 커밋, 특정 커밋 diff를 LLM으로 리뷰하고 `code_review_results`에 저장한다. |
+| `code_review_service.py` | 앱 서버 Git 저장소의 최근 커밋, 특정 커밋 diff를 중심으로 LLM 리뷰를 실행하고 `code_review_results`에 저장한다. 서버 clone local 변경 점검용으로 working tree/staged diff 리뷰도 지원한다. |
 | `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, PoC 고객가치 KPI를 계산한다. 현재는 저장형 snapshot이 아니라 조회 시점 계산 결과를 반환한다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |

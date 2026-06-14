@@ -15,7 +15,7 @@ AI Commit Advisor는 개발계획 데이터와 실제 Git 활동을 연결합니
 | Program-Commit Mapping | LLM이 하나의 commit과 candidate program을 비교 | Program metadata, commit message, changed files, diff snippets, RAG candidates | Related programs, relevance score, implementation status, reason |
 | Program Implementation Status | LLM이 program별 구현 상태를 보수적으로 추정 | Program plan, related commits, changed files, prior mapping analysis | NOT_STARTED, IN_PROGRESS, COMPLETED, UNKNOWN, evidence commits, 한국어 검증 안내 |
 | Project Chat | RAG가 current source chunk를 검색하고 LLM이 사용자 질문에 답변 | 기본값은 verified `source_file` chunks | 저장된 chat session/message와 source citation이 포함된 answer |
-| AI Code Review | LLM이 working tree, staged changes, latest commit, selected commit을 review | Git diff and commit message | Summary, risk level, bug findings, refactoring suggestions |
+| AI Code Review | LLM이 앱 서버 Git 저장소의 latest commit 또는 selected commit을 중심으로 review. 서버 clone에 local 변경이 있을 때만 working tree/staged changes review 사용 | Git diff and commit message | Summary, risk level, bug findings, refactoring suggestions |
 | RAG Search | Embedding으로 관련 chunk 검색 | Current source, programs, commits, commit_file diffs | Metadata와 verification status가 있는 similar chunks |
 | AI Progress | 계획 진척도와 mapping-derived AI progress, 저장된 implementation analysis 비교 | Program plan, program_commit_mappings, program_implementation_status | Progress gap, risk flags, implementation analysis summary |
 | Risk Analysis | AI-derived mapping/progress evidence를 사용하는 rule-based analysis | Program plan, related mappings, commits, AI progress | Risk findings and evidence |

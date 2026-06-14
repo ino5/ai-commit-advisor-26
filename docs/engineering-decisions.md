@@ -45,6 +45,43 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-14 - AI Code Review는 서버 저장소 커밋 이력을 기본 대상으로 둔다
+
+### 배경
+
+AI Code Review 화면은 working tree, staged changes, latest commit, selected commit을 모두 지원합니다. 이 구조는 개발자 개인 PC에서 앱을 직접 실행할 때는 자연스럽지만, 현재 PoC와 사내 서버 운영 모델에서는 대상 Git 저장소가 앱 서버에 있습니다. 사용자가 브라우저로 접속하는 구조에서는 앱이 각 개발자 PC의 미커밋 변경이나 staged 변경을 직접 읽을 수 없습니다.
+
+### 결정
+
+AI Code Review의 기본 UX와 문서는 앱 서버 Git 저장소의 최신 커밋과 특정 커밋 리뷰를 중심으로 설명합니다. working tree와 staged changes는 `서버 작업트리 변경`, `서버 Staged 변경`으로 표현하고, 분석용 서버 clone에 local 변경이 남아 있을 때만 쓰는 보조 옵션으로 둡니다.
+
+### 이유
+
+- 중앙 서버 PoC에서 실제로 안정적인 리뷰 근거는 Git sync/fetch 이후 확인 가능한 commit 이력입니다.
+- 개발자 개인 PC의 작업 상태를 앱 서버가 볼 수 있다고 오해하면 사용 가이드와 데모 흐름이 실제 운영 모델과 어긋납니다.
+- 기존 service 기능은 유지하면서 UI와 문서의 기본 경로만 바꾸면 local 실행자와 서버 운영자 모두 필요한 옵션을 사용할 수 있습니다.
+
+### 검토한 대안
+
+- working tree/staged 옵션 제거: 서버 모델에는 단순하지만, 로컬 실행이나 운영자가 서버 clone의 임시 변경을 점검하는 사용성을 잃습니다.
+- Git hook, CI, webhook 기반 자동 리뷰를 즉시 추가: 운영 제품에는 자연스럽지만 PoC 범위보다 크고, 인증/권한/실패 처리 정책이 먼저 필요합니다.
+- 기존 라벨 유지: 기능 구현은 그대로지만 중앙 서버 사용자가 리뷰 대상의 위치를 잘못 이해할 가능성이 큽니다.
+
+### 영향과 tradeoff
+
+- 화면의 대표 흐름은 커밋 이력 기반 리뷰로 단순해집니다.
+- 서버 작업트리/staged 옵션은 남아 있지만 고급/보조 옵션으로 해석해야 합니다.
+- 개발자별 커밋 전 자동 리뷰가 필요하면 이후 Git hook, CI, GitHub/GitLab webhook 연동을 별도 로드맵으로 검토해야 합니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `AI Code Review Server Repository Target Wording`
+- `docs/feature-guide.md`
+- `docs/demo-user-guide.md`
+- `docs/architecture.md`
+- `docs/ai-technical-overview.md`
+- `AI_CHANGELOG.md`의 `AI Code Review 서버 저장소 대상 설명 정리`
+
 ## 2026-06-14 - AX 자원관리 지표는 계산형 foundation부터 시작
 
 ### 배경

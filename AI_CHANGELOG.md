@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### AI Code Review 서버 저장소 대상 설명 정리
+
+- 중앙 앱 서버 모델에서는 AI Code Review의 기본 대상이 개발자 개인 PC의 working tree/staged 변경이 아니라 앱 서버 Git 저장소의 최신/특정 커밋임을 UI와 문서에 명확히 했습니다.
+- `AI Code Review` 화면의 리뷰 대상 순서를 `최신 커밋`, `특정 커밋`, `서버 작업트리 변경`, `서버 Staged 변경` 순서로 바꾸고, 서버 작업트리/staged 옵션은 분석용 서버 clone에 local 변경이 남아 있을 때만 의미가 있다는 안내를 추가했습니다.
+- README, 사용 가이드, feature guide, architecture, AI technical overview, Application Preview, engineering decisions, roadmap을 같은 운영 모델 기준으로 정리했습니다.
+- 주요 파일: `src/ui/code_review_page.py`, `src/services/code_review_service.py`, `README.md`, `docs/demo-user-guide.md`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/application-preview.md`, `docs/engineering-decisions.md`, `docs/images/features/ai-code-review.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_feedback_and_review_services.py -q` 8개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 105개 테스트 통과; Browser에서 AI Code Review 화면의 `최신 커밋 (권장)`, `특정 커밋`, `서버 작업트리 변경`, `서버 Staged 변경`, 중앙 앱 서버 안내문 렌더링 확인; `git diff --check` 통과.
+
 ### 예상 종료일과 자원관리 Dashboard
 
 - `resource_metrics_service.py`에 프로그램별 예상 종료일, 예상 지연일, forecast confidence, forecast level 계산을 추가했습니다.

@@ -62,7 +62,7 @@ flowchart TB
 - Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, PoC 고객가치 KPI 확인
 - 현재 소스 검증형 RAG Search와 저장형 Project Chat
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
-- 작업트리, staged 변경, 최신/특정 커밋 대상 AI Code Review
+- 앱 서버 Git 저장소의 최신/특정 커밋 중심 AI Code Review
 - 데모용 샘플 프로젝트와 Excel 데이터 생성으로 전체 기능 확인 가능
 
 ## Git 저장소 접근 모델

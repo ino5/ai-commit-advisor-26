@@ -8,10 +8,10 @@ from src.ui.project_context import require_project_context
 
 
 TARGET_OPTIONS = {
-    "작업트리 변경": "working_tree",
-    "Staged 변경": "staged",
-    "최신 커밋": "latest_commit",
+    "최신 커밋 (권장)": "latest_commit",
     "특정 커밋": "commit",
+    "서버 작업트리 변경": "working_tree",
+    "서버 Staged 변경": "staged",
 }
 def _render_review_result(review) -> None:
     st.subheader("리뷰 결과")
@@ -68,7 +68,7 @@ def _render_review_history(project_id: int) -> None:
 
 def render_code_review_page() -> None:
     st.title("AI Code Review")
-    st.caption("앱 서버 Git 저장소의 변경 또는 커밋을 LLM으로 분석해 커밋 요약, 버그 후보, 리팩토링 제안을 기록합니다.")
+    st.caption("앱 서버 Git 저장소의 커밋 이력을 LLM으로 분석해 커밋 요약, 버그 후보, 리팩토링 제안을 기록합니다.")
 
     context = require_project_context("먼저 프로젝트를 등록해 주세요.")
     if context is None:
@@ -87,9 +87,15 @@ def render_code_review_page() -> None:
 
     target_label = st.radio("리뷰 대상", list(TARGET_OPTIONS.keys()), horizontal=True)
     target_type = TARGET_OPTIONS[target_label]
+    st.caption(
+        "중앙 앱 서버 모델에서는 최신/특정 커밋 리뷰가 기본 흐름입니다. "
+        "서버 작업트리와 서버 Staged 변경은 분석용 서버 clone에 임시 변경이 남아 있을 때만 사용하세요."
+    )
     target_ref = None
     if target_type == "commit":
         target_ref = st.text_input("커밋 해시 또는 rev", value="HEAD")
+    elif target_type in {"working_tree", "staged"}:
+        st.info("이 옵션은 앱 서버 Git 저장소의 local 변경을 리뷰합니다. 개발자 개인 PC의 작업트리나 staged 변경은 서버 앱에서 직접 볼 수 없습니다.")
 
     if st.button("AI 코드리뷰 실행", type="primary"):
         with SessionLocal() as db:
