@@ -2,6 +2,13 @@
 
 ## 2026-06-14
 
+### Roadmap 완료 작업 commit 기록 정리
+
+- `ROADMAP.md` Priority Overview에서 완료 상태지만 commit 칸이 비어 있던 항목을 실제 완료 commit 기준으로 채웠습니다.
+- 기능, 아키텍처, AI 동작 변경은 없고 Roadmap 추적 정보만 정리했습니다.
+- 주요 파일: `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "\| Done \| [^|]+ \|  \|" ROADMAP.md` 결과 없음; `git diff --check` 통과.
+
 ### README 대표 screenshot source 통합
 
 - README 최상단 대표 screenshot이 stale 상태로 남던 원인을 확인하고, `docs/images/features/home.png`를 단일 source로 사용하도록 정리했습니다.

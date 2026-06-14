@@ -57,20 +57,20 @@
 | P2 | Docs | Sample project wording cleanup | Done | Sample project wording cleanup | 5abe51c |
 | P2 | Docs | Natural wording policy generalization | Done | Natural wording policy generalization | 6e946e4 |
 | P2 | Docs | Reader-facing wording policy simplification | Done | Reader-facing wording policy simplification | fe093bc |
-| P2 | UX | Sidebar menu hierarchy sizing | Done | Sidebar 메뉴 계층 크기 조정 |  |
+| P2 | UX | Sidebar menu hierarchy sizing | Done | Sidebar 메뉴 계층 크기 조정 | 143f994 |
 | P2 | Docs | Documentation impact gate policy | Done | Documentation impact gate policy | 88ef1cb |
 | P2 | UX | Sidebar navigation structure stabilization | Done | Sidebar navigation structure stabilization | 5094ebb |
-| P2 | Docs | AI Agent onboarding guide | Done | AI Agent onboarding guide |  |
+| P2 | Docs | AI Agent onboarding guide | Done | AI Agent onboarding guide | 4237302 |
 | P2 | UX | Global project context | Done | Global project context | 17b281d |
 | P2 | UX | Home current project focus | Done | Home current project focus | 6027d20 |
-| P1 | Ops / Architecture | App-server Git repository operating model | Done | App-server Git repository operating model |  |
-| P2 | Git Ops | Server repository update runbook/script | Done | Server repository update runbook and script |  |
-| P2 | Git UX | Git History viewer | Done | Git History viewer |  |
-| P2 | Docs | Git History Application Preview screenshot | Done | Git History Application Preview screenshot |  |
-| P2 | Git Ops | Server repository status display | Done | Server repository status display |  |
-| P2 | Docs | Demo user guide | Done | Demo user guide |  |
+| P1 | Ops / Architecture | App-server Git repository operating model | Done | App-server Git repository operating model | 1403254 |
+| P2 | Git Ops | Server repository update runbook/script | Done | Server repository update runbook and script | e63b68f |
+| P2 | Git UX | Git History viewer | Done | Git History viewer | 6af18a7 |
+| P2 | Docs | Git History Application Preview screenshot | Done | Git History Application Preview screenshot | c57e773 |
+| P2 | Git Ops | Server repository status display | Done | Server repository status display | 08b2848 |
+| P2 | Docs | Demo user guide | Done | Demo user guide | 215a201 |
 | P2 | Docs / Verification | Sample project usage guide verification evidence | Done | 샘플 프로젝트 사용 가이드 실제 검증 결과 추가 | 60dd622 |
-| P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety |  |
+| P2 | Demo / Data UX | Project delete and demo reset safety | Done | Project delete and demo reset safety | 8ef39f0 |
 | P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 | 8f4ad22 |
 | P2 | Code Review UX | AI Code Review server repository target wording | Done | AI Code Review 서버 저장소 대상 설명 정리 | 1023c11 |
 | P1 | Resource Analytics | Resource metric snapshot and trend dashboard | Done | 자원관리 지표 시계열 snapshot과 추세 분석 | 02421b7 |
@@ -84,13 +84,13 @@
 | P2 | UX / Data Flow | Program management project flow cleanup | Done | 프로그램 관리 현재 프로젝트 저장 흐름 정리 | 987a799 |
 | P2 | Home UX | Home summary priority cleanup | Done | Home 요약 우선순위 정리 | e38f0e9 |
 | P2 | Navigation UX | Sidebar group collapse cleanup | Done | Sidebar 접이식 그룹 정리 | b594b13 |
-| P2 | Sample Data UX | Sample commit date normalization | Done | 샘플 프로젝트 commit 날짜 정규화 |  |
-| P2 | Docs UX | Application Preview Dashboard wording cleanup | Done | Application Preview Dashboard 설명 문구 정리 |  |
-| P2 | Dashboard UX | Dashboard value terminology cleanup | Done | Dashboard 가치 지표 용어 정리 |  |
-| P2 | Docs / Screenshot UX | Application Preview current sidebar screenshots | Done | Application Preview 현재 메뉴 screenshot 갱신 |  |
-| P2 | Docs UX | Sidebar menu map documentation | Done | Sidebar 메뉴 구조 문서화 |  |
-| P2 | Docs / Screenshot UX | Application Preview lower-section coverage | Done | Application Preview 하단 기능 screenshot 보강 |  |
-| P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 |  |
+| P2 | Sample Data UX | Sample commit date normalization | Done | 샘플 프로젝트 commit 날짜 정규화 | 99c20df |
+| P2 | Docs UX | Application Preview Dashboard wording cleanup | Done | Application Preview Dashboard 설명 문구 정리 | 190c14e |
+| P2 | Dashboard UX | Dashboard value terminology cleanup | Done | Dashboard 가치 지표 용어 정리 | 4533b25 |
+| P2 | Docs / Screenshot UX | Application Preview current sidebar screenshots | Done | Application Preview 현재 메뉴 screenshot 갱신 | b19dce3 |
+| P2 | Docs UX | Sidebar menu map documentation | Done | Sidebar 메뉴 구조 문서화 | 77f99f5 |
+| P2 | Docs / Screenshot UX | Application Preview lower-section coverage | Done | Application Preview 하단 기능 screenshot 보강 | 4b139a1 |
+| P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 | ea7ec14 |
 
 ## Candidate Tasks
 
