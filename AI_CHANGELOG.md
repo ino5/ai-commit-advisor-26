@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### Project Chat 대화 관리 UX 정리
+
+- Project Chat의 `대화 초기화`와 `새 대화`가 모두 새 session을 만드는 중복 액션으로 보이던 문제를 정리했습니다.
+- 별도 header action을 제거하고, `대화 관리` 영역 안에서 `저장된 대화` 선택과 `새 대화 시작`을 함께 배치했습니다.
+- 빈 session은 선택 목록에서 `빈 대화`로 표시해 새 대화 생성 버튼과 혼동되지 않도록 했습니다.
+- feature guide, setup/operations, Application Preview 설명과 screenshot capture 기준을 새 UI 문구로 갱신하고 Project Chat screenshot을 갱신했습니다.
+- 주요 파일: `src/ui/project_chat_page.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/project-chat.png`, `docs/feature-guide.md`, `docs/setup-and-operations.md`, `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_chat_page.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_history_service.py tests\test_project_chat_service.py -q` 6개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 106개 테스트 통과; Browser에서 `대화 관리`, `저장된 대화`, `새 대화 시작` 렌더링과 `대화 초기화` 미노출 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature project-chat --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local` 통과; `git diff --check` 통과.
+
 ### 자원관리 지표 시계열 snapshot과 추세 분석
 
 - `resource_metric_snapshots` 테이블과 Alembic migration을 추가해 Dashboard 자원관리 지표의 기준 시점 snapshot을 저장할 수 있게 했습니다.

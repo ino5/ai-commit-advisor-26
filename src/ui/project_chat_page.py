@@ -258,6 +258,12 @@ def _render_chat_history(messages: list[dict]) -> None:
                 )
 
 
+def _format_session_title(title: str | None) -> str:
+    if not title or title == "새 대화":
+        return "빈 대화"
+    return title
+
+
 def _render_chat_session_selector(project_id: int) -> tuple[int | None, list[dict]]:
     active_key = _active_session_key(project_id)
     with SessionLocal() as db:
@@ -271,20 +277,28 @@ def _render_chat_session_selector(project_id: int) -> tuple[int | None, list[dic
             st.session_state[active_key] = active_session_id
 
     session_options = {
-        f"{session.title or '새 대화'} · {session.last_message_at.strftime('%Y-%m-%d %H:%M') if session.last_message_at else '-'} · #{session.id}": session.id
+        (
+            f"{_format_session_title(session.title)} · "
+            f"{session.last_message_at.strftime('%Y-%m-%d %H:%M') if session.last_message_at else '-'} · "
+            f"#{session.id}"
+        ): session.id
         for session in sessions
     }
     labels = list(session_options.keys())
     selected_index = max(0, [session_options[label] for label in labels].index(st.session_state[active_key]))
-    col1, col2 = st.columns([5, 1])
-    selected_label = col1.selectbox("대화 이력", labels, index=selected_index)
-    st.session_state[active_key] = session_options[selected_label]
+    with st.container(border=True):
+        st.markdown("#### 대화 관리")
+        history_col, action_col = st.columns([5, 1.35])
+        selected_label = history_col.selectbox("저장된 대화", labels, index=selected_index)
+        st.session_state[active_key] = session_options[selected_label]
 
-    if col2.button("새 대화"):
-        with SessionLocal() as db:
-            session = create_chat_session(db, project_id)
-            st.session_state[active_key] = session.id
-        st.rerun()
+        action_col.markdown("&nbsp;", unsafe_allow_html=True)
+        if action_col.button("새 대화 시작", type="primary", use_container_width=True):
+            with SessionLocal() as db:
+                session = create_chat_session(db, project_id)
+                st.session_state[active_key] = session.id
+            st.rerun()
+        st.caption("새 대화를 시작해도 기존 대화는 삭제되지 않으며, 저장된 대화에서 다시 선택할 수 있습니다.")
 
     with SessionLocal() as db:
         session = get_chat_session(db, project_id, int(st.session_state[active_key]))
@@ -311,14 +325,7 @@ def render_project_chat_page() -> None:
     include_history = control2.checkbox("커밋 이력도 참고에 포함", value=False)
 
     st.divider()
-    chat_header, chat_action = st.columns([6, 1])
-    chat_header.subheader("대화")
-    if chat_action.button("대화 초기화"):
-        with SessionLocal() as db:
-            session = create_chat_session(db, project_id)
-            st.session_state[_active_session_key(project_id)] = session.id
-        st.rerun()
-
+    st.subheader("대화")
     active_session_id, messages = _render_chat_session_selector(project_id)
     _render_chat_history(messages)
 

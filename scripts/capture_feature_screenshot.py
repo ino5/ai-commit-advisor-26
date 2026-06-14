@@ -58,6 +58,9 @@ SCENARIOS: dict[str, FeatureScenario] = {
         required_texts=(
             "Project Chat",
             "현재 소스 파일에서 검증된 RAG 근거로 프로젝트 질문에 답합니다.",
+            "대화 관리",
+            "저장된 대화",
+            "새 대화 시작",
         ),
         forbidden_texts=(),
         default_screenshot="docs/images/features/project-chat.png",

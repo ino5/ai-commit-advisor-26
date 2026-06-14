@@ -150,7 +150,7 @@
 <details>
 <summary>Project Chat</summary>
 
-저장된 대화 이력, 현재 소스 근거가 포함된 답변, 근거 복사용 Markdown을 함께 보여주는 Project Chat 상태입니다.
+정리된 대화 관리 영역, 저장된 대화 선택, 현재 소스 근거가 포함된 답변, 근거 복사용 Markdown을 함께 보여주는 Project Chat 상태입니다.
 
 ![Project Chat](images/features/project-chat.png)
 

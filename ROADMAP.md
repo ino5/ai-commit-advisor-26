@@ -74,6 +74,7 @@
 | P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 | 8f4ad22 |
 | P2 | Code Review UX | AI Code Review server repository target wording | Done | AI Code Review 서버 저장소 대상 설명 정리 | 1023c11 |
 | P1 | Resource Analytics | Resource metric snapshot and trend dashboard | Done | 자원관리 지표 시계열 snapshot과 추세 분석 | 02421b7 |
+| P2 | Project Chat UX | Project Chat conversation controls cleanup | Done | Project Chat 대화 관리 UX 정리 |  |
 
 ## Candidate Tasks
 
@@ -85,6 +86,24 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P2 | UX | Program management project flow cleanup | `프로그램 관리` now defaults to the global current project, but it still keeps an explicit `새 프로젝트명으로 저장` option for legacy upload/create flows. This preserves compatibility but makes the page slightly less direct than other project-scoped screens. | Consider making program management strictly current-project based and moving new project creation to `프로젝트/Git 설정`. If keeping the exception, make the create-new-project path visually secondary and explain when it should be used. | Check sample data and Excel upload workflows before removing the exception. |
 | P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - Project Chat Conversation Controls Cleanup
+
+Status: Done
+
+Goal:
+Make Project Chat conversation controls feel intentional by removing duplicated "reset/new chat" actions and grouping session selection with the new conversation action.
+
+Rationale:
+`대화 초기화` and `새 대화` both created a new chat session, so users could read them as different destructive and non-destructive actions even though neither deleted history. A single conversation management area should make the saved-session model clearer.
+
+Checklist:
+
+- [x] Replace the separate reset button with one `새 대화 시작` action beside the session selector.
+- [x] Clarify the session selector labels and empty-session wording.
+- [x] Update user-facing docs and Application Preview wording/screenshot.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Verify with compile/test and browser/screenshot checks.
 
 ## P1 - Resource Metric Snapshot And Trend Dashboard
 

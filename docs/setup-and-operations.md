@@ -391,7 +391,7 @@ LM Studio 같은 로컬 embedding 서버는 한 번에 많은 chunk를 처리하
 - embedding API 호출은 `RAG 검색 > Embedding` 또는 RAG Index 화면에서 사용자가 명시적으로 선택한 제한 수량에서만 발생합니다.
 - embedding provider/model/dimension을 바꾸면 기존 vector를 조용히 재사용하지 말고 현재 model 기준 missing vector를 다시 생성하세요.
 
-Project Chat 대화는 프로젝트별 DB session으로 저장됩니다. `새 대화`와 `대화 초기화`는 기존 이력을 삭제하지 않고 새 session을 만들며, 이전 session은 `대화 이력`에서 다시 선택할 수 있습니다.
+Project Chat 대화는 프로젝트별 DB session으로 저장됩니다. `대화 관리`에서 저장된 대화를 선택할 수 있고, `새 대화 시작`은 기존 이력을 삭제하지 않고 새 session을 만듭니다. 이전 session은 `저장된 대화`에서 다시 선택할 수 있습니다.
 
 재인덱싱이나 embedding 중 앱 또는 LM Studio를 강제 종료하면 PostgreSQL은 열린 transaction을 롤백합니다. 다만 이미 commit된 chunk/vector와 아직 처리되지 않은 chunk가 섞여 `pending` 또는 `failed` 상태가 남을 수 있습니다. 이 상태는 부분 완료 상태이며, RAG 화면에서 인덱스 상태를 확인한 뒤 embedding을 제한 수량으로 이어서 실행하면 됩니다.
 
@@ -456,7 +456,7 @@ README 또는 Application Preview에 들어갈 기능 캡처를 갱신할 때는
 
 기본 저장 위치는 `docs/images/features/<feature>.png`입니다. 임시 확인용으로 저장하려면 `--screenshot .tmp/project-chat-check.png`처럼 별도 경로를 지정합니다.
 
-큰 기능 변경 후 화면 캡처를 갱신할 때는 빈 화면보다 기능 가치가 드러나는 상태를 사용합니다. 예를 들어 Project Chat은 sample project, 대화 이력, 질문, 답변 근거가 보이는 상태에서 캡처해야 합니다. 현재 실행 surface를 남기려면 `--surface local` 또는 `--surface docker`를 명시합니다.
+큰 기능 변경 후 화면 캡처를 갱신할 때는 빈 화면보다 기능 가치가 드러나는 상태를 사용합니다. 예를 들어 Project Chat은 sample project, 대화 관리, 질문, 답변 근거가 보이는 상태에서 캡처해야 합니다. 현재 실행 surface를 남기려면 `--surface local` 또는 `--surface docker`를 명시합니다.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature project-chat --surface docker --expect-text "결제금액 검증은 어디에서 수행되나요?" --expect-text "PaymentService.java" --forbid-text "현재 검증된 소스 근거만으로는 답변하기 어렵습니다"
