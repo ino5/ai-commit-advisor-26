@@ -2,6 +2,13 @@
 
 ## 2026-06-14
 
+### Project deletion and developer scope roadmap
+
+- Recorded the proposed safe implementation sequence for repeatable sample-project demos: add project delete/demo reset safety first, then introduce project developer membership without breaking the global developer master.
+- Updated the developer scope candidate from a broad open question to a concrete compatibility-first direction using a future `project_developers` membership table.
+- Important files: `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `rg -n "Project delete and demo reset safety|Project developer membership model|project_developers" ROADMAP.md AI_CHANGELOG.md` passed; `git diff --check` reported only Windows line-ending warnings and no whitespace errors.
+
 ### Demo user guide
 
 - Added a user-facing 시연 사용 가이드 that walks through the sample-project demonstration flow from project registration and Git sync through Mapping, Risk Analysis, AI Progress, Program Detail, Git History, Commit Impact, RAG, Project Chat, and AI Code Review.
