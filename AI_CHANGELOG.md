@@ -2,6 +2,12 @@
 
 ## 2026-06-14
 
+### Roadmap 빈 후보 작업 표 정리
+
+- `ROADMAP.md`의 `Candidate Tasks` 섹션에서 행 없는 빈 표를 제거하고, 현재 승인 대기 중인 후보 작업이 없다는 문장으로 대체했습니다.
+- 주요 파일: `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "\| Priority \| Area \| Candidate \||현재 승인 대기 중인 후보 작업은 없습니다|## P3 - Server-Managed" ROADMAP.md`로 빈 후보 표 제거와 다음 섹션 위치 확인; `git diff --check` 통과.
+
 ### Engineering decision superseded 표시 정리
 
 - `docs/engineering-decisions.md`의 2026-06-10 `App-server Git repository operating model` 결정을 `Superseded`로 표시했습니다.
