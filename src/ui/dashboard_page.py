@@ -14,6 +14,22 @@ from src.services.resource_metrics_service import (
 from src.ui.project_context import require_project_context
 
 
+RESOURCE_VALUE_HELP = {
+    "unresolved_risk": "아직 해결 처리되지 않은 리스크 건수입니다. PL이 우선 검토해야 할 리스크 backlog로 봅니다.",
+    "high_risk": "미해결 리스크 중 영향도가 HIGH인 건수입니다. 일정과 품질에 직접 영향을 줄 수 있는 항목입니다.",
+    "forecast_delay": "AI 진척도와 계획 종료일 기준으로 7일 이상 지연이 예상되는 프로그램 수입니다.",
+    "review_time": (
+        "완료된 AI 코드리뷰 1건당 약 0.5시간의 사전 리뷰 시간을 줄일 수 있다고 보는 PoC 가정값입니다. "
+        "실제 확정 절감 시간이 아니라 리뷰 부담 완화 가능성을 보는 지표입니다."
+    ),
+    "extra_mm": (
+        "HIGH 리스크와 예상 지연 프로그램을 조기에 대응했을 때 줄일 수 있다고 보는 추가 투입 규모입니다. "
+        "HIGH 리스크 1건=0.25MM, 예상 지연 프로그램 1건=0.15MM으로 계산한 PoC 가정값입니다."
+    ),
+    "trend_metrics": "저장된 snapshot을 기준으로 시간에 따른 변화만 비교합니다. 값의 단위가 다른 지표를 함께 고르면 추세 방향 위주로 해석하세요.",
+}
+
+
 def _program_df(summary) -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -165,13 +181,14 @@ def _render_resource_metric_trends(project_id: int) -> None:
         "미해결 리스크": "unresolved_risk_count",
         "평균 업무량 점수": "average_workload_score",
         "평균 난이도": "average_difficulty_score",
-        "AI 리뷰 절감 추정": "estimated_review_hours_saved",
-        "추가 MM 회피 노출": "estimated_extra_mm_avoidance",
+        "리뷰 시간 절감 가능성": "estimated_review_hours_saved",
+        "추가 투입 예방 가능성": "estimated_extra_mm_avoidance",
     }
     selected_metrics = st.multiselect(
         "추세 지표",
         list(metric_options.keys()),
         default=["예상 지연 프로그램", "HIGH 리스크", "평균 업무량 점수"],
+        help=RESOURCE_VALUE_HELP["trend_metrics"],
     )
     if selected_metrics:
         chart_df = trend_df[["captured_label", *[metric_options[label] for label in selected_metrics]]].melt(
@@ -212,8 +229,8 @@ def _render_resource_metric_trends(project_id: int) -> None:
                 "forecasted_delay_program_count": "예상 지연 프로그램",
                 "average_workload_score": "평균 업무량",
                 "average_difficulty_score": "평균 난이도",
-                "estimated_review_hours_saved": "AI 리뷰 절감 추정",
-                "estimated_extra_mm_avoidance": "추가 MM 회피 노출",
+                "estimated_review_hours_saved": "리뷰 시간 절감 가능성(h)",
+                "estimated_extra_mm_avoidance": "추가 투입 예방 가능성(MM)",
             }
         ),
         use_container_width=True,
@@ -226,12 +243,25 @@ def _render_resource_metrics(project_id: int, resource_summary) -> None:
     st.caption(resource_summary.interpretation_note)
 
     value = resource_summary.business_value
+    st.caption(value.assumption)
     value_cols = st.columns(5)
-    value_cols[0].metric("미해결 리스크", value.unresolved_risk_count)
-    value_cols[1].metric("HIGH 리스크", value.high_risk_count)
-    value_cols[2].metric("예상 지연 프로그램", value.forecasted_delay_program_count)
-    value_cols[3].metric("AI 리뷰 절감 추정", f"{value.estimated_review_hours_saved}h")
-    value_cols[4].metric("추가 MM 회피 노출", f"{value.estimated_extra_mm_avoidance}MM")
+    value_cols[0].metric("미해결 리스크", value.unresolved_risk_count, help=RESOURCE_VALUE_HELP["unresolved_risk"])
+    value_cols[1].metric("HIGH 리스크", value.high_risk_count, help=RESOURCE_VALUE_HELP["high_risk"])
+    value_cols[2].metric(
+        "예상 지연 프로그램",
+        value.forecasted_delay_program_count,
+        help=RESOURCE_VALUE_HELP["forecast_delay"],
+    )
+    value_cols[3].metric(
+        "리뷰 시간 절감 가능성",
+        f"{value.estimated_review_hours_saved}h",
+        help=RESOURCE_VALUE_HELP["review_time"],
+    )
+    value_cols[4].metric(
+        "추가 투입 예방 가능성",
+        f"{value.estimated_extra_mm_avoidance}MM",
+        help=RESOURCE_VALUE_HELP["extra_mm"],
+    )
 
     with st.expander("현재 자원관리 지표 snapshot 저장", expanded=False):
         st.caption("저장된 snapshot은 추세 분석에서 시간순 비교에 사용됩니다. 자동 저장이 아니라 PL이 기준 시점을 남기는 수동 저장입니다.")

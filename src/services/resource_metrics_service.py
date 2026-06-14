@@ -445,9 +445,9 @@ def _business_value_metric(
         estimated_review_hours_saved=estimated_review_hours_saved,
         estimated_extra_mm_avoidance=estimated_extra_mm_avoidance,
         assumption=(
-            "PoC planning estimate: AI review saves 0.5h per completed review, "
-            "each unresolved HIGH risk represents up to 0.25MM avoidable rework exposure, "
-            "and each forecasted delay program adds up to 0.15MM schedule-risk exposure."
+            "PoC 가정: 완료된 AI 코드리뷰 1건은 리뷰 시간 절감 가능성 0.5h로 계산하고, "
+            "조기 대응 시 HIGH 미해결 리스크 1건은 0.25MM, 예상 지연 프로그램 1건은 0.15MM의 "
+            "추가 투입 예방 가능성으로 계산합니다. 실제 확정 절감액이 아니라 의사결정 보조 추정값입니다."
         ),
     )
 

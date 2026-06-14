@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### 자원관리 가치 지표 문구 정리
+
+- Dashboard 자원관리 지표의 `AI 리뷰 절감 추정`, `추가 MM 회피 노출` 표현을 `리뷰 시간 절감 가능성`, `추가 투입 예방 가능성`으로 정리했습니다.
+- 두 지표가 확정 비용 절감액이 아니라 PoC 가정으로 계산한 의사결정 보조 추정값임을 Dashboard 설명과 metric 도움말에 노출했습니다.
+- 자원관리 추세 분석 표와 스크린샷 검증 기준도 새 사용자-facing 문구로 맞췄습니다.
+- 사용 가이드, feature guide, Application Preview, AI technical overview에 PoC 계산 가정과 해석 경계를 반영했습니다.
+- 주요 파일: `src/ui/dashboard_page.py`, `src/services/resource_metrics_service.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/dashboard.png`, `docs/demo-user-guide.md`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/ai-technical-overview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\dashboard_page.py src\services\resource_metrics_service.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py tests\test_project_management_service.py -q` 6개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 106개 테스트 통과; Browser에서 Dashboard의 `리뷰 시간 절감 가능성`, `추가 투입 예방 가능성` 렌더링과 기존 `AI 리뷰 절감 추정`, `추가 MM 회피 노출` 미노출 확인, tooltip target 18개 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --feature dashboard --url http://localhost:8501 --project-name "AAA Sample Shop Rich Demo (4)" --surface local` 통과; 갱신 screenshot 육안 확인 통과; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### Project/RAG 컨텍스트 도움말 툴팁 추가
 
 - 전역 `현재 프로젝트` 선택, Project Chat의 `TOP K`, `커밋 이력도 참고에 포함`, `최신 변경분 반영`, `전체 소스 다시 읽기`, 저장된 대화/새 대화 control에 물음표 도움말을 추가했습니다.

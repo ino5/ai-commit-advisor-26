@@ -163,7 +163,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
             "예상 지연 프로그램",
             "개발자별 부하",
             "예상 지연/난이도",
-            "추가 MM 회피 노출",
+            "추가 투입 예방 가능성",
         ),
         default_screenshot="docs/images/features/dashboard.png",
         description="Dashboard 자원관리 지표 화면",
