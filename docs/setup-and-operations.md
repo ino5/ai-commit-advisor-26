@@ -43,9 +43,10 @@ PowerShell:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
+
+가상환경 활성화 명령은 터미널마다 다릅니다. PowerShell은 `.\.venv\Scripts\Activate.ps1`, cmd.exe는 `.venv\Scripts\activate`, Git Bash는 `source .venv/Scripts/activate`를 사용합니다. 기본 설치 절차는 터미널 차이와 PowerShell 실행 정책에 덜 영향을 받도록 가상환경을 활성화하지 않고 `.venv\Scripts\python.exe`를 직접 호출합니다.
 
 cmd.exe:
 
@@ -54,18 +55,17 @@ cmd.exe:
 pip install -r requirements.txt
 ```
 
-이미 `.venv`가 만들어져 있으면 활성화만 하면 됩니다.
+이미 `.venv`가 만들어져 있으면 다시 만들지 말고 `.venv\Scripts\python.exe`를 직접 사용하면 됩니다.
 
 기존 `.venv`가 있는데 `pydantic_core._pydantic_core`, `psycopg2._psycopg`, `pandas._libs.*` 같은 `ModuleNotFoundError`가 발생하면 앱 코드보다 가상환경의 native package 설치가 깨졌을 가능성이 큽니다. 이때는 실행 중인 Streamlit/Python terminal을 모두 종료한 뒤, 가장 안전하게 `.venv`를 새로 만듭니다.
 
 ```powershell
 Remove-Item -Recurse -Force .venv
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-python -m pip check
-python -m src.db.init_db
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m src.db.init_db
 ```
 
 `.venv`를 지우기 어렵다면 깨진 package를 `--force-reinstall --no-cache-dir`로 재설치할 수 있지만, 여러 native package가 연속으로 실패하면 새 가상환경을 만드는 편이 빠르고 재현성이 좋습니다.
@@ -73,7 +73,7 @@ python -m src.db.init_db
 ### 4. DB 초기화 및 마이그레이션
 
 ```powershell
-python -m src.db.init_db
+.\.venv\Scripts\python.exe -m src.db.init_db
 ```
 
 DB schema는 Alembic migration으로 관리됩니다. 빈 DB는 최신 migration까지 생성되고, 기존 DB에 `alembic_version`이 없으면 현재 schema를 baseline으로 stamp한 뒤 이후 migration만 적용합니다.
@@ -89,7 +89,7 @@ DB schema는 Alembic migration으로 관리됩니다. 빈 DB는 최신 migration
 ### 5. Streamlit 실행
 
 ```powershell
-streamlit run app.py
+.\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
 가상환경 활성화 없이 실행하려면:

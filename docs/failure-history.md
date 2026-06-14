@@ -66,6 +66,8 @@ ModuleNotFoundError: No module named 'pandas._libs.pandas_parser'
 
 Quick Start 문서도 기존 `.venv`가 있을 때의 안전한 재사용 기준과, native package import 오류가 났을 때 `.venv`를 새로 만드는 복구 기준을 충분히 설명하지 않았습니다.
 
+추가로 README Quick Start가 PowerShell `Activate.ps1` 실행을 기본 경로로 안내했습니다. 사용자가 cmd.exe나 Git Bash 같은 다른 터미널에서 따라 하면 activation 명령이 맞지 않고, PowerShell에서도 실행 정책에 따라 `Activate.ps1`이 막힐 수 있습니다. 처음 설치하는 사용자가 가상환경 생성 직후 터미널별 차이에 걸릴 수 있는 문서 문제가 있었습니다.
+
 ### 사전 검증에서 놓친 이유
 
 기능 구현 검증은 당시 정상 상태였던 로컬 `.venv`에서 `py_compile`, Alembic migration, `compileall`, focused pytest, full pytest, `git diff --check`를 실행했습니다. 이 검증은 코드와 DB migration 회귀를 확인했지만, 기존 `.venv`가 부분적으로 깨진 상태에서 Quick Start를 새로 따라 하는 사용자의 환경 재현까지 포함하지 않았습니다.
@@ -83,7 +85,7 @@ Docker app을 중지하고 로컬 Python 실행을 확인하는 과정도 늦게
 
 중간에 `requirements.txt` 전체 강제 재설치를 시도했지만 시간 제한으로 완료 여부가 불명확했으므로, 최종적으로 깨진 binary import를 직접 확인하며 필요한 패키지를 재설치했습니다.
 
-`docs/setup-and-operations.md`에는 기존 `.venv` 재사용 주의사항과 native extension import 오류가 날 때의 복구 절차를 추가합니다.
+`README.md`와 `docs/setup-and-operations.md`는 기본 설치/실행 명령을 `.\.venv\Scripts\python.exe -m ...` 형태로 바꿔 터미널별 activation 명령을 몰라도 Quick Start를 수행할 수 있게 합니다. `docs/setup-and-operations.md`에는 기존 `.venv` 재사용 주의사항과 native extension import 오류가 날 때의 복구 절차도 추가합니다.
 
 ### 재발 방지 규칙
 
@@ -91,6 +93,7 @@ Docker app을 중지하고 로컬 Python 실행을 확인하는 과정도 늦게
 - 기존 `.venv`에서 `pydantic_core`, `psycopg2`, `pandas._libs` 같은 native extension import 오류가 나면 코드 변경보다 `.venv` 손상을 먼저 의심합니다.
 - 기존 `.venv`가 의심스러우면 부분 재설치보다 `.venv` 삭제 후 새로 생성하는 절차를 우선 안내합니다. 단, 실행 중인 Python/Streamlit/VS Code terminal이 파일을 잡고 있으면 먼저 종료합니다.
 - Quick Start 문서는 “이미 `.venv`가 있으면 활성화만 한다”뿐 아니라 “깨진 `.venv`를 어떻게 복구할지”도 포함해야 합니다.
+- Windows 로컬 Quick Start 문서에서는 특정 shell의 activation 명령을 필수 경로로 두지 않습니다. 기본 명령은 `.venv\Scripts\python.exe -m pip`, `.venv\Scripts\python.exe -m streamlit`처럼 activation이 필요 없는 형태로 작성합니다.
 
 ### 남은 한계 또는 후속 확인 사항
 

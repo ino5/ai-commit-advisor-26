@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Activation 없는 Quick Start 정리
+
+- README Quick Start를 `Activate.ps1` 없이 `.venv\Scripts\python.exe -m ...` 명령으로 실행하도록 바꿨습니다.
+- 가상환경 activation 명령이 PowerShell, cmd.exe, Git Bash마다 다르다는 점을 setup/operations 문서에 설명하고, 기본 설치/DB 초기화/Streamlit 실행/복구 절차를 activation 없는 명령으로 통일했습니다.
+- `.venv` Quick Start 실패 이력에 터미널별 activation 명령 차이와 재발 방지 규칙을 보강했습니다.
+- 주요 파일: `README.md`, `docs/setup-and-operations.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: `git diff --check` 통과. Windows 줄바꿈 경고만 확인했습니다.
+
 ### Windows `.venv` Quick Start 실패 이력과 복구 가이드
 
 - VS Code 로컬 실행에서 `.venv`의 native package가 깨져 `pydantic_core`, `psycopg2`, `pandas` import 오류가 발생한 사례를 실패 이력에 기록했습니다.
