@@ -88,6 +88,7 @@
 | P2 | Docs UX | Application Preview Dashboard wording cleanup | Done | Application Preview Dashboard 설명 문구 정리 |  |
 | P2 | Dashboard UX | Dashboard value terminology cleanup | Done | Dashboard 가치 지표 용어 정리 |  |
 | P2 | Docs / Screenshot UX | Application Preview current sidebar screenshots | Done | Application Preview 현재 메뉴 screenshot 갱신 |  |
+| P2 | Docs UX | Sidebar menu map documentation | Done | Sidebar 메뉴 구조 문서화 |  |
 
 ## Candidate Tasks
 
@@ -172,6 +173,25 @@ Checklist:
 - [x] Fix the Risk Analysis rendering bug discovered during screenshot verification.
 - [x] Update `AI_CHANGELOG.md` and `docs/failure-history.md`.
 - [x] Run compile, screenshot, reference, and diff verification.
+
+## P2 - Sidebar Menu Map Documentation
+
+Status: Done
+
+Goal:
+Document where each current sidebar menu item lives and when users should use it.
+
+Rationale:
+The collapsible sidebar keeps the app easier to scan, but users still need one stable written map of the menu groups. Screenshots show the UI shape, while the feature guide should explain the navigation structure without requiring readers to infer it from images.
+
+Checklist:
+
+- [x] Add a sidebar menu structure table to `docs/feature-guide.md`.
+- [x] Include every current `app.py` sidebar group and page.
+- [x] Link the menu map to Application Preview screenshots.
+- [x] Update README document link wording.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run documentation diff verification.
 
 ## P2 - Sidebar Group Collapse Cleanup
 

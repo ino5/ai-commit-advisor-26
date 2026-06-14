@@ -2,6 +2,13 @@
 
 ## 2026-06-14
 
+### Sidebar 메뉴 구조 문서화
+
+- `docs/feature-guide.md`에 현재 `app.py`의 sidebar group 기준 메뉴 목록과 각 화면의 사용 목적을 표로 추가했습니다.
+- README의 기능 가이드 링크 설명에 사이드바 메뉴 구조를 포함한다고 명시했습니다.
+- 주요 파일: `docs/feature-guide.md`, `README.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: 현재 `app.py` sidebar 화면명이 `docs/feature-guide.md`에 모두 반영됐는지 확인; `git diff --check` 통과.
+
 ### Application Preview 현재 메뉴 screenshot 갱신
 
 - Application Preview와 README 대표 화면이 현재 접이식 sidebar 메뉴 구조를 보여주도록 `docs/images/features` 주요 screenshot을 다시 캡처했습니다.
