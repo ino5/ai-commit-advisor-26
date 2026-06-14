@@ -192,7 +192,7 @@ When editing Markdown that already contains Korean text, preserve UTF-8 content 
 
 When changing the demo sample project, sample commit history, sample data generation, or demo scenario, check `docs/sample-target-repo-demo-design.md` before implementing.
 
-`docs/demo-user-guide.md` is a user-facing sample project usage guide. It can be used as a demo walkthrough, but keep its visible title and prose framed as a general usage guide rather than a 시연-only document.
+`docs/demo-user-guide.md` is a user-facing usage guide that uses the sample project as its default walkthrough example. It can be used as a demo walkthrough, but keep its visible title and prose framed as a general usage guide rather than a sample-project-only or 시연-only document.
 
 When verifying that guide end to end, do not crowd the user-facing guide with execution logs. Store dated verification results in a separate document such as `docs/sample-project-usage-verification.md`, and keep evidence screenshots under `docs/images/usage-verification/`. If the purpose is to prove the real workflow, use actual local LLM/embedding providers rather than mock providers, and record `LLM_PROVIDER`, `LLM_MODEL`, `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `PGVECTOR_DIMENSION`, runtime surface, sample project path, commit count, verification date, commands, results, and known limitations. Link from the user-facing guide or README only when it helps readers find the evidence without turning the guide into an internal verification log.
 

@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### 사용 가이드 제목 정리
+
+- `docs/demo-user-guide.md`의 제목을 `AI Commit Advisor 사용 가이드`로 바꾸고, 샘플 프로젝트는 가이드의 대상이 아니라 설명 예시임을 첫 문단에 명확히 했습니다.
+- README 문서 허브와 사용 가이드 내부 링크명을 `사용 가이드`, `사용 가이드 검증 결과`로 정리했습니다.
+- `docs/sample-project-usage-verification.md`도 사용자 가이드는 샘플 프로젝트를 예시로 절차를 설명하고, 검증 증거는 별도 문서에서 관리한다는 구조로 맞췄습니다.
+- 앞으로 같은 문서가 샘플 프로젝트 전용 가이드처럼 되돌아가지 않도록 `AGENTS.md` 내부 지침을 보강했습니다.
+- 주요 파일: `docs/demo-user-guide.md`, `docs/sample-project-usage-verification.md`, `README.md`, `AGENTS.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "AI Commit Advisor 샘플 프로젝트 사용 가이드|\\[샘플 프로젝트 사용 가이드\\]|# 샘플 프로젝트 사용 가이드|샘플 프로젝트 사용 가이드 검증 결과|sample-project-only|사용 가이드" README.md docs\demo-user-guide.md docs\sample-project-usage-verification.md AGENTS.md`로 새 제목과 링크명 확인; `git diff --check` 통과.
+
 ### AX 자원관리 metric foundation
 
 - AX Use Case의 개발자별 업무량, 진행도, 업무 난이도, 고객가치 KPI 확장을 위한 계산형 metric foundation을 추가했습니다.

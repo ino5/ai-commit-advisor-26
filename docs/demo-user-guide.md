@@ -1,6 +1,6 @@
-# AI Commit Advisor 샘플 프로젝트 사용 가이드
+# AI Commit Advisor 사용 가이드
 
-이 문서는 AI Commit Advisor를 처음 보는 팀원이나 이해관계자가 샘플 프로젝트로 제품 흐름을 따라갈 때 사용하는 가이드입니다. 설치 세부값이나 내부 검증 절차보다, 어떤 화면을 어떤 순서로 보고 어떤 질문에 답하는지에 집중합니다.
+이 문서는 AI Commit Advisor의 주요 흐름을 따라 사용할 수 있도록 안내합니다. 설명은 기본 샘플 프로젝트를 기준으로 하지만, 같은 절차를 실제 분석 대상 프로젝트에도 적용할 수 있습니다. 설치 세부값이나 내부 검증 절차보다, 어떤 화면을 어떤 순서로 보고 어떤 질문에 답하는지에 집중합니다.
 
 샘플 프로젝트는 실제 고객 코드 없이도 개발계획, Git 변경 이력, AI 매핑, 리스크, 소스 기반 질의응답, 코드 리뷰 흐름을 한 번에 확인할 수 있도록 준비된 예제 데이터입니다.
 
@@ -391,7 +391,7 @@ AI 진척도는 Git commit과 매핑 결과를 바탕으로 한 보조 지표입
 - [README](../README.md): 프로젝트 소개와 빠른 시작.
 - [설치와 운영](setup-and-operations.md): 로컬 실행, Docker 실행, LLM/embedding 설정.
 - [기능 가이드](feature-guide.md): 화면별 기능 설명.
-- [샘플 프로젝트 사용 가이드 검증 결과](sample-project-usage-verification.md): local LLM/embedding 환경에서 이 가이드를 실제 실행한 결과와 화면 증거.
+- [사용 가이드 검증 결과](sample-project-usage-verification.md): local LLM/embedding 환경에서 이 가이드를 실제 실행한 결과와 화면 증거.
 - [샘플 프로젝트 검증 가이드](rich-sample-demo-walkthrough.md): 검증자용 상세 실행 기준.
 - [Application Preview](application-preview.md): 샘플 프로젝트 기준 주요 화면 미리보기.
 - [Git 저장소 운영 모델](git-repository-operating-model.md): 앱 서버 기준 Git 저장소 접근 방식.
