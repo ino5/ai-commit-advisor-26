@@ -74,7 +74,7 @@
 | P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 | 8f4ad22 |
 | P2 | Code Review UX | AI Code Review server repository target wording | Done | AI Code Review 서버 저장소 대상 설명 정리 | 1023c11 |
 | P1 | Resource Analytics | Resource metric snapshot and trend dashboard | Done | 자원관리 지표 시계열 snapshot과 추세 분석 | 02421b7 |
-| P2 | Project Chat UX | Project Chat conversation controls cleanup | Done | Project Chat 대화 관리 UX 정리 |  |
+| P2 | Project Chat UX | Project Chat conversation controls cleanup | Done | Project Chat 대화 관리 UX 정리 | 0acd0c6 |
 
 ## Candidate Tasks
 
