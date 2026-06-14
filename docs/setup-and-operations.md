@@ -56,6 +56,20 @@ pip install -r requirements.txt
 
 이미 `.venv`가 만들어져 있으면 활성화만 하면 됩니다.
 
+기존 `.venv`가 있는데 `pydantic_core._pydantic_core`, `psycopg2._psycopg`, `pandas._libs.*` 같은 `ModuleNotFoundError`가 발생하면 앱 코드보다 가상환경의 native package 설치가 깨졌을 가능성이 큽니다. 이때는 실행 중인 Streamlit/Python terminal을 모두 종료한 뒤, 가장 안전하게 `.venv`를 새로 만듭니다.
+
+```powershell
+Remove-Item -Recurse -Force .venv
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+python -m pip check
+python -m src.db.init_db
+```
+
+`.venv`를 지우기 어렵다면 깨진 package를 `--force-reinstall --no-cache-dir`로 재설치할 수 있지만, 여러 native package가 연속으로 실패하면 새 가상환경을 만드는 편이 빠르고 재현성이 좋습니다.
+
 ### 4. DB 초기화 및 마이그레이션
 
 ```powershell

@@ -31,6 +31,82 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-14 - Existing Windows `.venv` binary packages broke Quick Start
+
+분류:
+
+- Local environment
+- Dependency installation
+- Quick Start verification gap
+
+관련 기능 및 문서:
+
+- `README.md` Quick Start
+- `docs/setup-and-operations.md`
+- `requirements.txt`
+- `AI_CHANGELOG.md`
+
+### 증상
+
+사용자가 VS Code terminal에서 Quick Start 흐름대로 로컬 Python 앱을 실행했을 때 앱이 시작되지 않았습니다. 코드나 문서를 직접 수정하지 않았는데도 import 단계에서 다음 오류가 순차적으로 발생했습니다.
+
+```text
+ModuleNotFoundError: No module named 'pydantic_core._pydantic_core'
+ModuleNotFoundError: No module named 'psycopg2._psycopg'
+ModuleNotFoundError: No module named 'pandas._libs.pandas_parser'
+```
+
+### 직접 원인
+
+로컬 `.venv` 안의 Windows native wheel 기반 패키지가 부분적으로 깨져 있었습니다. `pydantic`, `psycopg2-binary`, `pandas` metadata는 남아 있었지만 실제 import에 필요한 compiled extension module이 없거나 불완전했습니다.
+
+### 배경 또는 구조적 원인
+
+`.venv`는 Git으로 관리되지 않는 로컬 실행 환경입니다. 기존 `.venv` 위에 `pip install -r requirements.txt`나 개별 패키지 재설치가 실행되는 동안 Python/Streamlit/VS Code가 파일을 잡고 있거나, 설치가 중간에 끊기거나, Windows 파일 잠금/백신/네트워크 영향이 있으면 package metadata와 실제 `.pyd` extension file 상태가 어긋날 수 있습니다.
+
+Quick Start 문서도 기존 `.venv`가 있을 때의 안전한 재사용 기준과, native package import 오류가 났을 때 `.venv`를 새로 만드는 복구 기준을 충분히 설명하지 않았습니다.
+
+### 사전 검증에서 놓친 이유
+
+기능 구현 검증은 당시 정상 상태였던 로컬 `.venv`에서 `py_compile`, Alembic migration, `compileall`, focused pytest, full pytest, `git diff --check`를 실행했습니다. 이 검증은 코드와 DB migration 회귀를 확인했지만, 기존 `.venv`가 부분적으로 깨진 상태에서 Quick Start를 새로 따라 하는 사용자의 환경 재현까지 포함하지 않았습니다.
+
+Docker app을 중지하고 로컬 Python 실행을 확인하는 과정도 늦게 수행되어, 사용자가 직접 VS Code에서 실행하기 전까지 broken `.venv` 증상이 노출되지 않았습니다.
+
+### 수정 내용
+
+로컬 `.venv`의 깨진 binary package를 재설치해 복구했습니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --force-reinstall --no-cache-dir pydantic-core==2.46.4
+.\.venv\Scripts\python.exe -m pip install --force-reinstall --no-cache-dir pandas==2.2.3 numpy==2.2.6 python-dateutil==2.9.0.post0 pytz==2026.2 tzdata==2026.1
+```
+
+중간에 `requirements.txt` 전체 강제 재설치를 시도했지만 시간 제한으로 완료 여부가 불명확했으므로, 최종적으로 깨진 binary import를 직접 확인하며 필요한 패키지를 재설치했습니다.
+
+`docs/setup-and-operations.md`에는 기존 `.venv` 재사용 주의사항과 native extension import 오류가 날 때의 복구 절차를 추가합니다.
+
+### 재발 방지 규칙
+
+- Windows 로컬 Quick Start를 검증할 때는 앱을 실제로 `.\.venv\Scripts\python.exe -m streamlit run app.py`로 기동하고 `/_stcore/health`가 HTTP 200을 반환하는지 확인합니다.
+- 기존 `.venv`에서 `pydantic_core`, `psycopg2`, `pandas._libs` 같은 native extension import 오류가 나면 코드 변경보다 `.venv` 손상을 먼저 의심합니다.
+- 기존 `.venv`가 의심스러우면 부분 재설치보다 `.venv` 삭제 후 새로 생성하는 절차를 우선 안내합니다. 단, 실행 중인 Python/Streamlit/VS Code terminal이 파일을 잡고 있으면 먼저 종료합니다.
+- Quick Start 문서는 “이미 `.venv`가 있으면 활성화만 한다”뿐 아니라 “깨진 `.venv`를 어떻게 복구할지”도 포함해야 합니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+이번에는 증상 발생 직전 어떤 설치 작업이 `.venv`를 깨뜨렸는지 확정하지 못했습니다. Windows 파일 잠금, 중단된 pip 실행, 백신/동기화 도구, 기존 `.venv` 위 재설치 등이 가능한 원인입니다.
+
+새 PC에서 빈 `.venv`를 처음부터 만드는 end-to-end Quick Start 검증은 별도로 수행하지 않았습니다. 문서 보강 후에는 깨끗한 `.venv` 생성, dependency install, DB init, Streamlit health check까지 한 번에 확인하는 명령을 운영 검증에 포함하는 것이 좋습니다.
+
+### 검증 명령과 결과
+
+- `.\.venv\Scripts\python.exe -c "import pandas; print('pandas ok', pandas.__version__); import psycopg2; print('psycopg2 ok'); import pydantic; print('pydantic ok', pydantic.__version__); from src.db.init_db import init_db; init_db(); print('init ok')"` passed.
+- `.\.venv\Scripts\python.exe -m compileall src app.py` passed.
+- `.\.venv\Scripts\python.exe -m pip check` passed with `No broken requirements found`.
+- `.\.venv\Scripts\python.exe -m streamlit run app.py --server.port 8501` started successfully.
+- `Invoke-WebRequest http://localhost:8501/_stcore/health -UseBasicParsing` returned HTTP 200.
+- `Get-NetTCPConnection -LocalPort 8501` showed no remaining process after stopping the test Streamlit process.
+
 ## 2026-06-10 - Git default branch mismatch broke CI-only repository status test
 
 분류:

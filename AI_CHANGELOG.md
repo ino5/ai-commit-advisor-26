@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Windows `.venv` Quick Start 실패 이력과 복구 가이드
+
+- VS Code 로컬 실행에서 `.venv`의 native package가 깨져 `pydantic_core`, `psycopg2`, `pandas` import 오류가 발생한 사례를 실패 이력에 기록했습니다.
+- 기존 `.venv`가 있을 때 Quick Start를 다시 수행하는 사용자가 복구할 수 있도록 setup/operations 문서에 `.venv` 재생성 절차와 `pip check` 확인 절차를 추가했습니다.
+- 이번 실패가 코드 회귀가 아니라 로컬 가상환경 손상과 Quick Start 검증 범위 누락에서 나온 문제였음을 기록했습니다.
+- 주요 파일: `docs/failure-history.md`, `docs/setup-and-operations.md`, `AI_CHANGELOG.md`.
+- 검증: `git diff --check` 통과. Windows 줄바꿈 경고만 확인했습니다.
+
 ### AI 변경 이력 한국어 작성 정책
 
 - 새 `AI_CHANGELOG.md` 항목은 기본적으로 한국어로 작성하도록 agent 작업 정책을 명확히 했습니다.
