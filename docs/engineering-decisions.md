@@ -53,7 +53,7 @@
 
 ### 결정
 
-프로젝트에 `git_remote_url`, `git_branch`를 저장하고, 프로젝트/Git 설정에서 `서버 저장소 clone/fetch` action을 제공합니다. 대상 경로가 없으면 clone하고, 이미 Git 저장소면 `origin`을 fetch한 뒤 branch를 `origin/<branch>`로 reset합니다. 동시 실행은 repository별 lock 파일로 막고, working tree에 local 변경이 있으면 기본적으로 reset을 건너뜁니다. 앱은 access token, SSH key, password를 저장하지 않습니다.
+프로젝트에 `git_remote_url`, `git_branch`를 저장하고, 프로젝트/Git 설정에서 `서버 저장소 clone/fetch` action을 제공합니다. 대상 경로가 없으면 clone하고, 이미 Git 저장소면 `origin`을 fetch한 뒤 branch를 `origin/<branch>`로 reset합니다. 동시 실행은 repository별 lock 파일로 막고, working tree에 local 변경이 있으면 기본적으로 reset을 건너뜁니다. 앱은 access token, SSH key, password를 저장하지 않습니다. HTTPS remote URL에 userinfo가 포함되거나 URL에 password가 포함되면 저장/실행을 거부하고, clone 성공 메시지에도 remote URL 원문을 표시하지 않습니다.
 
 ### 이유
 
@@ -72,6 +72,7 @@
 
 - private repository는 서버 OS의 SSH agent, credential helper, 배포 계정 권한을 먼저 준비해야 합니다.
 - 앱은 저장소 용량 정리, credential rotation, 사용자별 Git 권한을 관리하지 않습니다.
+- URL userinfo 차단은 앱 DB와 화면 메시지의 우발적 credential 노출을 줄이지만, 서버 OS credential helper나 SSH agent 자체의 권한 관리는 여전히 운영 책임입니다.
 - reset은 `origin/<branch>` 기준으로 working tree를 맞추므로 분석용 clone에 local 변경을 남기는 운영과는 맞지 않습니다.
 
 ### 관련 문서

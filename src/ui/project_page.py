@@ -4,7 +4,7 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import Project
 from src.services.git_service import is_git_repository
-from src.services.git_remote_service import clone_or_update_project_repository
+from src.services.git_remote_service import clone_or_update_project_repository, validate_git_remote_url_for_storage
 from src.services.project_management_service import (
     delete_project,
     get_project_delete_impact,
@@ -246,6 +246,10 @@ def render_project_page() -> None:
         st.error("입력한 Git 저장소 경로가 허용된 저장소 루트 밖에 있습니다.")
         return
     remote_url_value = remote_url.strip()
+    remote_validation_error = validate_git_remote_url_for_storage(remote_url_value)
+    if remote_validation_error:
+        st.error(remote_validation_error)
+        return
     if repo_path.strip() and not remote_url_value and not is_git_repository(repo_path.strip()):
         st.error("앱 서버에서 입력한 경로를 실제 Git 저장소로 확인할 수 없습니다.")
         return

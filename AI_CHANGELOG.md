@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Git remote URL 인증정보 차단
+
+- 프로젝트/Git 설정에서 HTTPS remote URL에 userinfo가 포함되거나 URL에 password가 포함된 경우 저장하지 않도록 검증을 추가했습니다.
+- 서버 저장소 clone/fetch 실행 전에도 같은 검증을 적용해 기존에 저장된 위험한 remote URL이 실행되지 않도록 했습니다.
+- clone 성공 메시지에서 remote URL 원문을 표시하지 않도록 바꿔 시연 화면과 로그에 토큰성 문자열이 노출될 가능성을 줄였습니다.
+- 주요 파일: `src/services/git_remote_service.py`, `src/ui/project_page.py`, `tests/test_git_remote_service.py`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\git_remote_service.py src\ui\project_page.py tests\test_git_remote_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_git_remote_service.py -q` 5개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 119개 테스트 통과.
+
 ### 샘플 데이터 생성 안내 문구 정리
 
 - 샘플 데이터 생성 화면의 caption에서 고정 seed 재현성 문구를 제거하고, 사용자가 알아야 할 업로드 테스트용 샘플이라는 설명만 남겼습니다.

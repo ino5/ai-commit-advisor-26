@@ -4,6 +4,7 @@ import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from src.db.models import Project
 from src.services.git_service import get_head_commit_hash, is_git_repository
@@ -19,6 +20,19 @@ class RemoteSyncResult:
     head_after: str | None = None
     messages: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+
+
+def validate_git_remote_url_for_storage(remote_url: str) -> str | None:
+    normalized = remote_url.strip()
+    if not normalized:
+        return None
+
+    parsed = urlsplit(normalized)
+    if parsed.password:
+        return "Git remote URL에 password를 포함할 수 없습니다. 서버 OS의 Git 인증 설정을 사용하세요."
+    if parsed.scheme in {"http", "https"} and parsed.username:
+        return "HTTPS Git remote URL에 인증정보를 포함할 수 없습니다. 서버 OS의 Git 인증 설정을 사용하세요."
+    return None
 
 
 class RepositorySyncLock:
@@ -97,6 +111,15 @@ def clone_or_update_project_repository(project: Project, *, force_reset: bool = 
     repo_path = resolve_repo_path(project.git_repo_path)
     branch = (project.git_branch or "main").strip() or "main"
     remote_url = project.git_remote_url.strip()
+    validation_error = validate_git_remote_url_for_storage(remote_url)
+    if validation_error:
+        return RemoteSyncResult(
+            status="failed",
+            repo_path=project.git_repo_path,
+            branch=branch,
+            errors=[validation_error],
+        )
+
     messages: list[str] = []
 
     try:
@@ -110,7 +133,7 @@ def clone_or_update_project_repository(project: Project, *, force_reset: bool = 
                     repo_path=project.git_repo_path,
                     branch=branch,
                     head_after=head_after,
-                    messages=[f"cloned {remote_url} into {project.git_repo_path}", f"HEAD {_short_hash(head_after)}"],
+                    messages=[f"cloned configured remote into {project.git_repo_path}", f"HEAD {_short_hash(head_after)}"],
                 )
 
             if not is_git_repository(project.git_repo_path):
