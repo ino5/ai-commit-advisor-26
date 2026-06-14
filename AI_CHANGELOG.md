@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### 샘플 프로젝트 사용 가이드 명칭 정리
+
+- `docs/demo-user-guide.md`의 사용자-facing 제목과 본문에서 `시연 사용 가이드` 톤을 빼고 `샘플 프로젝트 사용 가이드`로 정리했습니다.
+- README 문서 허브의 링크명도 `샘플 프로젝트 사용 가이드`로 바꾸고, 사용자가 샘플 프로젝트 흐름을 따라가는 문서로 설명했습니다.
+- 이 문서가 데모 walkthrough로도 쓰일 수 있다는 내용은 사용자용 문서가 아니라 `AGENTS.md` 내부 지침에만 남겼습니다.
+- 주요 파일: `docs/demo-user-guide.md`, `README.md`, `AGENTS.md`, `AI_CHANGELOG.md`.
+- 검증: `if (rg -n "시연" docs\demo-user-guide.md README.md) { exit 1 } else { "no user-facing 시연 wording" }` 통과; `rg -n "# AI Commit Advisor 샘플 프로젝트 사용 가이드|샘플 프로젝트 사용 가이드|demo-user-guide\.md.*demo walkthrough|시연-only" docs\demo-user-guide.md README.md AGENTS.md` 통과; `git diff --check` 통과.
+
 ### 아키텍처 큰 흐름 다이어그램 보강
 
 - `docs/architecture.md` 상단에 사용자가 흔히 기대하는 큰 박스/화살표 중심의 전체 흐름 다이어그램을 추가했습니다.

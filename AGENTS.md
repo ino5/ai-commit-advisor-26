@@ -192,6 +192,8 @@ When editing Markdown that already contains Korean text, preserve UTF-8 content 
 
 When changing the demo sample project, sample commit history, sample data generation, or demo scenario, check `docs/sample-target-repo-demo-design.md` before implementing.
 
+`docs/demo-user-guide.md` is a user-facing sample project usage guide. It can be used as a demo walkthrough, but keep its visible title and prose framed as a general usage guide rather than a 시연-only document.
+
 Keep the sample project aligned with the demo design:
 
 - sample project location and generation flow
