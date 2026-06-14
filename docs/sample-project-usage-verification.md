@@ -112,7 +112,7 @@ Mermaid/문서 검증과 화면 캡처:
 
 ```powershell
 Invoke-RestMethod -Uri http://127.0.0.1:1234/v1/models -Method Get
-.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8502 --feature dashboard-pl-briefing --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --screenshot docs\images\usage-verification\12-pl-briefing.png --expect-text "provider=local_openai, mode=LLM 생성" --expect-text "PL 주간 점검 브리핑" --expect-text "요약" --expect-text "회의 질문" --expect-text "기반으로 이번" --forbid-text "```json" --forbid-text "한국어 브리핑" --forbid-text "本周" --forbid-text "기반으로이번"
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8502 --feature dashboard-pl-briefing --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --height 3600 --screenshot docs\images\usage-verification\12-pl-briefing.png --expect-text "provider=local_openai, mode=LLM 생성" --expect-text "PL 주간 점검 브리핑" --expect-text "요약" --expect-text "회의 질문" --expect-text "기반으로 이번" --forbid-text "```json" --forbid-text "한국어 브리핑" --forbid-text "本周" --forbid-text "기반으로이번"
 ```
 
 ## 남은 제한 사항

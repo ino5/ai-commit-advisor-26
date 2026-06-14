@@ -2,6 +2,14 @@
 
 ## 2026-06-15
 
+### Application Preview 스크롤 영역 screenshot 보강
+
+- `Application Preview`에서 아래쪽 workflow 상태가 잘리던 화면들을 더 큰 viewport 또는 full-page 기준으로 다시 캡처했습니다.
+- `PL Briefing`은 요약/우선 확인 항목 이미지와 별도로 `회의 질문`, `다음 액션`이 보이는 하단 전용 screenshot을 추가했습니다.
+- `dashboard-pl-briefing-actions` 캡처 시나리오에 crop 처리를 추가해 긴 PL Briefing 화면에서 하단 action 구간을 재현 가능하게 저장하도록 했습니다.
+- 주요 파일: `scripts/capture_feature_screenshot.py`, `requirements.txt`, `docs/application-preview.md`, `docs/images/features/dashboard-pl-briefing-actions.png`, `docs/images/features/dashboard-pl-briefing.png`, `docs/images/features/dashboard-overview.png`, `docs/images/features/dashboard-radar.png`, `docs/images/features/dashboard.png`, `docs/images/features/project-operations.png`, `docs/images/features/project-chat.png`, `docs/images/features/git-history-detail.png`, `docs/images/features/risk-analysis-list.png`, `docs/images/features/program-detail-analysis.png`, `docs/images/features/ai-progress-detail.png`, `docs/images/features/rag-search-results.png`, `docs/images/features/project-chat-answer.png`, `docs/images/usage-verification/12-pl-briefing.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile scripts\capture_feature_screenshot.py` 통과; `dashboard-pl-briefing`은 `--height 5200`으로 `회의 질문`, `다음 액션` 표시 확인; `dashboard-pl-briefing-actions`는 crop 결과를 눈으로 확인; 주요 하단 화면 screenshot을 `--height 1800` 기준으로 재캡처; `PIL.Image` 크기 확인에서 PL Briefing 3600/5200px, 주요 상세 화면 1800px 캡처 확인.
+
 ### PL Briefing 문구 자연화
 
 - `PL Briefing` 생성 prompt와 표시 후처리에서 `한국어 브리핑`처럼 번역체로 보이는 제목 표현을 피하고, 화면 제목을 `PL 주간 점검 브리핑`으로 자연스럽게 정리했습니다.

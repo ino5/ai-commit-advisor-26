@@ -30,6 +30,10 @@ local LLM이 생성한 PL Briefing 결과
 
 ![Dashboard PL Briefing](images/features/dashboard-pl-briefing.png)
 
+PL Briefing 회의 질문과 다음 action
+
+![Dashboard PL Briefing Actions](images/features/dashboard-pl-briefing-actions.png)
+
 자원관리 참고 지표
 
 ![Dashboard](images/features/dashboard.png)

@@ -93,6 +93,7 @@
 | P2 | Docs / Screenshot UX | Application Preview current sidebar screenshots | Done | Application Preview 현재 메뉴 screenshot 갱신 |
 | P2 | Docs UX | Sidebar menu map documentation | Done | Sidebar 메뉴 구조 문서화 |
 | P2 | Docs / Screenshot UX | Application Preview lower-section coverage | Done | Application Preview 하단 기능 screenshot 보강 |
+| P2 | Docs / Screenshot UX | Application Preview scroll coverage refresh | Done | Application Preview 스크롤 영역 screenshot 보강 |
 | P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
@@ -104,6 +105,23 @@
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
 
 현재 승인 대기 중인 후보 작업은 없습니다. 새 concern이나 tradeoff를 보존해야 할 때 이 섹션에 후보 작업을 추가합니다.
+
+## P2 - Application Preview Scroll Coverage Refresh
+
+Status: Done
+
+Goal:
+Refresh Application Preview screenshots so screens with meaningful content below the fold include the lower scroll area.
+
+Rationale:
+Several preview screenshots intentionally focused on a viewport section, but the PL Briefing and some detail/list screens now need the lower content to be visible for demo review. Full-page captures reduce the chance that important generated output or evidence tables are hidden just below the screenshot edge.
+
+Checklist:
+
+- [x] Update screenshot scenarios that need lower scroll coverage.
+- [x] Re-capture affected Application Preview and verification images.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run screenshot/documentation verification.
 
 ## P2 - PL Briefing Live LLM Demo Evidence
 

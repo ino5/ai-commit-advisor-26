@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import sys
 
+from PIL import Image
 from playwright.sync_api import Error, Page, sync_playwright
 
 
@@ -28,6 +29,7 @@ class FeatureScenario:
     click_label: str | None = None
     button_label: str | None = None
     action_wait_text: str | None = None
+    crop_box: tuple[int, int, int, int] | None = None
 
 
 SCENARIOS: dict[str, FeatureScenario] = {
@@ -83,7 +85,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/project-operations.png",
         description="프로젝트/Git 설정 운영 action 화면",
         scroll_to_text="서버 저장소 clone/fetch",
-        full_page=False,
     ),
     "developer": FeatureScenario(
         name="developer",
@@ -148,7 +149,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/project-chat.png",
         description="Project Chat 질문/근거 화면",
         scroll_to_text="현재 코드에서 확인된 소스 근거를 찾아 프로젝트 질문에 답합니다.",
-        full_page=False,
     ),
     "git-history": FeatureScenario(
         name="git-history",
@@ -181,7 +181,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/git-history-detail.png",
         description="Git History 커밋 상세/diff preview 화면",
         scroll_to_text="저장된 diff preview",
-        full_page=False,
     ),
     "sample-data": FeatureScenario(
         name="sample-data",
@@ -241,7 +240,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/risk-analysis-list.png",
         description="Risk Analysis 리스크 목록/처리 화면",
         scroll_to_text="리스크 프로그램 목록",
-        full_page=False,
     ),
     "program-detail": FeatureScenario(
         name="program-detail",
@@ -264,7 +262,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/program-detail-analysis.png",
         description="Program Detail 구현상태 분석 상세 화면",
         scroll_to_text="구현상태 분석",
-        full_page=False,
     ),
     "commit-impact": FeatureScenario(
         name="commit-impact",
@@ -309,7 +306,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/ai-progress-detail.png",
         description="AI Progress 프로그램별 상세 비교 화면",
         scroll_to_text="프로그램별 비교",
-        full_page=False,
     ),
     "dashboard-overview": FeatureScenario(
         name="dashboard-overview",
@@ -324,7 +320,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         ),
         default_screenshot="docs/images/features/dashboard-overview.png",
         description="Dashboard 프로젝트 현황 화면",
-        full_page=False,
     ),
     "dashboard-radar": FeatureScenario(
         name="dashboard-radar",
@@ -339,7 +334,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/dashboard-radar.png",
         description="Dashboard AI Resource Radar 화면",
         scroll_to_text="AI Resource Radar",
-        full_page=False,
     ),
     "dashboard-pl-briefing": FeatureScenario(
         name="dashboard-pl-briefing",
@@ -361,7 +355,25 @@ SCENARIOS: dict[str, FeatureScenario] = {
         scroll_to_text="AI Resource Radar",
         button_label="PL Briefing 생성",
         action_wait_text="provider=local_openai, mode=LLM 생성",
-        full_page=False,
+    ),
+    "dashboard-pl-briefing-actions": FeatureScenario(
+        name="dashboard-pl-briefing-actions",
+        sidebar_label="Dashboard",
+        wait_text="AI Resource Radar",
+        required_texts=(
+            "Dashboard",
+            "AI Resource Radar",
+            "provider=local_openai, mode=LLM 생성",
+            "PL 주간 점검 브리핑",
+            "회의 질문",
+            "다음 액션",
+        ),
+        default_screenshot="docs/images/features/dashboard-pl-briefing-actions.png",
+        description="Dashboard PL Briefing 회의 질문과 다음 액션 화면",
+        scroll_to_text="회의 질문",
+        button_label="PL Briefing 생성",
+        action_wait_text="provider=local_openai, mode=LLM 생성",
+        crop_box=(300, 3600, 1440, 5200),
     ),
     "dashboard": FeatureScenario(
         name="dashboard",
@@ -380,7 +392,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/dashboard.png",
         description="Dashboard 자원관리 지표 화면",
         scroll_to_text="자원관리 지표",
-        full_page=False,
     ),
     "rag-search": FeatureScenario(
         name="rag-search",
@@ -420,7 +431,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         click_label="검색",
         action_wait_text="조회된 근거 목록",
         scroll_to_text="조회된 근거 목록",
-        full_page=False,
     ),
     "project-chat-answer": FeatureScenario(
         name="project-chat-answer",
@@ -435,7 +445,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         default_screenshot="docs/images/features/project-chat-answer.png",
         description="Project Chat 답변/근거 화면",
         scroll_to_text="결제금액 검증은",
-        full_page=False,
     ),
     "ai-code-review": FeatureScenario(
         name="ai-code-review",
@@ -614,6 +623,34 @@ def _assert_texts(
         raise AssertionError(f"Forbidden text is visible: {', '.join(stale)}")
 
 
+def _scroll_text_into_view(page: Page, text: str) -> None:
+    page.evaluate(
+        """
+        (value) => {
+            const elements = Array.from(document.querySelectorAll('h1,h2,h3,h4,p,li,div,span,strong'));
+            const target = elements.find((element) => (element.innerText || element.textContent || '').includes(value));
+            if (!target) {
+                throw new Error(`Text not found for scroll: ${value}`);
+            }
+            target.scrollIntoView({ block: 'start', inline: 'nearest' });
+            const scrollParents = [
+                document.querySelector('[data-testid="stAppViewContainer"]'),
+                document.querySelector('section.main'),
+                document.scrollingElement,
+            ].filter(Boolean);
+            for (const parent of scrollParents) {
+                const targetTop = target.getBoundingClientRect().top;
+                if (targetTop > window.innerHeight * 0.6) {
+                    parent.scrollTop += targetTop - 160;
+                }
+            }
+        }
+        """,
+        text,
+    )
+    page.wait_for_timeout(300)
+
+
 def _sidebar_item_box(page: Page, label: str) -> dict[str, float]:
     sidebar = page.locator('section[data-testid="stSidebar"]')
     _expand_sidebar_group(page, SIDEBAR_GROUP_BY_LABEL.get(label))
@@ -772,10 +809,19 @@ def _capture_scenario(
         )
 
     if scenario.scroll_to_text:
-        page.get_by_text(scenario.scroll_to_text).first.scroll_into_view_if_needed(timeout=10_000)
+        _scroll_text_into_view(page, scenario.scroll_to_text)
 
     screenshot_path.parent.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(screenshot_path), full_page=scenario.full_page)
+    if scenario.crop_box:
+        with Image.open(screenshot_path) as image:
+            left, top, right, bottom = scenario.crop_box
+            if image.height < bottom or image.width < right:
+                raise AssertionError(
+                    f"{scenario.name} crop requires at least {right}x{bottom}, "
+                    f"captured {image.width}x{image.height}. Increase --height."
+                )
+            image.crop((left, top, right, bottom)).save(screenshot_path)
     return text
 
 
