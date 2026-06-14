@@ -2,6 +2,13 @@
 
 ## 2026-06-14
 
+### Application Preview 메뉴 순서 정렬
+
+- `docs/application-preview.md`의 화면 preview 순서를 실제 사이드바 메뉴 순서와 동일하게 정렬했습니다.
+- 순서는 `개요`의 Home, Dashboard, AI Progress부터 `프로젝트 설정`, `산출물 관리`, `분석 실행`, `분석 결과`, `관리` 그룹 순서를 따릅니다.
+- 주요 파일: `docs/application-preview.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "<summary>" docs\application-preview.md`로 Home, Dashboard, AI Progress, 프로젝트 설정, 산출물 관리, 분석 실행, 분석 결과, 설정 순서 확인; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 테스트 통과; `git diff --check` 통과.
+
 ### Application Preview AI Resource Radar screenshot 보강
 
 - `AI Resource Radar`가 Application Preview에서 바로 보이도록 전용 `dashboard-radar` screenshot 시나리오와 이미지를 추가했습니다.

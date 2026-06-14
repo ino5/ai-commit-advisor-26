@@ -14,6 +14,38 @@
 </details>
 
 <details>
+<summary>Dashboard</summary>
+
+Dashboard는 프로젝트 진행 상황을 한눈에 보는 화면입니다. 계획, AI 분석, Git 활동을 모아 지연 가능성이 있는 프로그램과 개발자별 업무 부담 신호를 보여줍니다. `AI Resource Radar`는 PL이 먼저 확인할 프로그램, 주요 이유, 권장 action을 우선순위로 보여주고, 필요하면 LLM 기반 PL Briefing으로 회의용 요약을 생성합니다. 이 값은 개인 평가나 확정 절감액이 아니라 PL이 병목과 일정 리스크를 빨리 찾기 위한 참고 지표입니다. 필요하면 현재 상태를 snapshot으로 저장해 추세를 비교할 수 있습니다.
+
+프로젝트 현황과 Git 활동
+
+![Dashboard Overview](images/features/dashboard-overview.png)
+
+AI Resource Radar 우선순위와 PL Briefing action
+
+![Dashboard AI Resource Radar](images/features/dashboard-radar.png)
+
+자원관리 참고 지표
+
+![Dashboard](images/features/dashboard.png)
+
+</details>
+
+<details>
+<summary>AI Progress</summary>
+
+진척도 요약과 리스크 프로그램
+
+![AI Progress](images/features/ai-progress.png)
+
+프로그램별 비교와 관련 커밋 상세
+
+![AI Progress Detail](images/features/ai-progress-detail.png)
+
+</details>
+
+<details>
 <summary>Project</summary>
 
 프로젝트 기본 정보와 앱 서버 Git 저장소 경로를 저장하고, 같은 화면에서 서버 저장소 준비와 반복 시연용 분석 데이터 초기화를 이어서 실행할 수 있습니다.
@@ -27,22 +59,23 @@
 </details>
 
 <details>
-<summary>개발자 현황</summary>
+<summary>Git 동기화</summary>
 
-![개발자 현황](images/features/developer.png)
+![Git Sync](images/features/git-sync.png)
 
 </details>
 
 <details>
-<summary>Program Detail</summary>
+<summary>샘플 데이터 생성</summary>
 
-기본 정보와 관련 커밋 요약
+![Sample Data](images/features/sample-data.png)
 
-![Program Detail](images/features/program-detail.png)
+</details>
 
-저장된 리스크와 구현상태 분석 상세
+<details>
+<summary>개발자 현황</summary>
 
-![Program Detail Analysis](images/features/program-detail-analysis.png)
+![개발자 현황](images/features/developer.png)
 
 </details>
 
@@ -74,35 +107,6 @@
 </details>
 
 <details>
-<summary>Git 동기화</summary>
-
-![Git Sync](images/features/git-sync.png)
-
-</details>
-
-<details>
-<summary>Git History</summary>
-
-현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장된 diff preview를 한 화면에서 확인하는 Git History 상태입니다.
-
-커밋 목록과 활동 그래프
-
-![Git History](images/features/git-history.png)
-
-커밋 상세와 diff preview
-
-![Git History Detail](images/features/git-history-detail.png)
-
-</details>
-
-<details>
-<summary>샘플 데이터 생성</summary>
-
-![Sample Data](images/features/sample-data.png)
-
-</details>
-
-<details>
 <summary>표준용어/표준단어</summary>
 
 ![Standard Terms](images/features/standard-terms.png)
@@ -126,15 +130,6 @@
 리스크 목록과 resolved 처리
 
 ![Risk Analysis List](images/features/risk-analysis-list.png)
-
-</details>
-
-<details>
-<summary>Commit Impact</summary>
-
-커밋 선택과 영향도 요약
-
-![Commit Impact](images/features/commit-impact.png)
 
 </details>
 
@@ -178,21 +173,39 @@
 </details>
 
 <details>
-<summary>Dashboard</summary>
+<summary>Program Detail</summary>
 
-Dashboard는 프로젝트 진행 상황을 한눈에 보는 화면입니다. 계획, AI 분석, Git 활동을 모아 지연 가능성이 있는 프로그램과 개발자별 업무 부담 신호를 보여줍니다. `AI Resource Radar`는 PL이 먼저 확인할 프로그램, 주요 이유, 권장 action을 우선순위로 보여주고, 필요하면 LLM 기반 PL Briefing으로 회의용 요약을 생성합니다. 이 값은 개인 평가나 확정 절감액이 아니라 PL이 병목과 일정 리스크를 빨리 찾기 위한 참고 지표입니다. 필요하면 현재 상태를 snapshot으로 저장해 추세를 비교할 수 있습니다.
+기본 정보와 관련 커밋 요약
 
-프로젝트 현황과 Git 활동
+![Program Detail](images/features/program-detail.png)
 
-![Dashboard Overview](images/features/dashboard-overview.png)
+저장된 리스크와 구현상태 분석 상세
 
-AI Resource Radar 우선순위와 PL Briefing action
+![Program Detail Analysis](images/features/program-detail-analysis.png)
 
-![Dashboard AI Resource Radar](images/features/dashboard-radar.png)
+</details>
 
-자원관리 참고 지표
+<details>
+<summary>Git History</summary>
 
-![Dashboard](images/features/dashboard.png)
+현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장된 diff preview를 한 화면에서 확인하는 Git History 상태입니다.
+
+커밋 목록과 활동 그래프
+
+![Git History](images/features/git-history.png)
+
+커밋 상세와 diff preview
+
+![Git History Detail](images/features/git-history-detail.png)
+
+</details>
+
+<details>
+<summary>Commit Impact</summary>
+
+커밋 선택과 영향도 요약
+
+![Commit Impact](images/features/commit-impact.png)
 
 </details>
 
@@ -200,19 +213,6 @@ AI Resource Radar 우선순위와 PL Briefing action
 <summary>개발계획 대시보드</summary>
 
 ![개발계획 대시보드](images/features/planning-dashboard.png)
-
-</details>
-
-<details>
-<summary>AI Progress</summary>
-
-진척도 요약과 리스크 프로그램
-
-![AI Progress](images/features/ai-progress.png)
-
-프로그램별 비교와 관련 커밋 상세
-
-![AI Progress Detail](images/features/ai-progress-detail.png)
 
 </details>
 
