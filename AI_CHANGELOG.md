@@ -2,6 +2,15 @@
 
 ## 2026-06-14
 
+### 프로그램 관리 현재 프로젝트 저장 흐름 정리
+
+- 프로그램 관리 화면에서 `새 프로젝트명으로 저장` 옵션을 제거하고, 현재 프로젝트가 없으면 `프로젝트/Git 설정`에서 먼저 프로젝트를 등록하도록 안내하게 했습니다.
+- 직접 추가와 Excel 업로드 저장을 프로젝트명 lookup/create가 아니라 현재 `project_id` 기준으로 수행하도록 `save_programs_for_project_id`, `save_manual_program_for_project` 경로를 추가했습니다.
+- 기존 이름 기반 저장 함수는 호환용으로 유지하면서, 프로그램 관리 UI는 새 프로젝트를 만들지 않는 현재 프로젝트 전용 흐름으로 정리했습니다.
+- feature guide, architecture, engineering decisions, roadmap에서 프로그램 목록의 새 프로젝트 저장 예외 설명을 제거하고 현재 프로젝트 기준 관리 정책으로 갱신했습니다.
+- 주요 파일: `src/ui/upload_page.py`, `src/services/excel_service.py`, `src/services/program_management_service.py`, `tests/test_program_management_service.py`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\excel_service.py src\services\program_management_service.py src\ui\upload_page.py tests\test_program_management_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_program_management_service.py -q` 5개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 109개 테스트 통과; Browser에서 프로그램 관리 화면의 현재 프로젝트 표시, 탭 렌더링, `새 프로젝트명으로 저장` 미노출 확인; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### 완료 상태 액션 우선순위 정리
 
 - Git 동기화 화면 제목을 메뉴명과 맞추고, 일반 운영 흐름의 기본 액션을 `증분 동기화` primary로 정리했습니다. `전체 수집`은 보조 액션으로 낮추고 DB가 Repo HEAD와 같을 때 최신 상태 안내를 표시합니다.

@@ -4,12 +4,12 @@ from sqlalchemy.orm import Session
 
 from src.db.database import SessionLocal
 from src.db.init_db import init_db
-from src.db.models import Program, Project
-from src.services.excel_service import read_program_excel, save_programs_with_result
+from src.db.models import Program
+from src.services.excel_service import read_program_excel, save_programs_for_project_id
 from src.services.program_management_service import (
     delete_program,
     get_program_delete_impact,
-    save_manual_program,
+    save_manual_program_for_project,
     update_program,
 )
 from src.services.program_import_service import (
@@ -19,7 +19,7 @@ from src.services.program_import_service import (
     program_column_guide,
     validate_program_import,
 )
-from src.ui.project_context import get_current_project_context, set_current_project_id
+from src.ui.project_context import get_current_project_context
 
 
 TARGET_COLUMNS = PROGRAM_TEMPLATE_COLUMNS
@@ -53,13 +53,6 @@ def _existing_program_ids(project_id: int | None) -> set[str]:
     with SessionLocal() as db:
         rows = db.query(Program.program_id).filter(Program.project_id == project_id).all()
     return {str(row[0]) for row in rows if row[0]}
-
-
-def _set_current_project_by_name(project_name: str) -> None:
-    with SessionLocal() as db:
-        project = db.query(Project).filter(Project.name == project_name).one_or_none()
-        if project is not None:
-            set_current_project_id(int(project.id))
 
 
 def _empty_program_payload() -> dict:
@@ -241,9 +234,9 @@ def _render_current_programs(project_id: int | None) -> None:
             st.rerun()
 
 
-def _render_manual_create_tab(project_name: str) -> None:
+def _render_manual_create_tab(project_id: int) -> None:
     st.subheader("직접 추가")
-    st.caption("Excel 없이 프로그램을 한 건씩 등록합니다.")
+    st.caption("Excel 없이 현재 프로젝트에 프로그램을 한 건씩 등록합니다.")
     with st.form("program_create_form"):
         payload = _render_program_form("create", _empty_program_payload())
         submitted = st.form_submit_button("프로그램 추가", type="primary")
@@ -252,9 +245,8 @@ def _render_manual_create_tab(project_name: str) -> None:
 
     init_db()
     with SessionLocal() as db:
-        validation = save_manual_program(db, project_name.strip() or "Default Project", payload)
+        validation = save_manual_program_for_project(db, project_id, payload)
     if validation.is_valid:
-        _set_current_project_by_name(project_name.strip() or "Default Project")
         st.success("프로그램을 추가했습니다.")
         st.rerun()
     for error in validation.errors:
@@ -282,9 +274,9 @@ def _render_column_mapping(source_columns: list[str]) -> dict[str, str | None]:
     return mapping
 
 
-def _render_upload_tab(project_id: int | None, project_name: str) -> None:
+def _render_upload_tab(project_id: int) -> None:
     st.subheader("Excel 업로드")
-    st.caption("저장 전 미리보기와 검증 결과를 확인한 뒤 반영합니다.")
+    st.caption("저장 전 미리보기와 검증 결과를 확인한 뒤 현재 프로젝트에 반영합니다.")
     uploaded_file = st.file_uploader("프로그램 목록 엑셀 파일", type=["xlsx", "xls"])
 
     if not uploaded_file:
@@ -325,9 +317,8 @@ def _render_upload_tab(project_id: int | None, project_name: str) -> None:
     if st.button("검증 통과 행 저장", type="primary", disabled=not validation.valid_rows):
         init_db()
         with SessionLocal() as db:
-            result = save_programs_with_result(db, project_name.strip() or "Default Project", validation.valid_rows)
+            result = save_programs_for_project_id(db, project_id, validation.valid_rows)
 
-        _set_current_project_by_name(project_name.strip() or "Default Project")
         col1, col2, col3 = st.columns(3)
         col1.metric("신규 생성", result.created_count)
         col2.metric("업데이트", result.updated_count)
@@ -340,24 +331,18 @@ def render_upload_page() -> None:
     st.caption("프로그램 데이터를 조회하고, 양식을 내려받고, Excel 업로드 전 검증 후 저장합니다.")
 
     context = get_current_project_context()
-    create_new_project = st.checkbox("새 프로젝트명으로 저장", value=context is None)
-    if create_new_project:
-        project_id = None
-        project_name = st.text_input("새 프로젝트명", value="Default Project")
-    else:
-        if context is None:
-            st.info("먼저 프로젝트를 등록하거나 새 프로젝트명으로 저장을 선택해 주세요.")
-            return
-        project_id = context.project_id
-        project_name = context.project_name
-        st.caption(f"현재 프로젝트: {project_name} ({project_id})")
+    if context is None:
+        st.info("먼저 프로젝트/Git 설정에서 프로젝트를 등록한 뒤 프로그램을 관리해 주세요.")
+        return
+    project_id = context.project_id
+    st.caption(f"현재 프로젝트: {context.project_name} ({project_id})")
 
     tab1, tab2, tab3, tab4 = st.tabs(["현재 데이터", "직접 추가", "Excel 업로드", "양식"])
     with tab1:
         _render_current_programs(project_id)
     with tab2:
-        _render_manual_create_tab(project_name)
+        _render_manual_create_tab(project_id)
     with tab3:
-        _render_upload_tab(project_id, project_name)
+        _render_upload_tab(project_id)
     with tab4:
         _render_column_guide()

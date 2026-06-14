@@ -80,7 +80,8 @@
 | P2 | Resource UX | Resource value metric wording cleanup | Done | 자원관리 가치 지표 문구 정리 | 85c9106 |
 | P2 | UX / State | Current project selection persistence | Done | 현재 프로젝트 선택 유지 | 0cded3c |
 | P2 | UX / Analysis Views | User-facing analysis display cleanup | Done | 분석 화면 표시 정리 | 32efaa0 |
-| P2 | UX / Action State | Completed-state action priority cleanup | Done | 완료 상태 액션 우선순위 정리 |  |
+| P2 | UX / Action State | Completed-state action priority cleanup | Done | 완료 상태 액션 우선순위 정리 | 423be58 |
+| P2 | UX / Data Flow | Program management project flow cleanup | Done | 프로그램 관리 현재 프로젝트 저장 흐름 정리 |  |
 
 ## Candidate Tasks
 
@@ -89,9 +90,28 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | Priority | Area | Candidate | Why It Matters | Possible Direction | Notes |
 |---|---|---|---|---|---|
 | P2 | UX / State | Project-scoped UI state namespacing | The global project selector changes the data context, but Streamlit widget values with stable keys can remain in `st.session_state` across projects. Text search reuse can be useful, but project-specific selections such as program, commit, mapping, or filter state can feel stale or misleading after switching projects. | Keep intentional global state small (`current_project_id`, sidebar navigation). For project-dependent UI state, include `project_id` in widget keys or provide a shared helper for project-scoped keys. Avoid clearing all inputs blindly because cross-project keyword comparison can be useful. | Review RAG search, Mapping filters, Program Detail filters, Commit Impact filters, and any selected row/commit/program widgets before implementation. |
-| P2 | UX | Program management project flow cleanup | `프로그램 관리` now defaults to the global current project, but it still keeps an explicit `새 프로젝트명으로 저장` option for legacy upload/create flows. This preserves compatibility but makes the page slightly less direct than other project-scoped screens. | Consider making program management strictly current-project based and moving new project creation to `프로젝트/Git 설정`. If keeping the exception, make the create-new-project path visually secondary and explain when it should be used. | Check sample data and Excel upload workflows before removing the exception. |
 | P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - Program Management Project Flow Cleanup
+
+Status: Done
+
+Goal:
+Make Program Management strictly operate on the sidebar current project and move new project creation responsibility to Project/Git settings.
+
+Rationale:
+Most project-scoped screens now use the global current project context. Program Management still exposes `새 프로젝트명으로 저장`, which can make users think program upload is also a project creation screen. This weakens the shared project context model and makes accidental writes to a similarly named project easier.
+
+Checklist:
+
+- [x] Remove the `새 프로젝트명으로 저장` path from Program Management.
+- [x] Save direct-add and Excel-import programs to the current project ID, not by project name lookup/create.
+- [x] Keep no-project guidance pointing users to Project/Git settings.
+- [x] Add focused service tests for project-ID-based program saving.
+- [x] Update user-facing and architecture documentation.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile/tests and Browser rendering verification.
 
 ## P2 - Completed-State Action Priority Cleanup
 

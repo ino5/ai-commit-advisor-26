@@ -210,8 +210,7 @@ def _get_or_create_developer(db: Session, developer_name: str | None, developer_
     return developer
 
 
-def save_programs_with_result(db: Session, project_name: str, rows: list[dict]) -> ProgramSaveResult:
-    project = get_or_create_project(db, project_name)
+def _save_programs_for_project(db: Session, project: Project, rows: list[dict]) -> ProgramSaveResult:
     result = ProgramSaveResult()
 
     for row in rows:
@@ -274,6 +273,16 @@ def save_programs_with_result(db: Session, project_name: str, rows: list[dict]) 
 
     db.commit()
     return result
+
+
+def save_programs_with_result(db: Session, project_name: str, rows: list[dict]) -> ProgramSaveResult:
+    project = get_or_create_project(db, project_name)
+    return _save_programs_for_project(db, project, rows)
+
+
+def save_programs_for_project_id(db: Session, project_id: int, rows: list[dict]) -> ProgramSaveResult:
+    project = db.query(Project).filter(Project.id == project_id).one()
+    return _save_programs_for_project(db, project, rows)
 
 
 def save_programs(db: Session, project_name: str, rows: list[dict]) -> int:

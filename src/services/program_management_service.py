@@ -6,7 +6,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from src.db.models import Program, ProgramCommitMapping, ProgramImplementationStatus, Project, RiskFinding
-from src.services.excel_service import save_programs_with_result
+from src.services.excel_service import save_programs_for_project_id, save_programs_with_result
 
 
 @dataclass
@@ -75,6 +75,14 @@ def save_manual_program(db: Session, project_name: str, payload: dict) -> Progra
     if not validation.is_valid:
         return validation
     save_programs_with_result(db, project_name, [normalize_program_payload(payload)])
+    return validation
+
+
+def save_manual_program_for_project(db: Session, project_id: int, payload: dict) -> ProgramFormValidation:
+    validation = validate_program_payload(payload)
+    if not validation.is_valid:
+        return validation
+    save_programs_for_project_id(db, project_id, [normalize_program_payload(payload)])
     return validation
 
 
