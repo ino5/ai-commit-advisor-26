@@ -2,6 +2,16 @@
 
 ## 2026-06-14
 
+### Project developer membership model
+
+- Added `project_developers` as a project-to-global-developer membership table while keeping `developers` and `programs.developer_id` backward-compatible.
+- Added project developer membership helpers and project-scoped developer listing, with Git author extraction, manual creation, and Excel upload now linking developers to the current project when available.
+- Updated the developer management UI so the default view shows current-project developers and a separate `전역 마스터` tab still exposes the full global developer master.
+- Added DB-backed tests for membership creation, duplicate prevention, cross-project developer reuse, project/developer cascade cleanup, and project deletion impact.
+- Documented the global developer master vs project membership distinction in architecture, feature, engineering decision, and DB migration docs.
+- Important files: `migrations/versions/20260614_0005_add_project_developers.py`, `src/db/models.py`, `src/services/project_developer_service.py`, `src/services/developer_service.py`, `src/services/developer_management_service.py`, `src/ui/developer_upload_page.py`, `tests/test_developer_management_service.py`, `tests/test_project_management_service.py`, `docs/architecture.md`, `docs/feature-guide.md`, `docs/engineering-decisions.md`, `docs/db-migrations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- Verification: `docker compose up -d postgres` passed; `.\.venv\Scripts\python.exe -m py_compile src\db\models.py src\services\developer_service.py src\services\developer_management_service.py src\services\project_developer_service.py src\ui\developer_upload_page.py migrations\versions\20260614_0005_add_project_developers.py` passed; `.\.venv\Scripts\alembic.exe upgrade head` passed; `.\.venv\Scripts\alembic.exe heads` and `.\.venv\Scripts\alembic.exe current` both reported `20260614_0005 (head)`; `.\.venv\Scripts\python.exe -m compileall src app.py tests` passed; `.\.venv\Scripts\python.exe -m pytest tests\test_developer_management_service.py tests\test_project_management_service.py -q` passed with 11 tests; `.\.venv\Scripts\python.exe -m pytest -q` passed with 102 tests; `git diff --check` passed with only Windows line-ending warnings.
+
 ### Project delete and demo reset safety
 
 - Added a project management service that reports project deletion impact counts and deletes project-owned data while preserving the global `developers` master.

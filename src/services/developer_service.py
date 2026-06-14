@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from src.db.models import Developer, GitCommit
+from src.services.project_developer_service import link_project_developer
 
 
 ROLE_OPTIONS = [
@@ -107,6 +108,8 @@ def extract_developers_from_git_commits(db: Session, project_id: int) -> Develop
                 skills=skills,
             )
             db.add(developer)
+            db.flush()
+            link_project_developer(db, project_id, developer.developer_id, "git_author", developer.role)
             result.created_count += 1
             continue
 
@@ -131,6 +134,7 @@ def extract_developers_from_git_commits(db: Session, project_id: int) -> Develop
             result.updated_count += 1
         else:
             result.skipped_count += 1
+        link_project_developer(db, project_id, developer.developer_id, "git_author", developer.role)
 
     db.commit()
     return result

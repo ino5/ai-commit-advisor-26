@@ -16,6 +16,7 @@ from src.db.models import (
     ProgramCommitMapping,
     ProgramImplementationStatus,
     Project,
+    ProjectDeveloper,
     ProjectChatMessage,
     ProjectChatSession,
     RiskFinding,
@@ -41,6 +42,7 @@ class ProjectDeleteImpact:
     document_chunk_count: int = 0
     vector_item_count: int = 0
     standard_term_count: int = 0
+    project_developer_count: int = 0
     developer_count: int = 0
 
     @property
@@ -59,6 +61,7 @@ class ProjectDeleteImpact:
             + self.document_chunk_count
             + self.vector_item_count
             + self.standard_term_count
+            + self.project_developer_count
         )
 
 
@@ -136,6 +139,7 @@ def get_project_delete_impact(db: Session, project_id: int) -> ProjectDeleteImpa
             db.query(VectorItem).filter(VectorItem.chunk_id.in_(chunk_ids) if chunk_ids else false()).count()
         ),
         standard_term_count=db.query(StandardTerm).filter(StandardTerm.project_id == project_id).count(),
+        project_developer_count=db.query(ProjectDeveloper).filter(ProjectDeveloper.project_id == project_id).count(),
         developer_count=db.query(func.count(Developer.id)).scalar() or 0,
     )
 

@@ -99,6 +99,49 @@
 - `README.md`
 - `AI_CHANGELOG.md`의 `App-server Git repository operating model`
 
+## 2026-06-14 - Project developer membership keeps the global master compatible
+
+### 배경
+
+프로젝트 삭제 기능 이후에도 `developers`가 전역 마스터로 남기 때문에, 개발자 목록 화면을 현재 프로젝트 기준으로 보여주려면 별도 연결 기준이 필요했습니다. 단순히 `developers.project_id`를 추가하면 같은 개발자가 여러 프로젝트에 참여하는 경우를 표현하기 어렵고, 기존 `programs.developer_id` FK와 Excel 업로드 흐름까지 한 번에 바꿔야 합니다.
+
+반대로 전역 마스터만 계속 보여주면 반복 시연이나 여러 프로젝트 운영에서 현재 프로젝트와 무관한 개발자가 섞여 보여 사용자가 데이터를 잘못 이해할 수 있습니다.
+
+### 결정
+
+`developers`는 전역 개발자 마스터로 유지하고, `project_developers` 연결 테이블을 추가합니다. 현재 프로젝트 개발자 목록은 이 연결 테이블을 기준으로 조회합니다.
+
+Git author 자동 추출, 직접 추가, Excel 업로드는 먼저 전역 `developers` row를 생성하거나 업데이트한 뒤, 현재 프로젝트가 있으면 `project_developers` 연결을 생성합니다. 같은 프로젝트에서 반복 실행해도 `(project_id, developer_id)` unique constraint로 중복 연결을 만들지 않습니다.
+
+v1에서는 `programs.developer_id` FK를 그대로 유지합니다. 개발자 role/skills도 기존 `developers` 값을 계속 표시하고 수정하며, 프로젝트별 role 편집은 후속 범위로 둡니다.
+
+### 이유
+
+- 기존 프로그램 담당자 연결과 Excel 업로드 호환성을 보존합니다.
+- 같은 개발자가 여러 프로젝트에 등장하는 운영 모델을 지원합니다.
+- 현재 프로젝트 화면에서는 불필요한 전역 개발자가 섞이지 않아 시연과 실사용 흐름이 명확해집니다.
+- 연결 테이블만 프로젝트 삭제 cascade 대상이므로, 프로젝트를 삭제해도 전역 개발자 마스터는 유지됩니다.
+
+### 검토한 대안
+
+- `developers.project_id` 추가: 단순하지만 multi-project developer 표현과 기존 unique/FK 정책 변경 부담이 큽니다.
+- `programs.developer_id`를 프로젝트별 FK로 변경: 장기적으로 검토할 수 있지만 기존 산출물 업로드와 분석 서비스의 회귀 위험이 큽니다.
+- 화면에서만 Git author나 프로그램 담당자 기준으로 필터링: schema가 없어서 직접 추가/Excel/Git author 흐름의 연결 상태를 일관되게 저장하기 어렵습니다.
+
+### 영향과 tradeoff
+
+- 프로젝트별 연결 상태는 명확해졌지만, v1의 삭제 버튼은 여전히 전역 개발자 삭제입니다. 현재 프로젝트에서만 연결 해제하는 기능은 별도 후속 작업입니다.
+- `project_role`은 저장 컬럼으로 준비했지만, v1 UI는 기존 `developers.role/skills`를 그대로 편집합니다.
+- migration은 기존 `programs.developer_id`를 기준으로 연결을 백필합니다. 담당 프로그램이 없던 기존 전역 개발자는 Git author 추출, 직접 추가, Excel 업로드를 다시 수행해야 특정 프로젝트에 연결됩니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Project Developer Membership Model`
+- `docs/architecture.md`
+- `docs/feature-guide.md`
+- `docs/db-migrations.md`
+- `AI_CHANGELOG.md`의 `Project developer membership model`
+
 ## 2026-06-14 - Project deletion keeps global developer master
 
 ### 배경

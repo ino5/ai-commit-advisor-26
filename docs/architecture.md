@@ -71,7 +71,7 @@ flowchart TB
     ImplementationAnalyzer --> DB
     VectorStore --> DB
 
-    DB --> Tables["projects, developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>program_implementation_status,<br/>code_review_results, risk_findings,<br/>project_chat_sessions, project_chat_messages,<br/>document_chunks, vector_items"]
+    DB --> Tables["projects, developers, project_developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>program_implementation_status,<br/>code_review_results, risk_findings,<br/>project_chat_sessions, project_chat_messages,<br/>document_chunks, vector_items"]
 ```
 
 ## 2. 화면 흐름도
@@ -105,8 +105,8 @@ flowchart LR
 
 - `Home`: 사이드바에서 선택한 현재 프로젝트의 KPI, AI 진척도, 리스크 프로그램, 다음 작업 요약.
 - `Project`: 프로젝트 이름, 설명, 앱 서버에서 접근 가능한 Git 저장소 경로 관리, 프로젝트 삭제. 프로젝트 저장 후 사이드바 현재 프로젝트 선택과 동기화하고, 프로젝트 삭제 후에는 남은 프로젝트로 현재 선택을 복구한다.
-- `개발자 현황`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리.
-- `개발자 목록`: 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기.
+- `개발자 현황`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리. 자동 추출된 author는 전역 개발자 마스터에 저장하고 현재 프로젝트 연결도 함께 생성한다.
+- `개발자 목록`: 현재 프로젝트에 연결된 개발자 조회를 기본으로 제공하고, 전역 개발자 마스터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기를 지원한다.
 - `Program`: 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, 저장.
 - `개발계획`: 개발계획 현재 데이터 조회, 직접 수정, 일괄 업데이트, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - `Program Detail`: 특정 프로그램의 계획, AI 구현상태, 관련 커밋, 파일 diff, 리스크를 상세 조회.
@@ -124,7 +124,7 @@ flowchart LR
 
 대부분의 프로젝트 단위 화면은 각 화면 안에서 프로젝트를 다시 고르지 않고, 사이드바의 현재 프로젝트 컨텍스트를 사용합니다. `프로젝트/Git 설정`은 프로젝트 생성, 수정, 삭제를 담당하므로 자체 선택 UI를 유지하고, `프로그램 목록`은 기존 프로젝트에 데이터를 넣는 흐름과 새 프로젝트명으로 저장하는 예외 흐름을 분리합니다.
 
-프로젝트 삭제는 프로젝트 소유 데이터만 정리합니다. 프로그램, Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어는 삭제 대상입니다. `developers`는 전역 개발자 마스터이므로 프로젝트 삭제 시 자동 삭제하지 않습니다.
+프로젝트 삭제는 프로젝트 소유 데이터만 정리합니다. 프로그램, Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어, 프로젝트 개발자 연결은 삭제 대상입니다. `developers`는 전역 개발자 마스터이므로 프로젝트 삭제 시 자동 삭제하지 않습니다.
 
 ## 2.1 Git 저장소 접근 모델
 
@@ -144,7 +144,9 @@ erDiagram
     PROJECTS ||--o{ PROGRAMS : has
     PROJECTS ||--o{ GIT_COMMITS : has
     PROJECTS ||--o{ ANALYSIS_RUNS : has
+    PROJECTS ||--o{ PROJECT_DEVELOPERS : has
     DEVELOPERS ||--o{ PROGRAMS : assigned_to
+    DEVELOPERS ||--o{ PROJECT_DEVELOPERS : linked_to
     GIT_COMMITS ||--o{ COMMIT_FILES : contains
     PROGRAMS ||--o{ PROGRAM_COMMIT_MAPPINGS : mapped
     PROGRAMS ||--o| PROGRAM_IMPLEMENTATION_STATUS : analyzed
@@ -174,6 +176,17 @@ erDiagram
         string email
         string role
         text skills
+    }
+
+    PROJECT_DEVELOPERS {
+        int id PK
+        int project_id FK
+        string developer_id FK
+        string source
+        string project_role
+        string active_yn
+        datetime created_at
+        datetime updated_at
     }
 
     PROGRAMS {
@@ -340,6 +353,7 @@ erDiagram
 |---|---|
 | `projects` | 프로젝트 단위의 최상위 엔티티. Git 저장소 경로와 마지막 동기화 상태를 가지며, 삭제 시 프로젝트 소유 분석 데이터의 정리 기준이 된다. |
 | `developers` | 전역 개발자 마스터. Git author 또는 업로드 데이터 기반으로 생성되며 role/skills를 관리한다. 프로젝트 삭제 시 자동 삭제하지 않는다. |
+| `project_developers` | 프로젝트와 전역 개발자 마스터의 연결 테이블. 현재 프로젝트 개발자 목록의 기준이며, 같은 개발자를 여러 프로젝트에 연결할 수 있다. |
 | `programs` | 프로그램 목록과 개발계획 정보를 저장한다. 계획 진척도(`progress_rate`)와 일정, 담당자 정보의 기준 테이블이다. |
 | `git_commits` | Git 커밋 메타데이터를 저장한다. 커밋 기준 매핑 분석 상태도 가진다. |
 | `commit_files` | 커밋별 변경 파일, 변경 유형, diff 일부를 저장한다. |
@@ -361,7 +375,9 @@ erDiagram
 | `excel_service.py` | 프로그램/개발자 Excel 파일 읽기, 컬럼 매핑, 정규화, DB 저장. |
 | `git_service.py` | 앱 서버 Git 저장소에서 commit hash, message, author, changed files, diff 수집 및 DB 저장. |
 | `git_repository_status_service.py` | 앱 서버 Git 저장소의 branch, HEAD, upstream, ahead/behind, working tree 변경, DB sync mismatch 상태를 읽기 전용으로 조회한다. |
-| `developer_service.py` | Git author 기반 개발자 자동 추출, role/skills 추정, 개발자 통계 생성. |
+| `developer_service.py` | Git author 기반 개발자 자동 추출, role/skills 추정, 현재 프로젝트 개발자 연결, 개발자 통계 생성. |
+| `developer_management_service.py` | 개발자 직접 추가/수정/삭제, Excel 저장 결과, 삭제 영향, 전역 개발자 마스터 저장을 처리한다. 현재 프로젝트가 있으면 개발자 연결도 함께 만든다. |
+| `project_developer_service.py` | 전역 개발자 마스터와 프로젝트 개발자 연결을 생성/갱신하고, 현재 프로젝트 개발자 목록과 전역 마스터 목록 조회를 분리한다. |
 | `llm_client.py` | mock 또는 OpenAI-compatible local LLM 호출. `/chat/completions` 기반. |
 | `mapping_service.py` | 프로그램-커밋 매핑 분석의 핵심 서비스. 프로그램 기준 분석과 커밋 기준 분석을 모두 지원한다. |
 | `mapping_feedback_service.py` | 매핑 피드백 목록, 리뷰 큐 후보, 품질 KPI, 사용자 보정 저장을 처리한다. |
@@ -518,7 +534,7 @@ LLM 출력 예시:
 - Streamlit 기반 업무 흐름형 메뉴.
 - 프로젝트 등록 및 앱 서버 Git 저장소 경로 관리.
 - 프로그램 관리: 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, DB 저장/업데이트.
-- 개발자 관리: 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, DB 저장/업데이트.
+- 개발자 관리: 현재 프로젝트 개발자 조회, 전역 개발자 마스터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, DB 저장/업데이트.
 - 개발계획 관리: 현재 계획 조회, 직접 수정, 일괄 업데이트, Excel 양식 다운로드, 업로드 전 검증/미리보기.
 - Git 커밋 전체 수집 및 증분 동기화.
 - 앱 서버 Git 저장소 branch/HEAD/upstream/working tree/DB sync mismatch 상태 표시.
@@ -590,7 +606,7 @@ LLM 출력 예시:
 | `src/ui/project_context.py` | 현재 프로젝트 선택값 저장/조회, 삭제된 선택 복구, 사이드바 전역 프로젝트 selector. |
 | `src/ui/project_page.py` | 프로젝트 등록/수정. |
 | `src/ui/developer_page.py` | Git author 기반 개발자 현황, 자동 추출, 개발자 통계. |
-| `src/ui/developer_upload_page.py` | 개발자 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
+| `src/ui/developer_upload_page.py` | 현재 프로젝트 개발자 조회, 전역 개발자 마스터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/upload_page.py` | 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/development_plan_upload_page.py` | 개발계획 조회, 직접 수정, 일괄 업데이트, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/program_detail_page.py` | 프로그램별 계획, AI 구현상태, 관련 커밋, diff, 리스크 상세 조회. |

@@ -26,6 +26,17 @@ Baseline 이후 revision은 정상적으로 실행됩니다. 예를 들어 mappi
 20260608_0002_add_mapping_feedback
 ```
 
+현재 주요 후속 revision:
+
+| Revision | 목적 |
+|---|---|
+| `20260608_0002_add_mapping_feedback` | Mapping 피드백 컬럼 추가 |
+| `20260609_0003_add_standard_terms` | 프로젝트별 표준용어/표준단어 테이블 추가 |
+| `20260610_0004_add_project_chat_sessions` | Project Chat session/message 저장 테이블 추가 |
+| `20260614_0005` | `project_developers` 프로젝트-개발자 연결 테이블 추가 |
+
+`20260614_0005`는 `developers` 전역 마스터와 `programs.developer_id` 구조를 바꾸지 않고, 프로젝트별 개발자 목록을 위한 연결 테이블만 추가합니다. 기존 프로그램 담당자 연결이 있는 데이터는 migration 중 `project_developers`로 백필되어, 기존 프로젝트의 담당 개발자가 현재 프로젝트 개발자 목록에서 계속 보입니다.
+
 ## 새 마이그레이션 생성
 
 ```powershell

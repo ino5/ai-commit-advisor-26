@@ -6,9 +6,10 @@ from io import BytesIO
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from src.db.models import Developer, Program
+from src.db.models import Developer, Program, ProjectDeveloper
 from src.services.developer_service import make_developer_key
 from src.services.excel_service import normalize_developer_rows
+from src.services.project_developer_service import link_project_developer
 
 
 DEVELOPER_TEMPLATE_COLUMNS = ["developer_id", "developer_name", "email", "role", "skills"]
@@ -47,6 +48,7 @@ class DeveloperFormValidation:
 @dataclass
 class DeveloperDeleteImpact:
     assigned_program_count: int = 0
+    project_membership_count: int = 0
 
 
 def build_developer_template_excel() -> bytes:
@@ -146,7 +148,12 @@ def validate_developer_import(df: pd.DataFrame, existing_developer_ids: set[str]
     return result
 
 
-def save_developers_with_result(db: Session, rows: list[dict]) -> DeveloperSaveResult:
+def save_developers_with_result(
+    db: Session,
+    rows: list[dict],
+    project_id: int | None = None,
+    source: str = "excel",
+) -> DeveloperSaveResult:
     result = DeveloperSaveResult()
     for row in rows:
         validation = validate_developer_payload(row)
@@ -172,15 +179,16 @@ def save_developers_with_result(db: Session, rows: list[dict]) -> DeveloperSaveR
         developer.email = normalized["email"]
         developer.role = normalized["role"]
         developer.skills = normalized["skills"]
+        link_project_developer(db, project_id, developer.developer_id, source, developer.role)
     db.commit()
     return result
 
 
-def save_manual_developer(db: Session, payload: dict) -> DeveloperFormValidation:
+def save_manual_developer(db: Session, payload: dict, project_id: int | None = None) -> DeveloperFormValidation:
     validation = validate_developer_payload(payload)
     if not validation.is_valid:
         return validation
-    save_developers_with_result(db, [payload])
+    save_developers_with_result(db, [payload], project_id=project_id, source="manual")
     return validation
 
 
@@ -218,7 +226,8 @@ def update_developer(db: Session, developer_pk: int, payload: dict) -> Developer
 
 def get_developer_delete_impact(db: Session, developer_id: str) -> DeveloperDeleteImpact:
     return DeveloperDeleteImpact(
-        assigned_program_count=db.query(Program).filter(Program.developer_id == developer_id).count()
+        assigned_program_count=db.query(Program).filter(Program.developer_id == developer_id).count(),
+        project_membership_count=db.query(ProjectDeveloper).filter(ProjectDeveloper.developer_id == developer_id).count(),
     )
 
 
@@ -233,3 +242,8 @@ def delete_developer(db: Session, developer_pk: int) -> None:
     )
     db.delete(developer)
     db.commit()
+
+
+def existing_developer_ids(db: Session) -> set[str]:
+    rows = db.query(Developer.developer_id).all()
+    return {str(row[0]) for row in rows if row[0]}

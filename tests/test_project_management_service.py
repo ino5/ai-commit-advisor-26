@@ -16,6 +16,7 @@ from src.db.models import (
     ProgramCommitMapping,
     ProgramImplementationStatus,
     Project,
+    ProjectDeveloper,
     ProjectChatMessage,
     ProjectChatSession,
     RiskFinding,
@@ -41,6 +42,7 @@ def _create_project_graph(db):
     other_project = Project(name=_unique("delete-other"), git_repo_path=None)
     db.add_all([developer, target_project, other_project])
     db.flush()
+    db.add(ProjectDeveloper(project_id=target_project.id, developer_id=developer.developer_id, source="manual"))
 
     target_program = Program(
         project_id=target_project.id,
@@ -170,6 +172,7 @@ def test_delete_project_removes_project_owned_data_and_preserves_developers():
             assert impact.document_chunk_count == 1
             assert impact.vector_item_count == 1
             assert impact.standard_term_count == 1
+            assert impact.project_developer_count == 1
 
             deleted = delete_project(db, target_project_id)
 
@@ -177,6 +180,7 @@ def test_delete_project_removes_project_owned_data_and_preserves_developers():
             assert db.get(Project, target_project_id) is None
             assert db.get(Project, other_project_id) is not None
             assert db.get(Developer, developer_pk) is not None
+            assert db.query(ProjectDeveloper).filter(ProjectDeveloper.project_id == target_project_id).count() == 0
             assert db.query(Program).filter(Program.project_id == target_project_id).count() == 0
             assert db.query(GitCommit).filter(GitCommit.project_id == target_project_id).count() == 0
             assert db.query(CommitFile).filter(CommitFile.file_path == f"src/{marker}_target.py").count() == 0

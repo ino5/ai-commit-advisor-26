@@ -33,6 +33,10 @@ class Project(Base, TimestampMixin):
     git_commits: Mapped[list["GitCommit"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     analysis_runs: Mapped[list["AnalysisRun"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     standard_terms: Mapped[list["StandardTerm"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    project_developers: Mapped[list["ProjectDeveloper"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
     chat_sessions: Mapped[list["ProjectChatSession"]] = relationship(
         back_populates="project",
         cascade="all, delete-orphan",
@@ -55,6 +59,28 @@ class Developer(Base, TimestampMixin):
     skills: Mapped[str | None] = mapped_column(Text)
 
     programs: Mapped[list["Program"]] = relationship(back_populates="assigned_developer")
+    project_memberships: Mapped[list["ProjectDeveloper"]] = relationship(
+        back_populates="developer",
+        cascade="all, delete-orphan",
+    )
+
+
+class ProjectDeveloper(Base, TimestampMixin):
+    __tablename__ = "project_developers"
+    __table_args__ = (
+        UniqueConstraint("project_id", "developer_id", name="uq_project_developers_project_developer"),
+    )
+    __mapper_args__ = {"confirm_deleted_rows": False}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    developer_id: Mapped[str] = mapped_column(ForeignKey("developers.developer_id", ondelete="CASCADE"), nullable=False)
+    source: Mapped[str] = mapped_column(String(50), default="manual", nullable=False)
+    project_role: Mapped[str | None] = mapped_column(String(255))
+    active_yn: Mapped[str] = mapped_column(String(1), default="Y", nullable=False)
+
+    project: Mapped["Project"] = relationship(back_populates="project_developers")
+    developer: Mapped["Developer"] = relationship(back_populates="project_memberships")
 
 
 class Program(Base, TimestampMixin):

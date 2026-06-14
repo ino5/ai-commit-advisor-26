@@ -39,6 +39,7 @@ def _render_project_delete_section(project: Project) -> None:
         {"데이터": "RAG chunk", "건수": impact.document_chunk_count},
         {"데이터": "RAG vector", "건수": impact.vector_item_count},
         {"데이터": "표준용어/표준단어", "건수": impact.standard_term_count},
+        {"데이터": "프로젝트 개발자 연결", "건수": impact.project_developer_count},
         {"데이터": "전역 개발자 마스터(삭제 안 함)", "건수": impact.developer_count},
     ]
     st.dataframe(impact_rows, hide_index=True, use_container_width=True)
