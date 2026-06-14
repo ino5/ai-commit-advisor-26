@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### 샘플 프로젝트 commit 날짜 정규화
+
+- `scripts/create_sample_target_repo.py`의 48개 commit history 기준 시작일을 `2026-04-25 09:30 KST`로 조정해 마지막 commit 날짜가 `2026-06-14`를 넘지 않게 했습니다.
+- 샘플 commit 날짜 범위를 `docs/sample-target-repo-demo-design.md`에 명시하고, 미래 날짜 commit이 Git History/Commit Impact 신뢰도를 떨어뜨릴 수 있다는 설계 기준을 추가했습니다.
+- 샘플 history의 마지막 commit 날짜를 검증하는 테스트를 추가했습니다.
+- 주요 파일: `scripts/create_sample_target_repo.py`, `tests/test_sample_data_generation.py`, `docs/sample-target-repo-demo-design.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile scripts\create_sample_target_repo.py tests\test_sample_data_generation.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_sample_data_generation.py -q` 13개 테스트 통과; 임시 샘플 repo 생성 후 `git log -1 --format='%ad|%s' --date=short` 결과 `2026-06-14|Add sample demo guide for advisor walkthrough`, `git rev-list --count HEAD` 결과 48 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts\create_sample_target_repo.py` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 110개 테스트 통과; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### Sidebar 접이식 그룹 정리
 
 - 사이드바의 업무 그룹을 항상 펼쳐진 목록 대신 `st.expander` 기반 접이식 그룹으로 바꿨습니다.

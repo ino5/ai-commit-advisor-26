@@ -20,6 +20,7 @@
 - Programs: 8
 - Developers: 6
 - Git commits: 48
+- Commit date range: 2026-04-25 to 2026-06-14
 - Main stack: Java, Spring MVC, JSP, MyBatis XML
 - Current domains: orders, inventory, payments, reports, dashboard, coupon, settlement planning
 - Generated files: developers, programs, development plans, standard terminology용 program CSV와 upload Excel files
@@ -156,7 +157,7 @@
 | 47 | Settlement and operator evidence | Tighten settlement export risk note / Document operator audit evidence requirements | Dashboard, reports, settlement | Risk Analysis, Project Chat |
 | 48 | Final release and demo guide | Add final cross-module release evidence / Add sample demo guide for advisor walkthrough | All | AI Progress caveat, recommended demo flow |
 
-정확한 day offset은 구현 중 달라질 수 있지만, 최종 history는 48개 commit 안에서 위 scenario category를 보존해야 합니다.
+정확한 day offset은 구현 중 달라질 수 있지만, 최종 history는 48개 commit 안에서 위 scenario category를 보존해야 합니다. 생성된 commit 날짜는 현재 앱 검증일인 2026-06-14를 넘지 않아야 합니다. 미래 날짜 commit이 기본 최신 commit으로 보이면 Git History와 Commit Impact가 실제 업무 데이터처럼 신뢰되기 어렵습니다.
 
 ## 의도된 분석 포인트
 

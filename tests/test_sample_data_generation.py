@@ -4,6 +4,7 @@ import pandas as pd
 from scripts.create_sample_target_repo import (
     DEVELOPERS,
     PROGRAM_ROWS,
+    SAMPLE_HISTORY_START_AT,
     STANDARD_TERM_ROWS,
     _apply_demo_plan_overrides,
     _apply_developer_profiles,
@@ -85,6 +86,12 @@ def test_sample_target_repo_has_rich_demo_commit_history() -> None:
     assert "docs/requirements/settlement-export.md" in all_paths
     assert "docs/business-rules/project-chat-demo-questions.md" in all_paths
     assert "docs/demo-guide.md" in all_paths
+
+
+def test_sample_target_repo_commit_dates_do_not_exceed_verification_date() -> None:
+    latest = max(SAMPLE_HISTORY_START_AT + pd.Timedelta(days=step.days_after_start) for step in _commit_steps())
+
+    assert latest.date().isoformat() == "2026-06-14"
 
 
 def test_sample_program_rows_include_risk_demo_programs() -> None:

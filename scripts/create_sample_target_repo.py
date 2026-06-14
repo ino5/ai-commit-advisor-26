@@ -20,6 +20,7 @@ except ModuleNotFoundError:
 
 
 KST = timezone(timedelta(hours=9))
+SAMPLE_HISTORY_START_AT = datetime(2026, 4, 25, 9, 30, tzinfo=KST)
 BASE_PACKAGE_PATH = "src/main/java/com/example/market"
 RESOURCE_MAPPER_PATH = "src/main/resources/mappers"
 WEBAPP_PATH = "src/main/webapp/WEB-INF/views"
@@ -2282,9 +2283,8 @@ def create_repo(target_path: Path, force: bool = False) -> None:
     _run(["git", "config", "core.autocrlf", "false"], cwd=target_path)
     _program_csv(target_path)
 
-    start_at = datetime(2026, 5, 4, 9, 30, tzinfo=KST)
     for step in _commit_steps():
-        _commit(target_path, step, start_at)
+        _commit(target_path, step, SAMPLE_HISTORY_START_AT)
 
     developers, programs, plan = generate_sample_data(
         target_path,

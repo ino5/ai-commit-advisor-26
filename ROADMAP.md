@@ -83,7 +83,8 @@
 | P2 | UX / Action State | Completed-state action priority cleanup | Done | 완료 상태 액션 우선순위 정리 | 423be58 |
 | P2 | UX / Data Flow | Program management project flow cleanup | Done | 프로그램 관리 현재 프로젝트 저장 흐름 정리 | 987a799 |
 | P2 | Home UX | Home summary priority cleanup | Done | Home 요약 우선순위 정리 | e38f0e9 |
-| P2 | Navigation UX | Sidebar group collapse cleanup | Done | Sidebar 접이식 그룹 정리 |  |
+| P2 | Navigation UX | Sidebar group collapse cleanup | Done | Sidebar 접이식 그룹 정리 | b594b13 |
+| P2 | Sample Data UX | Sample commit date normalization | Done | 샘플 프로젝트 commit 날짜 정규화 |  |
 
 ## Candidate Tasks
 
@@ -94,6 +95,24 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P2 | UX / State | Project-scoped UI state namespacing | The global project selector changes the data context, but Streamlit widget values with stable keys can remain in `st.session_state` across projects. Text search reuse can be useful, but project-specific selections such as program, commit, mapping, or filter state can feel stale or misleading after switching projects. | Keep intentional global state small (`current_project_id`, sidebar navigation). For project-dependent UI state, include `project_id` in widget keys or provide a shared helper for project-scoped keys. Avoid clearing all inputs blindly because cross-project keyword comparison can be useful. | Review RAG search, Mapping filters, Program Detail filters, Commit Impact filters, and any selected row/commit/program widgets before implementation. |
 | P2 | Demo / Data UX | Project reset action after delete flow | The new demo user guide is easiest to repeat when a sample project can be removed or reset without wiping the whole database. Project deletion solves the clean-slate case, but operators may later want to keep project name/path and clear only collected analysis data. | After project deletion is stable, consider a project reset action that keeps project name/path but clears Git sync, mappings, risks, RAG, chat, and review results. Keep this separate from the initial delete flow so reset policy choices do not block the safer cleanup feature. | Do not start until project deletion impact counts, cascade behavior, and current-project recovery are verified. Decide whether artifact data such as programs, plans, and standard terms should be preserved or cleared by default. |
 | P3 | Git Ops | Server-managed clone/fetch workflow | In a later server deployment, operators may prefer registering a remote URL and branch so the app server manages clone/fetch instead of requiring a pre-cloned repository path. | Add remote URL, branch, repository storage path, sync lock, and fetch/reset workflow after the server-path model is stable. | Requires credential storage and permission decisions. Do not start without an engineering decision and security review. |
+
+## P2 - Sample Commit Date Normalization
+
+Status: Done
+
+Goal:
+Keep generated sample project commit dates from appearing later than the app verification date.
+
+Rationale:
+The 48-commit sample history should feel realistic when users inspect Git History and Commit Impact. If the latest generated sample commit appears in the future, users may distrust the analysis or think the app sorted/parsed dates incorrectly.
+
+Checklist:
+
+- [x] Adjust sample target repo generation start date so the 48-commit history ends on 2026-06-14.
+- [x] Add a focused test that guards the latest generated commit date.
+- [x] Update sample design documentation.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile/tests and sample generation verification.
 
 ## P2 - Sidebar Group Collapse Cleanup
 
