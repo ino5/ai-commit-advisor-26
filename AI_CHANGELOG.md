@@ -2,6 +2,13 @@
 
 ## 2026-06-14
 
+### Engineering decision superseded 표시 정리
+
+- `docs/engineering-decisions.md`의 2026-06-10 `App-server Git repository operating model` 결정을 `Superseded`로 표시했습니다.
+- 앱 서버 기준 Git 저장소 모델은 유지하되, remote URL 기반 clone/fetch를 관리하지 않는다는 이전 범위 제한은 2026-06-14 `서버 저장소 clone/fetch는 인증정보 저장 없이 지원한다` 결정으로 대체되었음을 명시했습니다.
+- 주요 파일: `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "manage하지 않는|관리하지 않는 것입니다|별도 보안/운영 결정 후 구현|당분간 운영자나 외부 스크립트 책임|App-server Git repository operating model \(Superseded\)|서버 저장소 clone/fetch는 인증정보 저장 없이 지원한다" docs\engineering-decisions.md`로 superseded 표시와 충돌 문구 정리 확인; `git diff --check` 통과.
+
 ### Project 화면 Application Preview 보강
 
 - `프로젝트/Git 설정` screenshot을 현재 화면으로 다시 캡처하고, 서버 저장소 상태와 `서버 저장소 clone/fetch`, `분석 데이터 초기화`가 보이는 운영 action screenshot을 추가했습니다.
