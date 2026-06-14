@@ -16,7 +16,13 @@
 <details>
 <summary>Project</summary>
 
+프로젝트 기본 정보와 앱 서버 Git 저장소 경로를 저장하고, 같은 화면에서 서버 저장소 준비와 반복 시연용 분석 데이터 초기화를 이어서 실행할 수 있습니다.
+
 ![Project](images/features/project.png)
+
+서버 저장소 상태, `서버 저장소 clone/fetch`, `분석 데이터 초기화`, `프로젝트 삭제`가 함께 보이는 운영 action 구간입니다.
+
+![Project Operations](images/features/project-operations.png)
 
 </details>
 

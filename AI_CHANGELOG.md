@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+### Project 화면 Application Preview 보강
+
+- `프로젝트/Git 설정` screenshot을 현재 화면으로 다시 캡처하고, 서버 저장소 상태와 `서버 저장소 clone/fetch`, `분석 데이터 초기화`가 보이는 운영 action screenshot을 추가했습니다.
+- Project screenshot 캡처 시나리오가 새 Project 운영 컨트롤을 필수 텍스트로 검증하도록 보강했습니다.
+- `docs/application-preview.md`의 Project 섹션에 기본 설정 화면과 운영 action 구간 설명을 추가했습니다.
+- 주요 파일: `scripts/capture_feature_screenshot.py`, `docs/application-preview.md`, `docs/images/features/project.png`, `docs/images/features/project-operations.png`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature project --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --expect-text "Git remote URL" --expect-text "서버 저장소 clone/fetch" --expect-text "분석 데이터 초기화"` 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature project-operations --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --expect-text "서버 저장소 clone/fetch" --expect-text "분석 데이터 초기화" --expect-text "프로젝트 삭제"` 통과; `.\.venv\Scripts\python.exe -m py_compile scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 테스트 통과; `git diff --check` 통과.
+
 ### README Git 저장소 접근 모델 보정
 
 - README의 Git 저장소 접근 모델 설명을 사내 서버에 미리 clone된 저장소만 전제하지 않도록 수정했습니다.
