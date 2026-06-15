@@ -38,7 +38,13 @@ from src.services.ai_evidence_service import (
     summarize_status_rows,
 )
 from src.services import ai_evidence_service
-from src.services.neo4j_graph_service import Neo4jConnectionStatus, Neo4jGraphFreshness, Neo4jGraphPreview, Neo4jSyncResult
+from src.services.neo4j_graph_service import (
+    ImpactPathRow,
+    Neo4jConnectionStatus,
+    Neo4jGraphFreshness,
+    Neo4jGraphPreview,
+    Neo4jSyncResult,
+)
 
 
 def _unique(prefix: str) -> str:
@@ -98,7 +104,15 @@ def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report(monkey
             "completed",
             "Neo4j graph preview 조회 완료",
             class_import_rows=[{"source": "EvidenceService", "target": "EvidenceClient"}],
-            impact_rows=[{"program": "Evidence Program"}],
+            impact_rows=[
+                ImpactPathRow(
+                    commit="abc123456789",
+                    program="Evidence Program",
+                    file_path="src/evidence/EvidenceService.java",
+                    class_name="EvidenceService",
+                    domain="evidence",
+                )
+            ],
         ),
     )
     with SessionLocal() as db:
@@ -314,6 +328,13 @@ def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report(monkey
             assert "# 주간 AI 점검 보고서" in report
             assert "Evidence Program" in report
             assert "AI 호출 Telemetry" in report
+            assert "Knowledge Graph 영향 요약" in report
+            assert "주요 Graph Impact Path" in report
+            assert "src/evidence/EvidenceService.java" in report
+            assert "EvidenceService" in report
+            assert "보고서 Metadata" in report
+            assert "Project Chat GraphRAG" in report
+            assert "graph_messages=1" in report
         finally:
             db.delete(project)
             db.delete(developer)

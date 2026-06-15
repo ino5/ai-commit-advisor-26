@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Graph-aware weekly report
+
+- `AI 운영 현황 > 주간 보고서` Markdown에 Knowledge Graph freshness, node/edge summary, class/import/impact path 요약, 주요 `program -> commit -> file -> class` path table을 추가했습니다.
+- AI Resource Radar, 미해결 리스크, AI Progress gap 항목에 프로그램별 graph path 근거를 함께 표시하고, Neo4j가 꺼져 있거나 graph preview가 실패해도 보고서 생성이 계속되도록 했습니다.
+- 보고서 metadata에 PL Briefing provider/model/mode/validation, 최근 provider/model 목록, 호출 fallback/실패 수, Knowledge Graph 상태, Project Chat GraphRAG assistant message/evidence 사용량을 남기도록 했습니다.
+- README, 기능 가이드, Application Preview, AI 기술 개요, 아키텍처, 운영 가이드, engineering decision, Roadmap을 graph-aware weekly report 기준으로 갱신했습니다.
+- 주요 파일: `src/services/ai_evidence_service.py`, `tests/test_ai_evidence_service.py`, `README.md`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\ai_evidence_service.py tests\test_ai_evidence_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_ai_evidence_service.py tests\test_documentation_images.py -q` 6개 테스트 통과; Browser로 `http://127.0.0.1:8512/?project_id=4`의 `AI 운영 현황 > 주간 보고서`에서 text area value 기준 `Knowledge Graph 영향 요약`, `주요 Graph Impact Path`, `보고서 Metadata`, `Project Chat GraphRAG` 표시와 `StreamlitAPIException`/`Traceback` 미표시 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 152개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Graph-aware Project Chat question templates
 
 - Project Chat `대화` 영역에 `관계 질문` 템플릿을 추가했습니다. 템플릿은 프로그램 구현 근거, 커밋 영향 범위, class/domain 연결, 리스크 근거처럼 Neo4j graph evidence가 잘 드러나는 질문을 바로 실행하도록 돕습니다.

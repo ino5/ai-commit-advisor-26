@@ -1137,6 +1137,76 @@ def get_evidence_trace(db: Session, project_id: int, limit: int = 10) -> Evidenc
     return EvidenceTrace(latest_pl, recent_mappings, recent_chat, recent_reviews, recent_invocations)
 
 
+def _md_cell(value: object) -> str:
+    text = "-" if value is None or value == "" else str(value)
+    return text.replace("\n", " ").replace("|", "/")
+
+
+def _graph_row_value(row: object, key: str) -> object:
+    if isinstance(row, dict):
+        return row.get(key)
+    return getattr(row, key, None)
+
+
+def _graph_path_text(row: object) -> str:
+    parts = [
+        _graph_row_value(row, "program"),
+        _graph_row_value(row, "commit"),
+        _graph_row_value(row, "file_path"),
+        _graph_row_value(row, "class_name"),
+    ]
+    return " -> ".join(_md_cell(part) for part in parts if _md_cell(part) != "-") or "-"
+
+
+def _matching_graph_paths(rows: list[object], *, program_name: str | None = None, program_id: str | None = None, limit: int = 3) -> list[object]:
+    needles = {str(value).strip().lower() for value in (program_name, program_id) if value}
+    if not needles:
+        return []
+    matches: list[object] = []
+    for row in rows:
+        haystack = str(_graph_row_value(row, "program") or "").lower()
+        if any(needle and needle in haystack for needle in needles):
+            matches.append(row)
+            if len(matches) >= limit:
+                break
+    return matches
+
+
+def _project_chat_graph_usage(db: Session, project_id: int) -> dict[str, object]:
+    messages = (
+        db.query(ProjectChatMessage)
+        .join(ProjectChatSession, ProjectChatMessage.session_id == ProjectChatSession.id)
+        .filter(ProjectChatSession.project_id == project_id, ProjectChatMessage.role == "assistant")
+        .order_by(ProjectChatMessage.created_at.desc(), ProjectChatMessage.id.desc())
+        .limit(50)
+        .all()
+    )
+    graph_message_count = 0
+    completed_count = 0
+    evidence_count = 0
+    latest_status = "-"
+    for message in messages:
+        metadata = message.raw_metadata or {}
+        graph_metadata = metadata.get("graph_evidence_metadata") or {}
+        graph_evidence = metadata.get("graph_evidence") or []
+        if not graph_metadata:
+            continue
+        graph_message_count += 1
+        status = str(graph_metadata.get("status") or "-")
+        if latest_status == "-":
+            latest_status = status
+        if status == "completed":
+            completed_count += 1
+        evidence_count += int(graph_metadata.get("evidence_count") or len(graph_evidence) or 0)
+    return {
+        "assistant_messages": len(messages),
+        "graph_messages": graph_message_count,
+        "completed_messages": completed_count,
+        "evidence_count": evidence_count,
+        "latest_status": latest_status,
+    }
+
+
 def generate_weekly_ai_report(db: Session, project_id: int) -> str:
     project = db.get(Project, project_id)
     if project is None:
@@ -1149,6 +1219,23 @@ def generate_weekly_ai_report(db: Session, project_id: int) -> str:
     radar = build_ai_resource_radar(db, resource_summary, limit=5)
     latest = get_latest_pl_briefing(db, project_id)
     telemetry = summarize_ai_invocations(db, project_id)
+    recent_invocations = list_ai_invocations(db, project_id, limit=20)
+    graph_freshness = get_project_graph_freshness(db, project_id)
+    graph_summary = get_neo4j_project_summary(project_id)
+    graph_preview = get_neo4j_project_preview(project_id) if graph_summary.status == "completed" else None
+    graph_impact_rows = list(graph_preview.impact_rows) if graph_preview is not None and graph_preview.status == "completed" else []
+    graph_class_import_count = len(graph_preview.class_import_rows) if graph_preview is not None and graph_preview.status == "completed" else 0
+    graph_error = "; ".join(graph_summary.errors)
+    if graph_preview is not None and graph_preview.errors:
+        graph_error = "; ".join([value for value in [graph_error, "; ".join(graph_preview.errors)] if value])
+    graph_usage = _project_chat_graph_usage(db, project_id)
+    provider_models = sorted(
+        {
+            f"{row.feature}:{row.provider}/{row.model or '-'}"
+            for row in recent_invocations
+            if row.provider
+        }
+    )
     risks = (
         db.query(RiskFinding, Program)
         .join(Program, RiskFinding.program_id == Program.id)
@@ -1181,39 +1268,98 @@ def generate_weekly_ai_report(db: Session, project_id: int) -> str:
         [
             "",
             "## AI Resource Radar",
-            "| 순위 | 프로그램 | 우선도 | 점수 | 주요 이유 | 권장 action |",
-            "|---|---|---|---:|---|---|",
+            "| 순위 | 프로그램 | 우선도 | 점수 | Graph 근거 | 주요 이유 | 권장 action |",
+            "|---|---|---|---:|---|---|---|",
         ]
     )
     if radar.items:
-        lines.extend(
-            (
-                f"| {item.rank} | {item.program_id or '-'} {item.program_name} | {item.priority_level} | "
-                f"{item.priority_score} | {', '.join(item.reasons)} | {item.recommended_action} |"
+        for item in radar.items:
+            graph_matches = _matching_graph_paths(
+                graph_impact_rows,
+                program_name=item.program_name,
+                program_id=item.program_id,
+                limit=1,
             )
-            for item in radar.items
-        )
+            graph_path = _graph_path_text(graph_matches[0]) if graph_matches else "-"
+            lines.append(
+                f"| {item.rank} | {_md_cell(item.program_id or '-')} {_md_cell(item.program_name)} | "
+                f"{_md_cell(item.priority_level)} | {item.priority_score} | {_md_cell(graph_path)} | "
+                f"{_md_cell(', '.join(item.reasons))} | {_md_cell(item.recommended_action)} |"
+            )
     else:
-        lines.append("| - | - | - | - | Radar 항목 없음 | Git/Mapping/Risk 데이터를 확인하세요. |")
+        lines.append("| - | - | - | - | - | Radar 항목 없음 | Git/Mapping/Risk 데이터를 확인하세요. |")
 
     lines.extend(["", "## 최근 PL Briefing", ""])
     lines.append(latest.rendered_text if latest else "저장된 PL Briefing이 없습니다.")
 
-    lines.extend(["", "## 미해결 리스크", "| 등급 | 프로그램 | 제목 |", "|---|---|---|"])
-    if risks:
-        lines.extend(f"| {risk.risk_level} | {program.program_id or '-'} {program.program_name} | {risk.title} |" for risk, program in risks)
+    lines.extend(
+        [
+            "",
+            "## Knowledge Graph 영향 요약",
+            "",
+            f"- Graph 상태: {_graph_freshness_label(graph_freshness.status)}",
+            f"- Repo HEAD / Graph HEAD: {_short_hash(graph_freshness.repo_head_hash)} / {_short_hash(graph_freshness.graph_sync_head_hash)}",
+            f"- Node/Edge: {graph_summary.node_count}/{graph_summary.edge_count}",
+            (
+                "- Class/import/impact path: "
+                f"classes={graph_summary.node_counts.get('class', 0)}, "
+                f"imports={graph_summary.edge_counts.get('IMPORTS_CLASS', graph_class_import_count)}, "
+                f"impact_paths={len(graph_impact_rows)}"
+            ),
+            f"- Graph 조회 상태: {graph_summary.status}"
+            + (f" ({_md_cell(graph_error)})" if graph_error else ""),
+            "",
+            "## 주요 Graph Impact Path",
+            "| Commit | 프로그램 | 파일 | Class | Domain |",
+            "|---|---|---|---|---|",
+        ]
+    )
+    if graph_impact_rows:
+        for row in graph_impact_rows[:10]:
+            lines.append(
+                f"| {_md_cell(_graph_row_value(row, 'commit'))} | "
+                f"{_md_cell(_graph_row_value(row, 'program'))} | "
+                f"{_md_cell(_graph_row_value(row, 'file_path'))} | "
+                f"{_md_cell(_graph_row_value(row, 'class_name'))} | "
+                f"{_md_cell(_graph_row_value(row, 'domain'))} |"
+            )
     else:
-        lines.append("| - | - | 미해결 리스크 없음 |")
+        lines.append("| - | - | - | - | Neo4j graph impact path가 없습니다. |")
 
-    lines.extend(["", "## AI Progress Gap", "| 프로그램 | 계획 | AI | 차이 |", "|---|---:|---:|---:|"])
-    if progress_gaps:
-        lines.extend(
-            f"| {metric.program_id or '-'} {metric.program_name} | {metric.plan_progress_rate:.1f}% | "
-            f"{metric.ai_progress_rate:.1f}% | {metric.progress_gap:.1f}p |"
-            for metric in progress_gaps
-        )
+    lines.extend(["", "## 미해결 리스크", "| 등급 | 프로그램 | 제목 | Graph 근거 |", "|---|---|---|---|"])
+    if risks:
+        for risk, program in risks:
+            graph_matches = _matching_graph_paths(
+                graph_impact_rows,
+                program_name=program.program_name,
+                program_id=program.program_id,
+                limit=2,
+            )
+            graph_paths = "; ".join(_graph_path_text(row) for row in graph_matches) if graph_matches else "-"
+            lines.append(
+                f"| {_md_cell(risk.risk_level)} | {_md_cell(program.program_id or '-')} {_md_cell(program.program_name)} | "
+                f"{_md_cell(risk.title)} | {_md_cell(graph_paths)} |"
+            )
     else:
-        lines.append("| - | - | - | 차이 없음 |")
+        lines.append("| - | - | 미해결 리스크 없음 | - |")
+
+    lines.extend(["", "## AI Progress Gap", "| 프로그램 | 계획 | AI | 차이 | Graph 근거 |", "|---|---:|---:|---:|---|"])
+    if progress_gaps:
+        for metric in progress_gaps:
+            graph_matches = _matching_graph_paths(
+                graph_impact_rows,
+                program_name=metric.program_name,
+                program_id=metric.program_id,
+                limit=2,
+            )
+            graph_paths = "; ".join(_graph_path_text(row) for row in graph_matches) if graph_matches else "-"
+            lines.append(
+                f"| {_md_cell(metric.program_id or '-')} {_md_cell(metric.program_name)} | "
+                f"{metric.plan_progress_rate:.1f}% | {metric.ai_progress_rate:.1f}% | "
+                f"{metric.progress_gap:.1f}p | {_md_cell(graph_paths)} |"
+            )
+    else:
+        lines.append("| - | - | - | 차이 없음 | - |")
 
     lines.extend(
         [
@@ -1223,6 +1369,29 @@ def generate_weekly_ai_report(db: Session, project_id: int) -> str:
             f"- 성공/실패: {telemetry.success_count}/{telemetry.failed_count}",
             f"- fallback 사용: {telemetry.fallback_count}",
             f"- 평균 지연시간: {telemetry.average_duration_ms}ms",
+            "",
+            "## 보고서 Metadata",
+            "| 항목 | 값 |",
+            "|---|---|",
+            f"| PL Briefing provider/model | {_md_cell(latest.provider if latest else '-')} / {_md_cell((latest.model or '-') if latest else '-')} |",
+            f"| PL Briefing mode | {_md_cell(latest.mode if latest else '-')} |",
+            f"| PL Briefing validation | {_md_cell((latest.raw_response or {}).get('validation_status') if latest else '-')} |",
+            f"| 최근 provider/model | {_md_cell(', '.join(provider_models[:8]) if provider_models else '-')} |",
+            f"| 호출 fallback/실패 | fallback={telemetry.fallback_count}, failed={telemetry.failed_count} |",
+            (
+                "| Knowledge Graph | "
+                f"status={_graph_freshness_label(graph_freshness.status)}, "
+                f"summary={graph_summary.status}, "
+                f"impact_paths={len(graph_impact_rows)} |"
+            ),
+            (
+                "| Project Chat GraphRAG | "
+                f"assistant_messages={graph_usage['assistant_messages']}, "
+                f"graph_messages={graph_usage['graph_messages']}, "
+                f"completed={graph_usage['completed_messages']}, "
+                f"evidence={graph_usage['evidence_count']}, "
+                f"latest={graph_usage['latest_status']} |"
+            ),
             "",
             "## 해석 기준",
             "- 이 보고서는 AI output을 확정 판단이 아니라 PL 검토 보조 근거로 묶은 것입니다.",

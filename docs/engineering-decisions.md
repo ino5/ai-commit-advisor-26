@@ -45,6 +45,39 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - 주간 보고서는 저장된 Knowledge Graph와 GraphRAG 사용 흔적을 함께 묶는다
+
+### 배경
+
+`AI 운영 현황`의 주간 보고서는 Radar, PL Briefing, Risk, AI Progress, AI 호출 telemetry를 한 문서로 묶지만, Neo4j Knowledge Graph가 어떤 프로그램-커밋-파일-class 관계를 제공했는지는 `Knowledge Graph`나 Project Chat 근거 화면을 따로 열어야 확인할 수 있었습니다. AI 적용 가치를 설명하려면 LLM 결과뿐 아니라 graph read model과 GraphRAG 사용 흔적이 같은 산출물 안에서 이어져야 합니다.
+
+### 결정
+
+주간 보고서 생성 시 새 LLM 호출을 만들지 않고, 저장된 `project_graph_sync_state`, Neo4j summary/preview readback, Project Chat assistant message의 `graph_evidence_metadata`, `ai_invocation_logs`를 읽어 Markdown에 추가합니다. 보고서에는 Knowledge Graph freshness, node/edge 요약, 주요 `program -> commit -> file -> class` path, 미해결 risk와 AI Progress gap의 graph 근거, provider/model/fallback/GraphRAG 사용 metadata를 포함합니다.
+
+### 이유
+
+- 주간 보고서는 운영자가 바로 공유할 수 있는 산출물이므로, graph impact가 별도 화면에만 있으면 AI/Graph 적용 흐름이 끊겨 보입니다.
+- 저장된 graph/readback과 telemetry만 사용하면 보고서 다운로드가 비용 큰 LLM/embedding 작업을 새로 만들지 않습니다.
+- Neo4j가 꺼져 있거나 graph가 실패한 상태에서도 보고서는 생성되어야 하며, 빈 graph 근거 자체가 보정 신호가 됩니다.
+
+### 검토한 대안
+
+- 보고서 생성 시 Neo4j 탐색 query를 더 깊게 수행: 관계는 풍부해지지만 보고서 탭 진입 비용과 실패면이 커집니다.
+- PL Briefing prompt에 graph path를 다시 넣어 LLM이 요약하게 함: 문장은 자연스러워질 수 있지만 provider 비용과 환각 가능성이 늘고, Markdown 보고서 생성이 LLM 가용성에 묶입니다.
+- Graph impact를 Knowledge Graph 화면에만 유지: 구현은 단순하지만 주간 점검 산출물에서 GraphRAG 적용 근거가 약해집니다.
+
+### 영향과 tradeoff
+
+보고서의 graph section은 최신 Neo4j preview와 Project Chat에 저장된 최근 GraphRAG metadata를 요약합니다. 따라서 graph가 오래되었거나 Project Chat graph 질문을 실행하지 않은 경우 보고서에는 빈 path나 낮은 usage count가 나타납니다. 이는 자동 보정이 아니라 운영자가 `Knowledge Graph` 동기화와 Project Chat 관계 질문 실행을 확인하도록 돕는 신호입니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `Graph-aware weekly report`
+- `ROADMAP.md`의 `P3 - Graph-Aware Weekly Report`
+- `docs/feature-guide.md`
+- `docs/ai-technical-overview.md`
+
 ## 2026-06-15 - Graph-aware Project Chat 템플릿은 Knowledge Graph 최신성으로 실행을 제한한다
 
 ### 배경

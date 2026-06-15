@@ -121,6 +121,7 @@
 | P2 | Graph Ops | Neo4j production hardening | Done | Neo4j production hardening |
 | P3 | Source Analysis | Source parser accuracy expansion | Done | Source parser accuracy expansion |
 | P3 | Project Chat UX | Graph-aware question templates | Done | Graph-aware Project Chat question templates |
+| P3 | Reporting | Graph-aware weekly report | Done | Graph-aware weekly report |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -342,6 +343,27 @@ Checklist:
 - [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
 - [x] Compile/test/UI verification을 실행한다.
 
+## P3 - Graph-Aware Weekly Report
+
+Status: Done
+
+Goal:
+주간 점검 보고서에 Neo4j impact path와 AI 근거 관계를 포함한다.
+
+Rationale:
+AI 운영 현황의 주간 보고서는 Radar, PL Briefing, Risk, AI Progress, telemetry를 한 파일로 묶지만, GraphRAG가 실제로 어떤 프로그램-커밋-파일-class 관계를 근거로 삼는지는 아직 별도 화면을 열어야 확인할 수 있다. 보고서에 graph freshness, 주요 impact path, 위험 프로그램별 graph 근거, Project Chat GraphRAG 사용 여부를 함께 넣어 AI와 Knowledge Graph 적용 가치를 한 문서에서 설명하게 한다.
+
+Checklist:
+
+- [x] 보고서에 Knowledge Graph freshness, node/edge summary, class/import/impact path 요약을 추가한다.
+- [x] 주요 변경 commit -> program -> file -> class path를 Markdown table로 포함한다.
+- [x] 미해결 risk와 AI Progress gap 프로그램별 graph path 근거를 연결한다.
+- [x] provider/model/fallback/GraphRAG 사용 여부를 report metadata로 남긴다.
+- [x] Neo4j가 비활성/실패/미저장 상태여도 보고서 생성이 실패하지 않게 한다.
+- [x] focused tests를 추가/갱신한다.
+- [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
+- [x] Compile/test/UI verification을 실행한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -350,20 +372,7 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
 | P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - Graph-Aware Weekly Report
-
-Goal:
-주간 점검 보고서에 Neo4j impact path와 AI 근거 관계를 포함한다.
-
-Expected scope:
-
-- Radar/PL Briefing, Risk, AI Progress, AI invocation telemetry에 graph impact summary 추가.
-- 주요 변경 commit -> program -> file -> class path를 요약.
-- 위험 프로그램별 graph evidence section 추가.
-- provider/model/fallback/GraphRAG 사용 여부를 report metadata로 남긴다.
 
 ### Candidate - First-Run And Empty-State Polish
 

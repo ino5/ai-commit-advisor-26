@@ -326,6 +326,8 @@ Neo4j 동기화는 node와 edge를 `NEO4J_WRITE_BATCH_SIZE` 단위로 나누어 
 
 `AI 운영 현황` 상단에서도 Neo4j 연결, Knowledge Graph 최신성, 저장 graph readback, 최근 Project Chat GraphRAG evidence 상태를 확인할 수 있습니다. 운영 점검 중 graph 관련 경고가 보이면 `Knowledge Graph로 이동` 버튼으로 graph 동기화 화면에 이동한 뒤 아래 기준에 따라 증분 반영 또는 전체 재동기화를 선택합니다.
 
+주간 점검 보고서에는 같은 graph 상태와 주요 `program -> commit -> file -> class` impact path, Project Chat GraphRAG 사용 여부가 함께 들어갑니다. 보고서에 graph path가 비어 있거나 GraphRAG evidence가 없으면 먼저 `Knowledge Graph` 동기화와 Project Chat 관계 질문 실행 여부를 확인하세요.
+
 다음 경우에는 `전체 재동기화`를 선택하세요.
 
 - 프로젝트에서 처음 Neo4j graph를 저장하는 경우

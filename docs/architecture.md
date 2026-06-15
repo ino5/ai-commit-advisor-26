@@ -230,7 +230,7 @@ flowchart LR
 - `Knowledge Graph`: PostgreSQL 분석 데이터와 앱 서버 Git 저장소의 Java class/import 구조를 Neo4j graph read model로 동기화하고, 저장된 Neo4j graph에서 선택 node 주변 path, 클래스 관계도, 커밋 영향 경로, node/edge 저장 상태를 다시 조회.
 - `AI Code Review`: 앱 서버 Git 저장소의 최근 커밋과 특정 커밋을 중심으로 LLM 리뷰를 실행하고 결과를 저장. 서버 clone에 local 변경이 남아 있을 때만 서버 작업트리/staged 변경 리뷰를 보조 옵션으로 사용.
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, AI Resource Radar, PL Briefing, 개발자별 업무량·난이도, 예상 지연 프로그램, 고객가치 참고 지표 표시.
-- `AI 운영 현황`: LLM/embedding/Neo4j 연결 상태, Knowledge Graph/GraphRAG 준비 상태, AI 분석 준비 상태, AI 실행 바로가기, AI 근거 추적, 프로젝트 AI 품질 점검, 실제 LLM 검증 요약, 주간 보고서 export, AI 호출 기록 표시.
+- `AI 운영 현황`: LLM/embedding/Neo4j 연결 상태, Knowledge Graph/GraphRAG 준비 상태, AI 분석 준비 상태, AI 실행 바로가기, AI 근거 추적, 프로젝트 AI 품질 점검, 실제 LLM 검증 요약, graph impact가 포함된 주간 보고서 export, AI 호출 기록 표시.
 - `개발계획 대시보드`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
 - `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
@@ -564,7 +564,7 @@ erDiagram
 | `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 고객가치 참고 지표를 계산하고, 사용자가 요청한 기준 시점 snapshot을 저장/조회한다. |
 | `ai_resource_radar_service.py` | AX 자원관리 Radar. `resource_metrics_service.py` 결과와 미해결 리스크, 관련 commit evidence를 조합해 PL 우선 검토 프로그램을 랭킹하고, LLM 또는 fallback으로 구조화된 PL Briefing을 생성해 `pl_briefing_history`에 저장한다. |
 | `ai_invocation_service.py` | AI 호출 telemetry 저장과 조회를 담당한다. provider/model, feature, latency, prompt/response length, validation/fallback/error metadata를 `ai_invocation_logs`에 기록한다. |
-| `ai_evidence_service.py` | AI 운영 현황 화면용 LLM/embedding/Neo4j 연결 상태, Knowledge Graph/GraphRAG 준비 상태, 운영 준비 상태, 근거 추적, 프로젝트 AI 품질 점검, 실제 LLM 검증 요약, 주간 보고서 Markdown, 검증용 AI 실행 shortcut 결과를 구성한다. |
+| `ai_evidence_service.py` | AI 운영 현황 화면용 LLM/embedding/Neo4j 연결 상태, Knowledge Graph/GraphRAG 준비 상태, 운영 준비 상태, 근거 추적, 프로젝트 AI 품질 점검, 실제 LLM 검증 요약, graph impact가 포함된 주간 보고서 Markdown, 검증용 AI 실행 shortcut 결과를 구성한다. |
 | `scripts/run_local_ai_verification.py` | local OpenAI-compatible provider로 embedding 연결, PL Briefing, Project Chat, AI Code Review, Mapping 검증을 명시 실행하고 telemetry와 Markdown 결과를 남긴다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
