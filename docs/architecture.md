@@ -234,7 +234,7 @@ flowchart LR
 - `개발계획 대시보드`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
 - `AI Progress`: 계획 진척도와 매핑 기반 AI 진척도 비교, 저장된 프로그램 단위 구현상태 분석 요약, 리스크 프로그램 추적.
 - `RAG`: 현재 소스 파일, 프로그램 정보, 커밋/파일 diff chunk 생성, embedding 생성, pgvector 검색 테스트, 현재 소스 인덱스 상태 확인/재생성.
-- `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답하고, 답변 전 현재 소스 인덱스 상태를 확인하며, 프로젝트별 대화 session/message와 근거를 저장.
+- `Project Chat`: 검증된 현재 소스 파일 chunk를 근거로 프로젝트 질의응답하고, 답변 전 현재 소스 인덱스 상태와 graph 질문 가능 상태를 확인하며, 프로젝트별 대화 session/message와 근거를 저장.
 
 대부분의 프로젝트 단위 화면은 각 화면 안에서 프로젝트를 다시 고르지 않고, 사이드바의 현재 프로젝트 컨텍스트를 사용합니다. `프로젝트/Git 설정`은 프로젝트 생성, 수정, 삭제를 담당하므로 자체 선택 UI를 유지하고, `프로그램 목록`은 현재 프로젝트에 프로그램을 조회·추가·업로드하는 흐름만 담당합니다.
 
@@ -663,6 +663,7 @@ flowchart TD
 - `source_file` chunk에는 `file_path`, `line_start`, `line_end`, `content_hash`, `chunk_content_hash`, `indexed_head_hash`를 저장한다.
 - Project Chat은 기본적으로 현재 파일 검증을 통과한 `source_file` chunk만 답변 근거로 사용한다.
 - Neo4j가 활성화되고 graph가 동기화되어 있으면 Project Chat은 질문, 확장 쿼리, 검색된 source evidence에서 seed를 뽑아 graph relationship evidence를 보조 context로 붙인다.
+- Project Chat의 graph-aware 질문 템플릿은 Knowledge Graph freshness가 `latest`일 때만 실행 버튼을 활성화한다.
 - Graph evidence는 프로그램-커밋-파일-class-domain 관계 설명용이며, verified `source_file` evidence 없이 현재 코드 사실을 답변하게 만들지 않는다.
 - Git HEAD가 바뀌었거나 line range hash가 달라진 chunk는 stale/invalid로 분류하고 현재 코드 근거에서 제외한다.
 - RAG와 Project Chat 화면은 현재 HEAD와 인덱싱 HEAD, 불일치/검증 불가 chunk 수를 표시한다.
@@ -743,7 +744,7 @@ LLM 출력 예시:
 - pgvector vector 저장 및 cosine 검색.
 - RAG 검색 테스트 화면.
 - Project Chat 대화형 프로젝트 질의응답.
-- Project Chat GraphRAG 보조 근거: Neo4j 저장 graph에서 영향 경로, class import, domain summary를 조회해 source 근거와 분리 저장/표시.
+- Project Chat GraphRAG 보조 근거: Neo4j 저장 graph에서 영향 경로, class import, domain summary를 조회해 source 근거와 분리 저장/표시하고, graph 상태가 최신일 때 관계 질문 템플릿을 제공.
 - source_file 검색 결과 현재 파일 검증.
 - source_file 인덱스 상태 표시와 원클릭 재인덱싱.
 - Alembic 기반 DB migration.

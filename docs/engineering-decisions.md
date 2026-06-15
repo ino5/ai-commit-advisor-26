@@ -45,6 +45,39 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - Graph-aware Project Chat 템플릿은 Knowledge Graph 최신성으로 실행을 제한한다
+
+### 배경
+
+Project Chat은 verified source evidence와 Neo4j graph evidence를 함께 사용할 수 있지만, 사용자는 어떤 질문이 GraphRAG 관계 근거를 잘 끌어내는지 알기 어렵습니다. 템플릿을 제공하면 시작은 쉬워지지만, 오래되었거나 저장되지 않은 graph 상태에서 관계 질문을 바로 실행하면 GraphRAG가 준비된 것처럼 오해할 수 있습니다.
+
+### 결정
+
+Project Chat에 graph-aware 질문 템플릿을 제공하되, `get_project_graph_freshness` 결과가 `latest`일 때만 실행 버튼을 활성화합니다. `stale`, `missing`, `failed`, `skipped` 상태에서는 현재 graph 상태와 필요한 보정 경로를 안내하고, 사용자가 `Knowledge Graph`에서 최신 변경분 반영 또는 전체 재동기화를 먼저 실행하게 합니다.
+
+### 이유
+
+- 질문 템플릿은 GraphRAG 적용 가치를 드러내지만, graph 상태가 오래되면 잘못된 관계 근거를 자연스럽게 유도할 수 있습니다.
+- freshness gate는 Project Chat의 기존 source verification 정책과 같은 방향으로, 준비된 근거만 답변 흐름에 올리는 UX입니다.
+- 템플릿은 질문 작성 보조이지 답변 품질 보장 기능이 아니므로, graph 준비 상태와 분리해서 보이게 해야 합니다.
+
+### 검토한 대안
+
+- graph 상태와 무관하게 템플릿을 항상 실행: 사용자는 편하지만 stale graph 근거가 섞일 수 있습니다.
+- graph가 준비되지 않으면 템플릿 영역을 숨김: 화면은 단순하지만 사용자가 왜 관계 질문을 시작할 수 없는지 알기 어렵습니다.
+- 템플릿 질문을 입력창에만 채우고 자동 실행하지 않음: `st.chat_input`의 prefill 제약 때문에 별도 입력 UI가 필요해 현재 대화 흐름이 복잡해집니다.
+
+### 영향과 tradeoff
+
+버튼을 누르면 템플릿 질문이 현재 chat session에 바로 사용자 질문으로 저장되고 실행됩니다. 사용자는 wording을 직접 수정하려면 템플릿 대신 직접 입력해야 합니다. Graph가 stale이면 템플릿 버튼이 비활성화되므로, 관계 질문 확인이나 점검 전에는 Knowledge Graph 최신화가 선행되어야 합니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `Graph-aware Project Chat question templates`
+- `ROADMAP.md`의 `P3 - Graph-Aware Project Chat Question Templates`
+- `docs/feature-guide.md`
+- `docs/ai-technical-overview.md`
+
 ## 2026-06-15 - Knowledge Graph Java 구조 추출은 경량 parser와 coverage warning으로 확장한다
 
 ### 배경

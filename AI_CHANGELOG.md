@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Graph-aware Project Chat question templates
+
+- Project Chat `대화` 영역에 `관계 질문` 템플릿을 추가했습니다. 템플릿은 프로그램 구현 근거, 커밋 영향 범위, class/domain 연결, 리스크 근거처럼 Neo4j graph evidence가 잘 드러나는 질문을 바로 실행하도록 돕습니다.
+- 템플릿 버튼은 `get_project_graph_freshness` 결과가 `latest`일 때만 활성화됩니다. `stale`, `missing`, `failed`, `skipped` 상태에서는 현재 상태와 `Knowledge Graph`에서 실행해야 할 보정 경로를 안내합니다.
+- 템플릿 실행은 현재 Project Chat session에 사용자 질문으로 들어가며, 답변은 기존 Project Chat flow처럼 verified source evidence와 graph evidence 정책을 사용합니다.
+- README, 기능 가이드, AI 기술 개요, 아키텍처, 운영 가이드, engineering decision, Roadmap을 관계 질문 템플릿의 목적과 최신성 gate 기준으로 갱신했습니다.
+- 주요 파일: `src/ui/project_chat_page.py`, `tests/test_project_chat_page.py`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_chat_page.py tests\test_project_chat_page.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_page.py tests\test_project_chat_service.py tests\test_project_chat_history_service.py tests\test_documentation_images.py -q` 12개 테스트 통과; Browser로 `http://127.0.0.1:8510/?project_id=4`의 `Project Chat` 화면에서 `관계 질문`, `프로그램 구현 근거`, `커밋 영향 범위`, `클래스 연결`, `도메인 연결`, `리스크 근거` 표시와 `StreamlitAPIException`/`Traceback` 미표시 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 152개 테스트 통과; 금지 용어 검색 매치 없음; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Source parser accuracy expansion
 
 - Knowledge Graph와 Project Chat GraphRAG가 사용하는 Java source 구조 추출을 보강했습니다. parser는 주석/문자열을 제거한 뒤 `package`, `import`, `class`, `interface`, `enum`, `record`, annotation type을 읽고, static import는 class 기준으로 정규화합니다.

@@ -120,6 +120,7 @@
 | P2 | Workflow | Git Sync follow-up action orchestrator | Done | Git Sync follow-up action orchestrator |
 | P2 | Graph Ops | Neo4j production hardening | Done | Neo4j production hardening |
 | P3 | Source Analysis | Source parser accuracy expansion | Done | Source parser accuracy expansion |
+| P3 | Project Chat UX | Graph-aware question templates | Done | Graph-aware Project Chat question templates |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -320,6 +321,27 @@ Checklist:
 - [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
 - [x] Compile/test/diff verification을 실행한다.
 
+## P3 - Graph-Aware Project Chat Question Templates
+
+Status: Done
+
+Goal:
+사용자가 RAG와 GraphRAG가 잘 답할 수 있는 질문을 쉽게 시작하도록 Project Chat 질문 템플릿을 제공한다.
+
+Rationale:
+Project Chat은 verified source evidence와 Neo4j graph evidence를 함께 사용할 수 있지만, 처음 사용하는 사용자는 어떤 질문이 graph 관계 근거를 잘 끌어내는지 알기 어렵다. Project Chat 화면에서 graph 준비 상태를 확인하고, 프로그램/커밋/class/domain 관계 질문을 바로 시작할 수 있게 해 GraphRAG 적용 가치를 더 드러낸다.
+
+Checklist:
+
+- [x] Project Chat 화면에 graph-aware 질문 템플릿 목록을 추가한다.
+- [x] Knowledge Graph freshness가 `latest`일 때만 graph 템플릿 실행 버튼을 활성화한다.
+- [x] graph가 stale/missing/skipped/failed이면 현재 상태와 보정 경로를 안내한다.
+- [x] 템플릿 버튼을 누르면 해당 질문을 현재 chat session에 사용자 질문으로 실행한다.
+- [x] 템플릿 문구가 프로그램/commit/file/class/domain 관계를 자연스럽게 유도하도록 정리한다.
+- [x] 템플릿 상태 helper tests를 추가한다.
+- [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
+- [x] Compile/test/UI verification을 실행한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -328,27 +350,8 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P3 | Project Chat UX | Graph-aware question templates | 사용자가 graph/RAG가 잘 답할 수 있는 질문을 쉽게 시작하게 한다. |
 | P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
 | P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - Graph-Aware Project Chat Question Templates
-
-Goal:
-사용자가 RAG와 GraphRAG가 잘 답할 수 있는 질문을 쉽게 시작하도록 질문 템플릿을 제공한다.
-
-Example templates:
-
-- "이 프로그램 구현 근거를 commit/file/class 기준으로 설명해줘."
-- "이 commit이 어떤 프로그램과 class에 영향을 줬어?"
-- "이 class 변경이 어떤 domain이나 프로그램과 연결돼?"
-- "최근 리스크가 높은 프로그램의 근거 commit과 파일을 알려줘."
-- "결제 도메인과 주문 도메인의 연결 근거를 찾아줘."
-
-Boundaries:
-
-- 템플릿은 질문 작성 보조이며, 답변 품질을 보장하지 않는다.
-- GraphRAG가 구현되기 전에는 graph 관련 템플릿을 숨기거나 비활성 안내를 붙인다.
 
 ### Candidate - Graph-Aware Weekly Report
 

@@ -439,7 +439,7 @@ Project Chat을 실제 LLM 모드로 검증하는 권장 순서:
 4. RAG 검색 화면에서 `검색 준비 연결 테스트`를 실행합니다.
 5. RAG 검색 화면의 `검색 준비` 탭에서 현재 소스의 검색 준비를 실행합니다.
 6. GraphRAG 관계 근거까지 확인하려면 `Knowledge Graph` 화면에서 처음에는 `전체 재동기화`를 실행하고, 이후 Git Sync 변경분은 `최신 변경분만 Neo4j 반영`으로 갱신합니다.
-7. Project Chat에서 질문하고 `답변 근거 보기`와 `그래프 관계 근거 보기`를 펼쳐 현재 소스 근거와 관계 근거를 확인합니다.
+7. Project Chat에서 직접 질문하거나 `관계 질문` 템플릿을 실행하고, `답변 근거 보기`와 `그래프 관계 근거 보기`를 펼쳐 현재 소스 근거와 관계 근거를 확인합니다. 템플릿 버튼이 비활성화되어 있으면 `Knowledge Graph`가 최신 상태인지 먼저 확인하세요.
 8. 답변을 기록으로 남겨야 하면 `근거 복사용 Markdown` 내용을 회의록, 리뷰 문서, 이슈에 붙여 넣습니다.
 
 PL Briefing, Project Chat, AI Code Review, Mapping을 같은 방식으로 반복 확인하려면 [Local LLM Verification](local-llm-verification.md)을 사용합니다. 이 루틴은 local provider로 실행한 기능과 fallback 여부를 `ai_invocation_logs`에 남기고, `AI 운영 현황 > 실제 LLM 검증`에서 최근 실행 증거를 확인하게 합니다. CI나 기본 mock 환경에서는 실행하지 않습니다.

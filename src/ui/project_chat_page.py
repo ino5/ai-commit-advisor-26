@@ -21,6 +21,7 @@ from src.rag.source_index_service import (
     refresh_changed_source_files,
     refresh_source_file_index,
 )
+from src.services.neo4j_graph_service import Neo4jGraphFreshness, get_project_graph_freshness
 from src.ui.project_context import require_project_context
 
 
@@ -52,6 +53,37 @@ PROJECT_CHAT_HELP = {
     "include_history": "현재 소스 근거만으로 부족할 때 과거 커밋 이력도 참고 후보에 포함합니다. 현재 코드 사실과 과거 변경 이력은 답변에서 구분됩니다.",
 }
 
+GRAPH_AWARE_QUESTION_TEMPLATES = [
+    {
+        "label": "프로그램 구현 근거",
+        "question": "이 프로그램 구현 근거를 commit/file/class 기준으로 설명해줘.",
+    },
+    {
+        "label": "커밋 영향 범위",
+        "question": "이 commit이 어떤 프로그램과 class에 영향을 줬어?",
+    },
+    {
+        "label": "클래스 연결",
+        "question": "이 class 변경이 어떤 domain이나 프로그램과 연결돼?",
+    },
+    {
+        "label": "리스크 근거",
+        "question": "최근 리스크가 높은 프로그램의 근거 commit과 파일을 알려줘.",
+    },
+    {
+        "label": "도메인 연결",
+        "question": "결제 도메인과 주문 도메인의 연결 근거를 찾아줘.",
+    },
+]
+
+GRAPH_STATUS_LABELS = {
+    "latest": "최신",
+    "stale": "갱신 필요",
+    "missing": "저장 필요",
+    "failed": "실패",
+    "skipped": "미사용",
+}
+
 
 def _chat_key(project_id: int) -> str:
     return f"project_chat_messages_{project_id}"
@@ -59,6 +91,25 @@ def _chat_key(project_id: int) -> str:
 
 def _active_session_key(project_id: int) -> str:
     return f"project_chat_active_session_{project_id}"
+
+
+def _pending_question_key(project_id: int) -> str:
+    return f"project_chat_pending_question_{project_id}"
+
+
+def _graph_template_status(freshness: Neo4jGraphFreshness) -> tuple[bool, str]:
+    label = GRAPH_STATUS_LABELS.get(freshness.status, freshness.status)
+    if freshness.status == "latest":
+        return True, "Knowledge Graph가 최신입니다. 아래 질문은 graph 관계 근거를 함께 사용할 수 있습니다."
+    if freshness.status == "stale":
+        return False, "Knowledge Graph가 갱신 필요 상태입니다. `Knowledge Graph`에서 최신 변경분 반영 후 사용할 수 있습니다."
+    if freshness.status == "missing":
+        return False, "Knowledge Graph가 아직 저장되지 않았습니다. `Knowledge Graph`에서 전체 재동기화를 먼저 실행하세요."
+    if freshness.status == "failed":
+        return False, "최근 Knowledge Graph 동기화가 실패했습니다. `Knowledge Graph`에서 오류를 확인하고 전체 재동기화하세요."
+    if freshness.status == "skipped":
+        return False, "Neo4j가 꺼져 있어 graph 질문 템플릿을 실행하지 않습니다. 필요하면 `NEO4J_ENABLED=true`로 켜세요."
+    return False, f"Knowledge Graph 상태가 {label}입니다. graph 질문 템플릿을 실행하려면 graph 상태를 먼저 확인하세요."
 
 
 def _short_hash(value: str | None) -> str:
@@ -216,6 +267,33 @@ def _render_source_index_status(project: Project) -> None:
             f"오래된 근거 정리 {result.deleted_unverified_count}건"
         )
         st.rerun()
+
+
+def _render_graph_question_templates(project_id: int) -> None:
+    with SessionLocal() as db:
+        freshness = get_project_graph_freshness(db, project_id)
+    enabled, message = _graph_template_status(freshness)
+
+    with st.container(border=True):
+        st.markdown("#### 관계 질문")
+        if enabled:
+            st.success(message)
+        else:
+            st.warning(message)
+
+        cols = st.columns(2)
+        for index, template in enumerate(GRAPH_AWARE_QUESTION_TEMPLATES):
+            col = cols[index % 2]
+            with col:
+                if st.button(
+                    template["label"],
+                    key=f"project_chat_graph_template_{project_id}_{index}",
+                    use_container_width=True,
+                    disabled=not enabled,
+                ):
+                    st.session_state[_pending_question_key(project_id)] = template["question"]
+                    st.rerun()
+                st.caption(template["question"])
 
 
 def _split_sources(sources: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -449,10 +527,13 @@ def render_project_chat_page() -> None:
 
     st.divider()
     st.subheader("대화")
+    _render_graph_question_templates(project_id)
     active_session_id, messages = _render_chat_session_selector(project_id)
     _render_chat_history(messages)
 
-    prompt = st.chat_input("프로젝트에 대해 질문하세요.")
+    pending_prompt_key = _pending_question_key(project_id)
+    pending_prompt = st.session_state.pop(pending_prompt_key, None)
+    prompt = pending_prompt or st.chat_input("프로젝트에 대해 질문하세요.")
     if not prompt or active_session_id is None:
         return
 
