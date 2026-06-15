@@ -30,6 +30,7 @@ class FeatureScenario:
     button_label: str | None = None
     button_before_tab: bool = False
     action_wait_text: str | None = None
+    expander_label: str | None = None
     crop_box: tuple[int, int, int, int] | None = None
 
 
@@ -569,6 +570,25 @@ SCENARIOS: dict[str, FeatureScenario] = {
         description="Project Chat 답변/근거 화면",
         scroll_to_text="결제금액 검증은",
     ),
+    "project-chat-graph-evidence": FeatureScenario(
+        name="project-chat-graph-evidence",
+        sidebar_label="Project Chat",
+        wait_text="Neo4j graph read model에서 조회한 program, commit, file, class, domain 관계 근거입니다.",
+        required_texts=(
+            "Project Chat",
+            "GraphRAG PaymentService",
+            "답변에 사용된 그래프 관계 근거",
+            "그래프 관계 근거 보기",
+            "Neo4j graph read model에서 조회한 program, commit, file, class, domain 관계 근거입니다.",
+            "PaymentService",
+            "OrderMapper",
+            "class_import",
+        ),
+        default_screenshot="docs/images/features/project-chat-graph-evidence.png",
+        description="Project Chat GraphRAG 그래프 관계 근거 화면",
+        expander_label="그래프 관계 근거 보기",
+        scroll_to_text="그래프 관계 근거 보기",
+    ),
     "ai-code-review": FeatureScenario(
         name="ai-code-review",
         sidebar_label="AI Code Review",
@@ -916,6 +936,32 @@ def _capture_scenario(
         page.get_by_role("button", name=scenario.button_label).click()
     if scenario.action_wait_text and not scenario.button_before_tab:
         _wait_for_body_text(page, scenario.action_wait_text, timeout=180_000)
+    if scenario.expander_label:
+        _wait_for_body_text(page, scenario.expander_label)
+        page.evaluate(
+            """
+            (label) => {
+                const details = Array.from(document.querySelectorAll('details')).filter((item) => {
+                    const sidebar = item.closest('section[data-testid="stSidebar"]');
+                    if (sidebar) {
+                        return false;
+                    }
+                    const summaryText = (item.querySelector('summary')?.innerText || '').trim();
+                    return summaryText.includes(label);
+                });
+                const target = details.at(-1);
+                if (!target) {
+                    throw new Error(`Expander not found: ${label}`);
+                }
+                if (!target.open) {
+                    target.querySelector('summary')?.click();
+                }
+                target.scrollIntoView({ block: 'start', inline: 'nearest' });
+            }
+            """,
+            scenario.expander_label,
+        )
+        page.wait_for_timeout(300)
 
     _wait_for_texts(page, scenario.required_texts + extra_required_texts)
     text = _page_text(page, scenario.wait_text)

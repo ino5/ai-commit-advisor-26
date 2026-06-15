@@ -99,6 +99,7 @@
 | P2 | Docs UX | README preview-first section ordering | Done | README preview-first section ordering |
 | P2 | Docs / Onboarding | Local setup prerequisites guide | Done | Local setup prerequisites guide |
 | P2 | Docs UX | Application Preview expanded sections | Done | Application Preview expanded sections |
+| P2 | Docs / Screenshot UX | Project Chat GraphRAG preview screenshot | Done | Project Chat GraphRAG preview screenshot |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
@@ -1917,6 +1918,21 @@ Checklist:
 - [x] Keep existing screenshot descriptions and image order.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run markdown/link sanity checks.
+
+## P2 - Project Chat GraphRAG Preview Screenshot
+
+Status: Done
+
+Goal:
+Add an Application Preview screenshot that explicitly shows Project Chat's Neo4j graph relationship evidence without removing the existing Project Chat screenshots.
+
+Checklist:
+
+- [x] Capture a Project Chat answer with `그래프 관계 근거 보기` expanded.
+- [x] Add the new screenshot to `docs/images/features/`.
+- [x] Update `docs/application-preview.md` with a short explanation and image link.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run screenshot and markdown/link verification.
 
 ## P2 - Local LLM Env Onboarding Guide
 

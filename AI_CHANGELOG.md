@@ -2,6 +2,14 @@
 
 ## 2026-06-15
 
+### Project Chat GraphRAG preview screenshot
+
+- Application Preview의 Project Chat 섹션에 기존 `project-chat.png`, `project-chat-answer.png`를 유지한 채 Graph DB 관계 근거가 펼쳐진 `project-chat-graph-evidence.png` screenshot을 추가했습니다.
+- 새 screenshot은 Neo4j Knowledge Graph가 최신인 프로젝트에서 `PaymentService`와 `OrderMapper` 주변 class import 관계를 `그래프 관계 근거 보기` expander로 확인하는 상태를 보여줍니다.
+- `scripts/capture_feature_screenshot.py`에 `project-chat-graph-evidence` 시나리오와 main 영역 expander 열기 옵션을 추가해 GraphRAG 근거 screenshot을 재현 가능하게 했습니다.
+- 주요 파일: `docs/application-preview.md`, `docs/images/features/project-chat-graph-evidence.png`, `scripts/capture_feature_screenshot.py`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8501/?project_id=97" --feature project-chat-graph-evidence --surface local --height 1400 --expect-text "PaymentService" --expect-text "OrderMapper" --expect-text "Neo4j graph read model" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"` 통과; `.\.venv\Scripts\python.exe -m py_compile scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 테스트 통과; Application Preview image/link 확인 PowerShell script 통과(`application-preview links OK`); `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Application Preview expanded sections
 
 - `docs/application-preview.md`의 화면별 `<details>` 접힘 구조를 제거하고 모든 screenshot 설명과 이미지를 기본 펼침 상태로 보이게 했습니다.
