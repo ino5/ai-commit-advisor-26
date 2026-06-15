@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Local LLM verification routine
+
+- mock 실행과 실제 local LLM/embedding 실행을 구분할 수 있도록 `scripts/run_local_ai_verification.py`를 추가했습니다. 이 script는 project 기준으로 embedding 연결 확인, PL Briefing, Project Chat, AI Code Review, 선택적 Mapping을 실행하고 provider/model/base URL, fallback 여부, invocation telemetry, 결과 요약을 Markdown으로 남깁니다.
+- `AI 운영 현황`에 `실제 LLM 검증` 탭을 추가해 local provider로 성공한 최근 호출, embedding live check, 주요 LLM 기능 coverage, fallback/failure 상태를 pass/warn/fail로 확인할 수 있게 했습니다. 탭 상단에는 검증 대상 LLM/Embedding 설정을 노출해 화면만 봐도 어떤 provider/model 기준인지 알 수 있습니다.
+- local verification은 유료 외부 API나 CI 의존성을 만들지 않도록 mock DB/telemetry 기반 테스트로 검증하고, 실제 모델 실행 절차는 `docs/local-llm-verification.md`에 별도 문서화했습니다.
+- README, 기능 가이드, Application Preview 설명, AI 기술 개요, 아키텍처, 운영 가이드, engineering decision, Roadmap을 local LLM verification 흐름에 맞게 갱신했습니다.
+- 주요 파일: `scripts/run_local_ai_verification.py`, `src/services/ai_evidence_service.py`, `src/ui/ai_evidence_page.py`, `tests/test_ai_evidence_service.py`, `docs/local-llm-verification.md`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `docs/application-preview.md`, `docs/engineering-decisions.md`, `scripts/capture_feature_screenshot.py`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\ai_evidence_service.py src\ui\ai_evidence_page.py scripts\run_local_ai_verification.py scripts\capture_feature_screenshot.py tests\test_ai_evidence_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_ai_evidence_service.py tests\test_documentation_images.py -q` 6개 테스트 통과; `.\.venv\Scripts\python.exe scripts\run_local_ai_verification.py --help` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 142개 테스트 통과; Browser로 `http://127.0.0.1:8506`의 `AI 운영 현황 > 실제 LLM 검증`에서 `검증 대상 설정`, `Local LLM 설정`, `Local Embedding 설정`, `실제 LLM 검증 요약`, `Embedding live check`, `LLM 기능 live coverage`, `Fallback / failure`, `최근 live verification 호출` 표시 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Project-level AI quality scorecard
 
 - `AI 운영 현황 > 품질 점검`을 sample project 중심 존재 확인에서 현재 프로젝트 기준 품질 상태판으로 확장했습니다. Mapping 판단불가/낮은 관련도/짧은 reason/피드백 미완료/fallback, Project Chat verified source 사용률/insufficient evidence/excluded count, PL Briefing provider/model/validation/repair/fallback, AI Code Review 결과 분포, Knowledge Graph class/import/impact path와 freshness를 함께 표시합니다.

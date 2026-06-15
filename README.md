@@ -146,6 +146,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 - [서버 Git 저장소 갱신 Runbook](docs/server-repository-update-runbook.md): 사내 서버에 준비된 Git 저장소를 fetch/reset한 뒤 앱 Git 동기화를 실행하는 절차입니다.
 - [Application Preview](docs/application-preview.md): 샘플 프로젝트 기준 주요 화면과 기능 상태를 미리 확인할 수 있습니다.
 - [설치와 운영](docs/setup-and-operations.md): 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 가이드입니다.
+- [Local LLM Verification](docs/local-llm-verification.md): mock이 아닌 local OpenAI-compatible LLM/embedding으로 주요 AI 기능을 실행하고 증거를 확인하는 절차입니다.
 - [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md): 샘플 프로젝트로 주요 기능을 확인할 때 참고하는 권장 실행 흐름입니다.
 - [샘플 프로젝트 설계](docs/sample-target-repo-demo-design.md): 데모용 샘플 프로젝트의 구성, commit 시나리오, 기능별 확인 포인트입니다.
 - [AI 기술 개요](docs/ai-technical-overview.md): AX Use Case 기준으로 적용된 LLM, embedding/RAG, Neo4j Knowledge Graph, source verification, AI-derived analytics와 화면별 AI 동작 방식입니다.

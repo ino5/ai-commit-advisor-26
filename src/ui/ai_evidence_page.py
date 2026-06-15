@@ -13,6 +13,8 @@ from src.services.ai_evidence_service import (
     get_ai_operations_status_rows,
     get_evidence_trace,
     get_ai_readiness_rows,
+    get_local_ai_verification_rows,
+    list_local_ai_verification_invocations,
     priority_status_rows,
     run_mapping_shortcut,
     run_pl_briefing_shortcut,
@@ -191,6 +193,50 @@ def _render_scorecard(project_id: int) -> None:
     )
 
 
+def _render_live_verification(project_id: int) -> None:
+    with SessionLocal() as db:
+        rows = get_local_ai_verification_rows(db, project_id)
+        invocations = list_local_ai_verification_invocations(db, project_id, limit=30)
+    config_rows = [row for row in rows if row.area in {"Local LLM 설정", "Local Embedding 설정"}]
+    if config_rows:
+        st.markdown("##### 검증 대상 설정")
+        cols = st.columns(len(config_rows))
+        for col, row in zip(cols, config_rows):
+            col.metric(row.area, row.status)
+            col.caption(row.value)
+    _render_status_focus(
+        "실제 LLM 검증 요약",
+        rows,
+        action_buttons=True,
+        key_prefix=project_scoped_key(project_id, "live_llm_verification"),
+    )
+    st.markdown("##### 최근 live verification 호출")
+    if invocations:
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "feature": row["feature_label"],
+                        "provider": row["provider"],
+                        "model": row["model"],
+                        "status": row["status"],
+                        "mode": row["mode"],
+                        "fallback": row["fallback_used"],
+                        "validation": row["validation_status"],
+                        "started_at": row["started_at"],
+                        "duration_ms": row["duration_ms"],
+                        "error": row["error"],
+                    }
+                    for row in invocations
+                ]
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.info("아직 local provider live verification 호출 기록이 없습니다.")
+
+
 def _render_trace(project_id: int) -> None:
     with SessionLocal() as db:
         trace = get_evidence_trace(db, project_id, limit=10)
@@ -347,8 +393,8 @@ def render_ai_evidence_page() -> None:
     _render_ai_operations_status(context.project_id)
     st.divider()
 
-    readiness_tab, trace_tab, scorecard_tab, report_tab, telemetry_tab = st.tabs(
-        ["운영 준비", "근거 추적", "품질 점검", "주간 보고서", "호출 기록"]
+    readiness_tab, trace_tab, scorecard_tab, live_tab, report_tab, telemetry_tab = st.tabs(
+        ["운영 준비", "근거 추적", "품질 점검", "실제 LLM 검증", "주간 보고서", "호출 기록"]
     )
     with readiness_tab:
         _render_readiness(context)
@@ -356,6 +402,8 @@ def render_ai_evidence_page() -> None:
         _render_trace(context.project_id)
     with scorecard_tab:
         _render_scorecard(context.project_id)
+    with live_tab:
+        _render_live_verification(context.project_id)
     with report_tab:
         _render_report(context.project_id)
     with telemetry_tab:

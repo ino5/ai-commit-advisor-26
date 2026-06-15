@@ -45,6 +45,44 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - Local LLM 검증은 명시 실행 script와 AI invocation telemetry로 남긴다
+
+### 배경
+
+AX Use Case에서 AI 적용 여부를 설명하려면 mock/fallback 화면 확인과 실제 local LLM 실행 증거를 분리해야 합니다. 이미 `ai_invocation_logs`는 provider/model/fallback/latency를 저장하지만, 팀원이 같은 방식으로 live provider 검증을 반복하는 명령과 화면 요약이 부족했습니다.
+
+### 결정
+
+`scripts/run_local_ai_verification.py`를 local OpenAI-compatible provider 검증 entrypoint로 둡니다. 이 script는 embedding 연결 확인, PL Briefing, Project Chat, AI Code Review, 선택적 Mapping을 실행하고 기존 `ai_invocation_logs`에 provider/model/status/fallback/validation을 남깁니다. `AI 운영 현황 > 실제 LLM 검증`은 이 telemetry를 읽어 mock이 아닌 provider의 fallback 없는 성공 범위와 최근 실행 증거를 보여줍니다.
+
+### 이유
+
+- 새 검증 전용 table을 만들지 않아도 기존 AI 호출 telemetry와 연결됩니다.
+- CI나 기본 mock 환경에서 외부 LLM을 호출하지 않고, 사용자가 local model server를 켠 환경에서만 명시적으로 실행합니다.
+- PL Briefing, Project Chat, AI Code Review, Mapping처럼 서로 다른 AI surface의 실행 증거를 같은 기준으로 비교할 수 있습니다.
+- `--allow-mock`을 명시한 경우만 mock smoke check를 허용해 live 검증과 화면 흐름 확인을 섞지 않습니다.
+
+### 검토한 대안
+
+- 앱 화면에서 버튼 하나로 live 검증 전체 실행: 편하지만 LLM/embedding 서버 부하가 크고 의도치 않은 비용/시간 사용이 생길 수 있습니다.
+- 별도 verification result table 추가: query는 편해지지만 telemetry와 중복되고 schema 관리가 늘어납니다.
+- 문서에 수동 절차만 기록: 안전하지만 실행 결과가 일관된 telemetry로 남지 않아 다음 세션에서 확인하기 어렵습니다.
+
+### 영향과 tradeoff
+
+검증 script는 실제 프로젝트 데이터를 수정할 수 있습니다. PL Briefing과 Code Review는 이력을 추가하고, Mapping을 선택하면 지정 commit의 mapping 결과를 갱신할 수 있습니다. 그래서 기본 기능 목록에는 Mapping을 넣지 않고, 필요한 경우 `--features mapping --mapping-commit-limit 1`처럼 명시 실행하게 했습니다.
+
+### 후속 확인
+
+- local model server가 없으면 `AI 운영 현황 > 실제 LLM 검증`은 경고 상태를 보여주는 것이 정상입니다.
+- 결과 품질 benchmark가 아니라 운영 증거이므로, 답변 품질은 각 기능의 source evidence, raw response, fallback 여부와 함께 검토해야 합니다.
+
+### 관련 문서
+
+- `docs/local-llm-verification.md`
+- `docs/setup-and-operations.md`
+- `AI_CHANGELOG.md`의 `Local LLM verification routine`
+
 ## 2026-06-15 - Knowledge Graph 최신성은 PostgreSQL metadata와 증분 read model 갱신으로 관리한다
 
 ### 배경

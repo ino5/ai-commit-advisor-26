@@ -32,6 +32,8 @@ from src.services.ai_evidence_service import (
     get_ai_operations_status_rows,
     get_evidence_trace,
     get_ai_readiness_rows,
+    get_local_ai_verification_rows,
+    list_local_ai_verification_invocations,
     priority_status_rows,
     summarize_status_rows,
 )
@@ -422,6 +424,110 @@ def test_ai_operations_status_reports_graph_readback_failure(monkeypatch):
             assert rows["Graph Readback"].action == "readback failed"
             assert rows["Project Chat GraphRAG"].status == WARN
             assert "recent=없음" in rows["Project Chat GraphRAG"].value
+        finally:
+            db.delete(project)
+            db.commit()
+
+
+def test_local_ai_verification_rows_summarize_live_provider_coverage(monkeypatch):
+    init_db()
+    monkeypatch.setattr(ai_evidence_service.settings, "llm_provider", "local_openai")
+    monkeypatch.setattr(ai_evidence_service.settings, "llm_model", "qwen-test")
+    monkeypatch.setattr(ai_evidence_service.settings, "llm_base_url", "http://127.0.0.1:1234/v1")
+    monkeypatch.setattr(ai_evidence_service.settings, "embedding_provider", "local_openai")
+    monkeypatch.setattr(ai_evidence_service.settings, "embedding_model", "embed-test")
+    monkeypatch.setattr(ai_evidence_service.settings, "embedding_base_url", "http://127.0.0.1:1234/v1")
+
+    with SessionLocal() as db:
+        project = Project(name=_unique("local-verification-project"), git_repo_path=None)
+        db.add(project)
+        db.flush()
+        now = datetime(2026, 6, 15, tzinfo=timezone.utc)
+        db.add_all(
+            [
+                AIInvocationLog(
+                    project_id=project.id,
+                    feature="embedding_connection",
+                    provider="local_openai",
+                    model="embed-test",
+                    status="completed",
+                    mode="connection_check",
+                    fallback_used=False,
+                    validation_status="dimension_checked",
+                    started_at=now,
+                    duration_ms=20,
+                ),
+                AIInvocationLog(
+                    project_id=project.id,
+                    feature="pl_briefing",
+                    provider="local_openai",
+                    model="qwen-test",
+                    status="completed",
+                    mode="LLM 생성",
+                    fallback_used=False,
+                    validation_status="valid",
+                    started_at=now,
+                    duration_ms=100,
+                ),
+                AIInvocationLog(
+                    project_id=project.id,
+                    feature="project_chat",
+                    provider="local_openai",
+                    model="qwen-test",
+                    status="completed",
+                    mode="llm_generation",
+                    fallback_used=False,
+                    validation_status="not_applicable",
+                    started_at=now,
+                    duration_ms=120,
+                ),
+                AIInvocationLog(
+                    project_id=project.id,
+                    feature="ai_code_review",
+                    provider="local_openai",
+                    model="qwen-test",
+                    status="completed",
+                    mode="latest_commit",
+                    fallback_used=False,
+                    validation_status="parsed",
+                    started_at=now,
+                    duration_ms=130,
+                ),
+                AIInvocationLog(
+                    project_id=project.id,
+                    feature="commit_mapping",
+                    provider="mock",
+                    model="mock-model",
+                    status="completed",
+                    mode="commit_based",
+                    fallback_used=True,
+                    validation_status="fallback",
+                    started_at=now,
+                    duration_ms=5,
+                ),
+            ]
+        )
+        db.commit()
+
+        try:
+            rows = {row.area: row for row in get_local_ai_verification_rows(db, project.id)}
+            invocations = list_local_ai_verification_invocations(db, project.id)
+
+            assert rows["Local LLM 설정"].status == PASS
+            assert "provider=local_openai" in rows["Local LLM 설정"].value
+            assert rows["Local Embedding 설정"].status == PASS
+            assert rows["Embedding live check"].status == PASS
+            assert rows["LLM 기능 live coverage"].status == PASS
+            assert "successful=3/4" in rows["LLM 기능 live coverage"].value
+            assert "Project Chat" in rows["LLM 기능 live coverage"].value
+            assert rows["Fallback / failure"].status == PASS
+            assert rows["최근 live 증거"].status == PASS
+            assert any(row["feature_label"] == "Mapping" and row["provider"] == "mock" for row in invocations)
+            assert any(
+                row["feature_label"] in {"Embedding", "PL Briefing", "Project Chat", "AI Code Review"}
+                and row["provider"] == "local_openai"
+                for row in invocations
+            )
         finally:
             db.delete(project)
             db.commit()

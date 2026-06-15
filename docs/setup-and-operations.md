@@ -422,6 +422,8 @@ Project Chat을 실제 LLM 모드로 검증하는 권장 순서:
 7. Project Chat에서 질문하고 `답변 근거 보기`와 `그래프 관계 근거 보기`를 펼쳐 현재 소스 근거와 관계 근거를 확인합니다.
 8. 답변을 기록으로 남겨야 하면 `근거 복사용 Markdown` 내용을 회의록, 리뷰 문서, 이슈에 붙여 넣습니다.
 
+PL Briefing, Project Chat, AI Code Review, Mapping을 같은 방식으로 반복 확인하려면 [Local LLM Verification](local-llm-verification.md)을 사용합니다. 이 루틴은 local provider로 실행한 기능과 fallback 여부를 `ai_invocation_logs`에 남기고, `AI 운영 현황 > 실제 LLM 검증`에서 최근 실행 증거를 확인하게 합니다. CI나 기본 mock 환경에서는 실행하지 않습니다.
+
 ## Project Chat 답변 근거 갱신 운영 주의사항
 
 Project Chat은 질문할 때마다 저장소 전체를 다시 읽지 않고, 미리 준비한 소스 근거에서 질문과 관련된 부분을 찾습니다. 이 준비는 두 단계로 나뉩니다. 먼저 현재 코드를 읽어 `소스 근거`를 만들고, 그다음 질문과 비슷한 근거를 찾을 수 있도록 `검색 준비`를 만듭니다. 두 번째 단계는 로컬 LLM/embedding 서버의 CPU/GPU와 메모리를 오래 점유할 수 있으므로 한 번에 많이 실행하지 않고 제한 수량으로 나누어 처리합니다. GraphRAG 관계 근거는 `Knowledge Graph`에서 Neo4j graph를 동기화해 둔 경우에만 추가됩니다.

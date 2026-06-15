@@ -94,6 +94,13 @@ class EvidenceActionResult:
 
 
 _STATUS_PRIORITY = {FAIL: 0, WARN: 1, PASS: 2}
+LIVE_LLM_FEATURES = {
+    "commit_mapping": "Mapping",
+    "project_chat": "Project Chat",
+    "pl_briefing": "PL Briefing",
+    "ai_code_review": "AI Code Review",
+}
+LIVE_VERIFICATION_FEATURES = {**LIVE_LLM_FEATURES, "embedding_connection": "Embedding"}
 
 
 def _status(ok: bool, *, warn: bool = False) -> str:
@@ -151,6 +158,20 @@ def _contains_truthy_key(payload: object, key: str) -> bool:
     if isinstance(payload, list):
         return any(_contains_truthy_key(item, key) for item in payload)
     return False
+
+
+def _is_live_provider(provider: str | None) -> bool:
+    return bool(provider and str(provider).strip().lower() != "mock")
+
+
+def _feature_label(feature: str) -> str:
+    return LIVE_VERIFICATION_FEATURES.get(feature, feature)
+
+
+def _format_feature_list(features: set[str]) -> str:
+    if not features:
+        return "-"
+    return ", ".join(_feature_label(feature) for feature in sorted(features))
 
 
 def _recent_graph_evidence_row(db: Session, project_id: int, *, graph_ready: bool, graph_freshness_status: str) -> EvidenceStatusRow:
@@ -346,6 +367,161 @@ def get_ai_operations_status_rows(db: Session, project_id: int) -> list[Evidence
             project_id,
             graph_ready=graph_ready,
             graph_freshness_status=graph_freshness.status,
+        ),
+    ]
+
+
+def list_local_ai_verification_invocations(db: Session, project_id: int, limit: int = 20) -> list[dict]:
+    records = (
+        db.query(AIInvocationLog)
+        .filter(
+            AIInvocationLog.project_id == project_id,
+            AIInvocationLog.feature.in_(sorted(LIVE_VERIFICATION_FEATURES)),
+        )
+        .order_by(AIInvocationLog.started_at.desc().nullslast(), AIInvocationLog.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "feature": record.feature,
+            "feature_label": _feature_label(record.feature),
+            "provider": record.provider,
+            "model": record.model or "-",
+            "status": record.status,
+            "mode": record.mode or "-",
+            "fallback_used": bool(record.fallback_used),
+            "validation_status": record.validation_status or "-",
+            "started_at": _format_dt(record.started_at),
+            "duration_ms": record.duration_ms,
+            "error": record.error_message or "-",
+            "raw_metadata": record.raw_metadata or {},
+        }
+        for record in records
+    ]
+
+
+def get_local_ai_verification_rows(db: Session, project_id: int) -> list[EvidenceStatusRow]:
+    invocations = list_local_ai_verification_invocations(db, project_id, limit=50)
+    live_invocations = [row for row in invocations if _is_live_provider(row["provider"])]
+    successful_live = [
+        row
+        for row in live_invocations
+        if row["status"] == "completed" and not row["fallback_used"]
+    ]
+    successful_llm_features = {
+        row["feature"] for row in successful_live if row["feature"] in LIVE_LLM_FEATURES
+    }
+    live_llm_invocations = [row for row in live_invocations if row["feature"] in LIVE_LLM_FEATURES]
+    embedding_success = any(
+        row["feature"] == "embedding_connection"
+        and row["status"] == "completed"
+        and not row["fallback_used"]
+        and _is_live_provider(row["provider"])
+        for row in invocations
+    )
+    fallback_count = sum(1 for row in live_invocations if row["fallback_used"])
+    failed_count = sum(1 for row in live_invocations if row["status"] == "failed")
+    latest_live = live_invocations[0] if live_invocations else None
+
+    llm_provider = settings.llm_provider or "mock"
+    llm_model = settings.llm_model or "-"
+    embedding_provider = settings.embedding_provider or "mock"
+    embedding_model = settings.embedding_model or "-"
+
+    if _is_live_provider(llm_provider):
+        llm_status = PASS if llm_model and llm_model != "-" else WARN
+        llm_action = "local OpenAI-compatible chat endpoint가 실행 중인지 확인하세요."
+    else:
+        llm_status = WARN
+        llm_action = "실제 LLM 검증 전 `LLM_PROVIDER=local_openai`와 모델/base URL을 설정하세요."
+
+    if _is_live_provider(embedding_provider):
+        embedding_config_status = PASS if embedding_model and embedding_model != "-" else WARN
+        embedding_config_action = "embedding endpoint와 PGVECTOR_DIMENSION이 모델 출력 차원과 맞는지 확인하세요."
+    else:
+        embedding_config_status = WARN
+        embedding_config_action = "실제 RAG 검증 전 `EMBEDDING_PROVIDER=local_openai`와 embedding 모델을 설정하세요."
+
+    if len(successful_llm_features) >= 3:
+        coverage_status = PASS
+    elif successful_llm_features:
+        coverage_status = WARN
+    else:
+        coverage_status = FAIL if _is_live_provider(llm_provider) else WARN
+
+    if not live_invocations:
+        fallback_status = WARN
+        fallback_action = "local verification script를 실행해 live provider 호출 기록을 남기세요."
+    elif failed_count:
+        fallback_status = FAIL
+        fallback_action = "실패한 live 호출의 error와 provider/model 설정을 확인하세요."
+    elif fallback_count:
+        fallback_status = WARN
+        fallback_action = "fallback이 발생한 기능의 raw response, validation, prompt shape을 확인하세요."
+    else:
+        fallback_status = PASS
+        fallback_action = "fallback 없이 live 실행됐습니다."
+
+    return [
+        EvidenceStatusRow(
+            "Local LLM 설정",
+            llm_status,
+            f"provider={llm_provider}, model={llm_model}, base={settings.llm_base_url or '-'}",
+            llm_action,
+            "관리",
+            "설정",
+        ),
+        EvidenceStatusRow(
+            "Local Embedding 설정",
+            embedding_config_status,
+            (
+                f"provider={embedding_provider}, model={embedding_model}, "
+                f"base={settings.embedding_base_url or settings.llm_base_url or '-'}, dimension={settings.pgvector_dimension}"
+            ),
+            embedding_config_action,
+            "관리",
+            "설정",
+        ),
+        EvidenceStatusRow(
+            "Embedding live check",
+            PASS if embedding_success else WARN,
+            f"latest_success={embedding_success}",
+            "검증 스크립트에서 embedding 연결 확인을 실행하세요.",
+            "분석 실행",
+            "RAG 검색",
+        ),
+        EvidenceStatusRow(
+            "LLM 기능 live coverage",
+            coverage_status,
+            (
+                f"successful={len(successful_llm_features)}/4, "
+                f"features={_format_feature_list(successful_llm_features)}, live_calls={len(live_llm_invocations)}"
+            ),
+            "PL Briefing, Project Chat, AI Code Review, Mapping 중 최소 3개를 local provider로 실행하세요.",
+            "개요",
+            "AI 운영 현황",
+        ),
+        EvidenceStatusRow(
+            "Fallback / failure",
+            fallback_status,
+            f"live_calls={len(live_invocations)}, fallback={fallback_count}, failed={failed_count}",
+            fallback_action,
+            "개요",
+            "AI 운영 현황",
+        ),
+        EvidenceStatusRow(
+            "최근 live 증거",
+            PASS if latest_live and latest_live["status"] == "completed" and not latest_live["fallback_used"] else WARN,
+            (
+                f"{latest_live['feature_label']} / {latest_live['provider']} / {latest_live['model']} / "
+                f"{latest_live['started_at']}"
+                if latest_live
+                else "최근 live provider 호출 없음"
+            ),
+            "최근 실행 증거가 없으면 local verification script를 실행하세요.",
+            "개요",
+            "AI 운영 현황",
         ),
     ]
 

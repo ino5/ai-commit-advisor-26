@@ -509,6 +509,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
             "주의/실패 우선 확인",
             "근거 추적",
             "품질 점검",
+            "실제 LLM 검증",
             "주간 보고서",
             "호출 기록",
         ),

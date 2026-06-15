@@ -116,6 +116,7 @@
 | P1 | AI Ops | AI operations graph status | Done | AI operations graph status |
 | P2 | Graph UX | Knowledge Graph exploration UI | Done | Knowledge Graph exploration UI |
 | P2 | AI Quality | Project-level AI quality scorecard | Done | Project-level AI quality scorecard |
+| P2 | AI Verification | Local LLM verification routine | Done | Local LLM verification routine |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -230,6 +231,27 @@ Checklist:
 - [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
 - [x] Compile/test/diff verification을 실행한다.
 
+## P2 - Local LLM Verification Routine
+
+Status: Done
+
+Goal:
+mock이 아닌 local LLM/embedding provider로 주요 AI 기능을 실제 실행했다는 증거를 반복 가능하게 만든다.
+
+Rationale:
+`AI 운영 현황`은 provider/model/fallback/telemetry를 보여주지만, 팀원이 어떤 명령으로 local OpenAI-compatible LLM을 켜고 주요 기능을 실제 실행했는지 반복 가능한 루틴은 아직 약하다. AX Use Case에서는 "AI를 실제로 썼다"는 설명이 화면 상태와 실행 기록으로 이어져야 하므로, mock 검증과 live local provider 검증을 명확히 분리한다.
+
+Checklist:
+
+- [x] LM Studio 또는 OpenAI-compatible local endpoint 기준 점검 절차를 문서화한다.
+- [x] Mapping, Project Chat, PL Briefing, Code Review 중 선택한 2~4개 기능을 실행하는 CLI 루틴을 추가한다.
+- [x] provider/model/base URL, invocation telemetry, fallback 여부를 결과로 기록한다.
+- [x] `AI 운영 현황`에서 최근 local provider live verification 결과를 요약한다.
+- [x] local LLM이 없으면 mock/fallback 검증과 live 검증을 분리해서 표시한다.
+- [x] 외부 유료 API를 CI에서 호출하지 않도록 테스트는 mock DB/telemetry 기준으로 작성한다.
+- [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
+- [x] Compile/test/diff verification을 실행한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -238,31 +260,12 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P2 | AI Verification | Local LLM verification routine | mock/fallback이 아닌 실제 local LLM 실행 증거를 반복 가능하게 남긴다. |
 | P2 | Workflow | Git Sync follow-up action orchestrator | Git Sync 이후 RAG, embedding, Mapping, Neo4j 갱신 같은 다음 작업을 한 흐름으로 안내한다. |
 | P2 | Graph Ops | Neo4j production hardening | 대형 저장소에서 batch, transaction, health check, 복구 동작을 안정화한다. |
 | P3 | Source Analysis | Source parser accuracy expansion | 정규식 기반 Java class/import 추출 한계를 줄이고 graph 품질을 높인다. |
 | P3 | Project Chat UX | Graph-aware question templates | 사용자가 graph/RAG가 잘 답할 수 있는 질문을 쉽게 시작하게 한다. |
 | P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
 | P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - Local LLM Verification Routine
-
-Goal:
-mock이 아닌 local LLM/embedding provider로 주요 AI 기능을 실제 실행했다는 증거를 반복 가능하게 만든다.
-
-Expected scope:
-
-- LM Studio 또는 OpenAI-compatible local endpoint 기준 점검 절차.
-- Mapping, Project Chat, PL Briefing, Code Review 중 최소 2~3개 기능의 live result 확인.
-- provider/model/base URL, invocation telemetry, fallback 여부 기록.
-- `AI 운영 현황` 또는 별도 verification 문서에 최근 live verification 결과 요약.
-- Application Preview가 필요하면 실제 provider/model이 보이는 화면을 캡처.
-
-Boundaries:
-
-- 외부 유료 API를 CI에서 호출하지 않는다.
-- local LLM이 없으면 mock/fallback 검증과 live 검증을 분리해서 표시한다.
 
 ### Candidate - Git Sync Follow-Up Action Orchestrator
 
