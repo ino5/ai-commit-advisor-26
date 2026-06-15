@@ -2,6 +2,14 @@
 
 ## 2026-06-15
 
+### Knowledge Graph exploration UI
+
+- `Knowledge Graph` 화면에 `관계 탐색` 탭을 추가해 Neo4j에 저장된 프로그램, 클래스, 도메인, 커밋 node를 선택하고 주변 path를 조회할 수 있게 했습니다. 탐색은 최대 3-depth와 최대 path 수로 제한해 대형 graph 전체를 한 번에 펼치지 않습니다.
+- Neo4j graph 탐색 service를 추가해 node 후보, 선택 node detail, node properties, related count, relationship type filter, path row를 read query로 조회하도록 했습니다. 관계 필터는 선택한 edge type이 포함된 path를 좁혀 보는 보조 조건으로 동작합니다.
+- README, Application Preview 설명, 기능 가이드, AI 기술 개요, 아키텍처, screenshot capture 기준, Roadmap을 선택 node 주변 관계 탐색 기준으로 갱신했습니다.
+- 주요 파일: `src/services/neo4j_graph_service.py`, `src/ui/knowledge_graph_page.py`, `tests/test_neo4j_graph_service.py`, `scripts/capture_feature_screenshot.py`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\neo4j_graph_service.py src\ui\knowledge_graph_page.py tests\test_neo4j_graph_service.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py -q` 11개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py tests\test_documentation_images.py -q` 12개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 141개 테스트 통과; Browser로 `http://127.0.0.1:8504`의 `Knowledge Graph` 화면에서 `Graph 상태`, `동기화 대상 요약`, `관계 탐색` 탭 표시와 `NEO4J_ENABLED=false` 환경의 비활성 안내 렌더링 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### AI operations graph status
 
 - `AI 운영 현황` 상단의 `연결된 AI` 영역에 Neo4j 연결 상태, Knowledge Graph freshness, Neo4j 저장 graph readback, 최근 Project Chat GraphRAG evidence 상태를 추가했습니다. Graph 상태가 준비되지 않았거나 오래된 경우 LLM/embedding 상태와 별도로 원인을 확인할 수 있습니다.

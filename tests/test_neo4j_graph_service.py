@@ -11,8 +11,10 @@ from src.services.neo4j_graph_service import (
     _changed_source_clear_paths,
     build_graph_evidence_seeds,
     build_project_graph_payload,
+    explore_neo4j_project_graph,
     extract_java_symbols,
     find_project_graph_evidence,
+    get_neo4j_graph_explore_options,
     get_neo4j_project_preview,
     get_project_graph_freshness,
     sync_project_graph_incrementally_to_neo4j,
@@ -521,6 +523,179 @@ def test_get_neo4j_project_preview_reads_saved_class_and_impact_paths(monkeypatc
     assert len(result.impact_rows) == 1
     assert result.impact_rows[0].commit == "abcdef123456"
     assert result.impact_rows[0].class_name.endswith("PaymentService")
+
+
+def test_get_neo4j_graph_explore_options_groups_focus_nodes(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeTx:
+        def run(self, query, **params):
+            captured["query"] = " ".join(query.split())
+            captured["params"] = params
+            return [
+                {
+                    "node_type": "program",
+                    "node_id": "p123:program:PAY-001",
+                    "label": "PAY-001 Payment Program",
+                    "key": "PAY-001",
+                    "description": "Payment Program",
+                },
+                {
+                    "node_type": "program",
+                    "node_id": "p123:program:PAY-002",
+                    "label": "PAY-002 Payment Batch",
+                    "key": "PAY-002",
+                    "description": "Payment Batch",
+                },
+                {
+                    "node_type": "class",
+                    "node_id": "p123:class:PaymentService",
+                    "label": "com.example.market.payment.service.PaymentService",
+                    "key": "com.example.market.payment.service.PaymentService",
+                    "description": "PaymentService",
+                },
+                {
+                    "node_type": "domain",
+                    "node_id": "p123:domain:payment",
+                    "label": "payment",
+                    "key": "payment",
+                    "description": "payment",
+                },
+                {
+                    "node_type": "commit",
+                    "node_id": "p123:commit:abcdef",
+                    "label": "abcdef123456",
+                    "key": "abcdef1234567890",
+                    "description": "Update payment service",
+                },
+            ]
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute_read(self, fn, *args):
+            return fn(FakeTx(), *args)
+
+    class FakeDriver:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def session(self, **kwargs):
+            return FakeSession()
+
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_enabled", True)
+    monkeypatch.setattr(neo4j_graph_service, "_driver", lambda: FakeDriver())
+
+    result = get_neo4j_graph_explore_options(123, limit_per_type=1)
+
+    assert result.status == "completed"
+    assert "MATCH (n:KnowledgeNode" in captured["query"]
+    assert captured["params"] == {"project_id": 123, "limit": 4}
+    assert [row.key for row in result.options_by_type["program"]] == ["PAY-001"]
+    assert result.options_by_type["class"][0].label.endswith("PaymentService")
+    assert result.options_by_type["domain"][0].key == "payment"
+    assert result.options_by_type["commit"][0].description == "Update payment service"
+
+
+def test_explore_neo4j_project_graph_reads_node_detail_and_paths(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResult:
+        def __init__(self, rows=None, single_row=None):
+            self.rows = rows or []
+            self.single_row = single_row
+
+        def single(self):
+            return self.single_row
+
+        def __iter__(self):
+            return iter(self.rows)
+
+    class FakeTx:
+        def run(self, query, **params):
+            normalized = " ".join(query.split())
+            if "properties(focus)" in normalized:
+                return FakeResult(
+                    single_row={
+                        "node_id": "p123:program:PAY-001",
+                        "node_type": "program",
+                        "label": "PAY-001 Payment Program",
+                        "related_count": 3,
+                        "properties": {"program_id": "PAY-001", "program_name": "Payment Program"},
+                    }
+                )
+
+            captured["path_query"] = normalized
+            captured["path_params"] = params
+            return FakeResult(
+                rows=[
+                    {
+                        "node_labels": [
+                            "PAY-001 Payment Program",
+                            "abcdef123456",
+                            "src/main/java/com/example/market/payment/service/PaymentService.java",
+                        ],
+                        "node_types": ["program", "commit", "file"],
+                        "edge_types": ["MAPPED_TO_COMMIT", "TOUCHES_FILE"],
+                        "target_node_id": "p123:file:PaymentService.java",
+                        "target_type": "file",
+                        "target_label": "PaymentService.java",
+                        "depth": 2,
+                    }
+                ]
+            )
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute_read(self, fn, *args):
+            return fn(FakeTx(), *args)
+
+    class FakeDriver:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def session(self, **kwargs):
+            return FakeSession()
+
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_enabled", True)
+    monkeypatch.setattr(neo4j_graph_service, "_driver", lambda: FakeDriver())
+
+    result = explore_neo4j_project_graph(
+        123,
+        "p123:program:PAY-001",
+        relationship_types=["TOUCHES_FILE", "MAPPED_TO_COMMIT", "TOUCHES_FILE"],
+        depth=5,
+        limit=500,
+    )
+
+    assert result.status == "completed"
+    assert result.node_detail is not None
+    assert result.node_detail.related_count == 3
+    assert result.node_detail.properties["program_name"] == "Payment Program"
+    assert "*1..3" in captured["path_query"]
+    assert captured["path_params"]["relationship_types"] == ["MAPPED_TO_COMMIT", "TOUCHES_FILE"]
+    assert captured["path_params"]["limit"] == 300
+    assert result.rows[0].target_label == "PaymentService.java"
+    assert result.rows[0].path == (
+        "program:PAY-001 Payment Program -> [MAPPED_TO_COMMIT] -> "
+        "commit:abcdef123456 -> [TOUCHES_FILE] -> "
+        "file:src/main/java/com/example/market/payment/service/PaymentService.java"
+    )
 
 
 def test_find_project_graph_evidence_reads_impact_import_and_domain_paths(monkeypatch) -> None:

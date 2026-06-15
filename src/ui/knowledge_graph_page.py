@@ -5,13 +5,17 @@ import streamlit as st
 
 from src.db.database import SessionLocal
 from src.services.neo4j_graph_service import (
+    GraphExploreOption,
+    GraphPathRow,
     GraphPayload,
     ImpactPathRow,
     Neo4jGraphFreshness,
     Neo4jGraphPreview,
     Neo4jSyncResult,
     build_project_graph_payload,
+    explore_neo4j_project_graph,
     get_neo4j_connection_status,
+    get_neo4j_graph_explore_options,
     get_neo4j_project_preview,
     get_neo4j_project_summary,
     get_project_graph_freshness,
@@ -19,6 +23,27 @@ from src.services.neo4j_graph_service import (
     sync_project_graph_to_neo4j,
 )
 from src.ui.project_context import require_project_context
+
+
+NODE_TYPE_LABELS = {
+    "program": "프로그램",
+    "class": "클래스",
+    "domain": "도메인",
+    "commit": "커밋",
+}
+
+RELATIONSHIP_TYPE_LABELS = {
+    "HAS_PROGRAM": "프로젝트-프로그램",
+    "HAS_COMMIT": "프로젝트-커밋",
+    "HAS_FILE": "프로젝트-파일",
+    "HAS_DOMAIN": "프로젝트-도메인",
+    "OWNS_PROGRAM": "도메인-프로그램",
+    "MAPPED_TO_COMMIT": "프로그램-커밋",
+    "TOUCHES_FILE": "커밋-파일",
+    "TOUCHES_DOMAIN": "커밋-도메인",
+    "CONTAINS_CLASS": "파일-클래스",
+    "IMPORTS_CLASS": "클래스 import",
+}
 
 
 def _counter_df(counter) -> pd.DataFrame:
@@ -58,6 +83,22 @@ def _impact_rows_df(rows: list[ImpactPathRow]) -> pd.DataFrame:
 
 def _impact_df(payload: GraphPayload) -> pd.DataFrame:
     return _impact_rows_df(payload.impact_rows)
+
+
+def _explore_path_df(rows: list[GraphPathRow]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "깊이": row.depth,
+                "대상 종류": NODE_TYPE_LABELS.get(row.target_type, row.target_type),
+                "대상": row.target_label,
+                "관계": " > ".join(row.edge_types),
+                "경로": row.path,
+            }
+            for row in rows
+        ],
+        columns=["깊이", "대상 종류", "대상", "관계", "경로"],
+    )
 
 
 def _short_hash(value: str | None) -> str:
@@ -155,6 +196,113 @@ def _render_graph_freshness(freshness: Neo4jGraphFreshness) -> None:
         st.info(freshness.summary)
 
 
+def _format_explore_option(option: GraphExploreOption) -> str:
+    suffix = option.key if option.key and option.key != option.label else option.description
+    return f"{option.label} · {suffix}" if suffix and suffix != "-" else option.label
+
+
+def _format_relationship_type(value: str) -> str:
+    label = RELATIONSHIP_TYPE_LABELS.get(value, value)
+    return f"{label} ({value})"
+
+
+def _render_node_detail(result) -> None:
+    detail = result.node_detail
+    if detail is None:
+        return
+
+    st.markdown("##### 선택 node")
+    cols = st.columns(4)
+    cols[0].metric("종류", NODE_TYPE_LABELS.get(detail.node_type, detail.node_type))
+    cols[1].metric("Label", detail.label)
+    cols[2].metric("연결 수", detail.related_count)
+    cols[3].metric("Node ID", detail.node_id)
+
+    property_rows = [
+        {"속성": key, "값": str(value)}
+        for key, value in sorted(detail.properties.items())
+        if value not in (None, "")
+    ]
+    if property_rows:
+        with st.expander("Node properties", expanded=False):
+            st.dataframe(pd.DataFrame(property_rows), hide_index=True, use_container_width=True)
+
+
+def _render_graph_explorer(project_id: int, status_connected: bool) -> None:
+    st.markdown("#### 관계 탐색")
+    st.caption("Neo4j에 저장된 graph에서 선택한 프로그램, 클래스, 도메인, 커밋 주변 path만 좁혀 봅니다.")
+    if not status_connected:
+        st.warning("Neo4j 연결이 준비되면 저장 graph 기준 관계 탐색을 사용할 수 있습니다.")
+        return
+
+    options_result = get_neo4j_graph_explore_options(project_id)
+    if options_result.status != "completed":
+        st.warning(options_result.summary)
+        for error in options_result.errors:
+            st.warning(error)
+        return
+
+    available_types = [node_type for node_type in NODE_TYPE_LABELS if options_result.options_by_type.get(node_type)]
+    if not available_types:
+        st.info("Neo4j에 탐색할 프로그램, 클래스, 도메인, 커밋 node가 아직 없습니다. 먼저 전체 재동기화를 실행하세요.")
+        return
+
+    selector_cols = st.columns([1, 3])
+    selected_type = selector_cols[0].selectbox(
+        "탐색 기준",
+        available_types,
+        format_func=lambda value: NODE_TYPE_LABELS.get(value, value),
+        key=f"kg_explore_type_{project_id}",
+    )
+    selected_option = selector_cols[1].selectbox(
+        "탐색 node",
+        options_result.options_by_type[selected_type],
+        format_func=_format_explore_option,
+        key=f"kg_explore_node_{project_id}_{selected_type}",
+    )
+
+    filter_cols = st.columns([3, 1, 1])
+    relationship_types = filter_cols[0].multiselect(
+        "관계 필터",
+        list(RELATIONSHIP_TYPE_LABELS),
+        format_func=_format_relationship_type,
+        placeholder="전체 관계",
+        key=f"kg_explore_relationships_{project_id}_{selected_type}",
+    )
+    depth = filter_cols[1].slider("깊이", min_value=1, max_value=3, value=3, key=f"kg_explore_depth_{project_id}")
+    limit = filter_cols[2].number_input(
+        "최대 path",
+        min_value=10,
+        max_value=300,
+        value=80,
+        step=10,
+        key=f"kg_explore_limit_{project_id}",
+    )
+
+    result = explore_neo4j_project_graph(
+        project_id,
+        selected_option.node_id,
+        relationship_types=relationship_types,
+        depth=depth,
+        limit=int(limit),
+    )
+    if result.status == "failed":
+        st.error(result.summary)
+        for error in result.errors:
+            st.warning(error)
+        return
+    if result.status == "skipped":
+        st.info(result.summary)
+        return
+
+    _render_node_detail(result)
+    if result.rows:
+        st.markdown("##### 주변 path")
+        st.dataframe(_explore_path_df(result.rows), hide_index=True, use_container_width=True)
+    else:
+        st.info("선택한 조건에 맞는 주변 path가 없습니다. 깊이를 늘리거나 관계 필터를 비워 보세요.")
+
+
 def _read_neo4j_preview(status_connected: bool, project_id: int) -> tuple[Neo4jSyncResult | None, Neo4jGraphPreview | None]:
     if not status_connected:
         return None, None
@@ -229,9 +377,13 @@ def render_knowledge_graph_page() -> None:
             for error in payload.errors:
                 st.warning(error)
 
-    domain_tab, class_tab, impact_tab, count_tab = st.tabs(["도메인 묶음", "클래스 관계도", "영향 경로", "노드/엣지"])
+    domain_tab, explore_tab, class_tab, impact_tab, count_tab = st.tabs(
+        ["도메인 묶음", "관계 탐색", "클래스 관계도", "영향 경로", "노드/엣지"]
+    )
     with domain_tab:
         st.dataframe(_domain_df(payload), hide_index=True, use_container_width=True)
+    with explore_tab:
+        _render_graph_explorer(context.project_id, status.connected)
     with class_tab:
         neo4j_class_rows = neo4j_preview.class_import_rows if neo4j_preview else []
         if _uses_saved_graph(neo4j_preview, neo4j_class_rows):

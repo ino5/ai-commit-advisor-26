@@ -114,6 +114,7 @@
 | P1 | Graph / AI | Project Chat GraphRAG context injection | Done | Project Chat GraphRAG context injection |
 | P1 | Graph Ops | Knowledge Graph freshness and incremental Neo4j sync | Done | Knowledge Graph freshness and incremental Neo4j sync |
 | P1 | AI Ops | AI operations graph status | Done | AI operations graph status |
+| P2 | Graph UX | Knowledge Graph exploration UI | Done | Knowledge Graph exploration UI |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -184,6 +185,28 @@ Checklist:
 - [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
 - [x] Compile/test/diff verification을 실행한다.
 
+## P2 - Knowledge Graph Exploration UI
+
+Status: Done
+
+Goal:
+사용자가 프로그램, class, domain, commit을 기준으로 Neo4j 관계를 탐색할 수 있게 한다.
+
+Rationale:
+Knowledge Graph는 저장 graph 기준 클래스 관계도와 영향 경로를 보여주지만, 사용자가 특정 프로그램, class, domain, commit을 선택해 그 주변 관계만 좁혀 보는 흐름은 아직 약하다. 대형 graph 전체를 그리는 대신 제한된 관계 path와 node detail을 표 중심으로 제공해 Neo4j 적용 가치를 더 직접 확인하게 한다.
+
+Checklist:
+
+- [x] 프로그램 기준 관련 commit/file/class/domain path 조회를 추가한다.
+- [x] class 기준 import 관계, 포함 file, 연결 program 조회를 추가한다.
+- [x] domain 기준 관련 program/file/class/commit 묶음 조회를 추가한다.
+- [x] commit 기준 mapping program, touched file, impacted class 조회를 추가한다.
+- [x] node detail panel에 node type, label, properties, related count를 표시한다.
+- [x] path depth 또는 relationship type filter를 제공한다.
+- [x] Neo4j read query tests를 추가한다.
+- [x] Knowledge Graph UI와 documentation, `AI_CHANGELOG.md`를 갱신한다.
+- [x] Compile/test/diff verification을 실행한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -192,7 +215,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P2 | Graph UX | Knowledge Graph exploration UI | 프로그램, class, domain, commit 기준으로 관계 경로를 탐색해 Neo4j 적용 가치를 화면에서 더 직접 보여준다. |
 | P2 | AI Quality | Project-level AI quality scorecard | sample project 전용 점검을 넘어 실제 프로젝트별 AI 결과 품질과 근거 충분성을 확인한다. |
 | P2 | AI Verification | Local LLM verification routine | mock/fallback이 아닌 실제 local LLM 실행 증거를 반복 가능하게 남긴다. |
 | P2 | Workflow | Git Sync follow-up action orchestrator | Git Sync 이후 RAG, embedding, Mapping, Neo4j 갱신 같은 다음 작업을 한 흐름으로 안내한다. |
@@ -201,25 +223,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P3 | Project Chat UX | Graph-aware question templates | 사용자가 graph/RAG가 잘 답할 수 있는 질문을 쉽게 시작하게 한다. |
 | P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
 | P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - Knowledge Graph Exploration UI
-
-Goal:
-사용자가 프로그램, class, domain, commit을 기준으로 Neo4j 관계를 탐색할 수 있게 한다.
-
-Expected scope:
-
-- 프로그램 선택 -> 관련 commit/file/class/domain path 표시.
-- class 선택 -> import 관계, 포함 file, 연결 program 표시.
-- domain 선택 -> 관련 program/file/class/commit/risk 묶음 표시.
-- commit 선택 -> mapping program, touched file, impacted class 표시.
-- node detail panel: node type, label, source properties, related count.
-- path depth 또는 relationship type filter 제공.
-
-Boundaries:
-
-- 대형 graph 전체를 한 번에 그리지 않는다.
-- 기본은 table/path 중심, graph visualization은 제한된 subgraph에만 사용한다.
 
 ### Candidate - Project-Level AI Quality Scorecard
 

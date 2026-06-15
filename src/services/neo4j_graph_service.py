@@ -199,6 +199,51 @@ class GraphEvidenceSearchResult:
     errors: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class GraphExploreOption:
+    node_id: str
+    node_type: str
+    label: str
+    key: str
+    description: str
+
+
+@dataclass(frozen=True)
+class GraphNodeDetail:
+    node_id: str
+    node_type: str
+    label: str
+    related_count: int
+    properties: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class GraphPathRow:
+    depth: int
+    path: str
+    edge_types: list[str]
+    target_node_id: str
+    target_type: str
+    target_label: str
+
+
+@dataclass(frozen=True)
+class Neo4jGraphExploreOptions:
+    status: str
+    summary: str
+    options_by_type: dict[str, list[GraphExploreOption]] = field(default_factory=dict)
+    errors: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class Neo4jGraphExploreResult:
+    status: str
+    summary: str
+    node_detail: GraphNodeDetail | None = None
+    rows: list[GraphPathRow] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+
+
 def _node_id(project_id: int, node_type: str, key: str | int) -> str:
     return f"p{project_id}:{node_type}:{str(key).strip()}"
 
@@ -1709,3 +1754,187 @@ def _read_project_preview_tx(tx, project_id: int, limit: int) -> tuple[list[dict
         for row in impact_result
     ]
     return class_rows, impact_rows
+
+
+def get_neo4j_graph_explore_options(project_id: int, limit_per_type: int = 200) -> Neo4jGraphExploreOptions:
+    if not settings.neo4j_enabled:
+        return Neo4jGraphExploreOptions("skipped", "Neo4j가 비활성화되어 graph 탐색 후보를 읽지 않았습니다.")
+    try:
+        with _driver() as driver:
+            with driver.session(**_session_kwargs()) as session:
+                options_by_type = session.execute_read(_read_graph_explore_options_tx, project_id, limit_per_type)
+    except Exception as exc:
+        return Neo4jGraphExploreOptions("failed", "Neo4j graph 탐색 후보 조회 실패", errors=[str(exc)])
+
+    total_count = sum(len(rows) for rows in options_by_type.values())
+    return Neo4jGraphExploreOptions(
+        "completed",
+        f"Graph 탐색 후보 {total_count}개 조회",
+        options_by_type=options_by_type,
+    )
+
+
+def _read_graph_explore_options_tx(tx, project_id: int, limit_per_type: int) -> dict[str, list[GraphExploreOption]]:
+    safe_limit = max(1, min(int(limit_per_type), 500))
+    result = tx.run(
+        """
+        MATCH (n:KnowledgeNode {project_id: $project_id})
+        WHERE n.node_type IN ['program', 'class', 'domain', 'commit']
+        RETURN coalesce(n.node_type, '-') AS node_type,
+               n.node_id AS node_id,
+               coalesce(n.label, n.node_id) AS label,
+               coalesce(n.program_id, n.commit_hash, n.qualified_name, n.domain, n.label, n.node_id) AS key,
+               coalesce(n.program_name, n.message, n.file_path, n.domain, n.label, '-') AS description
+        ORDER BY node_type, label
+        LIMIT $limit
+        """,
+        project_id=int(project_id),
+        limit=safe_limit * 4,
+    )
+    options_by_type: dict[str, list[GraphExploreOption]] = {key: [] for key in ("program", "class", "domain", "commit")}
+    for row in result:
+        node_type = str(row["node_type"] or "-")
+        if len(options_by_type.setdefault(node_type, [])) >= safe_limit:
+            continue
+        options_by_type.setdefault(node_type, []).append(
+            GraphExploreOption(
+                node_id=str(row["node_id"] or "-"),
+                node_type=node_type,
+                label=str(row["label"] or "-"),
+                key=str(row["key"] or "-"),
+                description=str(row["description"] or "-"),
+            )
+        )
+    return options_by_type
+
+
+def explore_neo4j_project_graph(
+    project_id: int,
+    node_id: str,
+    *,
+    relationship_types: list[str] | None = None,
+    depth: int = 3,
+    limit: int = 100,
+) -> Neo4jGraphExploreResult:
+    if not settings.neo4j_enabled:
+        return Neo4jGraphExploreResult("skipped", "Neo4j가 비활성화되어 graph 탐색을 읽지 않았습니다.")
+    if not node_id:
+        return Neo4jGraphExploreResult("skipped", "탐색할 node를 선택하세요.")
+
+    safe_depth = max(1, min(int(depth), 3))
+    safe_limit = max(1, min(int(limit), 300))
+    safe_relationship_types = sorted({value for value in (relationship_types or []) if value})
+    try:
+        with _driver() as driver:
+            with driver.session(**_session_kwargs()) as session:
+                node_detail, rows = session.execute_read(
+                    _read_graph_exploration_tx,
+                    project_id,
+                    node_id,
+                    safe_relationship_types,
+                    safe_depth,
+                    safe_limit,
+                )
+    except Exception as exc:
+        return Neo4jGraphExploreResult("failed", "Neo4j graph 탐색 조회 실패", errors=[str(exc)])
+
+    if node_detail is None:
+        return Neo4jGraphExploreResult("skipped", "선택한 graph node를 찾지 못했습니다.")
+    return Neo4jGraphExploreResult(
+        "completed",
+        f"선택 node 주변 graph path {len(rows)}개 조회",
+        node_detail=node_detail,
+        rows=rows,
+    )
+
+
+def _read_graph_exploration_tx(
+    tx,
+    project_id: int,
+    node_id: str,
+    relationship_types: list[str],
+    depth: int,
+    limit: int,
+) -> tuple[GraphNodeDetail | None, list[GraphPathRow]]:
+    detail_result = tx.run(
+        """
+        MATCH (focus:KnowledgeNode {project_id: $project_id, node_id: $node_id})
+        OPTIONAL MATCH (focus)-[out_rel:RELATED]->(:KnowledgeNode {project_id: $project_id})
+        WITH focus, count(out_rel) AS outgoing_count
+        OPTIONAL MATCH (:KnowledgeNode {project_id: $project_id})-[in_rel:RELATED]->(focus)
+        RETURN focus.node_id AS node_id,
+               focus.node_type AS node_type,
+               coalesce(focus.label, focus.node_id) AS label,
+               outgoing_count + count(in_rel) AS related_count,
+               properties(focus) AS properties
+        """,
+        project_id=int(project_id),
+        node_id=node_id,
+    )
+    detail_row = detail_result.single()
+    if not detail_row:
+        return None, []
+
+    node_detail = GraphNodeDetail(
+        node_id=str(detail_row["node_id"] or "-"),
+        node_type=str(detail_row["node_type"] or "-"),
+        label=str(detail_row["label"] or "-"),
+        related_count=int(detail_row["related_count"] or 0),
+        properties=dict(detail_row["properties"] or {}),
+    )
+
+    path_result = tx.run(
+        f"""
+        MATCH path=(focus:KnowledgeNode {{project_id: $project_id, node_id: $node_id}})
+              -[:RELATED*1..{depth}]-
+              (target:KnowledgeNode {{project_id: $project_id}})
+        WHERE target.node_id <> focus.node_id
+        WITH path, target, relationships(path) AS rels
+        WHERE size($relationship_types) = 0
+           OR any(rel IN rels WHERE rel.edge_type IN $relationship_types)
+        RETURN [node IN nodes(path) | coalesce(node.label, node.node_id)] AS node_labels,
+               [node IN nodes(path) | coalesce(node.node_type, '-')] AS node_types,
+               [rel IN rels | coalesce(rel.edge_type, '-')] AS edge_types,
+               target.node_id AS target_node_id,
+               coalesce(target.node_type, '-') AS target_type,
+               coalesce(target.label, target.node_id) AS target_label,
+               length(path) AS depth
+        ORDER BY depth, target_type, target_label
+        LIMIT $limit
+        """,
+        project_id=int(project_id),
+        node_id=node_id,
+        relationship_types=relationship_types,
+        limit=limit,
+    )
+    rows: list[GraphPathRow] = []
+    seen: set[tuple[str, tuple[str, ...]]] = set()
+    for row in path_result:
+        edge_types = [str(edge_type or "-") for edge_type in (row["edge_types"] or [])]
+        target_node_id = str(row["target_node_id"] or "-")
+        key = (target_node_id, tuple(edge_types))
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(
+            GraphPathRow(
+                depth=int(row["depth"] or 0),
+                path=_format_graph_path(row["node_types"] or [], row["node_labels"] or [], edge_types),
+                edge_types=edge_types,
+                target_node_id=target_node_id,
+                target_type=str(row["target_type"] or "-"),
+                target_label=str(row["target_label"] or "-"),
+            )
+        )
+    return node_detail, rows
+
+
+def _format_graph_path(node_types: list[Any], node_labels: list[Any], edge_types: list[str]) -> str:
+    parts: list[str] = []
+    for index, raw_label in enumerate(node_labels):
+        node_type = str(node_types[index] or "-") if index < len(node_types) else "-"
+        label = str(raw_label or "-")
+        parts.append(f"{node_type}:{label}")
+        if index < len(edge_types):
+            parts.append(f"[{edge_types[index]}]")
+    return " -> ".join(parts)

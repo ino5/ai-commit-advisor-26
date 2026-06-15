@@ -285,6 +285,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
             "Neo4j 저장 확인",
             "동기화 대상 요약",
             "도메인 묶음",
+            "관계 탐색",
             "클래스 관계도",
             "영향 경로",
             "노드/엣지",
