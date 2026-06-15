@@ -45,6 +45,40 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - Neo4j graph write는 batch/retry 기반으로 처리하고 전체 재동기화를 복구 기준으로 둔다
+
+### 배경
+
+Knowledge Graph가 Project Chat GraphRAG와 AI 운영 상태의 보조 근거가 되면서 Neo4j 동기화는 단순한 화면 preview가 아니라 운영 근거 최신성에 영향을 주게 되었습니다. 대형 저장소에서 모든 node/edge를 하나의 transaction으로 쓰면 transaction memory, timeout, 일시적인 Bolt 연결 오류에 취약합니다.
+
+### 결정
+
+Neo4j full sync와 incremental sync의 write를 `NEO4J_WRITE_BATCH_SIZE` 단위로 나누고, 각 batch는 `NEO4J_RETRY_ATTEMPTS`, `NEO4J_RETRY_BACKOFF_SECONDS` 기준으로 retry합니다. 결과 metadata에는 요청 node/edge 수, batch 수, 완료 batch 수, written count, retry count, failed operation을 남깁니다. partial failure가 발생하면 `Knowledge Graph` 화면과 sync state metadata에서 실패 원인을 확인하고, `전체 재동기화`를 복구 기준으로 사용합니다.
+
+### 이유
+
+- batch write는 Neo4j transaction memory와 timeout 위험을 줄입니다.
+- retry는 일시적인 연결 끊김이나 container 기동 직후 불안정한 상태를 흡수합니다.
+- partial failure metadata가 있으면 운영자가 어디까지 반영됐는지 판단하고 복구 action을 선택할 수 있습니다.
+- PostgreSQL은 여전히 source of truth이고 Neo4j는 read model이므로, graph가 의심될 때 전체 재동기화로 재생성하는 정책이 단순하고 안전합니다.
+
+### 검토한 대안
+
+- 모든 node/edge를 단일 transaction으로 계속 처리: atomicity는 좋지만 대형 graph에서 실패 가능성이 커집니다.
+- 복잡한 resume cursor를 두어 실패 batch부터 이어쓰기: 효율적이지만 삭제/rename/current source 관계 정리와 결합하면 상태 관리가 복잡해집니다.
+- Neo4j write 실패 시 PostgreSQL 작업까지 실패 처리: graph는 read model이므로 프로젝트 삭제/초기화 같은 PostgreSQL 작업을 막지 않는 기존 best-effort 정책과 맞지 않습니다.
+
+### 영향과 tradeoff
+
+Batch 단위로 쓰기 때문에 실패 시 일부 node/edge만 반영된 상태가 될 수 있습니다. 그래서 실패 메시지는 partial 가능성을 명시하고, 운영 복구는 전체 재동기화를 기본으로 합니다. `NEO4J_WRITE_BATCH_SIZE`를 너무 낮추면 안정성은 올라가지만 전체 sync 시간이 늘어날 수 있습니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `Neo4j production hardening`
+- `ROADMAP.md`의 `P2 - Neo4j Production Hardening`
+- `docs/setup-and-operations.md`
+- `docs/architecture.md`
+
 ## 2026-06-15 - Git Sync 이후 AI 후속 작업은 상태 기반 안내와 명시 실행으로 분리한다
 
 ### 배경

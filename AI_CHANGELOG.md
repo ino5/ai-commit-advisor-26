@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Neo4j production hardening
+
+- Neo4j Knowledge Graph full sync와 incremental sync를 batch write 기반으로 바꿨습니다. `NEO4J_WRITE_BATCH_SIZE`로 node/edge batch 크기를 조절하고, 각 write batch와 연결 확인에는 `NEO4J_RETRY_ATTEMPTS`, `NEO4J_RETRY_BACKOFF_SECONDS` 기준 retry/backoff를 적용합니다.
+- 동기화 결과와 `project_graph_sync_state.raw_metadata`에 요청 node/edge 수, batch 수, 완료 batch 수, written count, retry count, retry error, failed operation을 남기도록 했습니다. 실패 메시지는 일부 batch가 반영됐을 수 있음을 알리고 `전체 재동기화`로 복구하도록 안내합니다.
+- `Knowledge Graph` 화면의 동기화 결과에 `Neo4j 동기화 실행 세부` expander를 추가해 운영자가 batch/retry/partial failure 상태를 확인할 수 있게 했습니다.
+- `.env` 예시와 `docker-compose.yml`에 Neo4j batch/retry 설정을 추가하고, README, 기능 가이드, AI 기술 개요, 아키텍처, 설치/운영 가이드, engineering decision, Roadmap을 운영 안정화 정책 기준으로 갱신했습니다.
+- 주요 파일: `src/services/neo4j_graph_service.py`, `src/ui/knowledge_graph_page.py`, `src/utils/config.py`, `tests/test_neo4j_graph_service.py`, `.env.example`, `.env.local-llm.example`, `docker-compose.yml`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\neo4j_graph_service.py src\ui\knowledge_graph_page.py src\utils\config.py tests\test_neo4j_graph_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py tests\test_documentation_images.py -q` 15개 테스트 통과; Browser로 `http://127.0.0.1:8508/?project_id=4`의 `AI 운영 현황 -> Knowledge Graph` 이동 후 `Knowledge Graph`, `Graph 상태`, `동기화 대상 요약`, `최신 변경분만 Neo4j 반영`, `전체 재동기화` 표시와 `StreamlitAPIException`/`Traceback` 미표시 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `docker compose config -q` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 147개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Git Sync follow-up action orchestrator
 
 - `Git 동기화` 화면에 `동기화 후 다음 작업` 패널을 추가했습니다. Git Sync가 commit/diff 수집만 담당한다는 경계를 유지하면서, 이후 현재 소스 근거 갱신, 검색 준비, Mapping, Risk Analysis, Knowledge Graph 갱신을 현재 프로젝트 상태 기준 권장 순서로 보여줍니다.

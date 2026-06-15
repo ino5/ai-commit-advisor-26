@@ -212,6 +212,9 @@ docker build -t ai-commit-advisor:local .
 | `NEO4J_USER` | `neo4j` | Neo4j 접속 사용자입니다. |
 | `NEO4J_PASSWORD` | `ai_commit_advisor` | Compose Neo4j 기본 비밀번호입니다. 운영 환경에서는 반드시 변경하세요. |
 | `NEO4J_DATABASE` | `neo4j` | 사용할 Neo4j database입니다. Community Edition에서는 기본값 `neo4j`를 사용합니다. |
+| `NEO4J_WRITE_BATCH_SIZE` | `500` | Neo4j node/edge write를 나누는 batch 크기입니다. 대형 저장소에서 transaction memory나 timeout이 보이면 더 낮춥니다. |
+| `NEO4J_RETRY_ATTEMPTS` | `2` | Neo4j health check와 write batch의 retry 횟수입니다. 일시적 연결 실패를 흡수하기 위한 값입니다. |
+| `NEO4J_RETRY_BACKOFF_SECONDS` | `0.5` | retry 사이 기본 대기 시간입니다. 실제 대기는 attempt 수에 비례해 조금씩 늘어납니다. |
 | `PORT` | `8501` | Dockerfile의 Streamlit 실행 port입니다. Compose는 host `8501`을 container `8501`에 연결합니다. |
 
 실제 LM Studio를 Compose 앱에서 사용하려면 provider를 바꿉니다.
@@ -317,6 +320,8 @@ Knowledge Graph 화면의 `Graph 상태`는 세 기준을 비교합니다.
 
 일반 운영에서는 Git Sync로 새 commit을 가져온 뒤 `최신 변경분만 Neo4j 반영`을 먼저 사용합니다. 이 action은 최근 DB commit/file row를 기준으로 변경된 Java 파일의 current source class/import 관계를 다시 만들고, program mapping edge를 현재 DB 기준으로 새로 맞춥니다. 과거 commit이 어떤 file을 건드렸다는 `TOUCHES_FILE` 이력은 삭제하지 않습니다.
 
+Neo4j 동기화는 node와 edge를 `NEO4J_WRITE_BATCH_SIZE` 단위로 나누어 저장합니다. 일시적인 연결 오류가 나면 `NEO4J_RETRY_ATTEMPTS`와 `NEO4J_RETRY_BACKOFF_SECONDS` 기준으로 같은 batch를 다시 시도합니다. 실패가 계속되면 일부 batch만 반영된 상태일 수 있으므로 `Knowledge Graph` 화면의 실행 세부에서 `completed_*_batch_count`, `written_*_count`, `failed_operation`을 확인하고 `전체 재동기화`로 복구합니다.
+
 `AI 운영 현황` 상단에서도 Neo4j 연결, Knowledge Graph 최신성, 저장 graph readback, 최근 Project Chat GraphRAG evidence 상태를 확인할 수 있습니다. 운영 점검 중 graph 관련 경고가 보이면 `Knowledge Graph로 이동` 버튼으로 graph 동기화 화면에 이동한 뒤 아래 기준에 따라 증분 반영 또는 전체 재동기화를 선택합니다.
 
 다음 경우에는 `전체 재동기화`를 선택하세요.
@@ -327,6 +332,17 @@ Knowledge Graph 화면의 `Graph 상태`는 세 기준을 비교합니다.
 - Neo4j Browser에서 직접 graph를 수정했거나 volume 상태가 의심되는 경우
 
 프로젝트 분석 데이터 초기화나 프로젝트 삭제를 실행하면, `NEO4J_ENABLED=true`인 경우 해당 프로젝트의 Neo4j node도 정리합니다. Neo4j가 꺼져 있거나 연결되지 않아도 PostgreSQL 초기화/삭제가 실패하지 않도록 외부 graph cleanup은 best-effort로 처리합니다.
+
+Neo4j volume 자체가 손상되었거나 비밀번호/DB 초기화 상태를 새로 맞춰야 하면 앱을 멈춘 뒤 volume을 재생성합니다. 이 작업은 Neo4j read model만 지우며 PostgreSQL 원본 데이터는 유지됩니다. 재시작 후 `Knowledge Graph`에서 `전체 재동기화`를 실행해 graph를 다시 만듭니다.
+
+```powershell
+docker compose stop app neo4j
+docker compose rm -f neo4j
+docker volume rm ai-commit-advisor_neo4j_data ai-commit-advisor_neo4j_logs
+docker compose up -d neo4j app
+```
+
+Compose project name이 다르면 volume 이름도 달라질 수 있습니다. 먼저 `docker volume ls`로 실제 이름을 확인하세요.
 
 ### Migration 시작 동작
 

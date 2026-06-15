@@ -118,6 +118,7 @@
 | P2 | AI Quality | Project-level AI quality scorecard | Done | Project-level AI quality scorecard |
 | P2 | AI Verification | Local LLM verification routine | Done | Local LLM verification routine |
 | P2 | Workflow | Git Sync follow-up action orchestrator | Done | Git Sync follow-up action orchestrator |
+| P2 | Graph Ops | Neo4j production hardening | Done | Neo4j production hardening |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -274,6 +275,29 @@ Checklist:
 - [x] 사용자-facing/architecture/operations documentation과 `AI_CHANGELOG.md`를 갱신한다.
 - [x] Compile/test/diff verification을 실행한다.
 
+## P2 - Neo4j Production Hardening
+
+Status: Done
+
+Goal:
+대형 프로젝트와 장시간 운영에서 Neo4j 동기화가 안정적으로 동작하도록 보강한다.
+
+Rationale:
+Knowledge Graph가 Project Chat GraphRAG와 AI 운영 상태의 근거가 되면서, Neo4j 동기화는 단순 preview 기능이 아니라 운영 근거 freshness를 유지하는 작업이 되었다. 대형 저장소에서는 단일 transaction에 모든 node/edge를 쓰면 transaction memory, timeout, 일시적 연결 실패에 취약하므로 batch write, retry, partial failure reporting, 복구 안내가 필요하다.
+
+Checklist:
+
+- [x] node/edge write batch size를 환경 설정으로 조절할 수 있게 한다.
+- [x] full sync와 incremental sync write를 batch 단위 transaction으로 분할한다.
+- [x] transient failure retry/backoff를 적용하고 retry metadata를 결과에 남긴다.
+- [x] partial failure 시 성공/실패 batch, written node/edge count, 복구 안내를 표시한다.
+- [x] Neo4j health/readiness 확인과 summary/readback 실패 메시지를 운영자가 이해할 수 있게 유지한다.
+- [x] cleanup 실패 시 PostgreSQL 작업을 막지 않는 best-effort 정책을 유지하고 문서화한다.
+- [x] backup/restore 또는 volume reset 운영 안내를 추가한다.
+- [x] batch/retry/partial failure 중심 tests를 추가한다.
+- [x] 사용자-facing/architecture/operations/decision/failure-history 검토와 `AI_CHANGELOG.md`를 갱신한다.
+- [x] Compile/test/diff verification을 실행한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -282,26 +306,10 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P2 | Graph Ops | Neo4j production hardening | 대형 저장소에서 batch, transaction, health check, 복구 동작을 안정화한다. |
 | P3 | Source Analysis | Source parser accuracy expansion | 정규식 기반 Java class/import 추출 한계를 줄이고 graph 품질을 높인다. |
 | P3 | Project Chat UX | Graph-aware question templates | 사용자가 graph/RAG가 잘 답할 수 있는 질문을 쉽게 시작하게 한다. |
 | P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
 | P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - Neo4j Production Hardening
-
-Goal:
-대형 프로젝트와 장시간 운영에서 Neo4j 동기화가 안정적으로 동작하도록 보강한다.
-
-Expected scope:
-
-- node/edge write batch size 조절.
-- transaction memory와 timeout에 대한 분할 write.
-- sync progress와 partial failure reporting.
-- Neo4j health check와 retry/backoff.
-- cleanup 실패 시 PostgreSQL 작업을 막지 않는 best-effort 정책 유지.
-- backup/restore 또는 volume reset 운영 안내.
-- 대형 sample 또는 synthetic stress dataset으로 smoke test.
 
 ### Candidate - Source Parser Accuracy Expansion
 

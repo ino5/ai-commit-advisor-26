@@ -27,6 +27,9 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: ai_commit_advisor
       NEO4J_DATABASE: neo4j
+      NEO4J_WRITE_BATCH_SIZE: "500"
+      NEO4J_RETRY_ATTEMPTS: "2"
+      NEO4J_RETRY_BACKOFF_SECONDS: "0.5"
     ports:
       - "8501:8501"
     volumes:

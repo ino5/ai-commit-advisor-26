@@ -222,6 +222,8 @@ Knowledge Graph는 LLM 호출을 새로 만드는 기능이 아니라, AI Commit
 
 GraphRAG가 오래된 관계를 근거처럼 보여주지 않도록 프로젝트별 graph sync 상태를 PostgreSQL에 저장합니다. `project_graph_sync_state`는 마지막 Graph HEAD, DB Sync HEAD, sync mode, node/edge count, 마지막 commit row, mapping update 기준을 기록합니다. Knowledge Graph 화면은 이 값을 현재 Repo HEAD와 비교해 `최신`, `갱신 필요`, `실패`, `저장 필요` 상태를 보여줍니다.
 
+Neo4j write는 대형 저장소에서도 transaction memory와 timeout 위험을 줄이기 위해 node/edge를 batch 단위로 나누어 실행하고, 일시적 실패에는 retry/backoff를 적용합니다. 실패가 계속되면 일부 batch만 반영됐을 수 있으므로 `Knowledge Graph` 화면의 실행 세부에서 완료 batch와 실패 operation을 확인하고 `전체 재동기화`로 graph read model을 다시 만듭니다.
+
 증분 반영은 graph를 세 성격으로 나눠 다룹니다.
 
 - `current_source`: 현재 checkout 기준 Java file, class, import, domain 관계입니다. 변경/삭제/rename된 Java 파일은 해당 path의 class node를 먼저 삭제한 뒤 현재 파일을 다시 읽어 관계를 만듭니다.

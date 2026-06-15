@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
@@ -80,6 +81,80 @@ class GraphNode:
             "label": self.label,
             **_neo4j_properties(self.properties),
         }
+
+
+def _neo4j_write_batch_size() -> int:
+    return max(1, int(settings.neo4j_write_batch_size or 500))
+
+
+def _neo4j_retry_attempts() -> int:
+    return max(1, int(settings.neo4j_retry_attempts or 1))
+
+
+def _neo4j_retry_backoff_seconds() -> float:
+    return max(0.0, float(settings.neo4j_retry_backoff_seconds or 0.0))
+
+
+def _batched(items: list[dict], size: int) -> list[list[dict]]:
+    if not items:
+        return []
+    return [items[index : index + size] for index in range(0, len(items), size)]
+
+
+def _new_write_metadata(mode: str, nodes: list[dict], edges: list[dict], *, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    batch_size = _neo4j_write_batch_size()
+    return {
+        "neo4j_write_mode": mode,
+        "neo4j_write_batch_size": batch_size,
+        "neo4j_retry_attempts": _neo4j_retry_attempts(),
+        "neo4j_retry_backoff_seconds": _neo4j_retry_backoff_seconds(),
+        "requested_node_count": len(nodes),
+        "requested_edge_count": len(edges),
+        "node_batch_count": len(_batched(nodes, batch_size)),
+        "edge_batch_count": len(_batched(edges, batch_size)),
+        "completed_node_batch_count": 0,
+        "completed_edge_batch_count": 0,
+        "written_node_count": 0,
+        "written_edge_count": 0,
+        "retry_count": 0,
+        "retry_errors": [],
+        **(extra or {}),
+    }
+
+
+def _execute_write_with_retry(session, tx_fn, *args, operation: str, metadata: dict[str, Any]):
+    attempts = _neo4j_retry_attempts()
+    backoff = _neo4j_retry_backoff_seconds()
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return session.execute_write(tx_fn, *args)
+        except Exception as exc:
+            last_error = exc
+            metadata["retry_errors"].append({"operation": operation, "attempt": attempt, "error": str(exc)})
+            if attempt >= attempts:
+                metadata["failed_operation"] = operation
+                raise
+            metadata["retry_count"] += 1
+            if backoff > 0:
+                time.sleep(backoff * attempt)
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError(f"Neo4j write operation did not run: {operation}")
+
+
+def _verify_connectivity_with_retry(driver) -> None:
+    attempts = _neo4j_retry_attempts()
+    backoff = _neo4j_retry_backoff_seconds()
+    for attempt in range(1, attempts + 1):
+        try:
+            driver.verify_connectivity()
+            return
+        except Exception:
+            if attempt >= attempts:
+                raise
+            if backoff > 0:
+                time.sleep(backoff * attempt)
 
 
 @dataclass(frozen=True)
@@ -163,6 +238,7 @@ class Neo4jSyncResult:
     node_counts: dict[str, int] = field(default_factory=dict)
     edge_counts: dict[str, int] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+    raw_metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -604,6 +680,7 @@ def _record_graph_sync_attempt(
         "last_attempt_errors": result.errors,
         "last_attempt_node_count": int(result.node_count or 0),
         "last_attempt_edge_count": int(result.edge_count or 0),
+        **(result.raw_metadata or {}),
         **(raw_metadata or {}),
     }
     db.commit()
@@ -1142,10 +1219,22 @@ def get_neo4j_connection_status() -> Neo4jConnectionStatus:
         return Neo4jConnectionStatus(True, False, "neo4j Python driver가 설치되지 않았습니다.", settings.neo4j_uri, settings.neo4j_database)
     try:
         with _driver() as driver:
-            driver.verify_connectivity()
+            _verify_connectivity_with_retry(driver)
     except Exception as exc:
-        return Neo4jConnectionStatus(True, False, f"Neo4j 연결 실패: {exc}", settings.neo4j_uri, settings.neo4j_database)
-    return Neo4jConnectionStatus(True, True, "Neo4j 연결됨", settings.neo4j_uri, settings.neo4j_database)
+        return Neo4jConnectionStatus(
+            True,
+            False,
+            f"Neo4j 연결 실패({_neo4j_retry_attempts()}회 시도): {exc}",
+            settings.neo4j_uri,
+            settings.neo4j_database,
+        )
+    return Neo4jConnectionStatus(
+        True,
+        True,
+        f"Neo4j 연결됨(retry policy: attempts={_neo4j_retry_attempts()})",
+        settings.neo4j_uri,
+        settings.neo4j_database,
+    )
 
 
 def clear_project_graph(project_id: int) -> Neo4jSyncResult:
@@ -1193,34 +1282,40 @@ def sync_project_graph_to_neo4j(db: Session, project_id: int) -> Neo4jSyncResult
 
     nodes = [node.to_neo4j(project_id) for node in payload.nodes]
     edges = [edge.to_neo4j(project_id) for edge in payload.edges]
+    write_metadata = _new_write_metadata("full", nodes, edges, extra={"payload_errors": payload.errors})
     try:
         with _driver() as driver:
             with driver.session(**_session_kwargs()) as session:
                 _ensure_neo4j_schema(session)
-                session.execute_write(_sync_project_graph_tx, project_id, nodes, edges)
+                _sync_project_graph_batched(session, project_id, nodes, edges, write_metadata)
     except Exception as exc:
         result = Neo4jSyncResult(
             "failed",
-            "Neo4j graph 동기화 실패",
+            "Neo4j graph 동기화 실패. 일부 batch가 반영됐을 수 있으므로 전체 재동기화를 다시 실행해 복구하세요.",
             node_count=len(nodes),
             edge_count=len(edges),
             node_counts=dict(payload.node_counts),
             edge_counts=dict(payload.edge_counts),
             errors=[*payload.errors, str(exc)],
+            raw_metadata=write_metadata,
         )
-        _record_graph_sync_attempt(db, project_id, "full", result, raw_metadata={"payload_errors": payload.errors})
+        _record_graph_sync_attempt(db, project_id, "full", result)
         return result
 
     result = Neo4jSyncResult(
         "completed",
-        f"Neo4j에 node {len(nodes)}개, edge {len(edges)}개를 동기화했습니다.",
+        (
+            f"Neo4j에 node {len(nodes)}개, edge {len(edges)}개를 "
+            f"{write_metadata['node_batch_count']}개 node batch와 {write_metadata['edge_batch_count']}개 edge batch로 동기화했습니다."
+        ),
         node_count=len(nodes),
         edge_count=len(edges),
         node_counts=dict(payload.node_counts),
         edge_counts=dict(payload.edge_counts),
         errors=payload.errors,
+        raw_metadata=write_metadata,
     )
-    _record_graph_sync_attempt(db, project_id, "full", result, raw_metadata={"payload_errors": payload.errors})
+    _record_graph_sync_attempt(db, project_id, "full", result)
     return result
 
 
@@ -1281,33 +1376,37 @@ def sync_project_graph_incrementally_to_neo4j(db: Session, project_id: int) -> N
 
     nodes = [node.to_neo4j(project_id) for node in payload.nodes]
     edges = [edge.to_neo4j(project_id) for edge in payload.edges]
+    write_metadata = _new_write_metadata("incremental", nodes, edges, extra=stats)
     try:
         with _driver() as driver:
             with driver.session(**_session_kwargs()) as session:
                 _ensure_neo4j_schema(session)
-                write_counts = session.execute_write(
-                    _sync_project_graph_incremental_tx,
+                write_counts = _sync_project_graph_incremental_batched(
+                    session,
                     project_id,
                     clear_source_paths,
                     nodes,
                     edges,
+                    write_metadata,
                 )
                 node_counts, edge_counts = session.execute_read(_read_project_summary_tx, project_id)
     except Exception as exc:
         result = Neo4jSyncResult(
             "failed",
-            "Neo4j graph 증분 동기화 실패. 전체 재동기화를 실행해 복구할 수 있습니다.",
+            "Neo4j graph 증분 동기화 실패. 일부 batch가 반영됐을 수 있으므로 전체 재동기화를 실행해 복구하세요.",
             node_count=len(nodes),
             edge_count=len(edges),
             node_counts=dict(payload.node_counts),
             edge_counts=dict(payload.edge_counts),
             errors=[*payload.errors, str(exc)],
+            raw_metadata=write_metadata,
         )
-        _record_graph_sync_attempt(db, project_id, "incremental", result, raw_metadata=stats)
+        _record_graph_sync_attempt(db, project_id, "incremental", result)
         return result
 
     stats = {
         **stats,
+        **write_metadata,
         **write_counts,
         "mapping_changed": mapping_changed,
     }
@@ -1324,8 +1423,9 @@ def sync_project_graph_incrementally_to_neo4j(db: Session, project_id: int) -> N
         node_counts=node_counts,
         edge_counts=edge_counts,
         errors=payload.errors,
+        raw_metadata=stats,
     )
-    _record_graph_sync_attempt(db, project_id, "incremental", result, raw_metadata=stats)
+    _record_graph_sync_attempt(db, project_id, "incremental", result)
     return result
 
 
@@ -1335,8 +1435,57 @@ def _ensure_neo4j_schema(session) -> None:
     ).consume()
 
 
-def _sync_project_graph_tx(tx, project_id: int, nodes: list[dict], edges: list[dict]) -> None:
-    _clear_project_graph_tx(tx, project_id)
+def _sync_project_graph_batched(
+    session,
+    project_id: int,
+    nodes: list[dict],
+    edges: list[dict],
+    metadata: dict[str, Any],
+) -> dict[str, int]:
+    deleted_count = _execute_write_with_retry(
+        session,
+        _clear_project_graph_tx,
+        project_id,
+        operation="full_clear_project_graph",
+        metadata=metadata,
+    )
+    metadata["deleted_node_count"] = int(deleted_count or 0)
+    _write_nodes_batched(session, nodes, metadata)
+    _write_edges_batched(session, edges, metadata)
+    return {
+        "deleted_node_count": int(deleted_count or 0),
+        "upsert_node_count": int(metadata["written_node_count"]),
+        "upsert_edge_count": int(metadata["written_edge_count"]),
+    }
+
+
+def _write_nodes_batched(session, nodes: list[dict], metadata: dict[str, Any]) -> None:
+    for index, batch in enumerate(_batched(nodes, int(metadata["neo4j_write_batch_size"])), start=1):
+        written = _execute_write_with_retry(
+            session,
+            _upsert_nodes_tx,
+            batch,
+            operation=f"upsert_nodes_batch_{index}",
+            metadata=metadata,
+        )
+        metadata["completed_node_batch_count"] += 1
+        metadata["written_node_count"] += int(written or 0)
+
+
+def _write_edges_batched(session, edges: list[dict], metadata: dict[str, Any]) -> None:
+    for index, batch in enumerate(_batched(edges, int(metadata["neo4j_write_batch_size"])), start=1):
+        written = _execute_write_with_retry(
+            session,
+            _upsert_edges_tx,
+            batch,
+            operation=f"upsert_edges_batch_{index}",
+            metadata=metadata,
+        )
+        metadata["completed_edge_batch_count"] += 1
+        metadata["written_edge_count"] += int(written or 0)
+
+
+def _upsert_nodes_tx(tx, nodes: list[dict]) -> int:
     tx.run(
         """
         UNWIND $nodes AS row
@@ -1345,6 +1494,10 @@ def _sync_project_graph_tx(tx, project_id: int, nodes: list[dict], edges: list[d
         """,
         nodes=nodes,
     )
+    return len(nodes)
+
+
+def _upsert_edges_tx(tx, edges: list[dict]) -> int:
     tx.run(
         """
         UNWIND $edges AS row
@@ -1355,14 +1508,39 @@ def _sync_project_graph_tx(tx, project_id: int, nodes: list[dict], edges: list[d
         """,
         edges=edges,
     )
+    return len(edges)
 
 
-def _sync_project_graph_incremental_tx(
-    tx,
+def _sync_project_graph_incremental_batched(
+    session,
     project_id: int,
     clear_source_paths: list[str],
     nodes: list[dict],
     edges: list[dict],
+    metadata: dict[str, Any],
+) -> dict[str, int]:
+    cleanup_counts = _execute_write_with_retry(
+        session,
+        _sync_project_graph_incremental_cleanup_tx,
+        project_id,
+        clear_source_paths,
+        operation="incremental_cleanup",
+        metadata=metadata,
+    )
+    metadata.update(cleanup_counts)
+    _write_nodes_batched(session, nodes, metadata)
+    _write_edges_batched(session, edges, metadata)
+    return {
+        **cleanup_counts,
+        "upsert_node_count": int(metadata["written_node_count"]),
+        "upsert_edge_count": int(metadata["written_edge_count"]),
+    }
+
+
+def _sync_project_graph_incremental_cleanup_tx(
+    tx,
+    project_id: int,
+    clear_source_paths: list[str],
 ) -> dict[str, int]:
     deleted_class_count = 0
     if clear_source_paths:
@@ -1393,29 +1571,9 @@ def _sync_project_graph_incremental_tx(
     mapping_row = mapping_result.single()
     deleted_mapping_count = int(mapping_row["deleted_mapping_count"] if mapping_row else 0)
 
-    tx.run(
-        """
-        UNWIND $nodes AS row
-        MERGE (n:KnowledgeNode {node_id: row.node_id})
-        SET n = row
-        """,
-        nodes=nodes,
-    )
-    tx.run(
-        """
-        UNWIND $edges AS row
-        MATCH (source:KnowledgeNode {node_id: row.from_node_id})
-        MATCH (target:KnowledgeNode {node_id: row.to_node_id})
-        MERGE (source)-[rel:RELATED {edge_id: row.edge_id}]->(target)
-        SET rel = row
-        """,
-        edges=edges,
-    )
     return {
         "deleted_class_count": deleted_class_count,
         "deleted_mapping_count": deleted_mapping_count,
-        "upsert_node_count": len(nodes),
-        "upsert_edge_count": len(edges),
     }
 
 

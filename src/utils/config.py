@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     neo4j_user: str = Field(default="neo4j", alias="NEO4J_USER")
     neo4j_password: str = Field(default="ai_commit_advisor", alias="NEO4J_PASSWORD")
     neo4j_database: str | None = Field(default=None, alias="NEO4J_DATABASE")
+    neo4j_write_batch_size: int = Field(default=500, alias="NEO4J_WRITE_BATCH_SIZE")
+    neo4j_retry_attempts: int = Field(default=2, alias="NEO4J_RETRY_ATTEMPTS")
+    neo4j_retry_backoff_seconds: float = Field(default=0.5, alias="NEO4J_RETRY_BACKOFF_SECONDS")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

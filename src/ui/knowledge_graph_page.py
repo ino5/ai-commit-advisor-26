@@ -150,6 +150,26 @@ def _render_sync_result(result) -> None:
         st.dataframe(_counter_df(result.node_counts), hide_index=True, use_container_width=True)
     if result.edge_counts:
         st.dataframe(_counter_df(result.edge_counts), hide_index=True, use_container_width=True)
+    if result.raw_metadata:
+        keys = [
+            "neo4j_write_batch_size",
+            "node_batch_count",
+            "completed_node_batch_count",
+            "edge_batch_count",
+            "completed_edge_batch_count",
+            "written_node_count",
+            "written_edge_count",
+            "retry_count",
+            "failed_operation",
+        ]
+        metadata_rows = [
+            {"항목": key, "값": result.raw_metadata.get(key)}
+            for key in keys
+            if key in result.raw_metadata
+        ]
+        if metadata_rows:
+            with st.expander("Neo4j 동기화 실행 세부", expanded=result.status == "failed"):
+                st.dataframe(pd.DataFrame(metadata_rows), hide_index=True, use_container_width=True)
     for error in result.errors:
         st.warning(error)
 

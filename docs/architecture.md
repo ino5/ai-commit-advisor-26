@@ -734,7 +734,7 @@ LLM 출력 예시:
 - Risk Analysis 실행, 리스크 저장, 미해결 리스크 조회 및 해결 처리. 예상 종료일 기준 지연 가능성은 `FORECAST_DELAY` 리스크로 저장한다.
 - Git History 커밋 이력과 diff 탐색.
 - Commit Impact 분석.
-- Neo4j Knowledge Graph preview와 전체/증분 동기화, Graph HEAD 최신성 표시, 저장 그래프 기준 선택 node 주변 path, 클래스 관계도, 커밋 영향 경로, node/edge 저장 상태 표시.
+- Neo4j Knowledge Graph preview와 전체/증분 동기화, Graph HEAD 최신성 표시, batch/retry 기반 graph write, 저장 그래프 기준 선택 node 주변 path, 클래스 관계도, 커밋 영향 경로, node/edge 저장 상태 표시.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
 - Dashboard 자원관리 지표: AI Resource Radar와 PL Briefing, 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, 고객가치 참고 지표 표시, 수동 snapshot 저장과 추세 분석.
@@ -758,7 +758,7 @@ LLM 출력 예시:
 - RAG 검색 품질은 embedding 모델에 크게 의존하며, mock embedding은 테스트용이다.
 - local/openai embedding은 OpenAI-compatible `/embeddings` 형식을 가정하지만 실제 모델별 검증은 별도 필요하다.
 - PL Briefing은 구조화 validation과 1회 repair retry를 사용하지만, Mapping 등 일부 LLM 응답 처리는 여전히 pragmatic parsing과 fallback 중심이다.
-- Project Chat GraphRAG는 Neo4j 저장 graph를 보조 근거로 조회한다. Graph freshness/stale 상태는 Knowledge Graph 화면에서 확인하고, 오래된 graph는 증분 반영 또는 전체 재동기화로 갱신한다.
+- Project Chat GraphRAG는 Neo4j 저장 graph를 보조 근거로 조회한다. Graph freshness/stale 상태는 Knowledge Graph 화면에서 확인하고, 오래된 graph는 증분 반영 또는 전체 재동기화로 갱신한다. Neo4j write는 batch/retry 기반이지만, 실패 시 일부 batch가 반영될 수 있으므로 전체 재동기화가 복구 기준이다.
 - Mapping 실패 재처리 정책은 기본 상태 기록 수준이며 상세 재시도 큐는 없다.
 - 테스트는 핵심 순수 로직 중심이며, Streamlit UI/DB 통합 테스트는 아직 부족하다.
 - 배포 설정, CI, 환경별 설정 분리는 제한적이다. AI 호출 telemetry는 앱 내부 관측용이며 외부 로그/모니터링 시스템 연계는 아직 없다.
@@ -834,7 +834,7 @@ LLM 출력 예시:
 | `src/services/risk_service.py` | `run_risk_analysis`, `get_unresolved_findings`, `resolve_findings` |
 | `src/services/git_history_service.py` | `list_git_history_commits`, `get_git_history_detail`, `get_commit_full_diff` |
 | `src/services/commit_impact_service.py` | `list_commit_options`, `get_commit_impact_analysis` |
-| `src/services/neo4j_graph_service.py` | `build_project_graph_payload`, `sync_project_graph_to_neo4j`, `find_project_graph_evidence`, `get_neo4j_connection_status` |
+| `src/services/neo4j_graph_service.py` | `build_project_graph_payload`, `sync_project_graph_to_neo4j`, `find_project_graph_evidence`, `get_neo4j_connection_status`, batch/retry 기반 Neo4j write |
 | `src/services/code_review_service.py` | `get_review_target`, `CodeReviewService.review_project`, `get_recent_code_reviews` |
 | `src/services/resource_metrics_service.py` | `get_resource_metrics_summary` |
 | `src/services/ai_resource_radar_service.py` | `build_ai_resource_radar`, `generate_pl_briefing` |

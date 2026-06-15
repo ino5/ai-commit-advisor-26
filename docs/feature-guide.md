@@ -164,7 +164,7 @@ Knowledge Graph는 PostgreSQL에 저장된 프로젝트 분석 결과와 앱 서
 
 화면은 현재 프로젝트 기준 그래프 preview를 먼저 구성하고, `Graph 상태`에서 Repo HEAD, DB Git Sync HEAD, Neo4j에 마지막으로 반영된 Graph HEAD를 비교합니다. 이 상태가 `갱신 필요`이면 Git Sync나 mapping 이후 graph read model이 오래된 상태라는 뜻입니다. 처음 저장하거나 기준이 꼬였을 때는 `전체 재동기화`를 실행하고, Git Sync 이후 일반 변경분만 반영할 때는 `최신 변경분만 Neo4j 반영`을 사용합니다.
 
-동기화 후에는 클래스 관계도, 영향 경로, node/edge 저장 상태를 Neo4j에 저장된 그래프에서 다시 조회해 보여줍니다. `관계 탐색` 탭에서는 프로그램, 클래스, 도메인, 커밋 중 하나를 선택해 주변 path를 깊이와 관계 종류로 좁혀 볼 수 있습니다. Neo4j 없이 가볍게 실행해야 할 때만 `NEO4J_ENABLED=false`로 바꾸면 preview는 유지되고 저장 동기화와 저장 그래프 조회만 건너뜁니다.
+동기화 후에는 클래스 관계도, 영향 경로, node/edge 저장 상태를 Neo4j에 저장된 그래프에서 다시 조회해 보여줍니다. `관계 탐색` 탭에서는 프로그램, 클래스, 도메인, 커밋 중 하나를 선택해 주변 path를 깊이와 관계 종류로 좁혀 볼 수 있습니다. Neo4j 동기화 결과의 `Neo4j 동기화 실행 세부`에서는 batch 크기, 완료 batch 수, retry 수, 실패 operation을 확인할 수 있습니다. Neo4j 없이 가볍게 실행해야 할 때만 `NEO4J_ENABLED=false`로 바꾸면 preview는 유지되고 저장 동기화와 저장 그래프 조회만 건너뜁니다.
 
 주요 기능:
 

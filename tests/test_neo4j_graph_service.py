@@ -227,7 +227,7 @@ def test_sync_project_graph_prepares_schema_outside_write_transaction(monkeypatc
         try:
             result = sync_project_graph_to_neo4j(db, project.id)
 
-            assert result.status == "completed"
+            assert result.status == "completed", result.errors
             assert calls[:3] == ["ensure_schema", "schema_consumed", "execute_write"]
             assert "clear_project_graph" in calls
             assert "write_nodes" in calls
@@ -238,6 +238,246 @@ def test_sync_project_graph_prepares_schema_outside_write_transaction(monkeypatc
             assert state.repo_head_hash == "head123"
             assert state.db_sync_head_hash == "head123"
             assert state.last_commit_db_id == commit.id
+        finally:
+            remaining = db.get(Project, project.id)
+            if remaining is not None:
+                db.delete(remaining)
+            db.commit()
+
+
+def test_sync_project_graph_writes_nodes_and_edges_in_batches(monkeypatch, tmp_path) -> None:
+    init_db()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    captured: dict[str, list[int]] = {"node_batches": [], "edge_batches": []}
+
+    class FakeResult:
+        def consume(self):
+            return None
+
+        def single(self):
+            return {"deleted_count": 0}
+
+    class FakeTx:
+        def run(self, query, **params):
+            normalized = " ".join(query.split())
+            if normalized.startswith("UNWIND $nodes"):
+                captured["node_batches"].append(len(params["nodes"]))
+            elif normalized.startswith("UNWIND $edges"):
+                captured["edge_batches"].append(len(params["edges"]))
+            return FakeResult()
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def run(self, query):
+            assert "CREATE CONSTRAINT" in query
+            return FakeResult()
+
+        def execute_write(self, fn, *args):
+            return fn(FakeTx(), *args)
+
+    class FakeDriver:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def session(self, **kwargs):
+            return FakeSession()
+
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_enabled", True)
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_write_batch_size", 3)
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_retry_attempts", 1)
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_retry_backoff_seconds", 0)
+    monkeypatch.setattr(neo4j_graph_service, "_driver", lambda: FakeDriver())
+    monkeypatch.setattr(neo4j_graph_service, "get_head_commit_hash", lambda repo_path: "head-batch")
+
+    with SessionLocal() as db:
+        project = Project(name=_unique("graph-batch-project"), git_repo_path=str(repo), last_synced_commit_hash="head-batch")
+        db.add(project)
+        db.flush()
+        program = Program(project_id=project.id, program_id=_unique("PAY"), program_name="Payment Program")
+        commits = [
+            GitCommit(project_id=project.id, commit_hash=uuid.uuid4().hex, message=f"Update payment {index}")
+            for index in range(12)
+        ]
+        db.add_all([program, *commits])
+        db.flush()
+        for commit in commits:
+            db.add(ProgramCommitMapping(program_id=program.id, commit_id=commit.id, relevance_score=80, is_related=True))
+        db.commit()
+
+        try:
+            result = sync_project_graph_to_neo4j(db, project.id)
+
+            assert result.status == "completed", result.errors
+            assert result.raw_metadata["neo4j_write_batch_size"] == 3
+            assert result.raw_metadata["completed_node_batch_count"] == result.raw_metadata["node_batch_count"]
+            assert result.raw_metadata["completed_edge_batch_count"] == result.raw_metadata["edge_batch_count"]
+            assert max(captured["node_batches"]) <= 3
+            assert max(captured["edge_batches"]) <= 3
+            assert len(captured["node_batches"]) > 3
+            assert len(captured["edge_batches"]) > 3
+            state = db.query(ProjectGraphSyncState).filter(ProjectGraphSyncState.project_id == project.id).one()
+            assert state.raw_metadata["neo4j_write_batch_size"] == 3
+            assert state.raw_metadata["written_node_count"] == result.node_count
+        finally:
+            remaining = db.get(Project, project.id)
+            if remaining is not None:
+                db.delete(remaining)
+            db.commit()
+
+
+def test_sync_project_graph_retries_transient_node_batch_failure(monkeypatch, tmp_path) -> None:
+    init_db()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    node_attempts = {"count": 0}
+
+    class FakeResult:
+        def consume(self):
+            return None
+
+        def single(self):
+            return {"deleted_count": 0}
+
+    class FakeTx:
+        def run(self, query, **params):
+            return FakeResult()
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def run(self, query):
+            return FakeResult()
+
+        def execute_write(self, fn, *args):
+            if fn.__name__ == "_upsert_nodes_tx":
+                node_attempts["count"] += 1
+                if node_attempts["count"] == 1:
+                    raise RuntimeError("transient write failure")
+            return fn(FakeTx(), *args)
+
+    class FakeDriver:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def session(self, **kwargs):
+            return FakeSession()
+
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_enabled", True)
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_retry_attempts", 2)
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_retry_backoff_seconds", 0)
+    monkeypatch.setattr(neo4j_graph_service, "_driver", lambda: FakeDriver())
+    monkeypatch.setattr(neo4j_graph_service, "get_head_commit_hash", lambda repo_path: "head-retry")
+
+    with SessionLocal() as db:
+        project = Project(name=_unique("graph-retry-project"), git_repo_path=str(repo), last_synced_commit_hash="head-retry")
+        db.add(project)
+        db.flush()
+        program = Program(project_id=project.id, program_id=_unique("PAY"), program_name="Payment Program")
+        commit = GitCommit(project_id=project.id, commit_hash=uuid.uuid4().hex, message="Update payment")
+        db.add_all([program, commit])
+        db.flush()
+        db.add(ProgramCommitMapping(program_id=program.id, commit_id=commit.id, relevance_score=80, is_related=True))
+        db.commit()
+
+        try:
+            result = sync_project_graph_to_neo4j(db, project.id)
+
+            assert result.status == "completed", result.errors
+            assert result.raw_metadata["retry_count"] == 1
+            assert result.raw_metadata["retry_errors"][0]["operation"] == "upsert_nodes_batch_1"
+            assert node_attempts["count"] == 2
+        finally:
+            remaining = db.get(Project, project.id)
+            if remaining is not None:
+                db.delete(remaining)
+            db.commit()
+
+
+def test_sync_project_graph_reports_partial_failure_metadata(monkeypatch, tmp_path) -> None:
+    init_db()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    class FakeResult:
+        def consume(self):
+            return None
+
+        def single(self):
+            return {"deleted_count": 0}
+
+    class FakeTx:
+        def run(self, query, **params):
+            return FakeResult()
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def run(self, query):
+            return FakeResult()
+
+        def execute_write(self, fn, *args):
+            if fn.__name__ == "_upsert_edges_tx":
+                raise RuntimeError("edge batch failed")
+            return fn(FakeTx(), *args)
+
+    class FakeDriver:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def session(self, **kwargs):
+            return FakeSession()
+
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_enabled", True)
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_retry_attempts", 1)
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_retry_backoff_seconds", 0)
+    monkeypatch.setattr(neo4j_graph_service, "_driver", lambda: FakeDriver())
+    monkeypatch.setattr(neo4j_graph_service, "get_head_commit_hash", lambda repo_path: "head-partial")
+
+    with SessionLocal() as db:
+        project = Project(name=_unique("graph-partial-project"), git_repo_path=str(repo), last_synced_commit_hash="head-partial")
+        db.add(project)
+        db.flush()
+        program = Program(project_id=project.id, program_id=_unique("PAY"), program_name="Payment Program")
+        commit = GitCommit(project_id=project.id, commit_hash=uuid.uuid4().hex, message="Update payment")
+        db.add_all([program, commit])
+        db.flush()
+        db.add(ProgramCommitMapping(program_id=program.id, commit_id=commit.id, relevance_score=80, is_related=True))
+        db.commit()
+
+        try:
+            result = sync_project_graph_to_neo4j(db, project.id)
+
+            assert result.status == "failed"
+            assert "전체 재동기화" in result.summary
+            assert result.raw_metadata["failed_operation"] == "upsert_edges_batch_1"
+            assert result.raw_metadata["completed_node_batch_count"] == result.raw_metadata["node_batch_count"]
+            assert result.raw_metadata["completed_edge_batch_count"] == 0
+            state = db.query(ProjectGraphSyncState).filter(ProjectGraphSyncState.project_id == project.id).one()
+            assert state.status == "failed"
+            assert state.raw_metadata["failed_operation"] == "upsert_edges_batch_1"
         finally:
             remaining = db.get(Project, project.id)
             if remaining is not None:
@@ -440,7 +680,7 @@ def test_incremental_sync_refreshes_changed_source_and_mapping_edges(monkeypatch
         try:
             result = sync_project_graph_incrementally_to_neo4j(db, project.id)
 
-            assert result.status == "completed"
+            assert result.status == "completed", result.errors
             assert captured["clear_source_paths"] == [
                 "src/main/java/com/example/market/payment/service/PaymentService.java"
             ]
