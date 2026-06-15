@@ -97,6 +97,7 @@
 | P1 | AX / AI 검증 | Structured PL Briefing history and validation hardening | Done | 구조화 PL Briefing 이력과 검증 안정화 |
 | P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 |
 | P2 | Docs UX | README preview-first section ordering | Done | README preview-first section ordering |
+| P2 | Docs / Onboarding | Local setup prerequisites guide | Done | Local setup prerequisites guide |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
@@ -1883,6 +1884,22 @@ Checklist:
 - [x] Put Quick Start and sample project guidance before feature detail sections.
 - [x] Keep architecture and Git repository operating model links available after the main workflow entry points.
 - [x] Reorder document links so preview, user guide, feature guide, and setup guide are easier to find first.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run markdown/link sanity checks.
+
+## P2 - Local Setup Prerequisites Guide
+
+Status: Done
+
+Goal:
+Make the local setup guide explicit about what a teammate must install and prepare before running the project locally, including Python, Docker Desktop, Git, LM Studio, and local chat/embedding models.
+
+Checklist:
+
+- [x] Add a local prerequisites checklist to `docs/setup-and-operations.md`.
+- [x] Document Python, Docker Desktop, Git, and optional LM Studio installation checks.
+- [x] Explain mock mode versus local LLM mode before the first run commands.
+- [x] Document recommended LM Studio chat and embedding model names and matching `PGVECTOR_DIMENSION`.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run markdown/link sanity checks.
 

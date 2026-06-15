@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Local setup prerequisites guide
+
+- `docs/setup-and-operations.md`에 로컬 실행 전 준비물 섹션을 추가해 Python 3.11+, Git, Docker Desktop, LM Studio 준비 기준을 실행 전 체크리스트로 정리했습니다.
+- mock 모드와 local LLM 모드의 차이를 설치 전에 이해할 수 있도록 설명하고, 처음에는 mock으로 앱/DB/Git 흐름을 확인한 뒤 실제 AI 품질 검증 단계에서 LM Studio를 연결하도록 안내했습니다.
+- LM Studio에서 준비할 chat 모델 `qwen2.5-coder-7b-instruct`와 embedding 모델 `text-embedding-nomic-embed-text-v1.5`, `.env.local-llm.example`의 `PGVECTOR_DIMENSION=768` 연결 관계를 문서화했습니다.
+- Roadmap에 로컬 준비물 가이드 작업을 등록했습니다.
+- 주요 파일: `docs/setup-and-operations.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `Select-String -Path docs\setup-and-operations.md -Pattern '^## |^### ' -Encoding UTF8`로 새 `로컬 실행 전 준비물` 섹션과 하위 항목 순서 확인; `docs/setup-and-operations.md` 상대 링크 존재 확인 PowerShell script 통과(`setup-and-operations links OK`); `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### README preview-first section ordering
 
 - README 상단 흐름을 `Application Preview`, `빠른 시작`, `샘플 프로젝트`가 먼저 보이도록 재배치했습니다.

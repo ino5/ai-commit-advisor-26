@@ -5,12 +5,99 @@
 ## 실행 환경
 
 - Python 3.11 이상
+- Git
 - Docker Desktop
 - PostgreSQL + pgvector
-- 선택: Neo4j Community Edition
+- Neo4j Community Edition
 - 선택: LM Studio 또는 OpenAI-compatible 로컬 LLM/embedding 서버
 
 Git 저장소 분석은 브라우저 사용자 PC가 아니라 앱 서버에서 접근 가능한 저장소 경로를 기준으로 동작합니다. 사내 서버 운영 모델은 [Git 저장소 운영 모델](git-repository-operating-model.md)을 먼저 확인하세요.
+
+## 로컬 실행 전 준비물
+
+처음 실행할 때는 먼저 mock 모드로 화면, DB, Git 동기화 흐름을 확인하는 것을 권장합니다. 실제 LLM/RAG/Project Chat 품질까지 확인해야 할 때만 LM Studio와 local model을 준비하세요. mock 모드는 외부 AI 서버를 호출하지 않으므로 Python, Git, Docker Desktop만 있으면 시작할 수 있습니다.
+
+### 1. Python 3.11 이상
+
+Python은 Streamlit 앱과 테스트, DB 초기화 스크립트를 실행하는 데 필요합니다. Windows에서는 Python 설치 시 `Add python.exe to PATH`를 체크하는 것이 가장 단순합니다.
+
+설치 확인:
+
+```powershell
+python --version
+python -m pip --version
+```
+
+`python --version`이 3.11 이상을 출력해야 합니다. 여러 Python이 설치되어 있다면 `py -3.11 --version`으로 3.11 runtime이 있는지 확인하고, 가상환경 생성 때도 같은 Python을 사용하세요.
+
+### 2. Git
+
+AI Commit Advisor는 분석 대상 Git 저장소의 commit, diff, 현재 파일을 읽습니다. 앱 코드 저장소뿐 아니라 분석할 프로젝트 저장소도 로컬 또는 앱 서버에서 접근 가능해야 합니다.
+
+설치 확인:
+
+```powershell
+git --version
+```
+
+로컬 검증만 할 때는 샘플 프로젝트 생성 스크립트가 `C:\dev\ai-advisor-sample-shop`에 Git 저장소를 만들어 줍니다. 실제 업무 저장소를 분석할 때는 프로젝트/Git 설정에 등록할 저장소 경로가 현재 앱 실행 환경에서 읽히는지 먼저 확인하세요.
+
+### 3. Docker Desktop
+
+Docker Desktop은 PostgreSQL + pgvector와 Neo4j를 로컬에서 띄우는 데 사용합니다. Windows에서는 Docker Desktop 설치 후 WSL 2 backend가 정상 동작해야 합니다.
+
+설치 확인:
+
+```powershell
+docker --version
+docker compose version
+docker info
+```
+
+`docker info`가 Docker daemon 연결 오류 없이 끝나야 합니다. 처음 실행에서는 PostgreSQL, Neo4j image를 내려받기 때문에 시간이 걸릴 수 있습니다. 회사 네트워크나 proxy 환경에서 image pull이 막히면 Docker Desktop의 proxy 설정을 먼저 확인하세요.
+
+로컬 Python으로 앱을 실행해도 DB와 Neo4j는 Docker Compose로 띄웁니다. Docker만으로 앱까지 함께 실행할 수도 있지만, 개발과 문서 검증은 로컬 Python 실행이 빠릅니다.
+
+### 4. LM Studio와 local model
+
+LM Studio는 실제 AI 분석을 로컬 PC에서 확인할 때만 필요합니다. mock 모드로 화면 흐름을 보는 단계라면 설치하지 않아도 됩니다.
+
+LM Studio를 사용할 때 준비할 모델은 두 종류입니다.
+
+| 용도 | 권장 모델 이름 | `.env` 값 | 비고 |
+|---|---|---|---|
+| Chat / Code Review / Mapping / Project Chat 답변 생성 | `qwen2.5-coder-7b-instruct` | `LLM_MODEL=qwen2.5-coder-7b-instruct` | 코드와 한국어 설명을 함께 다루기 위한 기본 권장값입니다. PC 사양이 낮으면 더 작은 instruct model을 사용할 수 있습니다. |
+| RAG / Project Chat 검색 준비용 embedding | `text-embedding-nomic-embed-text-v1.5` | `EMBEDDING_MODEL=text-embedding-nomic-embed-text-v1.5` | 출력 차원은 기본 768로 맞춥니다. `.env.local-llm.example`도 `PGVECTOR_DIMENSION=768`을 사용합니다. |
+
+LM Studio 준비 순서:
+
+1. [LM Studio](https://lmstudio.ai/)를 설치합니다.
+2. LM Studio의 model 검색에서 `qwen2.5-coder-7b-instruct` 계열 GGUF 모델을 내려받습니다.
+3. embedding 모델로 `text-embedding-nomic-embed-text-v1.5` 또는 `nomic-embed-text-v1.5` 계열 모델을 내려받습니다.
+4. `Developer` 또는 `Local Server` 화면에서 OpenAI-compatible local server를 켭니다.
+5. 서버 주소가 `http://127.0.0.1:1234`인지 확인합니다.
+6. chat 기능을 확인할 때는 chat 모델을 로드하고, 검색 준비를 실행할 때는 embedding 모델이 `/v1/embeddings` 요청에 응답하도록 로드합니다.
+
+LM Studio는 OpenAI-compatible endpoint를 제공하므로 앱은 아래 주소를 사용합니다.
+
+```env
+LLM_BASE_URL=http://127.0.0.1:1234/v1
+EMBEDDING_BASE_URL=http://127.0.0.1:1234/v1
+```
+
+모델 이름은 LM Studio에서 실제로 로드한 model identifier와 `.env` 값이 같아야 합니다. 이름이 다르면 앱의 연결 테스트나 LLM 호출이 model not found 오류로 실패할 수 있습니다.
+
+### 5. 디스크, 메모리, 네트워크 여유
+
+로컬 모델은 파일 크기가 크고 실행 중 메모리를 많이 사용합니다. 7B급 GGUF chat 모델과 embedding 모델을 함께 준비하려면 수 GB 이상의 디스크 여유가 필요하고, 실제 실행 중에는 CPU/GPU와 메모리를 오래 사용할 수 있습니다.
+
+처음에는 다음 순서로 부담을 나누는 것을 권장합니다.
+
+1. `.env.example`의 mock 모드로 앱과 DB 연결을 확인합니다.
+2. 샘플 프로젝트를 생성하고 Git Sync, 프로그램/개발자/계획 업로드 흐름을 확인합니다.
+3. `.env.local-llm.example`로 전환한 뒤 LM Studio 연결 테스트를 실행합니다.
+4. RAG 검색 화면에서 작은 수량으로 검색 준비를 실행합니다.
+5. Project Chat, AI Code Review, Mapping을 필요한 범위만 실행합니다.
 
 ## 설치 및 실행
 
