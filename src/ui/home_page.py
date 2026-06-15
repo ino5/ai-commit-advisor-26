@@ -5,6 +5,7 @@ import streamlit as st
 from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import Developer, GitCommit, Program, ProgramImplementationStatus, Project, RiskFinding
+from src.services.first_run_service import get_first_run_actions
 from src.services.progress_service import get_ai_progress_summary
 from src.ui.project_context import ProjectContext, require_project_context
 
@@ -128,27 +129,6 @@ def _pipeline_status_rows(overview: dict) -> list[dict]:
     ]
 
 
-def _next_actions(overview: dict) -> list[str]:
-    if not overview["git_repo_path"]:
-        return ["프로젝트/Git 설정에서 현재 프로젝트의 앱 서버 Git 경로 등록"]
-    if overview["program_count"] == 0:
-        return ["프로그램 목록에서 현재 프로젝트의 프로그램 목록 등록"]
-    if overview["commit_count"] == 0:
-        return ["Git 동기화에서 현재 프로젝트 커밋 동기화"]
-    if overview["mapping_analyzed_commit_count"] < overview["commit_count"]:
-        return ["Mapping에서 미분석 커밋 처리"]
-    if overview["implementation_status_count"] == 0:
-        return ["Program Detail에서 구현상태 갱신"]
-    if overview["risk_finding_count"] == 0:
-        return ["Risk Analysis 실행"]
-    actions = ["AI Progress에서 계획 대비 차이 확인"]
-    if overview["unresolved_risk_count"] > 0:
-        actions.append("Risk Analysis에서 미해결 항목 정리")
-    else:
-        actions.append("다음 점검까지 계획 변경만 모니터링")
-    return actions
-
-
 def _render_kpis(overview: dict) -> None:
     cols = st.columns(5)
     cols[0].metric("총 프로그램", overview["program_count"])
@@ -236,8 +216,36 @@ def _render_pipeline_status(overview: dict) -> None:
 
 def _render_next_actions(overview: dict) -> None:
     st.subheader("다음 작업")
-    for action in _next_actions(overview):
-        st.info(action)
+    with SessionLocal() as db:
+        actions = get_first_run_actions(db, overview["project_id"])
+
+    action_rows = [
+        {
+            "영역": action.area,
+            "상태": action.status,
+            "현재 값": action.current_value,
+            "다음 조치": action.action,
+        }
+        for action in actions[:6]
+    ]
+    st.dataframe(pd.DataFrame(action_rows), use_container_width=True, hide_index=True)
+    for index, action in enumerate(actions[:3]):
+        message = f"**{action.area}** · `{action.current_value}`\n\n{action.action}"
+        if action.status in {"필수", "확인 필요"}:
+            st.warning(message)
+        elif action.status == "확인됨":
+            st.success(message)
+        else:
+            st.info(message)
+        if action.help_text:
+            st.caption(action.help_text)
+        if action.target_group and action.target_page:
+            if st.button(
+                f"{action.target_page}로 이동",
+                key=f"home_first_run_action_{overview['project_id']}_{index}_{action.target_page}",
+            ):
+                st.session_state["sidebar_navigation"] = {"group": action.target_group, "page": action.target_page}
+                st.rerun()
 
 
 def render_home_page() -> None:

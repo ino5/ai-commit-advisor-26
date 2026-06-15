@@ -61,6 +61,7 @@ flowchart TB
 - Commit Impact, Program Detail, AI Progress 기반 구현 현황 추적
 - Git History 화면에서 프로젝트별 커밋 목록, 변경 파일, diff 탐색
 - 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
+- Home과 AI 운영 현황에서 프로젝트/Git/프로그램/Mapping/소스 근거/검색 준비/Knowledge Graph 상태별 다음 준비 작업 확인
 - Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, 고객가치 참고 지표와 저장형 추세 확인
 - AI 운영 현황에서 LLM/embedding/Neo4j 연결 상태, GraphRAG 준비 상태, AI 분석 근거, 품질 점검, graph impact가 포함된 주간 보고서, 호출 기록 확인
 - Neo4j Knowledge Graph에서 프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인 관계를 저장하고 Graph HEAD 최신성, 선택 node 주변 관계, 영향 경로 탐색. Java parser는 annotation type, static import, nested member type을 반영하고 generated/build/test fixture 제외 경고를 표시합니다.

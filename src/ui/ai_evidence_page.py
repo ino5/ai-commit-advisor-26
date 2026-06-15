@@ -23,6 +23,7 @@ from src.services.ai_evidence_service import (
     summarize_status_rows,
 )
 from src.services.ai_invocation_service import list_ai_invocations, summarize_ai_invocations
+from src.services.first_run_service import get_first_run_actions
 from src.ui.project_context import ProjectContext, project_scoped_key, require_project_context
 
 
@@ -111,6 +112,34 @@ def _render_action_shortcuts(context: ProjectContext) -> None:
         )
 
 
+def _render_first_run_actions(context: ProjectContext) -> None:
+    with SessionLocal() as db:
+        actions = get_first_run_actions(db, context.project_id)
+
+    st.markdown("#### 다음 준비 작업")
+    st.caption("처음 실행하거나 데이터가 비어 있을 때는 아래 순서로 준비 상태를 채우세요.")
+    for index, action in enumerate(actions[:6]):
+        message = f"**{action.area}** · `{action.current_value}`\n\n{action.action}"
+        if action.status in {"필수", "확인 필요"}:
+            st.warning(message)
+        elif action.status == "확인됨":
+            st.success(message)
+        else:
+            st.info(message)
+        if action.help_text:
+            st.caption(action.help_text)
+        if action.target_group and action.target_page:
+            if st.button(
+                f"{action.target_page}로 이동",
+                key=project_scoped_key(context.project_id, f"first_run_action_{index}_{action.target_page}"),
+            ):
+                st.session_state["sidebar_navigation"] = {
+                    "group": action.target_group,
+                    "page": action.target_page,
+                }
+                st.rerun()
+
+
 def _render_status_focus(title: str, rows, *, action_buttons: bool = False, key_prefix: str = "status_focus") -> None:
     summary = summarize_status_rows(rows)
     st.markdown(f"#### {title}")
@@ -176,6 +205,8 @@ def _render_ai_operations_status(project_id: int) -> None:
 
 def _render_readiness(context: ProjectContext) -> None:
     _render_action_shortcuts(context)
+    st.divider()
+    _render_first_run_actions(context)
     st.divider()
     with SessionLocal() as db:
         rows = get_ai_readiness_rows(db, context.project_id)

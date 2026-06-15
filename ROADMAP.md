@@ -122,6 +122,7 @@
 | P3 | Source Analysis | Source parser accuracy expansion | Done | Source parser accuracy expansion |
 | P3 | Project Chat UX | Graph-aware question templates | Done | Graph-aware Project Chat question templates |
 | P3 | Reporting | Graph-aware weekly report | Done | Graph-aware weekly report |
+| P3 | Product UX | First-run and empty-state polish | Done | First-run and empty-state preparation guide |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -364,6 +365,26 @@ Checklist:
 - [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
 - [x] Compile/test/UI verification을 실행한다.
 
+## P3 - First-Run And Empty-State Polish
+
+Status: Done
+
+Goal:
+기능이 많아진 앱을 처음 보는 사람이 다음 행동을 잃지 않도록 빈 상태와 복구 안내를 정리한다.
+
+Rationale:
+Project, Git, 프로그램, Mapping, vector, Neo4j 중 하나라도 비어 있으면 여러 화면이 각각 다른 경고를 보여준다. 새 사용자는 어떤 순서로 조치해야 하는지 알기 어렵고, AI 운영 현황도 준비 상태는 보이지만 처음 실행 흐름을 한눈에 묶어주지는 않는다. Home과 AI 운영 현황에서 같은 기준의 다음 준비 작업을 보여줘 처음 등록부터 GraphRAG 준비까지 이어지는 경로를 더 분명하게 만든다.
+
+Checklist:
+
+- [x] 프로젝트 없음, Git 없음, 프로그램 없음, Mapping 없음, source/vector 없음, Neo4j 미연결 상태별 안내를 계산한다.
+- [x] Home의 `다음 작업`을 상태/현재 값/이동 대상이 있는 준비 작업 목록으로 개선한다.
+- [x] AI 운영 현황의 운영 준비 탭에 같은 준비 작업 목록과 화면 이동 action을 추가한다.
+- [x] 설정 문제 발생 시 관련 setup 문서나 화면으로 이어지는 설명을 제공한다.
+- [x] focused tests를 추가한다.
+- [x] 사용자-facing/architecture/engineering decision documentation과 `AI_CHANGELOG.md`를 갱신한다.
+- [x] Compile/test/UI verification을 실행한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -372,19 +393,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - First-Run And Empty-State Polish
-
-Goal:
-기능이 많아진 앱을 처음 보는 사람이 다음 행동을 잃지 않도록 빈 상태와 복구 안내를 정리한다.
-
-Expected scope:
-
-- 프로젝트 없음, Git 없음, 프로그램 없음, mapping 없음, vector 없음, Neo4j 미연결 상태별 안내.
-- Home과 AI 운영 현황에서 다음 recommended action을 더 구체적으로 표시.
-- Application Preview와 실제 메뉴 상태가 어긋나지 않도록 screenshot 후보를 주기적으로 점검.
-- 설정 문제 발생 시 관련 setup 문서/화면/action으로 연결한다.
 
 ## P1 - AI 검증 Trace View
 

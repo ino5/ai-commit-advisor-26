@@ -248,6 +248,8 @@ Git 동기화 화면은 Repo HEAD, DB sync commit, branch, upstream, ahead/behin
 
 Git Sync가 끝난 뒤에는 같은 화면의 `동기화 후 다음 작업`을 확인합니다. 이 패널은 현재 DB와 source index, embedding, Mapping, Risk, Knowledge Graph 상태를 읽어 권장 순서를 제시합니다. Git Sync 자체는 embedding API나 LLM을 호출하지 않으므로, 검색 준비·Mapping처럼 비용이나 local model 부하가 있는 작업은 각 화면으로 이동한 뒤 사용자가 명시적으로 실행합니다.
 
+처음 프로젝트를 등록했거나 화면이 비어 보이면 `Home`과 `AI 운영 현황 > 운영 준비`의 `다음 준비 작업`을 먼저 확인하세요. 이 영역은 프로젝트/Git/프로그램/Mapping/소스 근거/검색 준비/Knowledge Graph 상태를 읽어 현재 값과 이동할 화면을 함께 보여줍니다.
+
 Windows 개발 PC의 Docker 실행에서는 `C:\dev\ai-advisor-sample-shop` 같은 host 경로가 컨테이너 안에 그대로 존재하지 않습니다.
 
 `docker-compose.yml`은 기본적으로 Windows host의 `C:/dev`를 app 컨테이너의 `/host-dev`에 읽기 전용으로 mount합니다.

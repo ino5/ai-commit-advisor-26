@@ -45,6 +45,39 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - First-run 준비 작업은 Home과 AI 운영 현황에서 같은 service로 계산한다
+
+### 배경
+
+프로젝트가 막 등록되었거나 데이터가 일부 비어 있으면 Home, Git 동기화, RAG, Project Chat, Knowledge Graph, AI 운영 현황이 각각 다른 안내를 보여줍니다. 기능이 많아질수록 사용자는 어떤 순서로 프로젝트/Git/프로그램/Mapping/source/vector/graph 준비를 채워야 하는지 잃기 쉽습니다.
+
+### 결정
+
+`first_run_service.py`를 추가해 프로젝트/Git/프로그램/Mapping/source/vector/Knowledge Graph 상태를 DB와 graph freshness 기준으로 계산하고, Home과 `AI 운영 현황 > 운영 준비`가 같은 `FirstRunAction` 목록을 사용하게 합니다. 각 action은 영역, 상태, 현재 값, 다음 조치, 이동할 메뉴, 보조 설명을 함께 가집니다.
+
+### 이유
+
+- Home은 첫 진입 화면이고, AI 운영 현황은 AI 실행 전 준비 상태를 점검하는 화면이므로 같은 준비 순서를 보여줘야 혼란이 줄어듭니다.
+- 화면마다 직접 조건문을 중복하면 안내 문구와 action 순서가 어긋나기 쉽습니다.
+- Neo4j를 사용하지 않는 환경도 정상 흐름일 수 있으므로, Knowledge Graph action은 실패처럼 단정하지 않고 GraphRAG가 필요할 때 켜야 하는 준비 작업으로 안내합니다.
+
+### 검토한 대안
+
+- Home에만 안내 추가: 첫 화면은 좋아지지만 AI 운영 현황에서 준비 상태와 실행 action이 분리됩니다.
+- AI 운영 현황 readiness row에만 통합: 현재 readiness는 pass/warn/fail 점검표라서 신규 사용자의 순차 onboarding 문맥을 담기 어렵습니다.
+- 각 화면의 기존 빈 상태 문구만 개선: 범위는 작지만 전체 준비 순서가 보이지 않습니다.
+
+### 영향과 tradeoff
+
+준비 작업 목록은 제품 흐름을 안내하는 보조 layer이며, 실제 실행은 여전히 각 화면의 명시 버튼을 통해 이뤄집니다. Project Chat/RAG source freshness처럼 더 세밀한 상태는 각 전용 화면에서 확인해야 하므로, 이 목록은 “처음 무엇을 눌러야 하는가”에 집중합니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `First-run and empty-state preparation guide`
+- `ROADMAP.md`의 `P3 - First-Run And Empty-State Polish`
+- `docs/feature-guide.md`
+- `docs/setup-and-operations.md`
+
 ## 2026-06-15 - 주간 보고서는 저장된 Knowledge Graph와 GraphRAG 사용 흔적을 함께 묶는다
 
 ### 배경

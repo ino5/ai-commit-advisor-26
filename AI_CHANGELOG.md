@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### First-run and empty-state preparation guide
+
+- `first_run_service.py`를 추가해 프로젝트/Git/프로그램/Mapping/source/vector/Knowledge Graph 준비 상태를 공통 `FirstRunAction` 목록으로 계산하도록 했습니다.
+- Home의 `다음 작업`을 단순 문구에서 상태, 현재 값, 다음 조치, 이동 버튼, 보조 설명이 있는 준비 작업 목록으로 바꿨습니다.
+- `AI 운영 현황 > 운영 준비` 탭에 같은 `다음 준비 작업` 영역을 추가해 처음 실행하거나 데이터가 비어 있을 때 어떤 화면에서 상태를 채워야 하는지 바로 이동할 수 있게 했습니다.
+- README, 기능 가이드, Application Preview, AI 기술 개요, 아키텍처, 운영 가이드, engineering decision, Roadmap을 first-run/empty-state 안내 기준으로 갱신했습니다.
+- 주요 파일: `src/services/first_run_service.py`, `src/ui/home_page.py`, `src/ui/ai_evidence_page.py`, `tests/test_first_run_service.py`, `README.md`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\first_run_service.py src\ui\home_page.py src\ui\ai_evidence_page.py tests\test_first_run_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_first_run_service.py tests\test_ai_evidence_service.py tests\test_documentation_images.py -q` 10개 테스트 통과; Browser로 `http://127.0.0.1:8513/?project_id=4`의 Home에서 `다음 작업`, `Mapping`, `Knowledge Graph`, 이동 버튼 표시와 `StreamlitAPIException`/`Traceback` 미표시 확인; 같은 URL의 `AI 운영 현황 > 운영 준비`에서 `다음 준비 작업`, Mapping/Knowledge Graph 안내, 이동 버튼 표시와 예외 미표시 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 156개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Graph-aware weekly report
 
 - `AI 운영 현황 > 주간 보고서` Markdown에 Knowledge Graph freshness, node/edge summary, class/import/impact path 요약, 주요 `program -> commit -> file -> class` path table을 추가했습니다.
