@@ -3,14 +3,16 @@ from __future__ import annotations
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from src.db.models import CommitFile, GitCommit, Program, ProgramCommitMapping, Project
+from src.db.models import CommitFile, GitCommit, Program, ProgramCommitMapping, Project, ProjectGraphSyncState
 from src.rag.chunker import _is_source_file, _read_text_file
+from src.services.git_service import get_head_commit_hash
 from src.utils.config import settings
 from src.utils.repo_path import resolve_repo_path
 
@@ -48,6 +50,8 @@ GRAPH_SEED_STOPWORDS = {
     "있는",
     "있어",
 }
+SOURCE_GRAPH_CHANGE_TYPES = {"Added", "Modified", "Copied", "Renamed"}
+SOURCE_GRAPH_CLEAR_TYPES = {"Added", "Modified", "Copied", "Deleted", "Renamed"}
 
 
 @dataclass(frozen=True)
@@ -97,6 +101,7 @@ class GraphEdge:
             "to_node_id": self.to_node_id,
             "project_id": project_id,
             "edge_type": self.edge_type,
+            "graph_scope": self.properties.get("graph_scope") or _graph_scope_for_edge(self.edge_type),
             "weight": float(self.weight),
             **_neo4j_properties(self.properties),
         }
@@ -161,6 +166,22 @@ class Neo4jSyncResult:
 
 
 @dataclass(frozen=True)
+class Neo4jGraphFreshness:
+    status: str
+    summary: str
+    repo_head_hash: str | None = None
+    db_sync_head_hash: str | None = None
+    graph_sync_head_hash: str | None = None
+    synced_at: datetime | None = None
+    sync_mode: str | None = None
+    node_count: int = 0
+    edge_count: int = 0
+    last_commit_db_id: int | None = None
+    last_mapping_updated_at: datetime | None = None
+    errors: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class Neo4jGraphPreview:
     status: str
     summary: str
@@ -184,6 +205,16 @@ def _node_id(project_id: int, node_type: str, key: str | int) -> str:
 
 def _edge_key(edge: GraphEdge) -> tuple[str, str, str]:
     return edge.from_node_id, edge.edge_type, edge.to_node_id
+
+
+def _graph_scope_for_edge(edge_type: str) -> str:
+    if edge_type in {"CONTAINS_CLASS", "IMPORTS_CLASS"}:
+        return "current_source"
+    if edge_type in {"HAS_COMMIT", "TOUCHES_FILE", "TOUCHES_DOMAIN"}:
+        return "historical_git"
+    if edge_type == "MAPPED_TO_COMMIT":
+        return "analysis"
+    return "project_structure"
 
 
 def _clean_key(value: str | None, fallback: str) -> str:
@@ -360,6 +391,252 @@ def _source_java_symbols(repo_path: str | None) -> tuple[list[JavaSymbol], list[
         relative_path = path.relative_to(repo_root).as_posix()
         symbols.extend(extract_java_symbols(relative_path, text))
     return symbols, errors
+
+
+def _normalize_file_path(file_path: str | None) -> str:
+    return (file_path or "").replace("\\", "/").strip()
+
+
+def _is_java_path(file_path: str | None) -> bool:
+    return _normalize_file_path(file_path).lower().endswith(".java")
+
+
+def _renamed_old_path(file: CommitFile) -> str | None:
+    diff_text = file.diff_text or ""
+    match = re.search(r"(?m)^rename from\s+(.+)$", diff_text)
+    if match:
+        return _normalize_file_path(match.group(1))
+    diff_match = re.search(r"(?m)^diff --git a/(.+?) b/(.+)$", diff_text)
+    if diff_match:
+        old_path = _normalize_file_path(diff_match.group(1))
+        new_path = _normalize_file_path(diff_match.group(2))
+        if old_path and old_path != new_path:
+            return old_path
+    return None
+
+
+def _changed_source_clear_paths(files: list[CommitFile]) -> list[str]:
+    paths: set[str] = set()
+    for file in files:
+        change_type = file.change_type or "Modified"
+        if change_type not in SOURCE_GRAPH_CLEAR_TYPES:
+            continue
+        file_path = _normalize_file_path(file.file_path)
+        if _is_java_path(file_path):
+            paths.add(file_path)
+        if change_type == "Renamed":
+            old_path = _renamed_old_path(file)
+            if _is_java_path(old_path):
+                paths.add(_normalize_file_path(old_path))
+    return sorted(paths)
+
+
+def _changed_source_parse_paths(files: list[CommitFile]) -> list[str]:
+    paths: set[str] = set()
+    for file in files:
+        change_type = file.change_type or "Modified"
+        if change_type not in SOURCE_GRAPH_CHANGE_TYPES:
+            continue
+        file_path = _normalize_file_path(file.file_path)
+        if _is_java_path(file_path):
+            paths.add(file_path)
+    return sorted(paths)
+
+
+def _source_java_symbols_for_paths(repo_path: str | None, file_paths: list[str]) -> tuple[list[JavaSymbol], list[str]]:
+    if not file_paths:
+        return [], []
+    if not repo_path:
+        return [], ["프로젝트에 앱 서버 Git 저장소 경로가 등록되지 않았습니다."]
+    try:
+        repo_root = resolve_repo_path(repo_path)
+    except Exception as exc:
+        return [], [f"Git 저장소 경로 확인 실패: {exc}"]
+    if not repo_root.exists():
+        return [], [f"Git 저장소 경로가 존재하지 않습니다: {repo_root}"]
+
+    symbols: list[JavaSymbol] = []
+    errors: list[str] = []
+    for file_path in file_paths:
+        absolute_path = repo_root / file_path
+        if not absolute_path.exists():
+            continue
+        if not absolute_path.is_file() or not _is_source_file(absolute_path, repo_root):
+            continue
+        text = _read_text_file(absolute_path)
+        if text is None:
+            errors.append(f"읽을 수 없는 Java 파일: {absolute_path}")
+            continue
+        symbols.extend(extract_java_symbols(file_path, text))
+    return symbols, errors
+
+
+def _project_repo_head(project: Project) -> str | None:
+    if not project.git_repo_path:
+        return None
+    return get_head_commit_hash(project.git_repo_path)
+
+
+def _max_project_commit_id(db: Session, project_id: int) -> int | None:
+    return db.query(func.max(GitCommit.id)).filter(GitCommit.project_id == project_id).scalar()
+
+
+def _max_project_mapping_updated_at(db: Session, project_id: int) -> datetime | None:
+    return (
+        db.query(func.max(ProgramCommitMapping.updated_at))
+        .join(Program, ProgramCommitMapping.program_id == Program.id)
+        .filter(Program.project_id == project_id)
+        .scalar()
+    )
+
+
+def _get_graph_sync_state(db: Session, project_id: int) -> ProjectGraphSyncState | None:
+    return db.query(ProjectGraphSyncState).filter(ProjectGraphSyncState.project_id == project_id).one_or_none()
+
+
+def _get_or_create_graph_sync_state(db: Session, project_id: int) -> ProjectGraphSyncState:
+    state = _get_graph_sync_state(db, project_id)
+    if state is not None:
+        return state
+    state = ProjectGraphSyncState(project_id=project_id)
+    db.add(state)
+    db.flush()
+    return state
+
+
+def _is_after(left: datetime | None, right: datetime | None) -> bool:
+    if left is None:
+        return False
+    if right is None:
+        return True
+    try:
+        return left > right
+    except TypeError:
+        return left.replace(tzinfo=None) > right.replace(tzinfo=None)
+
+
+def _record_graph_sync_attempt(
+    db: Session,
+    project_id: int,
+    mode: str,
+    result: Neo4jSyncResult,
+    *,
+    raw_metadata: dict[str, Any] | None = None,
+) -> None:
+    if result.status == "skipped":
+        return
+    project = db.get(Project, project_id)
+    if project is None:
+        return
+
+    state = _get_or_create_graph_sync_state(db, project_id)
+    now = datetime.now(timezone.utc)
+    repo_head = _project_repo_head(project)
+    db_sync_head = project.last_synced_commit_hash
+    last_commit_db_id = _max_project_commit_id(db, project_id)
+    last_mapping_updated_at = _max_project_mapping_updated_at(db, project_id)
+
+    if result.status == "completed":
+        state.repo_head_hash = repo_head
+        state.db_sync_head_hash = db_sync_head
+        state.synced_at = now
+        state.node_count = int(result.node_count or 0)
+        state.edge_count = int(result.edge_count or 0)
+        state.last_commit_db_id = last_commit_db_id
+        state.last_mapping_updated_at = last_mapping_updated_at
+        state.error_summary = None
+    else:
+        state.error_summary = "\n".join(result.errors[:3]) or result.summary
+
+    state.sync_mode = mode
+    state.status = result.status
+    state.raw_metadata = {
+        **(state.raw_metadata or {}),
+        "last_attempted_at": now.isoformat(),
+        "last_attempt_mode": mode,
+        "last_attempt_status": result.status,
+        "last_attempt_summary": result.summary,
+        "last_attempt_errors": result.errors,
+        "last_attempt_node_count": int(result.node_count or 0),
+        "last_attempt_edge_count": int(result.edge_count or 0),
+        **(raw_metadata or {}),
+    }
+    db.commit()
+
+
+def get_project_graph_freshness(db: Session, project_id: int) -> Neo4jGraphFreshness:
+    project = db.get(Project, project_id)
+    if project is None:
+        return Neo4jGraphFreshness("failed", "프로젝트를 찾을 수 없습니다.")
+
+    repo_head = _project_repo_head(project)
+    db_sync_head = project.last_synced_commit_hash
+    state = _get_graph_sync_state(db, project_id)
+    if not settings.neo4j_enabled:
+        return Neo4jGraphFreshness(
+            "skipped",
+            "Neo4j가 비활성화되어 graph 상태를 확인하지 않습니다.",
+            repo_head_hash=repo_head,
+            db_sync_head_hash=db_sync_head,
+            graph_sync_head_hash=state.repo_head_hash if state else None,
+            synced_at=state.synced_at if state else None,
+            sync_mode=state.sync_mode if state else None,
+            node_count=state.node_count if state else 0,
+            edge_count=state.edge_count if state else 0,
+            last_commit_db_id=state.last_commit_db_id if state else None,
+            last_mapping_updated_at=state.last_mapping_updated_at if state else None,
+        )
+
+    if state is None:
+        return Neo4jGraphFreshness(
+            "missing",
+            "Neo4j graph를 아직 저장하지 않았습니다. 전체 재동기화를 먼저 실행하세요.",
+            repo_head_hash=repo_head,
+            db_sync_head_hash=db_sync_head,
+        )
+
+    if state.status == "failed":
+        return Neo4jGraphFreshness(
+            "failed",
+            f"마지막 graph sync가 실패했습니다: {state.error_summary or '오류 내용을 확인하세요.'}",
+            repo_head_hash=repo_head,
+            db_sync_head_hash=db_sync_head,
+            graph_sync_head_hash=state.repo_head_hash,
+            synced_at=state.synced_at,
+            sync_mode=state.sync_mode,
+            node_count=state.node_count,
+            edge_count=state.edge_count,
+            last_commit_db_id=state.last_commit_db_id,
+            last_mapping_updated_at=state.last_mapping_updated_at,
+            errors=[state.error_summary] if state.error_summary else [],
+        )
+
+    current_mapping_updated_at = _max_project_mapping_updated_at(db, project_id)
+    stale_reasons: list[str] = []
+    if repo_head and state.repo_head_hash != repo_head:
+        stale_reasons.append("Repo HEAD가 graph sync 이후 변경되었습니다.")
+    if db_sync_head and state.db_sync_head_hash != db_sync_head:
+        stale_reasons.append("DB Git Sync HEAD가 graph sync 이후 변경되었습니다.")
+    if _is_after(current_mapping_updated_at, state.last_mapping_updated_at):
+        stale_reasons.append("프로그램-커밋 매핑이 graph sync 이후 변경되었습니다.")
+    if project.git_repo_path and repo_head is None:
+        stale_reasons.append("앱 서버 Git 저장소의 현재 HEAD를 확인하지 못했습니다.")
+
+    status = "stale" if stale_reasons else "latest"
+    summary = " / ".join(stale_reasons) if stale_reasons else "Neo4j graph가 현재 DB/Git 기준과 일치합니다."
+    return Neo4jGraphFreshness(
+        status,
+        summary,
+        repo_head_hash=repo_head,
+        db_sync_head_hash=db_sync_head,
+        graph_sync_head_hash=state.repo_head_hash,
+        synced_at=state.synced_at,
+        sync_mode=state.sync_mode,
+        node_count=state.node_count,
+        edge_count=state.edge_count,
+        last_commit_db_id=state.last_commit_db_id,
+        last_mapping_updated_at=current_mapping_updated_at or state.last_mapping_updated_at,
+    )
 
 
 def build_project_graph_payload(db: Session, project_id: int) -> GraphPayload:
@@ -615,6 +892,194 @@ def build_project_graph_payload(db: Session, project_id: int) -> GraphPayload:
     )
 
 
+def _changed_file_stats(files: list[CommitFile], source_clear_paths: list[str]) -> dict[str, Any]:
+    change_counts = Counter(file.change_type or "Modified" for file in files)
+    java_file_count = sum(1 for file in files if _is_java_path(file.file_path))
+    return {
+        "changed_file_count": len(files),
+        "java_file_count": java_file_count,
+        "non_source_file_count": max(0, len(files) - java_file_count),
+        "source_clear_path_count": len(source_clear_paths),
+        "change_counts": dict(change_counts),
+    }
+
+
+def _build_incremental_project_graph_payload(
+    db: Session,
+    project: Project,
+    changed_commits: list[GitCommit],
+) -> tuple[GraphPayload, list[str], dict[str, Any]]:
+    nodes: dict[str, GraphNode] = {}
+    edges: dict[tuple[str, str, str], GraphEdge] = {}
+    errors: list[str] = []
+    project_id = int(project.id)
+
+    def add_node(node: GraphNode) -> None:
+        nodes[node.node_id] = node
+
+    def add_edge(edge: GraphEdge) -> None:
+        edges[_edge_key(edge)] = edge
+
+    project_node_id = _node_id(project_id, "project", project.id)
+    add_node(GraphNode(project_node_id, "project", project.name, {"project_id": project.id, "git_repo_path": project.git_repo_path}))
+
+    def ensure_domain(domain: str) -> str:
+        domain_key = _clean_key(domain.lower(), "unknown")
+        node_id = _node_id(project_id, "domain", domain_key)
+        add_node(GraphNode(node_id, "domain", domain_key, {"domain": domain_key}))
+        add_edge(GraphEdge(project_node_id, node_id, "HAS_DOMAIN"))
+        return node_id
+
+    programs = (
+        db.query(Program)
+        .options(joinedload(Program.mappings).joinedload(ProgramCommitMapping.commit))
+        .filter(Program.project_id == project_id)
+        .all()
+    )
+    changed_files = [file for commit in changed_commits for file in (commit.files or [])]
+    clear_source_paths = _changed_source_clear_paths(changed_files)
+    parse_source_paths = _changed_source_parse_paths(changed_files)
+    stats = _changed_file_stats(changed_files, clear_source_paths)
+    stats["changed_commit_count"] = len(changed_commits)
+
+    program_nodes: dict[int, str] = {}
+    commit_nodes: dict[int, str] = {}
+    file_nodes: dict[str, str] = {}
+
+    for program in programs:
+        program_node_id = _node_id(project_id, "program", program.id)
+        program_nodes[int(program.id)] = program_node_id
+        domain = _clean_key(program.module or program.screen_name or program.program_name, f"program-{program.id}").lower()
+        domain_node_id = ensure_domain(domain)
+        add_node(
+            GraphNode(
+                program_node_id,
+                "program",
+                f"{program.program_id or '-'} {program.program_name}".strip(),
+                {
+                    "program_db_id": program.id,
+                    "program_id": program.program_id,
+                    "program_name": program.program_name,
+                    "module": program.module,
+                    "status": program.status,
+                    "progress_rate": program.progress_rate,
+                },
+            )
+        )
+        add_edge(GraphEdge(project_node_id, program_node_id, "HAS_PROGRAM"))
+        add_edge(GraphEdge(domain_node_id, program_node_id, "OWNS_PROGRAM"))
+
+    def add_commit_node(commit: GitCommit) -> str:
+        commit_node_id = _node_id(project_id, "commit", commit.commit_hash)
+        commit_nodes[int(commit.id)] = commit_node_id
+        add_node(
+            GraphNode(
+                commit_node_id,
+                "commit",
+                f"{_short_commit(commit.commit_hash)} {commit.message or ''}".strip(),
+                {
+                    "commit_db_id": commit.id,
+                    "commit_hash": commit.commit_hash,
+                    "message": commit.message,
+                    "author": commit.author_name or commit.author,
+                    "committed_at": commit.committed_at,
+                    "mapping_analysis_status": commit.mapping_analysis_status,
+                },
+            )
+        )
+        add_edge(GraphEdge(project_node_id, commit_node_id, "HAS_COMMIT"))
+        return commit_node_id
+
+    for commit in changed_commits:
+        commit_node_id = add_commit_node(commit)
+        for file in commit.files or []:
+            file_path = _normalize_file_path(file.file_path)
+            if not file_path:
+                continue
+            file_node_id = file_nodes.setdefault(file_path, _node_id(project_id, "file", file_path))
+            file_domain = _domain_from_path(file_path)
+            domain_node_id = ensure_domain(file_domain)
+            add_node(GraphNode(file_node_id, "file", file_path, {"file_path": file_path, "domain": file_domain}))
+            add_edge(GraphEdge(project_node_id, file_node_id, "HAS_FILE"))
+            add_edge(GraphEdge(domain_node_id, file_node_id, "HAS_FILE"))
+            add_edge(
+                GraphEdge(
+                    commit_node_id,
+                    file_node_id,
+                    "TOUCHES_FILE",
+                    properties={"change_type": file.change_type, "commit_file_id": file.id},
+                )
+            )
+            add_edge(GraphEdge(commit_node_id, domain_node_id, "TOUCHES_DOMAIN"))
+
+    for program in programs:
+        program_node_id = program_nodes.get(int(program.id))
+        if not program_node_id:
+            continue
+        for mapping in program.mappings:
+            if mapping.is_related is False or mapping.commit is None:
+                continue
+            commit_node_id = commit_nodes.get(int(mapping.commit_id)) or add_commit_node(mapping.commit)
+            add_edge(
+                GraphEdge(
+                    program_node_id,
+                    commit_node_id,
+                    "MAPPED_TO_COMMIT",
+                    weight=float(mapping.relevance_score or 0),
+                    properties={
+                        "relevance_score": mapping.relevance_score,
+                        "implementation_status": mapping.implementation_status,
+                        "reason": mapping.reason,
+                    },
+                )
+            )
+
+    symbols, symbol_errors = _source_java_symbols_for_paths(project.git_repo_path, parse_source_paths)
+    errors.extend(symbol_errors)
+    for symbol in symbols:
+        file_path = _normalize_file_path(symbol.file_path)
+        file_node_id = file_nodes.setdefault(file_path, _node_id(project_id, "file", file_path))
+        class_node_id = _node_id(project_id, "class", symbol.qualified_name)
+        domain_node_id = ensure_domain(symbol.domain)
+        add_node(GraphNode(file_node_id, "file", file_path, {"file_path": file_path, "domain": symbol.domain}))
+        add_node(
+            GraphNode(
+                class_node_id,
+                "class",
+                symbol.qualified_name,
+                {
+                    "class_name": symbol.class_name,
+                    "qualified_name": symbol.qualified_name,
+                    "kind": symbol.kind,
+                    "package": symbol.package,
+                    "file_path": file_path,
+                    "domain": symbol.domain,
+                },
+            )
+        )
+        add_edge(GraphEdge(project_node_id, file_node_id, "HAS_FILE"))
+        add_edge(GraphEdge(domain_node_id, file_node_id, "HAS_FILE"))
+        add_edge(GraphEdge(domain_node_id, class_node_id, "CONTAINS_CLASS"))
+        add_edge(GraphEdge(file_node_id, class_node_id, "CONTAINS_CLASS"))
+        for imported in symbol.imports:
+            add_edge(GraphEdge(class_node_id, _node_id(project_id, "class", imported), "IMPORTS_CLASS"))
+
+    return (
+        GraphPayload(
+            project_id=project_id,
+            project_name=project.name,
+            nodes=list(nodes.values()),
+            edges=list(edges.values()),
+            domain_rows=[],
+            impact_rows=[],
+            class_import_rows=[],
+            errors=errors,
+        ),
+        clear_source_paths,
+        stats,
+    )
+
+
 def _driver():
     if GraphDatabase is None:
         raise RuntimeError("neo4j Python driver is not installed. Run pip install -r requirements.txt.")
@@ -667,7 +1132,9 @@ def _clear_project_graph_tx(tx, project_id: int) -> int:
 def sync_project_graph_to_neo4j(db: Session, project_id: int) -> Neo4jSyncResult:
     payload = build_project_graph_payload(db, project_id)
     if payload.errors and not payload.nodes:
-        return Neo4jSyncResult("failed", "Neo4j 동기화 payload 생성 실패", errors=payload.errors)
+        result = Neo4jSyncResult("failed", "Neo4j 동기화 payload 생성 실패", errors=payload.errors)
+        _record_graph_sync_attempt(db, project_id, "full", result, raw_metadata={"payload_errors": payload.errors})
+        return result
     if not settings.neo4j_enabled:
         return Neo4jSyncResult(
             "skipped",
@@ -687,7 +1154,7 @@ def sync_project_graph_to_neo4j(db: Session, project_id: int) -> Neo4jSyncResult
                 _ensure_neo4j_schema(session)
                 session.execute_write(_sync_project_graph_tx, project_id, nodes, edges)
     except Exception as exc:
-        return Neo4jSyncResult(
+        result = Neo4jSyncResult(
             "failed",
             "Neo4j graph 동기화 실패",
             node_count=len(nodes),
@@ -696,8 +1163,10 @@ def sync_project_graph_to_neo4j(db: Session, project_id: int) -> Neo4jSyncResult
             edge_counts=dict(payload.edge_counts),
             errors=[*payload.errors, str(exc)],
         )
+        _record_graph_sync_attempt(db, project_id, "full", result, raw_metadata={"payload_errors": payload.errors})
+        return result
 
-    return Neo4jSyncResult(
+    result = Neo4jSyncResult(
         "completed",
         f"Neo4j에 node {len(nodes)}개, edge {len(edges)}개를 동기화했습니다.",
         node_count=len(nodes),
@@ -706,6 +1175,113 @@ def sync_project_graph_to_neo4j(db: Session, project_id: int) -> Neo4jSyncResult
         edge_counts=dict(payload.edge_counts),
         errors=payload.errors,
     )
+    _record_graph_sync_attempt(db, project_id, "full", result, raw_metadata={"payload_errors": payload.errors})
+    return result
+
+
+def sync_project_graph_incrementally_to_neo4j(db: Session, project_id: int) -> Neo4jSyncResult:
+    project = db.get(Project, project_id)
+    if project is None:
+        return Neo4jSyncResult("failed", "프로젝트를 찾을 수 없습니다.")
+    if not settings.neo4j_enabled:
+        return Neo4jSyncResult("skipped", "Neo4j가 비활성화되어 증분 동기화하지 않았습니다. NEO4J_ENABLED=true로 설정하세요.")
+
+    state = _get_graph_sync_state(db, project_id)
+    if state is None or state.last_commit_db_id is None:
+        return Neo4jSyncResult("skipped", "증분 동기화 기준이 없습니다. 먼저 전체 Neo4j 동기화를 실행하세요.")
+
+    repo_head = _project_repo_head(project)
+    db_sync_head = project.last_synced_commit_hash
+    if repo_head and db_sync_head and repo_head != db_sync_head:
+        return Neo4jSyncResult(
+            "skipped",
+            "앱 서버 저장소 HEAD와 DB Git Sync HEAD가 다릅니다. 먼저 Git 동기화를 실행한 뒤 graph를 갱신하세요.",
+        )
+
+    changed_commits = (
+        db.query(GitCommit)
+        .options(joinedload(GitCommit.files))
+        .filter(GitCommit.project_id == project_id, GitCommit.id > state.last_commit_db_id)
+        .order_by(GitCommit.id.asc())
+        .all()
+    )
+    current_mapping_updated_at = _max_project_mapping_updated_at(db, project_id)
+    mapping_changed = _is_after(current_mapping_updated_at, state.last_mapping_updated_at)
+    if (
+        not changed_commits
+        and not mapping_changed
+        and (not repo_head or state.repo_head_hash == repo_head)
+        and (not db_sync_head or state.db_sync_head_hash == db_sync_head)
+    ):
+        return Neo4jSyncResult(
+            "skipped",
+            "Neo4j graph가 이미 최신 상태입니다.",
+            node_count=state.node_count,
+            edge_count=state.edge_count,
+        )
+
+    payload, clear_source_paths, stats = _build_incremental_project_graph_payload(db, project, changed_commits)
+    if payload.errors and stats.get("source_clear_path_count", 0) > 0:
+        result = Neo4jSyncResult(
+            "failed",
+            "Neo4j 증분 동기화 payload 생성 실패",
+            node_count=len(payload.nodes),
+            edge_count=len(payload.edges),
+            node_counts=dict(payload.node_counts),
+            edge_counts=dict(payload.edge_counts),
+            errors=payload.errors,
+        )
+        _record_graph_sync_attempt(db, project_id, "incremental", result, raw_metadata=stats)
+        return result
+
+    nodes = [node.to_neo4j(project_id) for node in payload.nodes]
+    edges = [edge.to_neo4j(project_id) for edge in payload.edges]
+    try:
+        with _driver() as driver:
+            with driver.session(**_session_kwargs()) as session:
+                _ensure_neo4j_schema(session)
+                write_counts = session.execute_write(
+                    _sync_project_graph_incremental_tx,
+                    project_id,
+                    clear_source_paths,
+                    nodes,
+                    edges,
+                )
+                node_counts, edge_counts = session.execute_read(_read_project_summary_tx, project_id)
+    except Exception as exc:
+        result = Neo4jSyncResult(
+            "failed",
+            "Neo4j graph 증분 동기화 실패. 전체 재동기화를 실행해 복구할 수 있습니다.",
+            node_count=len(nodes),
+            edge_count=len(edges),
+            node_counts=dict(payload.node_counts),
+            edge_counts=dict(payload.edge_counts),
+            errors=[*payload.errors, str(exc)],
+        )
+        _record_graph_sync_attempt(db, project_id, "incremental", result, raw_metadata=stats)
+        return result
+
+    stats = {
+        **stats,
+        **write_counts,
+        "mapping_changed": mapping_changed,
+    }
+    result = Neo4jSyncResult(
+        "completed",
+        (
+            "Neo4j 최신 변경분 반영 완료: "
+            f"commit {stats['changed_commit_count']}개, file {stats['changed_file_count']}개, "
+            f"current source class {write_counts.get('deleted_class_count', 0)}개 제거, "
+            f"node {len(nodes)}개/edge {len(edges)}개 upsert."
+        ),
+        node_count=sum(node_counts.values()),
+        edge_count=sum(edge_counts.values()),
+        node_counts=node_counts,
+        edge_counts=edge_counts,
+        errors=payload.errors,
+    )
+    _record_graph_sync_attempt(db, project_id, "incremental", result, raw_metadata=stats)
+    return result
 
 
 def _ensure_neo4j_schema(session) -> None:
@@ -734,6 +1310,68 @@ def _sync_project_graph_tx(tx, project_id: int, nodes: list[dict], edges: list[d
         """,
         edges=edges,
     )
+
+
+def _sync_project_graph_incremental_tx(
+    tx,
+    project_id: int,
+    clear_source_paths: list[str],
+    nodes: list[dict],
+    edges: list[dict],
+) -> dict[str, int]:
+    deleted_class_count = 0
+    if clear_source_paths:
+        result = tx.run(
+            """
+            MATCH (class_node:KnowledgeNode {project_id: $project_id, node_type: 'class'})
+            WHERE class_node.file_path IN $file_paths
+            WITH collect(class_node) AS class_nodes, count(class_node) AS deleted_class_count
+            FOREACH (node IN class_nodes | DETACH DELETE node)
+            RETURN deleted_class_count
+            """,
+            project_id=int(project_id),
+            file_paths=clear_source_paths,
+        )
+        row = result.single()
+        deleted_class_count = int(row["deleted_class_count"] if row else 0)
+
+    mapping_result = tx.run(
+        """
+        MATCH (:KnowledgeNode {project_id: $project_id})-[rel:RELATED {project_id: $project_id, edge_type: 'MAPPED_TO_COMMIT'}]->
+              (:KnowledgeNode {project_id: $project_id})
+        WITH collect(rel) AS rels, count(rel) AS deleted_mapping_count
+        FOREACH (rel IN rels | DELETE rel)
+        RETURN deleted_mapping_count
+        """,
+        project_id=int(project_id),
+    )
+    mapping_row = mapping_result.single()
+    deleted_mapping_count = int(mapping_row["deleted_mapping_count"] if mapping_row else 0)
+
+    tx.run(
+        """
+        UNWIND $nodes AS row
+        MERGE (n:KnowledgeNode {node_id: row.node_id})
+        SET n = row
+        """,
+        nodes=nodes,
+    )
+    tx.run(
+        """
+        UNWIND $edges AS row
+        MATCH (source:KnowledgeNode {node_id: row.from_node_id})
+        MATCH (target:KnowledgeNode {node_id: row.to_node_id})
+        MERGE (source)-[rel:RELATED {edge_id: row.edge_id}]->(target)
+        SET rel = row
+        """,
+        edges=edges,
+    )
+    return {
+        "deleted_class_count": deleted_class_count,
+        "deleted_mapping_count": deleted_mapping_count,
+        "upsert_node_count": len(nodes),
+        "upsert_edge_count": len(edges),
+    }
 
 
 def get_neo4j_project_summary(project_id: int) -> Neo4jSyncResult:

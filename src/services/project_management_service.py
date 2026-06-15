@@ -19,6 +19,7 @@ from src.db.models import (
     PLBriefingHistory,
     Project,
     ProjectDeveloper,
+    ProjectGraphSyncState,
     ProjectChatMessage,
     ProjectChatSession,
     ResourceMetricSnapshot,
@@ -49,6 +50,7 @@ class ProjectDeleteImpact:
     vector_item_count: int = 0
     standard_term_count: int = 0
     project_developer_count: int = 0
+    graph_sync_state_count: int = 0
     developer_count: int = 0
 
     @property
@@ -71,6 +73,7 @@ class ProjectDeleteImpact:
             + self.vector_item_count
             + self.standard_term_count
             + self.project_developer_count
+            + self.graph_sync_state_count
         )
 
 
@@ -95,6 +98,7 @@ class ProjectResetImpact:
     chat_message_count: int = 0
     document_chunk_count: int = 0
     vector_item_count: int = 0
+    graph_sync_state_count: int = 0
 
     @property
     def resettable_total(self) -> int:
@@ -113,6 +117,7 @@ class ProjectResetImpact:
             + self.chat_message_count
             + self.document_chunk_count
             + self.vector_item_count
+            + self.graph_sync_state_count
         )
 
 
@@ -206,6 +211,9 @@ def get_project_delete_impact(db: Session, project_id: int) -> ProjectDeleteImpa
         ),
         standard_term_count=db.query(StandardTerm).filter(StandardTerm.project_id == project_id).count(),
         project_developer_count=db.query(ProjectDeveloper).filter(ProjectDeveloper.project_id == project_id).count(),
+        graph_sync_state_count=(
+            db.query(ProjectGraphSyncState).filter(ProjectGraphSyncState.project_id == project_id).count()
+        ),
         developer_count=db.query(func.count(Developer.id)).scalar() or 0,
     )
 
@@ -267,6 +275,9 @@ def get_project_reset_impact(db: Session, project_id: int) -> ProjectResetImpact
         vector_item_count=(
             db.query(VectorItem).filter(VectorItem.chunk_id.in_(chunk_ids) if chunk_ids else false()).count()
         ),
+        graph_sync_state_count=(
+            db.query(ProjectGraphSyncState).filter(ProjectGraphSyncState.project_id == project_id).count()
+        ),
     )
 
 
@@ -306,6 +317,9 @@ def reset_project_analysis_data(db: Session, project_id: int) -> ProjectResetImp
     )
     db.query(PLBriefingHistory).filter(PLBriefingHistory.project_id == project_id).delete(synchronize_session=False)
     db.query(AIInvocationLog).filter(AIInvocationLog.project_id == project_id).delete(synchronize_session=False)
+    db.query(ProjectGraphSyncState).filter(ProjectGraphSyncState.project_id == project_id).delete(
+        synchronize_session=False
+    )
     db.query(ProjectChatSession).filter(ProjectChatSession.project_id == project_id).delete(synchronize_session=False)
     db.query(DocumentChunk).filter(DocumentChunk.project_id == project_id).delete(synchronize_session=False)
     db.query(AnalysisRun).filter(AnalysisRun.project_id == project_id).delete(synchronize_session=False)
@@ -358,6 +372,9 @@ def delete_project(db: Session, project_id: int) -> ProjectDeleteImpact | None:
     )
     db.query(PLBriefingHistory).filter(PLBriefingHistory.project_id == project_id).delete(synchronize_session=False)
     db.query(AIInvocationLog).filter(AIInvocationLog.project_id == project_id).delete(synchronize_session=False)
+    db.query(ProjectGraphSyncState).filter(ProjectGraphSyncState.project_id == project_id).delete(
+        synchronize_session=False
+    )
     db.query(ProjectChatSession).filter(ProjectChatSession.project_id == project_id).delete(synchronize_session=False)
     db.query(DocumentChunk).filter(DocumentChunk.project_id == project_id).delete(synchronize_session=False)
     db.query(StandardTerm).filter(StandardTerm.project_id == project_id).delete(synchronize_session=False)

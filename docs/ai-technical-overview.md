@@ -218,9 +218,17 @@ Knowledge Graph는 LLM 호출을 새로 만드는 기능이 아니라, AI Commit
 
 제품 관점에서 이 기능은 "AI가 뭔가를 더 생성한다"보다 "AI 분석에 쓰이는 근거 관계를 눈으로 검증하고 설명 가능하게 만든다"는 역할입니다. 예를 들어 하나의 커밋이 어떤 프로그램과 매핑됐고, 어떤 파일과 class를 건드렸으며, 어느 domain 묶음에 영향을 주는지 Neo4j에 저장된 graph path로 확인할 수 있습니다. Knowledge Graph 화면은 동기화 대상 preview를 만든 뒤 Neo4j에 저장하고, 클래스 관계도, 영향 경로, node/edge 저장 상태는 저장된 graph read model을 다시 조회해 보여줍니다. Project Chat은 같은 저장 graph에서 관련 path를 조회해 "결제 변경이 주문 도메인에 왜 영향을 주나요?" 같은 질문의 보조 관계 근거로 사용할 수 있습니다.
 
+GraphRAG가 오래된 관계를 근거처럼 보여주지 않도록 프로젝트별 graph sync 상태를 PostgreSQL에 저장합니다. `project_graph_sync_state`는 마지막 Graph HEAD, DB Sync HEAD, sync mode, node/edge count, 마지막 commit row, mapping update 기준을 기록합니다. Knowledge Graph 화면은 이 값을 현재 Repo HEAD와 비교해 `최신`, `갱신 필요`, `실패`, `저장 필요` 상태를 보여줍니다.
+
+증분 반영은 graph를 세 성격으로 나눠 다룹니다.
+
+- `current_source`: 현재 checkout 기준 Java file, class, import, domain 관계입니다. 변경/삭제/rename된 Java 파일은 해당 path의 class node를 먼저 삭제한 뒤 현재 파일을 다시 읽어 관계를 만듭니다.
+- `historical_git`: commit과 file 변경 이력입니다. 삭제된 파일이라도 과거 commit이 그 file을 건드렸다는 `TOUCHES_FILE` 관계는 보존합니다.
+- `analysis`: program mapping처럼 PostgreSQL 분석 결과에서 온 관계입니다. 증분 반영 때 `MAPPED_TO_COMMIT` edge를 현재 DB 기준으로 다시 맞춰 `is_related=false`나 삭제된 mapping이 graph에 남지 않게 합니다.
+
 현재 버전의 경계도 분명합니다.
 
-- Neo4j 동기화는 사용자가 `Knowledge Graph` 화면에서 실행합니다.
+- Neo4j 동기화는 사용자가 `Knowledge Graph` 화면에서 실행합니다. 처음에는 `전체 재동기화`, Git Sync 이후에는 `최신 변경분만 Neo4j 반영`을 사용합니다.
 - Project Chat graph evidence는 저장된 Neo4j graph가 있을 때만 조회됩니다. Graph가 없거나 Neo4j가 꺼져 있으면 기존 RAG-only 답변 흐름을 유지합니다.
 - Graph evidence는 관계 보조 근거입니다. 현재 코드 사실은 계속 verified `source_file` evidence가 있어야 답변합니다.
 - Java class/import 추출은 정규식 기반 경량 parser입니다. 복잡한 generic, annotation processing, generated source까지 완전한 compiler-level 분석을 보장하지 않습니다.

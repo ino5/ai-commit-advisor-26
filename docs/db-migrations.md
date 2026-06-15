@@ -64,6 +64,7 @@ Schema 변경은 생성된 `migrations/versions/*.py` 파일에 작성합니다.
 Neo4j에 저장하는 node, edge, property, constraint를 바꿀 때는 Alembic migration을 만들지 않습니다. 대신 다음 기준을 따릅니다.
 
 - PostgreSQL 원본 schema가 바뀌면 Alembic migration을 추가합니다.
+- Neo4j sync 상태처럼 PostgreSQL에 저장하는 metadata table이나 column이 필요하면 Alembic migration을 추가합니다.
 - Neo4j graph projection만 바뀌면 `src/services/neo4j_graph_service.py`와 관련 테스트를 수정하고, 기존 graph는 `Knowledge Graph` 화면에서 다시 동기화합니다.
 - Neo4j constraint는 동기화 시점에 `CREATE CONSTRAINT ... IF NOT EXISTS`로 준비합니다.
 - 프로젝트 분석 데이터 초기화나 프로젝트 삭제는 `NEO4J_ENABLED=true`인 경우 선택 프로젝트의 Neo4j node를 best-effort로 정리합니다.

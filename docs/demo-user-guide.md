@@ -294,7 +294,7 @@ Add payment authorization flow
 - 커밋에서 프로그램, 파일, 클래스, 도메인으로 이어지는 영향 경로
 - Neo4j 연결 상태와 동기화 대상 node/edge 수
 
-기본 Quick Start를 따르면 Neo4j가 함께 실행되므로 `Neo4j 동기화`로 graph 저장까지 확인할 수 있습니다. Neo4j를 끈 환경에서는 PostgreSQL과 앱 서버 Git 저장소 기준 preview만 볼 수 있습니다.
+기본 Quick Start를 따르면 Neo4j가 함께 실행되므로 처음에는 `전체 재동기화`로 graph 저장까지 확인할 수 있습니다. 이후 Git Sync로 새 commit을 가져온 뒤에는 `최신 변경분만 Neo4j 반영`을 사용합니다. Neo4j를 끈 환경에서는 PostgreSQL과 앱 서버 Git 저장소 기준 preview만 볼 수 있습니다.
 
 ## 11. RAG Search와 Project Chat
 

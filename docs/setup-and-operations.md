@@ -297,7 +297,7 @@ NEO4J_PASSWORD=ai_commit_advisor
 NEO4J_DATABASE=neo4j
 ```
 
-그다음 Streamlit 앱을 재시작하고 `분석 결과 > Knowledge Graph`에서 `Neo4j 동기화`를 실행합니다. Neo4j Browser는 `http://localhost:7474`에서 열 수 있습니다.
+그다음 Streamlit 앱을 재시작하고 `분석 결과 > Knowledge Graph`에서 `전체 재동기화`를 실행합니다. Neo4j Browser는 `http://localhost:7474`에서 열 수 있습니다.
 
 Neo4j를 끄고 싶을 때만 `.env`를 아래처럼 바꿉니다.
 
@@ -305,7 +305,22 @@ Neo4j를 끄고 싶을 때만 `.env`를 아래처럼 바꿉니다.
 NEO4J_ENABLED=false
 ```
 
-Neo4j를 켜지 않아도 Knowledge Graph 화면은 PostgreSQL과 현재 소스 기준으로 동기화 대상 preview를 보여줍니다. 이 상태에서는 `Neo4j 동기화`가 건너뛰기 상태로 끝나며, 앱의 다른 AI/RAG/분석 기능은 PostgreSQL과 pgvector만으로 계속 동작합니다.
+Neo4j를 켜지 않아도 Knowledge Graph 화면은 PostgreSQL과 현재 소스 기준으로 동기화 대상 preview를 보여줍니다. 이 상태에서는 Neo4j 저장 action이 비활성 또는 건너뛰기 상태가 되며, 앱의 다른 AI/RAG/분석 기능은 PostgreSQL과 pgvector만으로 계속 동작합니다.
+
+Knowledge Graph 화면의 `Graph 상태`는 세 기준을 비교합니다.
+
+- `Repo HEAD`: 앱 서버 Git 저장소의 현재 commit입니다.
+- `DB Sync HEAD`: Git Sync가 PostgreSQL에 마지막으로 저장한 commit입니다.
+- `Graph HEAD`: Neo4j graph read model에 마지막으로 반영한 commit입니다.
+
+일반 운영에서는 Git Sync로 새 commit을 가져온 뒤 `최신 변경분만 Neo4j 반영`을 먼저 사용합니다. 이 action은 최근 DB commit/file row를 기준으로 변경된 Java 파일의 current source class/import 관계를 다시 만들고, program mapping edge를 현재 DB 기준으로 새로 맞춥니다. 과거 commit이 어떤 file을 건드렸다는 `TOUCHES_FILE` 이력은 삭제하지 않습니다.
+
+다음 경우에는 `전체 재동기화`를 선택하세요.
+
+- 프로젝트에서 처음 Neo4j graph를 저장하는 경우
+- 대량 branch 전환, 저장소 경로 교체, parser rule 변경처럼 최근 commit 목록만으로 현재 graph를 보정하기 어려운 경우
+- 증분 반영이 실패했거나 오래된 관계가 계속 보이는 경우
+- Neo4j Browser에서 직접 graph를 수정했거나 volume 상태가 의심되는 경우
 
 프로젝트 분석 데이터 초기화나 프로젝트 삭제를 실행하면, `NEO4J_ENABLED=true`인 경우 해당 프로젝트의 Neo4j node도 정리합니다. Neo4j가 꺼져 있거나 연결되지 않아도 PostgreSQL 초기화/삭제가 실패하지 않도록 외부 graph cleanup은 best-effort로 처리합니다.
 
@@ -401,7 +416,7 @@ Project Chat을 실제 LLM 모드로 검증하는 권장 순서:
 3. Streamlit 앱을 재시작합니다.
 4. RAG 검색 화면에서 `검색 준비 연결 테스트`를 실행합니다.
 5. RAG 검색 화면의 `검색 준비` 탭에서 현재 소스의 검색 준비를 실행합니다.
-6. GraphRAG 관계 근거까지 확인하려면 `Knowledge Graph` 화면에서 `Neo4j 동기화`를 먼저 실행합니다.
+6. GraphRAG 관계 근거까지 확인하려면 `Knowledge Graph` 화면에서 처음에는 `전체 재동기화`를 실행하고, 이후 Git Sync 변경분은 `최신 변경분만 Neo4j 반영`으로 갱신합니다.
 7. Project Chat에서 질문하고 `답변 근거 보기`와 `그래프 관계 근거 보기`를 펼쳐 현재 소스 근거와 관계 근거를 확인합니다.
 8. 답변을 기록으로 남겨야 하면 `근거 복사용 Markdown` 내용을 회의록, 리뷰 문서, 이슈에 붙여 넣습니다.
 

@@ -7,12 +7,15 @@ from src.db.database import SessionLocal
 from src.services.neo4j_graph_service import (
     GraphPayload,
     ImpactPathRow,
+    Neo4jGraphFreshness,
     Neo4jGraphPreview,
     Neo4jSyncResult,
     build_project_graph_payload,
     get_neo4j_connection_status,
     get_neo4j_project_preview,
     get_neo4j_project_summary,
+    get_project_graph_freshness,
+    sync_project_graph_incrementally_to_neo4j,
     sync_project_graph_to_neo4j,
 )
 from src.ui.project_context import require_project_context
@@ -55,6 +58,14 @@ def _impact_rows_df(rows: list[ImpactPathRow]) -> pd.DataFrame:
 
 def _impact_df(payload: GraphPayload) -> pd.DataFrame:
     return _impact_rows_df(payload.impact_rows)
+
+
+def _short_hash(value: str | None) -> str:
+    return value[:12] if value else "-"
+
+
+def _format_datetime(value) -> str:
+    return value.strftime("%Y-%m-%d %H:%M") if value else "-"
 
 
 def _dot_escape(value: str) -> str:
@@ -117,6 +128,33 @@ def _render_neo4j_saved_summary(project_id: int) -> Neo4jSyncResult:
     return summary
 
 
+def _render_graph_freshness(freshness: Neo4jGraphFreshness) -> None:
+    status_labels = {
+        "latest": "최신",
+        "stale": "갱신 필요",
+        "missing": "저장 필요",
+        "failed": "실패",
+        "skipped": "미사용",
+    }
+    st.markdown("#### Graph 상태")
+    cols = st.columns(6)
+    cols[0].metric("상태", status_labels.get(freshness.status, freshness.status))
+    cols[1].metric("Repo HEAD", _short_hash(freshness.repo_head_hash))
+    cols[2].metric("DB Sync HEAD", _short_hash(freshness.db_sync_head_hash))
+    cols[3].metric("Graph HEAD", _short_hash(freshness.graph_sync_head_hash))
+    cols[4].metric("마지막 반영", _format_datetime(freshness.synced_at))
+    cols[5].metric("방식", freshness.sync_mode or "-")
+
+    if freshness.status == "latest":
+        st.success(freshness.summary)
+    elif freshness.status == "failed":
+        st.error(freshness.summary)
+    elif freshness.status in {"stale", "missing"}:
+        st.warning(freshness.summary)
+    else:
+        st.info(freshness.summary)
+
+
 def _read_neo4j_preview(status_connected: bool, project_id: int) -> tuple[Neo4jSyncResult | None, Neo4jGraphPreview | None]:
     if not status_connected:
         return None, None
@@ -148,6 +186,9 @@ def render_knowledge_graph_page() -> None:
 
     with SessionLocal() as db:
         payload = build_project_graph_payload(db, context.project_id)
+        freshness = get_project_graph_freshness(db, context.project_id)
+
+    _render_graph_freshness(freshness)
 
     st.markdown("#### 동기화 대상 요약")
     metric_cols = st.columns(4)
@@ -156,14 +197,25 @@ def render_knowledge_graph_page() -> None:
     metric_cols[2].metric("Classes", payload.node_counts.get("class", 0))
     metric_cols[3].metric("Domains", payload.node_counts.get("domain", 0))
 
-    action_cols = st.columns(2)
-    if action_cols[0].button("Neo4j 동기화", use_container_width=True):
+    action_cols = st.columns(3)
+    incremental_disabled = not status.connected or freshness.status == "missing"
+    if action_cols[0].button(
+        "최신 변경분만 Neo4j 반영",
+        use_container_width=True,
+        disabled=incremental_disabled,
+    ):
+        with SessionLocal() as db:
+            result = sync_project_graph_incrementally_to_neo4j(db, context.project_id)
+        _render_sync_result(result)
+        if result.status == "completed":
+            _render_neo4j_saved_summary(context.project_id)
+    if action_cols[1].button("전체 재동기화", use_container_width=True, disabled=not status.connected):
         with SessionLocal() as db:
             result = sync_project_graph_to_neo4j(db, context.project_id)
         _render_sync_result(result)
         if result.status == "completed":
             _render_neo4j_saved_summary(context.project_id)
-    if action_cols[1].button("Neo4j 저장 상태 조회", use_container_width=True):
+    if action_cols[2].button("Neo4j 저장 상태 조회", use_container_width=True, disabled=not status.connected):
         _render_neo4j_saved_summary(context.project_id)
 
     neo4j_summary, neo4j_preview = _read_neo4j_preview(status.connected, context.project_id)

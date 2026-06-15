@@ -179,7 +179,7 @@ flowchart TB
     ImplementationAnalyzer --> DB
     VectorStore --> DB
 
-    DB --> Tables["projects, developers, project_developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, analysis_runs,<br/>program_implementation_status,<br/>code_review_results, resource_metric_snapshots,<br/>pl_briefing_history, ai_invocation_logs,<br/>risk_findings, project_chat_sessions,<br/>project_chat_messages, document_chunks, vector_items"]
+    DB --> Tables["projects, developers, project_developers, programs,<br/>git_commits, commit_files,<br/>program_commit_mappings, project_graph_sync_state,<br/>analysis_runs, program_implementation_status,<br/>code_review_results, resource_metric_snapshots,<br/>pl_briefing_history, ai_invocation_logs,<br/>risk_findings, project_chat_sessions,<br/>project_chat_messages, document_chunks, vector_items"]
 ```
 
 ## 2. 화면 흐름도
@@ -238,9 +238,9 @@ flowchart LR
 
 대부분의 프로젝트 단위 화면은 각 화면 안에서 프로젝트를 다시 고르지 않고, 사이드바의 현재 프로젝트 컨텍스트를 사용합니다. `프로젝트/Git 설정`은 프로젝트 생성, 수정, 삭제를 담당하므로 자체 선택 UI를 유지하고, `프로그램 목록`은 현재 프로젝트에 프로그램을 조회·추가·업로드하는 흐름만 담당합니다.
 
-프로젝트 분석 데이터 초기화는 프로젝트 record, Git 저장소 경로, 프로그램/개발계획, 표준용어/표준단어, 프로젝트 개발자 연결을 보존하고 Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, PL Briefing 이력, AI 호출 telemetry, RAG chunk/vector, Project Chat, AI Code Review 결과를 삭제합니다. Neo4j가 활성화되어 있으면 같은 프로젝트의 graph read model도 best-effort로 정리합니다. 같은 프로젝트 shell과 산출물을 유지한 채 수집/분석을 다시 실행하기 위한 흐름입니다.
+프로젝트 분석 데이터 초기화는 프로젝트 record, Git 저장소 경로, 프로그램/개발계획, 표준용어/표준단어, 프로젝트 개발자 연결을 보존하고 Git commit, 변경 파일, 매핑, graph sync 상태, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, PL Briefing 이력, AI 호출 telemetry, RAG chunk/vector, Project Chat, AI Code Review 결과를 삭제합니다. Neo4j가 활성화되어 있으면 같은 프로젝트의 graph read model도 best-effort로 정리합니다. 같은 프로젝트 shell과 산출물을 유지한 채 수집/분석을 다시 실행하기 위한 흐름입니다.
 
-프로젝트 삭제는 프로젝트 소유 데이터 전체를 정리합니다. 프로그램, Git commit, 변경 파일, 매핑, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, PL Briefing 이력, AI 호출 telemetry, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어, 프로젝트 개발자 연결, Neo4j graph read model은 삭제 대상입니다. `developers`는 전역 개발자 마스터이므로 프로젝트 삭제 시 자동 삭제하지 않습니다.
+프로젝트 삭제는 프로젝트 소유 데이터 전체를 정리합니다. 프로그램, Git commit, 변경 파일, 매핑, graph sync 상태, 분석 실행 이력, 구현상태 분석, 리스크, 자원관리 snapshot, PL Briefing 이력, AI 호출 telemetry, RAG chunk/vector, Project Chat, AI Code Review, 표준용어/표준단어, 프로젝트 개발자 연결, Neo4j graph read model은 삭제 대상입니다. `developers`는 전역 개발자 마스터이므로 프로젝트 삭제 시 자동 삭제하지 않습니다.
 
 ## 2.1 Git 저장소 접근 모델
 
@@ -732,7 +732,7 @@ LLM 출력 예시:
 - Risk Analysis 실행, 리스크 저장, 미해결 리스크 조회 및 해결 처리. 예상 종료일 기준 지연 가능성은 `FORECAST_DELAY` 리스크로 저장한다.
 - Git History 커밋 이력과 diff 탐색.
 - Commit Impact 분석.
-- Neo4j Knowledge Graph preview와 동기화, 저장 그래프 기준 클래스 관계도, 커밋 영향 경로, node/edge 저장 상태 표시.
+- Neo4j Knowledge Graph preview와 전체/증분 동기화, Graph HEAD 최신성 표시, 저장 그래프 기준 클래스 관계도, 커밋 영향 경로, node/edge 저장 상태 표시.
 - AI Code Review 실행 및 리뷰 이력 저장.
 - Home/Dashboard/개발계획 대시보드/AI Progress 운영 대시보드.
 - Dashboard 자원관리 지표: AI Resource Radar와 PL Briefing, 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 예상 지연 프로그램, 고객가치 참고 지표 표시, 수동 snapshot 저장과 추세 분석.
@@ -756,7 +756,7 @@ LLM 출력 예시:
 - RAG 검색 품질은 embedding 모델에 크게 의존하며, mock embedding은 테스트용이다.
 - local/openai embedding은 OpenAI-compatible `/embeddings` 형식을 가정하지만 실제 모델별 검증은 별도 필요하다.
 - PL Briefing은 구조화 validation과 1회 repair retry를 사용하지만, Mapping 등 일부 LLM 응답 처리는 여전히 pragmatic parsing과 fallback 중심이다.
-- Project Chat GraphRAG는 Neo4j 저장 graph가 최신이라고 가정하고 조회한다. Graph freshness/stale 표시와 증분 Neo4j sync는 별도 후속 작업이다.
+- Project Chat GraphRAG는 Neo4j 저장 graph를 보조 근거로 조회한다. Graph freshness/stale 상태는 Knowledge Graph 화면에서 확인하고, 오래된 graph는 증분 반영 또는 전체 재동기화로 갱신한다.
 - Mapping 실패 재처리 정책은 기본 상태 기록 수준이며 상세 재시도 큐는 없다.
 - 테스트는 핵심 순수 로직 중심이며, Streamlit UI/DB 통합 테스트는 아직 부족하다.
 - 배포 설정, CI, 환경별 설정 분리는 제한적이다. AI 호출 telemetry는 앱 내부 관측용이며 외부 로그/모니터링 시스템 연계는 아직 없다.
@@ -801,7 +801,7 @@ LLM 출력 예시:
 | `src/ui/risk_page.py` | 프로젝트 리스크 분석, 미해결 리스크 조회 및 해결 처리. |
 | `src/ui/git_history_page.py` | 프로젝트별 Git 커밋 이력, 변경 파일, diff 조회. |
 | `src/ui/commit_impact_page.py` | 특정 커밋의 영향도 분석. |
-| `src/ui/knowledge_graph_page.py` | Neo4j Knowledge Graph preview, 동기화, 저장 그래프 기준 도메인/클래스/영향 경로/node-edge 조회. |
+| `src/ui/knowledge_graph_page.py` | Neo4j Knowledge Graph preview, Graph HEAD 최신성 표시, 전체/증분 동기화, 저장 그래프 기준 도메인/클래스/영향 경로/node-edge 조회. |
 | `src/ui/rag_page.py` | RAG chunk/embedding/search 관리. |
 | `src/ui/project_chat_page.py` | 검증된 현재 소스와 Neo4j graph evidence를 분리 표시하는 프로젝트 채팅. |
 | `src/ui/code_review_page.py` | AI 코드 리뷰 실행 및 이력 조회. |

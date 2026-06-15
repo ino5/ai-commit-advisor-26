@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from pgvector.sqlalchemy import Vector
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -55,6 +55,35 @@ class Project(Base, TimestampMixin):
         back_populates="project",
         cascade="all, delete-orphan",
     )
+    graph_sync_state: Mapped["ProjectGraphSyncState | None"] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class ProjectGraphSyncState(Base, TimestampMixin):
+    __tablename__ = "project_graph_sync_state"
+    __table_args__ = (
+        UniqueConstraint("project_id", name="uq_project_graph_sync_state_project_id"),
+        Index("ix_project_graph_sync_state_project_status", "project_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    repo_head_hash: Mapped[str | None] = mapped_column(String(64))
+    db_sync_head_hash: Mapped[str | None] = mapped_column(String(64))
+    synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sync_mode: Mapped[str | None] = mapped_column(String(50))
+    status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
+    node_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    edge_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_commit_db_id: Mapped[int | None] = mapped_column(Integer)
+    last_mapping_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_summary: Mapped[str | None] = mapped_column(Text)
+    raw_metadata: Mapped[dict | None] = mapped_column(JSONB)
+
+    project: Mapped["Project"] = relationship(back_populates="graph_sync_state")
 
 
 class Developer(Base, TimestampMixin):

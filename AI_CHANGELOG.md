@@ -2,6 +2,17 @@
 
 ## 2026-06-15
 
+### Knowledge Graph freshness and incremental Neo4j sync
+
+- `project_graph_sync_state` PostgreSQL metadata table을 추가해 Repo HEAD, DB Sync HEAD, Graph HEAD, sync mode, node/edge count, 마지막 commit row, mapping update 기준을 저장하도록 했습니다. Schema 변경은 Alembic migration `20260615_0010_add_project_graph_sync_state.py`로 처리했습니다.
+- `Knowledge Graph` 화면에 `Graph 상태`를 추가해 `최신`, `갱신 필요`, `저장 필요`, `실패`, `미사용` 상태와 Repo HEAD/DB Sync HEAD/Graph HEAD를 비교해 보여줍니다. 동기화 action도 `최신 변경분만 Neo4j 반영`, `전체 재동기화`, `Neo4j 저장 상태 조회`로 구분했습니다.
+- Neo4j full sync가 성공/실패 metadata를 저장하도록 변경하고, incremental sync를 추가했습니다. 증분 반영은 변경된 Java file path의 current source class/import 관계를 제거 후 재생성하고, `MAPPED_TO_COMMIT` edge는 현재 DB mapping 기준으로 refresh합니다. 과거 commit이 file을 건드린 `TOUCHES_FILE` historical relation은 삭제하지 않습니다.
+- Neo4j edge에 `graph_scope` property를 추가해 `current_source`, `historical_git`, `analysis`, `project_structure` 성격을 구분했습니다. Project Chat GraphRAG는 기존처럼 저장 graph를 보조 근거로 사용하되, Knowledge Graph 화면에서 stale 여부를 먼저 확인할 수 있습니다.
+- 프로젝트 reset/delete lifecycle에 `ProjectGraphSyncState` 삭제를 포함해 분석 데이터를 초기화한 뒤 과거 graph sync 상태가 남지 않도록 했습니다.
+- README, Application Preview 설명, 기능 가이드, AI 기술 개요, 아키텍처, 운영 가이드, DB migration guidance, engineering decision, demo user guide, Roadmap을 최신성/증분 동기화 기준으로 갱신했습니다.
+- 주요 파일: `src/services/neo4j_graph_service.py`, `src/ui/knowledge_graph_page.py`, `src/db/models.py`, `src/services/project_management_service.py`, `migrations/versions/20260615_0010_add_project_graph_sync_state.py`, `tests/test_neo4j_graph_service.py`, `tests/test_project_management_service.py`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `docs/db-migrations.md`, `docs/application-preview.md`, `docs/demo-user-guide.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\neo4j_graph_service.py src\ui\knowledge_graph_page.py src\db\models.py src\services\project_management_service.py tests\test_neo4j_graph_service.py tests\test_project_management_service.py migrations\versions\20260615_0010_add_project_graph_sync_state.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m alembic upgrade head` 통과; `.\.venv\Scripts\python.exe -m alembic heads`와 `.\.venv\Scripts\python.exe -m alembic current`에서 `20260615_0010 (head)` 확인; `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py tests\test_project_management_service.py -q` 13개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 137개 테스트 통과; 실제 Docker Neo4j/PostgreSQL 환경에서 임시 Git repo 기반 full sync `completed 9/18`, incremental sync `completed 10/22`, freshness `latest` 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Project Chat GraphRAG context injection
 
 - `Project Chat`이 verified `source_file` 근거를 확보한 뒤 Neo4j graph read model에서 `program -> commit -> file -> class` 영향 경로, `class -> imports -> class` 관계, domain summary를 보조 근거로 조회하도록 추가했습니다. Graph evidence는 현재 코드 사실을 대체하지 않으며, verified source가 없으면 기존 insufficient-evidence 정책을 유지합니다.

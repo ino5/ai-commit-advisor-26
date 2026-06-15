@@ -45,6 +45,51 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - Knowledge Graph 최신성은 PostgreSQL metadata와 증분 read model 갱신으로 관리한다
+
+### 배경
+
+Neo4j Knowledge Graph와 Project Chat GraphRAG가 추가되면서 graph가 언제 만들어졌는지가 답변 근거 품질에 직접 영향을 주게 되었습니다. 기존 전체 동기화는 정확하지만 대형 저장소에서는 비용이 커지고, Git Sync나 mapping 변경 이후 Neo4j graph가 오래되었는지 화면에서 알기 어려웠습니다.
+
+### 결정
+
+PostgreSQL에 `project_graph_sync_state`를 추가해 Repo HEAD, DB Sync HEAD, Graph HEAD, sync mode, node/edge count, 마지막 commit row와 mapping update 기준을 저장합니다. Neo4j는 계속 재생성 가능한 read model로 유지하고, `Knowledge Graph` 화면에서 `최신 변경분만 Neo4j 반영`과 `전체 재동기화`를 구분합니다.
+
+증분 반영은 graph를 `current_source`, `historical_git`, `analysis` 성격으로 나눠 다룹니다. 변경/삭제/rename된 Java 파일은 해당 path의 class node를 제거해 current source 관계를 끊고 다시 만들며, commit-file 이력 관계는 보존합니다. Program mapping edge는 현재 DB 기준으로 전체 refresh해 `is_related=false`나 삭제된 mapping이 graph에 남지 않게 합니다.
+
+### 이유
+
+- PostgreSQL이 계속 source of truth라서 graph sync metadata도 같은 transaction/backup 경계에서 관리할 수 있습니다.
+- Neo4j를 source of truth로 만들지 않아도 GraphRAG가 사용할 관계 근거의 최신성을 사용자에게 설명할 수 있습니다.
+- 변경 파일 단위로 current source 관계를 갈아끼우면 일반 Git Sync 이후에는 전체 graph 삭제/재생성을 피할 수 있습니다.
+- Historical commit/file edge를 보존하면 삭제된 파일도 과거 diff 근거로 계속 설명할 수 있습니다.
+
+### 검토한 대안
+
+- 매번 전체 Neo4j 재동기화만 사용: 구현은 단순하지만 대형 프로젝트에서 비용이 커지고 "최신인지"를 별도로 설명하지 못합니다.
+- Neo4j에 sync metadata를 저장: graph DB만 보면 편하지만 앱의 원본 상태와 migration/backup 경계가 갈라져 운영 복잡도가 커집니다.
+- 변경 파일마다 개별 mapping edge만 추적 삭제: edge별 삭제 조건이 복잡해지고 mapping이 삭제되거나 `is_related=false`로 바뀐 경우 놓치기 쉽습니다.
+- Neo4j를 업무/분석 source of truth로 승격: graph query는 강해지지만 기존 PostgreSQL/RAG/AI data lifecycle과 충돌합니다.
+
+### 영향과 tradeoff
+
+증분 sync는 Java source class/import 관계와 program mapping edge를 중심으로 다룹니다. Java parser가 정규식 기반인 한계, XML/SQL/다른 언어 관계 누락, 큰 branch 전환 같은 경우에는 `전체 재동기화`가 필요할 수 있습니다. Relationship type은 기존처럼 `RELATED`를 유지하고 `edge_type`, `graph_scope` property로 성격을 구분하므로 Neo4j Browser에서 native relationship type 다양성은 제한됩니다.
+
+### 후속 확인
+
+- 대형 프로젝트에서는 batch write, transaction timeout, retry/backoff가 별도 hardening 대상입니다.
+- AI 운영 현황에도 graph freshness와 GraphRAG 준비 상태를 함께 보여주는 후속 작업이 남아 있습니다.
+- parser 정확도 확장 시 current source 관계 삭제/재생성 테스트 fixture를 함께 보강해야 합니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `Knowledge Graph freshness and incremental Neo4j sync`
+- `ROADMAP.md`의 `P1 - Knowledge Graph Freshness And Incremental Neo4j Sync`
+- `docs/architecture.md`
+- `docs/ai-technical-overview.md`
+- `docs/feature-guide.md`
+- `docs/setup-and-operations.md`
+
 ## 2026-06-15 - Project Chat GraphRAG는 verified source를 대체하지 않는 보조 근거로 적용한다
 
 ### 배경

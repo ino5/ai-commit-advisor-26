@@ -112,6 +112,7 @@
 | P2 | UX / AI Ops | AI operations status menu | Done | AI 운영 현황 메뉴와 연결 상태 요약 |
 | P1 | Graph / AI | Neo4j knowledge graph foundation | Done | Neo4j Knowledge Graph 기반 추가 |
 | P1 | Graph / AI | Project Chat GraphRAG context injection | Done | Project Chat GraphRAG context injection |
+| P1 | Graph Ops | Knowledge Graph freshness and incremental Neo4j sync | Done | Knowledge Graph freshness and incremental Neo4j sync |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -132,6 +133,35 @@ Checklist:
 - [x] Compile/test verification을 실행한다.
 - [x] `AI_CHANGELOG.md`를 갱신한다.
 
+## P1 - Knowledge Graph Freshness And Incremental Neo4j Sync
+
+Status: Done
+
+Goal:
+Neo4j graph read model이 어떤 Git HEAD와 분석 데이터 기준으로 만들어졌는지 표시하고, Git 변경 이후 바뀐 파일/매핑만 반영하는 증분 동기화를 제공한다.
+
+Rationale:
+현재 `Neo4j 동기화`는 정확하지만 프로젝트 단위 전체 graph를 다시 만들기 때문에 대형 저장소에서는 비용이 커질 수 있다. 또한 Git Sync 이후 graph가 최신인지 사용자가 바로 알기 어렵다. 이 작업은 "한 번 만든 그림"이 아니라 실제 Git 변경 흐름을 따라가는 graph read model로 발전시키는 범위다.
+
+Design split:
+
+- `current source graph`: 현재 checkout 기준 파일, class, import, domain 관계. 소스가 바뀌면 관계를 끊고 다시 만든다.
+- `historical git graph`: 과거 commit, commit file, diff 이력. 현재 파일이 삭제되어도 Git 이력 근거로 보존한다.
+- `analysis graph`: program mapping처럼 PostgreSQL 분석 결과에서 온 관계. DB 상태에 맞춰 upsert/delete한다.
+
+Checklist:
+
+- [x] PostgreSQL graph sync state metadata를 Alembic migration으로 추가한다.
+- [x] Knowledge Graph 화면에 Repo HEAD, DB sync HEAD, Graph sync HEAD, stale 여부를 표시한다.
+- [x] 전체 Neo4j sync 성공/실패 metadata를 저장한다.
+- [x] 최신 변경분만 반영하는 incremental Neo4j sync를 추가한다.
+- [x] 변경 파일 current source 관계와 program mapping edge removal 규칙을 구현한다.
+- [x] Knowledge Graph UI action을 `최신 변경분만 Neo4j 반영`과 `전체 재동기화`로 구분한다.
+- [x] metadata, stale detection, modified/deleted/renamed/non-source, mapping edge refresh 중심 테스트를 추가한다.
+- [x] architecture, AI technical overview, setup/operations, feature guide, engineering decision documentation을 갱신한다.
+- [x] Compile/test/diff verification을 실행한다.
+- [x] `AI_CHANGELOG.md`를 갱신한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -140,7 +170,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P1 | Graph Ops | Knowledge Graph freshness and incremental Neo4j sync | Git 변경 이후 graph가 최신인지 보여주고, 변경 파일만 반영해 대형 프로젝트에서도 Neo4j read model을 운영 가능하게 만든다. |
 | P1 | AI Ops | AI operations graph status | `AI 운영 현황`에서 LLM, embedding, pgvector뿐 아니라 Neo4j graph 상태도 함께 확인하게 한다. |
 | P2 | Graph UX | Knowledge Graph exploration UI | 프로그램, class, domain, commit 기준으로 관계 경로를 탐색해 Neo4j 적용 가치를 화면에서 더 직접 보여준다. |
 | P2 | AI Quality | Project-level AI quality scorecard | sample project 전용 점검을 넘어 실제 프로젝트별 AI 결과 품질과 근거 충분성을 확인한다. |
@@ -151,100 +180,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P3 | Project Chat UX | Graph-aware question templates | 사용자가 graph/RAG가 잘 답할 수 있는 질문을 쉽게 시작하게 한다. |
 | P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
 | P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - Knowledge Graph Freshness And Incremental Neo4j Sync
-
-Goal:
-Neo4j graph read model이 어떤 Git HEAD와 분석 데이터 기준으로 만들어졌는지 표시하고, Git 변경 이후 바뀐 파일/매핑만 반영하는 증분 동기화를 제공한다.
-
-Rationale:
-현재 `Neo4j 동기화`는 정확하지만 프로젝트 단위 전체 graph를 다시 만들기 때문에 대형 저장소에서는 비용이 커질 수 있다. 또한 Git Sync 이후 graph가 최신인지 사용자가 바로 알기 어렵다. 이 후보는 "한 번 만든 그림"이 아니라 실제 Git 변경 흐름을 따라가는 graph read model로 발전시키는 작업이다.
-
-Important design split:
-
-- `current source graph`: 현재 checkout 기준 파일, class, import, domain 관계. 소스가 바뀌면 관계를 끊고 다시 만든다.
-- `historical git graph`: 과거 commit, commit file, diff 이력. 현재 파일이 삭제되어도 Git 이력 근거로 보존한다.
-- `analysis graph`: program mapping, risk, AI evidence처럼 PostgreSQL 분석 결과에서 온 관계. DB 상태에 맞춰 upsert/delete한다.
-
-Freshness model:
-
-- 프로젝트별 graph sync metadata를 저장한다.
-- 최소 metadata 후보: `project_id`, `repo_head_hash`, `db_sync_head_hash`, `synced_at`, `sync_mode`, `status`, `node_count`, `edge_count`, `error_summary`.
-- persistent table이 필요하면 Alembic migration을 추가한다. `src/db/init_db.py`에 schema 변경을 직접 넣지 않는다.
-- Knowledge Graph 화면에 현재 Repo HEAD, DB sync commit, Neo4j graph sync HEAD, stale 여부를 표시한다.
-- Git Sync 이후 `graph stale` 상태가 되면 `최신 변경분만 Neo4j 반영`과 `전체 재동기화`를 구분해 보여준다.
-
-Incremental sync flow:
-
-1. Git Sync가 새 `GitCommit`과 `CommitFile` row를 저장한다.
-2. graph metadata의 last synced HEAD 이후 변경된 `CommitFile` 목록을 찾는다.
-3. 변경 파일을 `Added`, `Modified`, `Copied`, `Deleted`, `Renamed`, non-source로 분류한다.
-4. source-like `Added`/`Modified`/`Copied`:
-   - 해당 file path의 current source 관계를 먼저 제거한다.
-   - 현재 파일을 다시 읽고 Java package/class/import/domain을 파싱한다.
-   - source file node, class node, `CONTAINS_CLASS`, `IMPORTS_CLASS`, `HAS_FILE`, domain 관계를 upsert한다.
-   - 새 commit이 해당 file을 건드렸다는 historical `TOUCHES_FILE` 관계는 보존 또는 upsert한다.
-5. `Deleted`:
-   - 해당 file path의 current source class/import/domain 관계를 제거한다.
-   - 과거 commit이 그 file을 건드렸다는 `commit -> file` historical edge는 삭제하지 않는다.
-   - file node를 삭제할지는 historical edge가 없는 경우로 제한하거나, current/historical node type을 분리한다.
-6. `Renamed`:
-   - old path의 current source 관계를 제거한다.
-   - new path가 source-like이면 new path 기준으로 다시 파싱해 upsert한다.
-   - rename commit의 historical file evidence는 보존한다.
-7. non-source 변경:
-   - current source graph에서는 무시하되, commit/file historical evidence는 유지한다.
-8. program mapping 변경:
-   - 새 mapping은 `MAPPED_TO_COMMIT` upsert.
-   - mapping 삭제 또는 `is_related=false` 전환은 해당 `MAPPED_TO_COMMIT` edge 제거.
-9. sync가 성공하면 graph metadata의 HEAD, timestamp, node/edge count를 갱신한다.
-10. 증분 sync가 실패하면 실패 메시지와 fallback action으로 `전체 재동기화`를 안내한다.
-
-Relationship removal rules:
-
-- 제거해야 하는 current 관계:
-  - 현재 source 기준 `file -> class`
-  - 현재 source 기준 `domain -> class`
-  - 현재 source 기준 `class -> class import`
-  - 삭제/rename된 file의 current source 관계
-  - DB에서 제거되거나 무관 처리된 `program -> commit` mapping edge
-- 보존해야 하는 historical 관계:
-  - 과거 commit이 어떤 file을 건드렸다는 사실
-  - 삭제된 file이라도 과거 diff/commit에 남아 있는 이력
-  - Git commit node와 commit metadata
-  - 과거 분석 결과를 설명하는 데 필요한 stored evidence
-
-Implementation notes:
-
-- 기존 `KnowledgeNode` + `RELATED.edge_type` 구조를 유지할지, `node_type`을 `source_file`/`commit_file`처럼 분리할지 먼저 결정한다.
-- 같은 file node를 current source와 historical git이 공유하면 deletion이 위험하므로, 최소한 edge-level scope 또는 node property로 `graph_scope=current_source|historical_git|analysis`를 둔다.
-- Cypher query에서는 node 변수명과 `RETURN AS` alias 이름을 겹치지 않게 한다.
-- graph sync service는 full sync와 incremental sync를 같은 payload builder로 억지로 합치지 말고, shared parser/helper와 별도 orchestration으로 나눈다.
-
-UI expectations:
-
-- `Knowledge Graph` 상단에 `Graph 상태: 최신 / 갱신 필요 / 실패 / Neo4j 미연결`을 표시한다.
-- `마지막 graph sync HEAD`, `현재 Repo HEAD`, `DB Git Sync HEAD`, `마지막 동기화 시각`, `sync mode`를 표시한다.
-- stale 상태에서는 `최신 변경분만 Neo4j 반영`을 primary action으로, `전체 재동기화`를 secondary action으로 둔다.
-- 증분 반영 결과는 added/modified/deleted/renamed/non-source count와 node/edge upsert/delete count를 보여준다.
-
-Tests to add:
-
-- modified Java file: old `IMPORTS_CLASS` edge가 제거되고 new import edge가 추가된다.
-- deleted Java file: current `CONTAINS_CLASS`/`IMPORTS_CLASS` 관계는 제거되지만 historical `TOUCHES_FILE` edge는 보존된다.
-- renamed Java file: old path current 관계가 제거되고 new path class 관계가 생성된다.
-- non-source file: current source graph는 바뀌지 않고 historical commit/file evidence는 유지된다.
-- mapping `is_related=false`: `MAPPED_TO_COMMIT` edge가 제거된다.
-- stale detector: Repo HEAD와 graph sync HEAD가 다르면 stale로 표시된다.
-- 실패 시: incremental sync 실패가 full sync 안내와 오류 메시지로 노출된다.
-
-Documentation impact:
-
-- `docs/architecture.md`: graph scope와 full/incremental sync flow.
-- `docs/ai-technical-overview.md`: graph freshness와 GraphRAG 전 단계 설명.
-- `docs/setup-and-operations.md`: stale 복구, full sync/fresh sync 사용 기준.
-- `docs/feature-guide.md`: 사용자가 언제 증분/전체 동기화를 누르는지.
-- `docs/failure-history.md`: 증분 sync 중 실제 실패가 재사용 가치가 있으면 기록.
 
 ### Candidate - AI Operations Graph Status
 

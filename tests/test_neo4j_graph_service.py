@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from src.db.database import SessionLocal
 from src.db.init_db import init_db
-from src.db.models import CommitFile, GitCommit, Program, ProgramCommitMapping, Project
+from src.db.models import CommitFile, GitCommit, Program, ProgramCommitMapping, Project, ProjectGraphSyncState
 from src.services import neo4j_graph_service
 from src.services.neo4j_graph_service import (
+    _changed_source_clear_paths,
     build_graph_evidence_seeds,
     build_project_graph_payload,
     extract_java_symbols,
     find_project_graph_evidence,
     get_neo4j_project_preview,
+    get_project_graph_freshness,
+    sync_project_graph_incrementally_to_neo4j,
     sync_project_graph_to_neo4j,
 )
 
@@ -205,9 +209,10 @@ def test_sync_project_graph_prepares_schema_outside_write_transaction(monkeypatc
 
     monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_enabled", True)
     monkeypatch.setattr(neo4j_graph_service, "_driver", lambda: FakeDriver())
+    monkeypatch.setattr(neo4j_graph_service, "get_head_commit_hash", lambda repo_path: "head123")
 
     with SessionLocal() as db:
-        project = Project(name=_unique("graph-sync-project"), git_repo_path=str(repo))
+        project = Project(name=_unique("graph-sync-project"), git_repo_path=str(repo), last_synced_commit_hash="head123")
         db.add(project)
         db.flush()
         program = Program(project_id=project.id, program_id=_unique("PAY"), program_name="Payment Program")
@@ -225,6 +230,233 @@ def test_sync_project_graph_prepares_schema_outside_write_transaction(monkeypatc
             assert "clear_project_graph" in calls
             assert "write_nodes" in calls
             assert "write_edges" in calls
+            state = db.query(ProjectGraphSyncState).filter(ProjectGraphSyncState.project_id == project.id).one()
+            assert state.status == "completed"
+            assert state.sync_mode == "full"
+            assert state.repo_head_hash == "head123"
+            assert state.db_sync_head_hash == "head123"
+            assert state.last_commit_db_id == commit.id
+        finally:
+            remaining = db.get(Project, project.id)
+            if remaining is not None:
+                db.delete(remaining)
+            db.commit()
+
+
+def test_get_project_graph_freshness_detects_repo_head_stale(monkeypatch, tmp_path) -> None:
+    init_db()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    synced_at = datetime(2026, 6, 15, tzinfo=timezone.utc)
+
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_enabled", True)
+    monkeypatch.setattr(neo4j_graph_service, "get_head_commit_hash", lambda repo_path: "new-head")
+
+    with SessionLocal() as db:
+        project = Project(
+            name=_unique("graph-freshness-project"),
+            git_repo_path=str(repo),
+            last_synced_commit_hash="old-head",
+        )
+        db.add(project)
+        db.flush()
+        db.add(
+            ProjectGraphSyncState(
+                project_id=project.id,
+                repo_head_hash="old-head",
+                db_sync_head_hash="old-head",
+                synced_at=synced_at,
+                sync_mode="full",
+                status="completed",
+                node_count=10,
+                edge_count=20,
+                last_commit_db_id=1,
+            )
+        )
+        db.commit()
+
+        try:
+            freshness = get_project_graph_freshness(db, project.id)
+
+            assert freshness.status == "stale"
+            assert freshness.repo_head_hash == "new-head"
+            assert freshness.graph_sync_head_hash == "old-head"
+            assert "Repo HEAD" in freshness.summary
+        finally:
+            remaining = db.get(Project, project.id)
+            if remaining is not None:
+                db.delete(remaining)
+            db.commit()
+
+
+def test_changed_source_clear_paths_handles_deleted_renamed_and_non_source() -> None:
+    paths = _changed_source_clear_paths(
+        [
+            CommitFile(file_path="src/main/java/NewService.java", change_type="Renamed", diff_text="rename from src/main/java/OldService.java\nrename to src/main/java/NewService.java"),
+            CommitFile(file_path="src/main/java/DeletedService.java", change_type="Deleted"),
+            CommitFile(file_path="README.md", change_type="Modified"),
+        ]
+    )
+
+    assert paths == [
+        "src/main/java/DeletedService.java",
+        "src/main/java/NewService.java",
+        "src/main/java/OldService.java",
+    ]
+
+
+def test_incremental_sync_refreshes_changed_source_and_mapping_edges(monkeypatch, tmp_path) -> None:
+    init_db()
+    repo = tmp_path / "repo"
+    service_dir = repo / "src" / "main" / "java" / "com" / "example" / "market" / "payment" / "service"
+    service_dir.mkdir(parents=True)
+    service_file = service_dir / "PaymentService.java"
+    service_file.write_text(
+        """
+        package com.example.market.payment.service;
+
+        import com.example.market.order.mapper.OrderMapper;
+
+        public class PaymentService {
+        }
+        """,
+        encoding="utf-8",
+    )
+    captured: dict[str, object] = {}
+
+    class FakeResult:
+        def __init__(self, rows=None, single_row=None):
+            self.rows = rows or []
+            self.single_row = single_row
+
+        def consume(self):
+            return None
+
+        def single(self):
+            if self.single_row is not None:
+                return self.single_row
+            return self.rows[0] if self.rows else None
+
+        def __iter__(self):
+            return iter(self.rows)
+
+    class FakeTx:
+        def run(self, query, **params):
+            normalized = " ".join(query.split())
+            if "deleted_class_count" in normalized:
+                captured["clear_source_paths"] = params["file_paths"]
+                return FakeResult(single_row={"deleted_class_count": 1})
+            if "deleted_mapping_count" in normalized:
+                captured["mapping_refresh"] = True
+                return FakeResult(single_row={"deleted_mapping_count": 1})
+            if normalized.startswith("UNWIND $nodes"):
+                captured["nodes"] = params["nodes"]
+                return FakeResult()
+            if normalized.startswith("UNWIND $edges"):
+                captured["edges"] = params["edges"]
+                return FakeResult()
+            if "RETURN n.node_type AS node_type" in normalized:
+                return FakeResult(rows=[{"node_type": "project", "count": 1}, {"node_type": "class", "count": 1}])
+            if "RETURN rel.edge_type AS edge_type" in normalized:
+                return FakeResult(rows=[{"edge_type": "TOUCHES_FILE", "count": 1}, {"edge_type": "CONTAINS_CLASS", "count": 2}])
+            return FakeResult()
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def run(self, query):
+            assert "CREATE CONSTRAINT" in query
+            return FakeResult()
+
+        def execute_write(self, fn, *args):
+            return fn(FakeTx(), *args)
+
+        def execute_read(self, fn, *args):
+            return fn(FakeTx(), *args)
+
+    class FakeDriver:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def session(self, **kwargs):
+            return FakeSession()
+
+    monkeypatch.setattr(neo4j_graph_service.settings, "neo4j_enabled", True)
+    monkeypatch.setattr(neo4j_graph_service, "_driver", lambda: FakeDriver())
+    monkeypatch.setattr(neo4j_graph_service, "get_head_commit_hash", lambda repo_path: "head456")
+
+    with SessionLocal() as db:
+        project = Project(name=_unique("graph-incremental-project"), git_repo_path=str(repo), last_synced_commit_hash="head456")
+        db.add(project)
+        db.flush()
+        program = Program(project_id=project.id, program_id=_unique("PAY"), program_name="Payment Program", module="payment")
+        old_commit = GitCommit(project_id=project.id, commit_hash=uuid.uuid4().hex, message="Previous payment")
+        db.add_all([program, old_commit])
+        db.flush()
+        new_commit = GitCommit(project_id=project.id, commit_hash=uuid.uuid4().hex, message="Update payment service")
+        db.add(new_commit)
+        db.flush()
+        db.add_all(
+            [
+                CommitFile(
+                    commit_id=new_commit.id,
+                    git_commit_id=new_commit.id,
+                    file_path="src/main/java/com/example/market/payment/service/PaymentService.java",
+                    change_type="Modified",
+                    diff_text="+ import order mapper",
+                ),
+                ProgramCommitMapping(
+                    program_id=program.id,
+                    commit_id=old_commit.id,
+                    relevance_score=90,
+                    is_related=False,
+                    updated_at=datetime(2026, 6, 15, tzinfo=timezone.utc),
+                ),
+                ProjectGraphSyncState(
+                    project_id=project.id,
+                    repo_head_hash="old-head",
+                    db_sync_head_hash="old-head",
+                    synced_at=datetime(2026, 6, 15, tzinfo=timezone.utc) - timedelta(hours=1),
+                    sync_mode="full",
+                    status="completed",
+                    node_count=8,
+                    edge_count=12,
+                    last_commit_db_id=old_commit.id,
+                    last_mapping_updated_at=datetime(2026, 6, 15, tzinfo=timezone.utc) - timedelta(hours=1),
+                ),
+            ]
+        )
+        db.commit()
+
+        try:
+            result = sync_project_graph_incrementally_to_neo4j(db, project.id)
+
+            assert result.status == "completed"
+            assert captured["clear_source_paths"] == [
+                "src/main/java/com/example/market/payment/service/PaymentService.java"
+            ]
+            edges = captured["edges"]
+            edge_types = {edge["edge_type"] for edge in edges}
+            assert "TOUCHES_FILE" in edge_types
+            assert "CONTAINS_CLASS" in edge_types
+            assert "IMPORTS_CLASS" in edge_types
+            assert "MAPPED_TO_COMMIT" not in edge_types
+            assert captured["mapping_refresh"] is True
+
+            state = db.query(ProjectGraphSyncState).filter(ProjectGraphSyncState.project_id == project.id).one()
+            assert state.status == "completed"
+            assert state.sync_mode == "incremental"
+            assert state.repo_head_hash == "head456"
+            assert state.db_sync_head_hash == "head456"
+            assert state.last_commit_db_id == new_commit.id
+            assert state.raw_metadata["deleted_class_count"] == 1
         finally:
             remaining = db.get(Project, project.id)
             if remaining is not None:
