@@ -149,7 +149,7 @@ PL Briefing 회의 질문, 다음 action, 이력 확인
 
 ![Project Chat Answer](images/features/project-chat-answer.png)
 
-Neo4j Knowledge Graph가 최신이면 Project Chat 답변 아래에서 그래프 관계 근거를 따로 펼쳐 볼 수 있습니다. 이 예시는 `PaymentService`와 `OrderMapper` 주변 관계를 Neo4j graph read model에서 조회해 class import 관계와 관련 path를 함께 확인하는 상태입니다.
+Neo4j Knowledge Graph가 최신이면 Project Chat 답변 아래에서 그래프 관계 근거를 따로 펼쳐 볼 수 있습니다. 이 예시는 `PaymentService`와 `OrderMapper` 주변 관계를 Neo4j graph read model에서 조회해 `GraphRAG 관계도`로 node-edge 연결을 먼저 보고, 아래 `관계 근거 표`에서 class import와 impact path metadata를 함께 확인하는 상태입니다. 관계도는 답변 근거를 빠르게 훑기 위한 compact view이며, 원본 graph evidence metadata는 필요할 때만 `원본 메타데이터 표시`로 확인합니다.
 
 ![Project Chat Graph Evidence](images/features/project-chat-graph-evidence.png)
 

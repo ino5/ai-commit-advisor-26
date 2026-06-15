@@ -31,6 +31,61 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-15 - Project Chat GraphRAG 메타데이터에서 Streamlit expander를 다시 중첩했다
+
+분류:
+
+- Streamlit UI runtime failure
+- Screenshot verification finding
+- Recurring layout policy gap
+
+관련 기능 및 문서:
+
+- `src/ui/project_chat_page.py`
+- `scripts/capture_feature_screenshot.py`
+- `AI_CHANGELOG.md`의 `Project Chat GraphRAG interactive visualization`
+- `docs/engineering-decisions.md`의 `Project Chat GraphRAG는 compact interactive evidence graph로 보여준다`
+
+### 증상
+
+Project Chat의 `그래프 관계 근거 보기`에 interactive GraphRAG 관계도를 추가한 뒤 screenshot capture가 금지 text 검증에서 실패했습니다. 화면의 숨은 오류 text에는 `StreamlitAPIException`과 다음 메시지가 포함되었습니다.
+
+```text
+Expanders may not be nested inside other expanders.
+```
+
+### 직접 원인
+
+Assistant 답변의 `그래프 관계 근거 보기` 자체가 `st.expander`인데, 그 내부에 raw graph metadata를 접기 위해 다시 `st.expander("원본 메타데이터")`를 추가했습니다. Streamlit은 expander 안의 expander를 허용하지 않으므로 렌더링 중 예외가 발생했습니다.
+
+### 배경 또는 구조적 원인
+
+이전에 Git Sync 후속 작업 패널에서 같은 유형의 문제가 있었지만, "검증용 raw metadata는 접어 두면 된다"는 UI 패턴을 다시 적용하면서 현재 container가 expander 내부인지 확인하지 않았습니다. 재사용 가능한 graph evidence 변환 테스트는 추가했지만, Streamlit container 제약은 단위 테스트만으로 검출되지 않았습니다.
+
+### 사전 검증에서 놓친 이유
+
+초기 focused tests는 graph evidence를 node/edge/table로 변환하는 데이터 로직을 검증했습니다. 실제 Streamlit 화면에서는 오류가 graph evidence 아래쪽에 생겼고, 시각적으로 관계도와 표가 먼저 보였기 때문에 screenshot의 금지 text 확인 전까지 문제를 놓칠 수 있었습니다.
+
+### 수정 내용
+
+raw metadata 영역을 nested expander 대신 `원본 메타데이터 표시` checkbox와 inline JSON 표시로 바꿨습니다. 사용자는 필요할 때만 원본 metadata를 볼 수 있고, `그래프 관계 근거 보기` expander 안에는 또 다른 expander가 생기지 않습니다.
+
+### 재발 방지 규칙
+
+- Streamlit `st.expander` 내부에서는 또 다른 `st.expander`를 만들지 않습니다.
+- 이미 접힌 영역 안에서 보조 detail을 숨겨야 하면 checkbox, toggle, tabs, caption+dataframe 같은 container-safe control을 사용합니다.
+- UI screenshot 검증은 관련 expander를 실제로 연 뒤 `StreamlitAPIException`과 `Traceback` 금지 text를 확인합니다.
+
+### 남은 한계 또는 후속 확인
+
+Streamlit layout 제약은 정적 type check나 service test로 충분히 잡기 어렵습니다. 공통 UI helper가 layout container를 생성할 때는 호출 위치가 이미 expander/form/tab 내부인지 인자로 드러내는 방식이 필요합니다.
+
+### 검증 명령과 결과
+
+- `.\.venv\Scripts\python.exe -m py_compile src\ui\project_chat_page.py tests\test_project_chat_page.py`: 통과.
+- `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_page.py -q`: 6개 테스트 통과.
+- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8501/?project_id=97" --feature project-chat-graph-evidence --surface local --height 1500 --expect-text "GraphRAG 관계도" --expect-text "PaymentService" --expect-text "OrderMapper" --expect-text "관계 근거 표" --expect-text "원본 메타데이터 표시" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"`: 통과.
+
 ## 2026-06-15 - Git Sync 후속 작업 패널에서 Streamlit expander를 중첩했다
 
 분류:

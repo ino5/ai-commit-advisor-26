@@ -45,6 +45,46 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - Project Chat GraphRAG는 compact interactive evidence graph로 보여준다
+
+### 배경
+
+Project Chat은 Neo4j graph evidence를 이미 답변 context와 저장 metadata로 사용하지만, README/Application Preview screenshot에서는 표 형태의 관계 근거만 보였습니다. 사용자는 "Graph DB를 조회했다"는 사실보다 프로그램, 파일, class, commit이 어떻게 이어지는지 눈으로 먼저 확인하고 싶어 합니다. 반면 Project Chat 답변 아래에서 전체 Neo4j graph browser 수준의 탐색기를 만들면 답변 근거 확인 흐름이 무거워지고, Knowledge Graph 화면의 책임과도 겹칩니다.
+
+### 결정
+
+Project Chat의 `그래프 관계 근거 보기` 안에 `streamlit-agraph` 기반 compact node-edge 관계도를 추가합니다. graph evidence metadata는 별도 helper가 display node/edge로 변환하고, 같은 evidence를 표로도 유지합니다. Raw metadata는 expander 중첩을 피하기 위해 checkbox로 필요할 때만 표시합니다.
+
+### 이유
+
+- Project Chat에서는 "답변에 붙은 관계 근거"를 빠르게 보는 것이 목적이므로, 제한된 node/edge view가 전체 graph 탐색기보다 적합합니다.
+- `streamlit-agraph`는 Streamlit component로 바로 렌더링할 수 있어 custom React bundle이나 별도 static asset build 없이 유지보수할 수 있습니다.
+- 변환 helper를 UI rendering과 분리하면 evidence shape가 늘어나도 테스트 가능한 데이터 변환 계층에서 처리할 수 있습니다.
+- 표와 raw metadata를 남기면 그래프 배치가 겹치거나 축약되어도 실제 조회 근거를 검증할 수 있습니다.
+
+### 검토한 대안
+
+- 표만 유지: 구현은 가장 작지만 GraphRAG의 관계 가치가 화면에서 직관적으로 드러나지 않습니다.
+- `st.graphviz_chart`: 의존성은 작지만 static graph라서 답변 근거를 탐색하는 느낌이 약하고, node style/interaction 제어가 제한됩니다.
+- custom React/Cytoscape component: 표현력은 좋지만 build/runtime 유지보수 비용이 커지고 현재 요구보다 범위가 큽니다.
+- `pyvis` HTML embed: 빠르게 멋진 그래프를 만들 수 있지만 Streamlit 상태, asset loading, screenshot 검증 안정성이 떨어질 수 있습니다.
+
+### 영향과 tradeoff
+
+새 Python dependency가 추가되며, CI와 local setup은 `requirements.txt` 설치에 의존합니다. Project Chat 그래프는 답변 evidence의 compact view라서 node/edge 수를 제한하고, 전체 graph 탐색, depth/filter 조정, node detail 확인은 `Knowledge Graph` 화면의 책임으로 유지합니다. 관계도는 verified source evidence를 대체하지 않으며, 현재 코드 사실 답변은 기존 source verification 정책을 따릅니다.
+
+### 후속 확인
+
+Graph evidence 종류가 늘어나면 `build_graph_evidence_display` 테스트를 먼저 보강합니다. UI layout을 바꾸는 경우 screenshot 검증에서 `StreamlitAPIException`과 `Traceback` 금지 text를 유지합니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `Project Chat GraphRAG interactive visualization`
+- `ROADMAP.md`의 `P2 - Interactive GraphRAG Evidence Visualization`
+- `docs/feature-guide.md`
+- `docs/ai-technical-overview.md`
+- `docs/failure-history.md`의 `Project Chat GraphRAG 메타데이터에서 Streamlit expander를 다시 중첩했다`
+
 ## 2026-06-15 - First-run 준비 작업은 Home과 AI 운영 현황에서 같은 service로 계산한다
 
 ### 배경

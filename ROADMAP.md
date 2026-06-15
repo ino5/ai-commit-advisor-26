@@ -100,6 +100,7 @@
 | P2 | Docs / Onboarding | Local setup prerequisites guide | Done | Local setup prerequisites guide |
 | P2 | Docs UX | Application Preview expanded sections | Done | Application Preview expanded sections |
 | P2 | Docs / Screenshot UX | Project Chat GraphRAG preview screenshot | Done | Project Chat GraphRAG preview screenshot |
+| P2 | Project Chat UX | Interactive GraphRAG evidence visualization | Done | Project Chat GraphRAG interactive visualization |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
@@ -1933,6 +1934,23 @@ Checklist:
 - [x] Update `docs/application-preview.md` with a short explanation and image link.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run screenshot and markdown/link verification.
+
+## P2 - Interactive GraphRAG Evidence Visualization
+
+Status: Done
+
+Goal:
+Make Project Chat's Neo4j graph evidence readable as a compact interactive relationship graph while keeping table and raw metadata available for verification.
+
+Checklist:
+
+- [x] Add a maintained wrapper/helper that converts graph evidence into display nodes and edges.
+- [x] Render an interactive `streamlit-agraph` relationship graph inside `그래프 관계 근거 보기`.
+- [x] Keep the tabular evidence and move raw JSON under a secondary metadata control that does not nest Streamlit expanders.
+- [x] Add focused tests for graph conversion and fallback behavior.
+- [x] Update Application Preview screenshot and relevant user-facing docs.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run compile, focused tests, screenshot, and link verification.
 
 ## P2 - Local LLM Env Onboarding Guide
 

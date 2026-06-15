@@ -77,7 +77,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 - Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, 고객가치 참고 지표와 저장형 추세 확인
 - AI 운영 현황에서 LLM/embedding/Neo4j 연결 상태, GraphRAG 준비 상태, AI 분석 근거, 품질 점검, graph impact가 포함된 주간 보고서, 호출 기록 확인
 - Neo4j Knowledge Graph에서 프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인 관계를 저장하고 Graph HEAD 최신성, 선택 node 주변 관계, 영향 경로 탐색. Java parser는 annotation type, static import, nested member type을 반영하고 generated/build/test fixture 제외 경고를 표시합니다.
-- 현재 소스 검증형 RAG Search와 Neo4j graph 관계 근거를 보조로 쓰는 저장형 Project Chat. Knowledge Graph가 최신이면 프로그램/커밋/파일/class/domain 관계 질문 템플릿으로 바로 시작할 수 있습니다.
+- 현재 소스 검증형 RAG Search와 Neo4j graph 관계 근거를 보조로 쓰는 저장형 Project Chat. Knowledge Graph가 최신이면 프로그램/커밋/파일/class/domain 관계 질문 템플릿으로 바로 시작하고, 답변 아래에서 GraphRAG 관계도를 함께 확인할 수 있습니다.
 - 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
 - 앱 서버 Git 저장소의 최신/특정 커밋 중심 AI Code Review
 - 데모용 샘플 프로젝트와 Excel 데이터 생성으로 전체 기능 확인 가능
@@ -180,7 +180,7 @@ requirements.txt
 ## 참고 사항
 
 - RAG/embedding은 mock과 OpenAI-compatible 서버를 모두 지원합니다. 실제 검색 품질 평가는 embedding 모델과 `PGVECTOR_DIMENSION` 설정이 맞아야 합니다.
-- Project Chat은 현재 소스 검증을 통과한 `source_file` chunk만 기본 답변 근거로 사용하며, Neo4j graph가 준비된 경우 관계 근거를 보조로 붙이고 프로젝트별 대화 이력과 답변 근거를 저장합니다. Graph 관계 질문 템플릿은 Knowledge Graph가 최신일 때만 실행됩니다.
+- Project Chat은 현재 소스 검증을 통과한 `source_file` chunk만 기본 답변 근거로 사용하며, Neo4j graph가 준비된 경우 관계 근거를 보조로 붙이고 프로젝트별 대화 이력과 답변 근거를 저장합니다. Graph 관계 질문 템플릿은 Knowledge Graph가 최신일 때만 실행되며, 답변의 graph evidence는 작은 node-edge 관계도와 표로 나누어 표시됩니다.
 - Git Sync 이후에는 `Git 동기화` 화면의 `동기화 후 다음 작업`에서 현재 소스 근거, 검색 준비, Mapping, Risk Analysis, Knowledge Graph 갱신 순서를 확인하세요.
 - 현재 소스 파일을 수정하거나 브랜치/HEAD가 바뀐 뒤에는 RAG 또는 Project Chat 화면의 인덱스 상태를 확인하고 필요 시 현재 소스를 다시 인덱싱하세요.
 - Git Sync나 Mapping 이후 Knowledge Graph가 `갱신 필요`로 표시되면 `최신 변경분만 Neo4j 반영`을 먼저 실행하고, 처음 저장하거나 관계가 크게 어긋난 경우 `전체 재동기화`를 사용하세요. 대형 저장소에서는 `NEO4J_WRITE_BATCH_SIZE`와 retry 설정으로 Neo4j write 부하를 조절할 수 있습니다.

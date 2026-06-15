@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pandas as pd
 import streamlit as st
+from streamlit_agraph import Config, Edge, Node, agraph
 
 from src.db.database import SessionLocal
 from src.db.models import Project
@@ -83,6 +86,43 @@ GRAPH_STATUS_LABELS = {
     "failed": "실패",
     "skipped": "미사용",
 }
+
+GRAPH_NODE_STYLE = {
+    "program": {"color": "#2F80ED", "shape": "box", "size": 28},
+    "commit": {"color": "#9B51E0", "shape": "diamond", "size": 24},
+    "file": {"color": "#27AE60", "shape": "box", "size": 24},
+    "class": {"color": "#F2994A", "shape": "dot", "size": 30},
+    "domain": {"color": "#56CCF2", "shape": "hexagon", "size": 26},
+}
+GRAPH_HIGHLIGHT_COLOR = "#D64545"
+
+GRAPH_HIGHLIGHT_SEED_STOPWORDS = {
+    "src",
+    "main",
+    "java",
+    "com",
+    "example",
+    "market",
+    "service",
+    "mapper",
+    "controller",
+}
+
+
+@dataclass(frozen=True)
+class GraphDisplayNode:
+    id: str
+    label: str
+    node_type: str
+    title: str
+    highlighted: bool = False
+
+
+@dataclass(frozen=True)
+class GraphDisplayEdge:
+    source: str
+    target: str
+    label: str
 
 
 def _chat_key(project_id: int) -> str:
@@ -379,6 +419,192 @@ def _graph_evidence_row(evidence: dict, rank: int) -> dict:
     }
 
 
+def _short_graph_label(value: str, *, max_length: int = 34) -> str:
+    if not value:
+        label = "-"
+    elif "/" in value or "\\" in value:
+        label = value.replace("\\", "/").rsplit("/", 1)[-1]
+    else:
+        label = value.rsplit(".", 1)[-1]
+    if len(label) > max_length:
+        return label[: max_length - 1].rstrip() + "..."
+    return label
+
+
+def _graph_node_id(node_type: str, value: str | None) -> str | None:
+    if not value or value == "-":
+        return None
+    return f"{node_type}:{value}"
+
+
+def _add_graph_node(
+    nodes: dict[str, GraphDisplayNode],
+    node_type: str,
+    value: str | None,
+    *,
+    highlighted: bool = False,
+) -> str | None:
+    node_id = _graph_node_id(node_type, value)
+    if node_id is None:
+        return None
+    existing = nodes.get(node_id)
+    if existing is not None:
+        if highlighted and not existing.highlighted:
+            nodes[node_id] = GraphDisplayNode(
+                id=existing.id,
+                label=existing.label,
+                node_type=existing.node_type,
+                title=existing.title,
+                highlighted=True,
+            )
+        return node_id
+    nodes[node_id] = GraphDisplayNode(
+        id=node_id,
+        label=_short_graph_label(str(value)),
+        node_type=node_type,
+        title=f"{node_type}: {value}",
+        highlighted=highlighted,
+    )
+    return node_id
+
+
+def _add_graph_edge(
+    edges: dict[tuple[str, str, str], GraphDisplayEdge],
+    source: str | None,
+    target: str | None,
+    label: str,
+) -> None:
+    if not source or not target or source == target:
+        return
+    key = (source, target, label)
+    edges.setdefault(key, GraphDisplayEdge(source=source, target=target, label=label))
+
+
+def _is_graph_seed_match(value: str | None, evidence: dict) -> bool:
+    if not value:
+        return False
+    lowered = str(value).lower()
+    meaningful_seeds = [
+        str(seed).lower()
+        for seed in evidence.get("matched_seeds") or []
+        if len(str(seed)) > 4 and str(seed).lower() not in GRAPH_HIGHLIGHT_SEED_STOPWORDS
+    ]
+    return any(seed in lowered or lowered in seed for seed in meaningful_seeds)
+
+
+def build_graph_evidence_display(
+    graph_evidence: list[dict],
+    *,
+    max_nodes: int = 12,
+    max_edges: int = 16,
+) -> tuple[list[GraphDisplayNode], list[GraphDisplayEdge]]:
+    nodes: dict[str, GraphDisplayNode] = {}
+    edges: dict[tuple[str, str, str], GraphDisplayEdge] = {}
+
+    for evidence in graph_evidence:
+        evidence_type = evidence.get("evidence_type")
+        if evidence_type == "class_import":
+            source_class = evidence.get("source_class") or ((evidence.get("path") or [None, None])[0])
+            target_class = evidence.get("target_class") or (
+                (evidence.get("path") or [None, None])[1] if len(evidence.get("path") or []) > 1 else None
+            )
+            source_id = _add_graph_node(
+                nodes,
+                "class",
+                source_class,
+                highlighted=_is_graph_seed_match(source_class, evidence),
+            )
+            target_id = _add_graph_node(
+                nodes,
+                "class",
+                target_class,
+                highlighted=_is_graph_seed_match(target_class, evidence),
+            )
+            _add_graph_edge(edges, source_id, target_id, "IMPORTS_CLASS")
+        elif evidence_type == "impact_path":
+            program_id = _add_graph_node(
+                nodes,
+                "program",
+                evidence.get("program") or evidence.get("program_id"),
+                highlighted=_is_graph_seed_match(evidence.get("program") or evidence.get("program_id"), evidence),
+            )
+            commit_value = evidence.get("commit") or evidence.get("commit_hash")
+            commit_id = _add_graph_node(nodes, "commit", commit_value, highlighted=_is_graph_seed_match(commit_value, evidence))
+            file_value = evidence.get("file_path")
+            file_id = _add_graph_node(nodes, "file", file_value, highlighted=_is_graph_seed_match(file_value, evidence))
+            class_value = evidence.get("class_name")
+            class_id = _add_graph_node(nodes, "class", class_value, highlighted=_is_graph_seed_match(class_value, evidence))
+            _add_graph_edge(edges, program_id, commit_id, "MAPPED_TO_COMMIT")
+            _add_graph_edge(edges, commit_id, file_id, "TOUCHES_FILE")
+            _add_graph_edge(edges, file_id, class_id, "CONTAINS_CLASS")
+        elif evidence_type == "domain_summary":
+            domain_id = _add_graph_node(
+                nodes,
+                "domain",
+                evidence.get("domain"),
+                highlighted=_is_graph_seed_match(evidence.get("domain"), evidence),
+            )
+            for key in ("program", "file_path", "class_name"):
+                value = evidence.get(key)
+                node_type = "program" if key == "program" else "file" if key == "file_path" else "class"
+                related_id = _add_graph_node(nodes, node_type, value, highlighted=_is_graph_seed_match(value, evidence))
+                _add_graph_edge(edges, domain_id, related_id, "GROUPS")
+
+        if len(nodes) >= max_nodes and len(edges) >= max_edges:
+            break
+
+    return list(nodes.values())[:max_nodes], list(edges.values())[:max_edges]
+
+
+def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
+    nodes, edges = build_graph_evidence_display(graph_evidence)
+    if not nodes or not edges:
+        st.caption("시각화할 수 있는 graph 관계가 없습니다. 아래 표에서 원본 근거를 확인하세요.")
+        return
+
+    st.markdown("#### GraphRAG 관계도")
+    st.caption("질문과 매칭된 class, program, commit, file, domain 관계를 작은 근거 그래프로 표시합니다.")
+    agraph_nodes = []
+    for node in nodes:
+        style = GRAPH_NODE_STYLE.get(node.node_type, {"color": "#828282", "shape": "dot", "size": 22})
+        color = GRAPH_HIGHLIGHT_COLOR if node.highlighted else style["color"]
+        agraph_nodes.append(
+            Node(
+                id=node.id,
+                label=node.label,
+                title=node.title,
+                color=color,
+                shape=style["shape"],
+                size=style["size"] + (6 if node.highlighted else 0),
+            )
+        )
+    agraph_edges = [
+        Edge(
+            source=edge.source,
+            target=edge.target,
+            label=edge.label,
+            color="#8E8E93",
+        )
+        for edge in edges
+    ]
+    config = Config(
+        height=440,
+        width="100%",
+        directed=True,
+        physics=True,
+        hierarchical=False,
+        nodeHighlightBehavior=True,
+        highlightColor="#F2C94C",
+        collapsible=False,
+    )
+    agraph(nodes=agraph_nodes, edges=agraph_edges, config=config)
+
+    legend_cols = st.columns(6)
+    for col, (node_type, style) in zip(legend_cols[:5], GRAPH_NODE_STYLE.items()):
+        col.markdown(f"<span style='color:{style['color']}'>●</span> `{node_type}`", unsafe_allow_html=True)
+    legend_cols[5].markdown(f"<span style='color:{GRAPH_HIGHLIGHT_COLOR}'>●</span> `matched`", unsafe_allow_html=True)
+
+
 def _render_graph_evidence(graph_evidence: list[dict], message_index: int, key_prefix: str) -> None:
     if not graph_evidence:
         return
@@ -386,13 +612,22 @@ def _render_graph_evidence(graph_evidence: list[dict], message_index: int, key_p
     rows = [_graph_evidence_row(evidence, rank) for rank, evidence in enumerate(graph_evidence, start=1)]
     with st.expander("그래프 관계 근거 보기", expanded=False):
         st.caption("Neo4j graph read model에서 조회한 program, commit, file, class, domain 관계 근거입니다.")
+        _render_graph_evidence_visualization(graph_evidence)
+        st.markdown("#### 관계 근거 표")
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-        for rank, evidence in enumerate(graph_evidence, start=1):
-            st.markdown(f"**Graph {rank}: {rows[rank - 1]['path']}**")
-            st.json(
-                evidence,
-                expanded=False,
-            )
+        show_metadata = st.checkbox(
+            "원본 메타데이터 표시",
+            value=False,
+            key=f"project_chat_graph_metadata_{key_prefix}_{message_index}",
+        )
+        if show_metadata:
+            st.caption("검증이나 디버깅이 필요할 때만 펼쳐 보는 Neo4j graph evidence 원본입니다.")
+            for rank, evidence in enumerate(graph_evidence, start=1):
+                st.markdown(f"**Graph {rank}: {rows[rank - 1]['path']}**")
+                st.json(
+                    evidence,
+                    expanded=False,
+                )
 
 
 def _render_expansion_context(message: dict) -> None:

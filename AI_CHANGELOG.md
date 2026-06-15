@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Project Chat GraphRAG interactive visualization
+
+- Project Chat의 `그래프 관계 근거 보기` 안에 `streamlit-agraph` 기반 `GraphRAG 관계도`를 추가해 Neo4j graph evidence를 node-edge 관계로 먼저 확인할 수 있게 했습니다.
+- Graph evidence 변환 helper를 dataclass 기반 display node/edge 생성 로직으로 분리하고, class import 관계, impact path, domain/program/file/commit/class node를 중복 없이 제한된 크기로 렌더링하도록 했습니다.
+- 기존 관계 근거 표는 유지하고, raw graph metadata는 nested expander 대신 `원본 메타데이터 표시` checkbox로 열게 바꿔 Streamlit expander 중첩 오류를 피했습니다.
+- Application Preview의 Project Chat GraphRAG screenshot을 interactive 관계도 기준으로 갱신하고, README, 기능 가이드, AI 기술 개요, engineering decision, failure history, Roadmap을 compact evidence graph 정책에 맞게 정리했습니다.
+- 주요 파일: `src/ui/project_chat_page.py`, `tests/test_project_chat_page.py`, `requirements.txt`, `docs/images/features/project-chat-graph-evidence.png`, `README.md`, `docs/application-preview.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_chat_page.py tests\test_project_chat_page.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_page.py tests\test_documentation_images.py -q` 7개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8501/?project_id=97" --feature project-chat-graph-evidence --surface local --height 1500 --expect-text "GraphRAG 관계도" --expect-text "PaymentService" --expect-text "OrderMapper" --expect-text "관계 근거 표" --expect-text "원본 메타데이터 표시" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"` 통과; Markdown link/image 확인 PowerShell script 통과(`markdown links OK`, `application-preview images OK`); `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Project Chat GraphRAG preview screenshot
 
 - Application Preview의 Project Chat 섹션에 기존 `project-chat.png`, `project-chat-answer.png`를 유지한 채 Graph DB 관계 근거가 펼쳐진 `project-chat-graph-evidence.png` screenshot을 추가했습니다.

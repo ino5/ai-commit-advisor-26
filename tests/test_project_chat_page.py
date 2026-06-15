@@ -1,5 +1,9 @@
 from src.services.neo4j_graph_service import Neo4jGraphFreshness
-from src.ui.project_chat_page import GRAPH_AWARE_QUESTION_TEMPLATES, _graph_template_status
+from src.ui.project_chat_page import (
+    GRAPH_AWARE_QUESTION_TEMPLATES,
+    _graph_template_status,
+    build_graph_evidence_display,
+)
 
 
 def test_graph_question_templates_cover_project_commit_class_domain_relationships() -> None:
@@ -28,3 +32,63 @@ def test_graph_template_status_blocks_missing_or_stale_graph() -> None:
     assert "전체 재동기화" in missing_message
     assert stale_enabled is False
     assert "최신 변경분 반영" in stale_message
+
+
+def test_build_graph_evidence_display_renders_class_import_relationships() -> None:
+    nodes, edges = build_graph_evidence_display(
+        [
+            {
+                "evidence_type": "class_import",
+                "source_class": "com.example.market.payment.service.PaymentService",
+                "target_class": "com.example.market.order.mapper.OrderMapper",
+                "matched_seeds": ["paymentservice"],
+            }
+        ]
+    )
+
+    assert {node.label for node in nodes} == {"PaymentService", "OrderMapper"}
+    assert any(node.label == "PaymentService" and node.highlighted for node in nodes)
+    assert [(edge.label, edge.source, edge.target) for edge in edges] == [
+        (
+            "IMPORTS_CLASS",
+            "class:com.example.market.payment.service.PaymentService",
+            "class:com.example.market.order.mapper.OrderMapper",
+        )
+    ]
+
+
+def test_build_graph_evidence_display_renders_impact_path_chain() -> None:
+    nodes, edges = build_graph_evidence_display(
+        [
+            {
+                "evidence_type": "impact_path",
+                "program": "Payment Checkout",
+                "commit_hash": "abcdef1234567890",
+                "file_path": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                "class_name": "com.example.market.payment.service.PaymentService",
+                "matched_seeds": ["payment"],
+            }
+        ]
+    )
+
+    assert {"Payment Checkout", "abcdef1234567890", "PaymentService.java", "PaymentService"} <= {
+        node.label for node in nodes
+    }
+    assert [edge.label for edge in edges] == ["MAPPED_TO_COMMIT", "TOUCHES_FILE", "CONTAINS_CLASS"]
+
+
+def test_build_graph_evidence_display_deduplicates_and_limits_graph() -> None:
+    evidence = [
+        {
+            "evidence_type": "class_import",
+            "source_class": f"com.example.Source{i}",
+            "target_class": f"com.example.Target{i}",
+            "matched_seeds": [],
+        }
+        for i in range(10)
+    ]
+
+    nodes, edges = build_graph_evidence_display(evidence, max_nodes=4, max_edges=3)
+
+    assert len(nodes) == 4
+    assert len(edges) == 3
