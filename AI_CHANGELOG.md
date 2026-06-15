@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Project Chat GraphRAG graph color polish
+
+- Project Chat `GraphRAG 관계도`의 node fill과 border를 pastel blue/purple/green/amber/teal 조합으로 조정하고, edge 색상과 label font를 함께 정리했습니다.
+- Matched seed 강조를 node 채움색 변경에서 테두리 강조로 바꿔 관계도 전체가 빨간색으로 보이는 문제를 줄였습니다.
+- Seed matching은 전체 package path가 아니라 화면 label 기준으로 판단하도록 좁혀 `payment` 같은 넓은 seed가 너무 많은 class node를 강조하지 않게 했습니다.
+- Application Preview의 `project-chat-graph-evidence.png` screenshot을 갱신했습니다.
+- 주요 파일: `src/ui/project_chat_page.py`, `docs/images/features/project-chat-graph-evidence.png`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_chat_page.py tests\test_project_chat_page.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_page.py -q` 6개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8501/?project_id=97" --feature project-chat-graph-evidence --surface local --height 1500 --expect-text "GraphRAG 관계도" --expect-text "PaymentService" --expect-text "OrderMapper" --expect-text "관계 근거 표" --expect-text "원본 메타데이터 표시" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"` 통과.
+
 ### Project Chat GraphRAG interactive visualization
 
 - Project Chat의 `그래프 관계 근거 보기` 안에 `streamlit-agraph` 기반 `GraphRAG 관계도`를 추가해 Neo4j graph evidence를 node-edge 관계로 먼저 확인할 수 있게 했습니다.

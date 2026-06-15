@@ -88,13 +88,16 @@ GRAPH_STATUS_LABELS = {
 }
 
 GRAPH_NODE_STYLE = {
-    "program": {"color": "#2F80ED", "shape": "box", "size": 28},
-    "commit": {"color": "#9B51E0", "shape": "diamond", "size": 24},
-    "file": {"color": "#27AE60", "shape": "box", "size": 24},
-    "class": {"color": "#F2994A", "shape": "dot", "size": 30},
-    "domain": {"color": "#56CCF2", "shape": "hexagon", "size": 26},
+    "program": {"color": "#D8E7FF", "border": "#7EA6E0", "shape": "box", "size": 28},
+    "commit": {"color": "#E8DDFF", "border": "#A78BFA", "shape": "diamond", "size": 24},
+    "file": {"color": "#D7F8E4", "border": "#69C58F", "shape": "box", "size": 24},
+    "class": {"color": "#FFE8C7", "border": "#F2A65A", "shape": "dot", "size": 30},
+    "domain": {"color": "#D2F7F1", "border": "#4DBFB6", "shape": "hexagon", "size": 26},
 }
-GRAPH_HIGHLIGHT_COLOR = "#D64545"
+GRAPH_HIGHLIGHT_COLOR = "#F59CB0"
+GRAPH_HIGHLIGHT_BORDER_COLOR = "#E8798F"
+GRAPH_EDGE_COLOR = "#CBD5E1"
+GRAPH_EDGE_HIGHLIGHT_COLOR = "#94A3B8"
 
 GRAPH_HIGHLIGHT_SEED_STOPWORDS = {
     "src",
@@ -483,13 +486,14 @@ def _add_graph_edge(
 def _is_graph_seed_match(value: str | None, evidence: dict) -> bool:
     if not value:
         return False
-    lowered = str(value).lower()
+    label = _short_graph_label(str(value)).lower()
+    compact_label = "".join(ch for ch in label if ch.isalnum())
     meaningful_seeds = [
-        str(seed).lower()
+        "".join(ch for ch in str(seed).lower() if ch.isalnum())
         for seed in evidence.get("matched_seeds") or []
         if len(str(seed)) > 4 and str(seed).lower() not in GRAPH_HIGHLIGHT_SEED_STOPWORDS
     ]
-    return any(seed in lowered or lowered in seed for seed in meaningful_seeds)
+    return any(seed == compact_label or (len(seed) >= 8 and seed in compact_label) for seed in meaningful_seeds)
 
 
 def build_graph_evidence_display(
@@ -566,16 +570,26 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
     st.caption("질문과 매칭된 class, program, commit, file, domain 관계를 작은 근거 그래프로 표시합니다.")
     agraph_nodes = []
     for node in nodes:
-        style = GRAPH_NODE_STYLE.get(node.node_type, {"color": "#828282", "shape": "dot", "size": 22})
-        color = GRAPH_HIGHLIGHT_COLOR if node.highlighted else style["color"]
+        style = GRAPH_NODE_STYLE.get(
+            node.node_type,
+            {"color": "#F3F4F6", "border": "#D1D5DB", "shape": "dot", "size": 22},
+        )
+        background = style["color"]
+        border = GRAPH_HIGHLIGHT_COLOR if node.highlighted else style["border"]
         agraph_nodes.append(
             Node(
                 id=node.id,
                 label=node.label,
                 title=node.title,
-                color=color,
+                color={
+                    "background": background,
+                    "border": border,
+                    "highlight": {"background": "#FFE4E6", "border": GRAPH_HIGHLIGHT_BORDER_COLOR},
+                },
                 shape=style["shape"],
-                size=style["size"] + (6 if node.highlighted else 0),
+                size=style["size"] + (3 if node.highlighted else 0),
+                borderWidth=3 if node.highlighted else 2,
+                font={"color": "#111827", "face": "Inter, Arial", "size": 16},
             )
         )
     agraph_edges = [
@@ -583,7 +597,10 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
             source=edge.source,
             target=edge.target,
             label=edge.label,
-            color="#8E8E93",
+            color={"color": GRAPH_EDGE_COLOR, "highlight": GRAPH_EDGE_HIGHLIGHT_COLOR},
+            font={"color": "#475569", "size": 11, "align": "middle"},
+            smooth={"type": "dynamic"},
+            width=1.8,
         )
         for edge in edges
     ]
@@ -594,7 +611,7 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
         physics=True,
         hierarchical=False,
         nodeHighlightBehavior=True,
-        highlightColor="#F2C94C",
+        highlightColor="#FFE4E6",
         collapsible=False,
     )
     agraph(nodes=agraph_nodes, edges=agraph_edges, config=config)
@@ -602,7 +619,10 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
     legend_cols = st.columns(6)
     for col, (node_type, style) in zip(legend_cols[:5], GRAPH_NODE_STYLE.items()):
         col.markdown(f"<span style='color:{style['color']}'>●</span> `{node_type}`", unsafe_allow_html=True)
-    legend_cols[5].markdown(f"<span style='color:{GRAPH_HIGHLIGHT_COLOR}'>●</span> `matched`", unsafe_allow_html=True)
+    legend_cols[5].markdown(
+        f"<span style='color:{GRAPH_HIGHLIGHT_COLOR}'>◉</span> `matched`",
+        unsafe_allow_html=True,
+    )
 
 
 def _render_graph_evidence(graph_evidence: list[dict], message_index: int, key_prefix: str) -> None:
