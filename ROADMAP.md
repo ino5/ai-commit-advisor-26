@@ -96,6 +96,7 @@
 | P2 | Docs / Screenshot UX | Application Preview scroll coverage refresh | Done | Application Preview 스크롤 영역 screenshot 보강 |
 | P1 | AX / AI 검증 | Structured PL Briefing history and validation hardening | Done | 구조화 PL Briefing 이력과 검증 안정화 |
 | P2 | Docs / Screenshot UX | README representative screenshot source cleanup | Done | README 대표 screenshot source 통합 |
+| P2 | Docs UX | README preview-first section ordering | Done | README preview-first section ordering |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
@@ -1866,6 +1867,22 @@ Checklist:
 - [x] Move feature workflow explanations into `docs/feature-guide.md`.
 - [x] Move setup, LLM/embedding, RAG operations, and verification commands into `docs/setup-and-operations.md`.
 - [x] Use GitHub-friendly relative links from README to each supporting document.
+- [x] Update `AI_CHANGELOG.md`.
+- [x] Run markdown/link sanity checks.
+
+## P2 - README Preview-First Section Ordering
+
+Status: Done
+
+Goal:
+Make the README easier to scan by moving Application Preview and first-run execution guidance before deeper architecture and operating-model details.
+
+Checklist:
+
+- [x] Move the Application Preview entry near the top of README.
+- [x] Put Quick Start and sample project guidance before feature detail sections.
+- [x] Keep architecture and Git repository operating model links available after the main workflow entry points.
+- [x] Reorder document links so preview, user guide, feature guide, and setup guide are easier to find first.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run markdown/link sanity checks.
 

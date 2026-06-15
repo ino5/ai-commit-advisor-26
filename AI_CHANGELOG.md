@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### README preview-first section ordering
+
+- README 상단 흐름을 `Application Preview`, `빠른 시작`, `샘플 프로젝트`가 먼저 보이도록 재배치했습니다.
+- 상세 설명 성격의 `주요 기능`, `Git 저장소 접근 모델`, `아키텍처 요약`은 실행/미리보기 진입점 뒤로 내려 README 첫 스캔 흐름을 정리했습니다.
+- 문서 목록에서 `Application Preview`, 사용 가이드, 기능 가이드, 설치/운영 문서를 먼저 찾을 수 있도록 링크 순서를 조정했습니다.
+- Roadmap에 README 문서 순서 조정 작업을 완료 항목으로 기록했습니다.
+- 주요 파일: `README.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `Select-String -Path README.md -Pattern '^## ' -Encoding UTF8`로 `Application Preview`, `빠른 시작`, `샘플 프로젝트`, `주요 기능`, `Git 저장소 접근 모델`, `아키텍처 요약`, `문서`, `프로젝트 구조`, `참고 사항` 순서 확인; README 상대 링크 존재 확인 PowerShell script 통과(`README links OK`); `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### First-run and empty-state preparation guide
 
 - `first_run_service.py`를 추가해 프로젝트/Git/프로그램/Mapping/source/vector/Knowledge Graph 준비 상태를 공통 `FirstRunAction` 목록으로 계산하도록 했습니다.

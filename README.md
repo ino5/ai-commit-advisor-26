@@ -6,77 +6,9 @@ AI Commit Advisor는 앱 서버에서 접근 가능한 Git 저장소의 커밋, 
 
 ![AI Commit Advisor dashboard](docs/images/features/home.png)
 
-## 아키텍처 요약
+## Application Preview
 
-AI Commit Advisor는 Python App 안의 화면단, 백단, RAG/Knowledge Graph 계층이 분석 대상 프로젝트와 저장소, AI Provider를 연결하는 구조입니다. 자세한 모듈과 데이터 흐름은 [아키텍처](docs/architecture.md)에서 확인할 수 있습니다.
-
-```mermaid
-flowchart TB
-    User["관리자 / PL / 개발 리더<br/>Browser"]
-
-    subgraph PythonApp["Python App: AI Commit Advisor"]
-        UI["화면단<br/>Streamlit pages"]
-        Services["백단<br/>Python services"]
-        RAG["RAG<br/>chunking / embedding / retrieval"]
-
-        UI --> Services
-        Services --> RAG
-    end
-
-    subgraph Storage["저장소"]
-        DB[(PostgreSQL + pgvector<br/>업무 데이터 / Git 데이터 / vector / 분석 결과)]
-        GraphDB[(Neo4j<br/>프로젝트 관계 그래프 read model)]
-    end
-
-    subgraph TargetProject["분석 대상 프로젝트"]
-        RemoteGit["GitHub 또는 사내 Git<br/>원격 저장소"]
-        ServerClone["app-server clone<br/>projects.git_repo_path"]
-        Artifacts["업무 산출물<br/>프로그램 / 개발계획 / 개발자 / 표준용어"]
-
-        RemoteGit --> ServerClone
-    end
-
-    subgraph AIProvider["AI Provider"]
-        LLM["LLM / Embedding provider<br/>Mock / LM Studio / OpenAI-compatible API"]
-    end
-
-    User --> UI
-    UI --> User
-    Services --> ServerClone
-    ServerClone --> Services
-    Services --> Artifacts
-    Artifacts --> Services
-    Services <--> DB
-    RAG <--> DB
-    Services -. sync .-> GraphDB
-    Services <--> LLM
-    RAG <--> LLM
-```
-
-## 주요 기능
-
-- 앱 서버 Git 저장소 커밋, 변경 파일, diff 수집과 증분 동기화
-- 개발자, 프로그램 목록, 개발계획 Excel 업로드와 화면 기반 직접 관리
-- LLM 기반 프로그램-커밋 Mapping과 사용자 피드백 보정
-- Commit Impact, Program Detail, AI Progress 기반 구현 현황 추적
-- Git History 화면에서 프로젝트별 커밋 목록, 변경 파일, diff 탐색
-- 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
-- Home과 AI 운영 현황에서 프로젝트/Git/프로그램/Mapping/소스 근거/검색 준비/Knowledge Graph 상태별 다음 준비 작업 확인
-- Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, 고객가치 참고 지표와 저장형 추세 확인
-- AI 운영 현황에서 LLM/embedding/Neo4j 연결 상태, GraphRAG 준비 상태, AI 분석 근거, 품질 점검, graph impact가 포함된 주간 보고서, 호출 기록 확인
-- Neo4j Knowledge Graph에서 프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인 관계를 저장하고 Graph HEAD 최신성, 선택 node 주변 관계, 영향 경로 탐색. Java parser는 annotation type, static import, nested member type을 반영하고 generated/build/test fixture 제외 경고를 표시합니다.
-- 현재 소스 검증형 RAG Search와 Neo4j graph 관계 근거를 보조로 쓰는 저장형 Project Chat. Knowledge Graph가 최신이면 프로그램/커밋/파일/class/domain 관계 질문 템플릿으로 바로 시작할 수 있습니다.
-- 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
-- 앱 서버 Git 저장소의 최신/특정 커밋 중심 AI Code Review
-- 데모용 샘플 프로젝트와 Excel 데이터 생성으로 전체 기능 확인 가능
-
-## Git 저장소 접근 모델
-
-AI Commit Advisor는 브라우저 사용자 PC의 Git 저장소를 직접 읽지 않습니다. 앱이 실행 중인 서버에서 접근 가능한 Git 저장소 경로를 기준으로 커밋, 변경 파일, diff, 현재 소스 파일을 분석합니다.
-
-사내 서버에서 앱을 실행한다면 분석 대상 저장소는 사내 서버의 `/srv/ai-commit-advisor/repos/...` 같은 경로에 준비되어 있어야 합니다. 운영자가 미리 clone해 둘 수도 있고, 프로젝트/Git 설정에 `Git remote URL`과 branch를 저장한 뒤 앱의 `서버 저장소 clone/fetch`로 서버 경로를 준비할 수도 있습니다. 팀원들은 브라우저로 앱에 접속해 서버가 수집한 Git 이력과 분석 결과를 함께 사용합니다.
-
-자세한 사내 서버 운영 방식과 경로 제한 정책은 [Git 저장소 운영 모델](docs/git-repository-operating-model.md)을 참고하세요.
+대표 화면은 README 상단에서 바로 확인할 수 있습니다. 주요 화면과 상세 workflow 상태는 [Application Preview](docs/application-preview.md)에서 먼저 훑어볼 수 있습니다.
 
 ## 빠른 시작
 
@@ -133,20 +65,87 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 
 전체 데모 흐름과 LLM/embedding 작업을 과도하게 실행하지 않는 방법은 [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md)를 먼저 확인하세요. 샘플 프로젝트 구성과 기능별 확인 포인트는 [샘플 프로젝트 설계](docs/sample-target-repo-demo-design.md)에서 관리합니다.
 
-## 스크린샷
+## 주요 기능
 
-대표 화면은 README 상단에서 바로 확인할 수 있습니다. 주요 화면과 상세 workflow 상태는 [Application Preview](docs/application-preview.md)에서 확인할 수 있습니다.
+- 앱 서버 Git 저장소 커밋, 변경 파일, diff 수집과 증분 동기화
+- 개발자, 프로그램 목록, 개발계획 Excel 업로드와 화면 기반 직접 관리
+- LLM 기반 프로그램-커밋 Mapping과 사용자 피드백 보정
+- Commit Impact, Program Detail, AI Progress 기반 구현 현황 추적
+- Git History 화면에서 프로젝트별 커밋 목록, 변경 파일, diff 탐색
+- 규칙 기반 Risk Analysis로 누락, 지연, 불확실한 프로그램 탐지
+- Home과 AI 운영 현황에서 프로젝트/Git/프로그램/Mapping/소스 근거/검색 준비/Knowledge Graph 상태별 다음 준비 작업 확인
+- Dashboard에서 개발자별 업무량, 난이도, 예상 지연 프로그램, 고객가치 참고 지표와 저장형 추세 확인
+- AI 운영 현황에서 LLM/embedding/Neo4j 연결 상태, GraphRAG 준비 상태, AI 분석 근거, 품질 점검, graph impact가 포함된 주간 보고서, 호출 기록 확인
+- Neo4j Knowledge Graph에서 프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인 관계를 저장하고 Graph HEAD 최신성, 선택 node 주변 관계, 영향 경로 탐색. Java parser는 annotation type, static import, nested member type을 반영하고 generated/build/test fixture 제외 경고를 표시합니다.
+- 현재 소스 검증형 RAG Search와 Neo4j graph 관계 근거를 보조로 쓰는 저장형 Project Chat. Knowledge Graph가 최신이면 프로그램/커밋/파일/class/domain 관계 질문 템플릿으로 바로 시작할 수 있습니다.
+- 표준용어/표준단어 Excel 업로드 기반 한글 질문 검색 확장
+- 앱 서버 Git 저장소의 최신/특정 커밋 중심 AI Code Review
+- 데모용 샘플 프로젝트와 Excel 데이터 생성으로 전체 기능 확인 가능
+
+## Git 저장소 접근 모델
+
+AI Commit Advisor는 브라우저 사용자 PC의 Git 저장소를 직접 읽지 않습니다. 앱이 실행 중인 서버에서 접근 가능한 Git 저장소 경로를 기준으로 커밋, 변경 파일, diff, 현재 소스 파일을 분석합니다.
+
+사내 서버에서 앱을 실행한다면 분석 대상 저장소는 사내 서버의 `/srv/ai-commit-advisor/repos/...` 같은 경로에 준비되어 있어야 합니다. 운영자가 미리 clone해 둘 수도 있고, 프로젝트/Git 설정에 `Git remote URL`과 branch를 저장한 뒤 앱의 `서버 저장소 clone/fetch`로 서버 경로를 준비할 수도 있습니다. 팀원들은 브라우저로 앱에 접속해 서버가 수집한 Git 이력과 분석 결과를 함께 사용합니다.
+
+자세한 사내 서버 운영 방식과 경로 제한 정책은 [Git 저장소 운영 모델](docs/git-repository-operating-model.md)을 참고하세요.
+
+## 아키텍처 요약
+
+AI Commit Advisor는 Python App 안의 화면단, 백단, RAG/Knowledge Graph 계층이 분석 대상 프로젝트와 저장소, AI Provider를 연결하는 구조입니다. 자세한 모듈과 데이터 흐름은 [아키텍처](docs/architecture.md)에서 확인할 수 있습니다.
+
+```mermaid
+flowchart TB
+    User["관리자 / PL / 개발 리더<br/>Browser"]
+
+    subgraph PythonApp["Python App: AI Commit Advisor"]
+        UI["화면단<br/>Streamlit pages"]
+        Services["백단<br/>Python services"]
+        RAG["RAG<br/>chunking / embedding / retrieval"]
+
+        UI --> Services
+        Services --> RAG
+    end
+
+    subgraph Storage["저장소"]
+        DB[(PostgreSQL + pgvector<br/>업무 데이터 / Git 데이터 / vector / 분석 결과)]
+        GraphDB[(Neo4j<br/>프로젝트 관계 그래프 read model)]
+    end
+
+    subgraph TargetProject["분석 대상 프로젝트"]
+        RemoteGit["GitHub 또는 사내 Git<br/>원격 저장소"]
+        ServerClone["app-server clone<br/>projects.git_repo_path"]
+        Artifacts["업무 산출물<br/>프로그램 / 개발계획 / 개발자 / 표준용어"]
+
+        RemoteGit --> ServerClone
+    end
+
+    subgraph AIProvider["AI Provider"]
+        LLM["LLM / Embedding provider<br/>Mock / LM Studio / OpenAI-compatible API"]
+    end
+
+    User --> UI
+    UI --> User
+    Services --> ServerClone
+    ServerClone --> Services
+    Services --> Artifacts
+    Artifacts --> Services
+    Services <--> DB
+    RAG <--> DB
+    Services -. sync .-> GraphDB
+    Services <--> LLM
+    RAG <--> LLM
+```
 
 ## 문서
 
-- [AI Agent 작업 안내](docs/agent-onboarding.md): 이 프로젝트에서 Agent로 작업할 때 참고할 흐름, 문서 규칙, 프롬프트 예시를 정리합니다.
+- [Application Preview](docs/application-preview.md): 샘플 프로젝트 기준 주요 화면과 기능 상태를 미리 확인할 수 있습니다.
 - [사용 가이드](docs/demo-user-guide.md): 샘플 프로젝트를 예시로 AI Commit Advisor의 주요 화면과 분석 흐름을 따라가는 사용자용 가이드입니다.
-- [사용 가이드 검증 결과](docs/sample-project-usage-verification.md): local LLM/embedding 환경에서 사용 가이드를 실제 실행한 결과와 화면 증거입니다.
 - [기능 가이드](docs/feature-guide.md): 사이드바 메뉴 구조, 주요 화면, 기능 흐름, 분석 결과가 무엇을 의미하는지 설명합니다.
+- [설치와 운영](docs/setup-and-operations.md): 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 가이드입니다.
 - [Git 저장소 운영 모델](docs/git-repository-operating-model.md): 앱 서버 기준 Git 저장소 접근 방식, 사내 서버 운영 구조, 경로 제한 정책을 설명합니다.
 - [서버 Git 저장소 갱신 Runbook](docs/server-repository-update-runbook.md): 사내 서버에 준비된 Git 저장소를 fetch/reset한 뒤 앱 Git 동기화를 실행하는 절차입니다.
-- [Application Preview](docs/application-preview.md): 샘플 프로젝트 기준 주요 화면과 기능 상태를 미리 확인할 수 있습니다.
-- [설치와 운영](docs/setup-and-operations.md): 설치, 실행, 환경 변수, DB migration, LLM/embedding 운영 가이드입니다.
+- [사용 가이드 검증 결과](docs/sample-project-usage-verification.md): local LLM/embedding 환경에서 사용 가이드를 실제 실행한 결과와 화면 증거입니다.
 - [Local LLM Verification](docs/local-llm-verification.md): mock이 아닌 local OpenAI-compatible LLM/embedding으로 주요 AI 기능을 실행하고 증거를 확인하는 절차입니다.
 - [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md): 샘플 프로젝트로 주요 기능을 확인할 때 참고하는 권장 실행 흐름입니다.
 - [샘플 프로젝트 설계](docs/sample-target-repo-demo-design.md): 데모용 샘플 프로젝트의 구성, commit 시나리오, 기능별 확인 포인트입니다.
@@ -157,6 +156,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 - [Engineering Decisions](docs/engineering-decisions.md): 주요 설계, 운영, 검증, 자동화 결정의 배경과 tradeoff를 기록합니다.
 - [실패 이력](docs/failure-history.md): 프로젝트 전반의 실패 원인, 수정 내용, 재발 방지 기준을 기록합니다.
 - [AI 변경 이력](AI_CHANGELOG.md): AI 에이전트가 수행한 변경 이력입니다.
+- [AI Agent 작업 안내](docs/agent-onboarding.md): 이 프로젝트에서 Agent로 작업할 때 참고할 흐름, 문서 규칙, 프롬프트 예시를 정리합니다.
 - [에이전트 작업 규칙](AGENTS.md): 코딩 에이전트 작업 규칙입니다.
 
 ## 프로젝트 구조
