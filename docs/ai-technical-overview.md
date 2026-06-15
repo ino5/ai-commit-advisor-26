@@ -165,6 +165,8 @@ Source index refresh는 두 가지 경로로 나뉩니다.
 
 증분 indexing과 Project Chat source refresh는 embedding을 자동 생성하지 않습니다. 새 chunk는 pending 상태로 남고, `RAG 검색 > 검색 준비`에서 현재 embedding model 기준 missing vector만 제한 수량으로 생성합니다. 이 분리는 cloud embedding 과금과 local LM Studio CPU/GPU 부하를 사용자가 통제하기 위한 안전장치입니다.
 
+Git Sync 이후에는 `Git 동기화 > 동기화 후 다음 작업` 패널이 source index, embedding, Mapping, Risk Analysis, Knowledge Graph 갱신 필요성을 현재 프로젝트 상태로 계산합니다. 이 패널은 AI 근거 최신화 순서를 보여주지만, embedding이나 LLM 호출은 자동 실행하지 않습니다. 사용자가 각 화면으로 이동해 명시적으로 실행해야 비용과 local model 부하를 통제할 수 있습니다.
+
 One-click full source refresh는 current HEAD에서 `source_file` chunk를 다시 만들고, 더 이상 verify할 수 없는 chunk/vector를 제거합니다. 이를 통해 이전 indexing run 뒤 삭제된 file의 evidence가 남는 문제를 줄입니다. Local embedding server 과부하를 피하기 위해 Project Chat refresh는 embedding을 자동 생성하지 않고, RAG 화면도 사용자가 명시적으로 선택한 경우 제한된 수량만 embedding을 생성합니다.
 
 Local LLM/embedding 운영에서는 batch execution을 의도적으로 제한합니다. RAG 화면은 실행 전에 남은 embedding work, current batch limit, estimated runtime을 보여주므로 사용자가 LM Studio나 workstation에 과부하를 주지 않고 긴 local run을 나눠 실행할 수 있습니다.

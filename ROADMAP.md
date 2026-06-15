@@ -117,6 +117,7 @@
 | P2 | Graph UX | Knowledge Graph exploration UI | Done | Knowledge Graph exploration UI |
 | P2 | AI Quality | Project-level AI quality scorecard | Done | Project-level AI quality scorecard |
 | P2 | AI Verification | Local LLM verification routine | Done | Local LLM verification routine |
+| P2 | Workflow | Git Sync follow-up action orchestrator | Done | Git Sync follow-up action orchestrator |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -252,6 +253,27 @@ Checklist:
 - [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
 - [x] Compile/test/diff verification을 실행한다.
 
+## P2 - Git Sync Follow-Up Action Orchestrator
+
+Status: Done
+
+Goal:
+Git Sync 이후 사용자가 실행해야 할 RAG, embedding, Mapping, Risk Analysis, Neo4j 갱신 작업을 한 흐름으로 안내한다.
+
+Rationale:
+Git Sync는 commit/diff metadata를 DB에 수집하지만, 그 뒤에 현재 소스 인덱싱, embedding, Mapping, Risk Analysis, Knowledge Graph 갱신을 따로 실행해야 AI 화면이 최신 근거를 사용한다. 기능이 늘어나면서 사용자가 다음 단계를 기억해야 하는 부담이 커졌으므로, Git Sync 화면에서 현재 상태 기준 권장 순서와 재시작 가능한 action을 보여준다.
+
+Checklist:
+
+- [x] Git Sync 완료 후 changed commit/file count와 현재 DB/HEAD 상태를 후속 작업 판단에 사용한다.
+- [x] 다음 작업 후보를 source incremental indexing, embedding missing chunks, Mapping, Risk Analysis, Neo4j sync 기준으로 산출한다.
+- [x] 각 작업의 준비 상태, 예상 소요, 비용/부하 주의 문구를 표시한다.
+- [x] 권장 순서와 나중에 해도 되는 항목을 구분한다.
+- [x] 실패/부분 완료 상태에서 재시작 가능한 화면 이동 또는 명시 실행 action을 제공한다.
+- [x] 관련 tests를 추가/갱신한다.
+- [x] 사용자-facing/architecture/operations documentation과 `AI_CHANGELOG.md`를 갱신한다.
+- [x] Compile/test/diff verification을 실행한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -260,30 +282,11 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P2 | Workflow | Git Sync follow-up action orchestrator | Git Sync 이후 RAG, embedding, Mapping, Neo4j 갱신 같은 다음 작업을 한 흐름으로 안내한다. |
 | P2 | Graph Ops | Neo4j production hardening | 대형 저장소에서 batch, transaction, health check, 복구 동작을 안정화한다. |
 | P3 | Source Analysis | Source parser accuracy expansion | 정규식 기반 Java class/import 추출 한계를 줄이고 graph 품질을 높인다. |
 | P3 | Project Chat UX | Graph-aware question templates | 사용자가 graph/RAG가 잘 답할 수 있는 질문을 쉽게 시작하게 한다. |
 | P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
 | P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - Git Sync Follow-Up Action Orchestrator
-
-Goal:
-Git Sync 이후 사용자가 실행해야 할 RAG, embedding, Mapping, Neo4j 갱신 작업을 한 흐름으로 안내한다.
-
-Expected scope:
-
-- Git Sync 완료 후 changed commit/file count 요약.
-- 다음 작업 후보: source incremental indexing, embedding missing chunks, Mapping, Risk Analysis, Neo4j sync.
-- 각 작업의 준비 상태, 예상 소요, 비용/부하 주의 표시.
-- "권장 순서"와 "나중에 하기"를 구분한다.
-- 실패/부분 완료 상태에서 재시작 가능한 action을 보여준다.
-
-Boundaries:
-
-- 모든 후속 작업을 자동으로 한 번에 실행하지 않는다.
-- embedding/LLM 호출은 사용자가 명시적으로 실행하도록 한다.
 
 ### Candidate - Neo4j Production Hardening
 

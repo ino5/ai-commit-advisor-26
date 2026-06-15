@@ -547,6 +547,7 @@ erDiagram
 | `excel_service.py` | 프로그램/개발자 Excel 파일 읽기, 컬럼 매핑, 정규화, DB 저장. |
 | `git_service.py` | 앱 서버 Git 저장소에서 commit hash, message, author, changed files, diff 수집 및 DB 저장. |
 | `git_repository_status_service.py` | 앱 서버 Git 저장소의 branch, HEAD, upstream, ahead/behind, working tree 변경, DB sync mismatch 상태를 읽기 전용으로 조회한다. |
+| `git_followup_service.py` | Git Sync 이후 source index, embedding, Mapping, Risk Analysis, Knowledge Graph 갱신 필요성을 현재 DB/HEAD 상태로 계산하고 권장 순서와 재시작 가능한 이동 대상을 제공한다. |
 | `developer_service.py` | Git author 기반 개발자 자동 추출, role/skills 추정, 현재 프로젝트 개발자 연결, 개발자 통계 생성. |
 | `developer_management_service.py` | 개발자 직접 추가/수정/삭제, Excel 저장 결과, 삭제 영향, 전역 개발자 마스터 저장을 처리한다. 현재 프로젝트가 있으면 개발자 연결도 함께 만든다. |
 | `project_developer_service.py` | 전역 개발자 마스터와 프로젝트 개발자 연결을 생성/갱신하고, 현재 프로젝트 개발자 목록과 전역 마스터 목록 조회를 분리한다. |
@@ -797,7 +798,7 @@ LLM 출력 예시:
 | `src/ui/upload_page.py` | 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/development_plan_upload_page.py` | 개발계획 조회, 직접 수정, 일괄 업데이트, Excel 양식, 업로드 검증, 저장. |
 | `src/ui/program_detail_page.py` | 프로그램별 계획, AI 구현상태, 관련 커밋, diff, 리스크 상세 조회. |
-| `src/ui/git_page.py` | 앱 서버 Git 저장소 상태 확인과 Git 커밋 수집. |
+| `src/ui/git_page.py` | 앱 서버 Git 저장소 상태 확인, Git 커밋 수집, Git Sync 이후 AI 근거 갱신 후속 작업 표시. |
 | `src/ui/mapping_page.py` | 프로그램-커밋 Mapping 분석 실행. |
 | `src/ui/risk_page.py` | 프로젝트 리스크 분석, 미해결 리스크 조회 및 해결 처리. |
 | `src/ui/git_history_page.py` | 프로젝트별 Git 커밋 이력, 변경 파일, diff 조회. |

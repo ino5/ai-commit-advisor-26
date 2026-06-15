@@ -78,6 +78,8 @@ PL Briefing 회의 질문, 다음 action, 이력 확인
 <details>
 <summary>Git 동기화</summary>
 
+앱 서버 Git 저장소 상태와 DB 동기화 상태를 확인하고, Git Sync 이후 현재 소스 근거·검색 준비·Mapping·Risk Analysis·Knowledge Graph 갱신 순서를 이어서 확인하는 화면입니다.
+
 ![Git Sync](images/features/git-sync.png)
 
 </details>

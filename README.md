@@ -180,6 +180,7 @@ requirements.txt
 
 - RAG/embedding은 mock과 OpenAI-compatible 서버를 모두 지원합니다. 실제 검색 품질 평가는 embedding 모델과 `PGVECTOR_DIMENSION` 설정이 맞아야 합니다.
 - Project Chat은 현재 소스 검증을 통과한 `source_file` chunk만 기본 답변 근거로 사용하며, Neo4j graph가 준비된 경우 관계 근거를 보조로 붙이고 프로젝트별 대화 이력과 답변 근거를 저장합니다.
+- Git Sync 이후에는 `Git 동기화` 화면의 `동기화 후 다음 작업`에서 현재 소스 근거, 검색 준비, Mapping, Risk Analysis, Knowledge Graph 갱신 순서를 확인하세요.
 - 현재 소스 파일을 수정하거나 브랜치/HEAD가 바뀐 뒤에는 RAG 또는 Project Chat 화면의 인덱스 상태를 확인하고 필요 시 현재 소스를 다시 인덱싱하세요.
 - Git Sync나 Mapping 이후 Knowledge Graph가 `갱신 필요`로 표시되면 `최신 변경분만 Neo4j 반영`을 먼저 실행하고, 처음 저장하거나 관계가 크게 어긋난 경우 `전체 재동기화`를 사용하세요.
 - LLM 매핑 분석과 AI 코드리뷰는 `.env`의 `LLM_PROVIDER` 설정에 따라 mock 또는 로컬 LLM을 사용합니다.

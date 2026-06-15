@@ -4,8 +4,11 @@ from dataclasses import dataclass
 
 
 ESTIMATED_SECONDS_PER_ITEM = {
+    "source_index": (1, 3),
     "embedding": (1, 5),
     "mapping": (10, 30),
+    "risk_analysis": (1, 3),
+    "graph_sync": (2, 8),
     "implementation_analysis": (15, 45),
     "code_review": (20, 60),
 }

@@ -123,7 +123,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
         name="git-sync",
         sidebar_label="Git 동기화",
         wait_text="앱 서버 저장소 상태",
-        required_texts=("Git 동기화", "증분 동기화", "앱 서버 저장소 상태"),
+        required_texts=("Git 동기화", "증분 동기화", "앱 서버 저장소 상태", "동기화 후 다음 작업", "권장 순서"),
         default_screenshot="docs/images/features/git-sync.png",
         description="Git 동기화 화면",
     ),

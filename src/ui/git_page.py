@@ -3,9 +3,19 @@ import streamlit as st
 
 from src.db.database import SessionLocal
 from src.db.models import Project
+from src.services.git_followup_service import (
+    GROUP_LATER,
+    GROUP_RECOMMENDED,
+    GitFollowUpStep,
+    build_git_sync_follow_up,
+)
 from src.services.git_service import is_git_repository, sync_git_repository
 from src.ui.git_status_panel import render_repository_status
-from src.ui.project_context import require_project_context
+from src.ui.project_context import project_scoped_key, require_project_context
+
+
+def _short_hash(value: str | None) -> str:
+    return value[:12] if value else "-"
 
 
 def _render_sync_result(result) -> None:
@@ -25,6 +35,89 @@ def _render_sync_result(result) -> None:
         st.dataframe(pd.DataFrame(result.recent_commits), use_container_width=True)
     else:
         st.info("이번 실행에서 새로 저장된 커밋이 없습니다.")
+
+
+def _follow_up_rows(steps: list[GitFollowUpStep]) -> list[dict]:
+    return [
+        {
+            "순서": step.order,
+            "작업": step.title,
+            "상태": step.status,
+            "현재 값": step.current_value,
+            "예상 소요": step.estimated_runtime,
+            "부하/비용 주의": step.load_note,
+            "다음 조치": step.next_action,
+        }
+        for step in steps
+    ]
+
+
+def _render_follow_up_actions(project_id: int, steps: list[GitFollowUpStep], key_suffix: str) -> None:
+    action_steps = [step for step in steps if step.restartable]
+    if not action_steps:
+        return
+
+    cols = st.columns(min(3, len(action_steps)))
+    for index, step in enumerate(action_steps):
+        col = cols[index % len(cols)]
+        if col.button(
+            f"{step.target_page}로 이동",
+            key=project_scoped_key(project_id, f"git_followup_{key_suffix}_{step.step_id}"),
+            use_container_width=True,
+        ):
+            st.session_state["sidebar_navigation"] = {"group": step.target_group, "page": step.target_page}
+            st.rerun()
+
+
+def _render_follow_up_group(
+    project_id: int,
+    title: str,
+    steps: list[GitFollowUpStep],
+    key_suffix: str,
+    *,
+    detail_expander: bool = True,
+) -> None:
+    st.markdown(f"#### {title}")
+    if not steps:
+        st.success("현재 기준으로 필요한 항목이 없습니다.")
+        return
+
+    for step in steps:
+        st.markdown(f"**{step.order}. {step.title}** · `{step.status}`")
+        st.caption(f"{step.current_value} · 예상 소요: {step.estimated_runtime} · {step.load_note}")
+        st.caption(step.next_action)
+
+    if detail_expander:
+        with st.expander("상세 표", expanded=False):
+            st.dataframe(pd.DataFrame(_follow_up_rows(steps)), hide_index=True, use_container_width=True)
+    else:
+        st.caption("상세 표")
+        st.dataframe(pd.DataFrame(_follow_up_rows(steps)), hide_index=True, use_container_width=True)
+    _render_follow_up_actions(project_id, steps, key_suffix)
+
+
+def _render_follow_up_panel(db, project_id: int, sync_result=None) -> None:
+    summary = build_git_sync_follow_up(db, project_id, sync_result)
+    st.divider()
+    st.subheader("동기화 후 다음 작업")
+    st.caption(
+        "Git Sync는 commit/diff를 수집하는 단계입니다. 아래 순서로 현재 소스 근거, 검색 준비, Mapping, Risk, Knowledge Graph를 맞추면 AI 화면이 최신 근거를 사용합니다."
+    )
+
+    cols = st.columns(4)
+    cols[0].metric("이번 새 커밋", summary.synced_commit_count)
+    cols[1].metric("이번 변경 파일", summary.synced_file_count)
+    cols[2].metric("DB sync", "최신" if summary.db_matches_head else "확인 필요")
+    cols[3].metric("DB 커밋", summary.total_commit_count)
+    st.caption(
+        f"Repo HEAD={_short_hash(summary.repo_head_hash)}, "
+        f"DB Sync HEAD={_short_hash(summary.db_sync_head_hash)}, "
+        f"최근 sync 대상={_short_hash(summary.latest_sync_commit_hash)}"
+    )
+
+    _render_follow_up_group(project_id, GROUP_RECOMMENDED, summary.recommended_steps, "recommended")
+    with st.expander(GROUP_LATER, expanded=False):
+        _render_follow_up_group(project_id, GROUP_LATER, summary.later_steps, "later", detail_expander=False)
 
 
 def render_git_page() -> None:
@@ -59,11 +152,14 @@ def render_git_page() -> None:
         if status.db_matches_head is True:
             st.success("DB가 현재 서버 저장소 HEAD 기준으로 최신입니다. 새 commit을 가져온 뒤에는 증분 동기화를 실행하세요.")
 
+        sync_result = None
         if run_full:
             with st.spinner("전체 Git 커밋을 수집하는 중입니다."):
-                result = sync_git_repository(db, project, full=True)
-            _render_sync_result(result)
+                sync_result = sync_git_repository(db, project, full=True)
+            _render_sync_result(sync_result)
         elif run_incremental:
             with st.spinner("새로 추가된 Git 커밋만 동기화하는 중입니다."):
-                result = sync_git_repository(db, project, full=False)
-            _render_sync_result(result)
+                sync_result = sync_git_repository(db, project, full=False)
+            _render_sync_result(sync_result)
+
+        _render_follow_up_panel(db, project.id, sync_result)

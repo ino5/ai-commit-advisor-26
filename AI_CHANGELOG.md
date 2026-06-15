@@ -2,6 +2,16 @@
 
 ## 2026-06-15
 
+### Git Sync follow-up action orchestrator
+
+- `Git 동기화` 화면에 `동기화 후 다음 작업` 패널을 추가했습니다. Git Sync가 commit/diff 수집만 담당한다는 경계를 유지하면서, 이후 현재 소스 근거 갱신, 검색 준비, Mapping, Risk Analysis, Knowledge Graph 갱신을 현재 프로젝트 상태 기준 권장 순서로 보여줍니다.
+- `git_followup_service.py`를 추가해 Repo HEAD/DB Sync HEAD, source index stale 여부, missing embedding, Mapping 미완료/실패 commit, Risk Finding, Knowledge Graph freshness를 조합해 후속 작업 상태를 계산하도록 했습니다. 각 항목은 상태, 현재 값, 예상 소요, 비용/부하 주의, 이동할 화면을 제공합니다.
+- Git Sync 화면은 권장 순서와 `나중에 해도 됨` 항목을 나눠 표시하고, 각 작업을 자동 실행하지 않고 관련 화면으로 이동하는 재시작 가능한 action을 제공합니다. embedding/LLM/Neo4j 작업은 사용자가 명시적으로 실행해야 합니다.
+- Application Preview의 Git 동기화 screenshot과 screenshot capture 기준을 새 패널 기준으로 갱신했습니다. Browser 검증 중 Streamlit expander 중첩 오류를 발견해 수정하고, 재발 방지를 위해 `docs/failure-history.md`에 기록했습니다.
+- README, 기능 가이드, AI 기술 개요, 아키텍처, 운영 가이드, engineering decision, Roadmap을 Git Sync 후속 작업 흐름 기준으로 갱신했습니다.
+- 주요 파일: `src/services/git_followup_service.py`, `src/ui/git_page.py`, `src/utils/runtime_estimator.py`, `tests/test_git_followup_service.py`, `scripts/capture_feature_screenshot.py`, `docs/images/features/git-sync.png`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `docs/application-preview.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\git_followup_service.py src\ui\git_page.py src\utils\runtime_estimator.py scripts\capture_feature_screenshot.py tests\test_git_followup_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_git_followup_service.py tests\test_runtime_estimator.py tests\test_documentation_images.py -q` 6개 테스트 통과; Browser로 `http://127.0.0.1:8507`의 `Git 동기화` 화면에서 `동기화 후 다음 작업`, `권장 순서`, `현재 소스 근거 갱신`, `검색 준비 생성`, `Mapping 분석`, `Risk Analysis 재계산` 표시와 `StreamlitAPIException` 미표시 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://127.0.0.1:8507 --feature git-sync --surface local --height 1400 --project-name "AAA Sample Shop Rich Demo (4)" --expect-text "동기화 후 다음 작업" --expect-text "현재 소스 근거 갱신" --expect-text "Mapping 분석" --forbid-text "StreamlitAPIException"` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 144개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Local LLM verification routine
 
 - mock 실행과 실제 local LLM/embedding 실행을 구분할 수 있도록 `scripts/run_local_ai_verification.py`를 추가했습니다. 이 script는 project 기준으로 embedding 연결 확인, PL Briefing, Project Chat, AI Code Review, 선택적 Mapping을 실행하고 provider/model/base URL, fallback 여부, invocation telemetry, 결과 요약을 Markdown으로 남깁니다.

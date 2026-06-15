@@ -45,6 +45,41 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - Git Sync 이후 AI 후속 작업은 상태 기반 안내와 명시 실행으로 분리한다
+
+### 배경
+
+Git Sync는 commit과 diff를 PostgreSQL에 수집하지만, RAG/Project Chat의 현재 소스 근거, embedding, Mapping, Risk Analysis, Neo4j Knowledge Graph는 별도 갱신이 필요합니다. 기능이 늘어나면서 사용자가 Git Sync 후 어떤 화면을 어떤 순서로 확인해야 하는지 기억해야 했고, 이 흐름이 끊기면 AI 분석 화면이 오래된 근거를 사용할 수 있었습니다.
+
+### 결정
+
+`Git 동기화` 화면에 `동기화 후 다음 작업` 패널을 두고, `git_followup_service.py`가 현재 DB/HEAD/source index/embedding/Mapping/Risk/Knowledge Graph 상태를 읽어 권장 순서를 계산합니다. 패널은 관련 화면으로 이동하는 재시작 가능한 action을 제공하지만, embedding이나 LLM 호출이 필요한 작업을 자동 실행하지 않습니다.
+
+### 이유
+
+- Git Sync 직후 사용자가 최신 근거 갱신 순서를 한 화면에서 볼 수 있습니다.
+- embedding/LLM/Neo4j 작업은 비용과 local model 부하가 있으므로 사용자가 명시적으로 실행해야 합니다.
+- 후속 작업 상태 계산을 Streamlit UI 밖 service에 두면 테스트와 재사용이 쉽습니다.
+- Git Sync 결과가 없어도 현재 상태를 다시 계산하므로 나중에 화면을 열었을 때도 같은 점검 흐름을 사용할 수 있습니다.
+
+### 검토한 대안
+
+- Git Sync 성공 직후 모든 후속 작업 자동 실행: 편하지만 LLM/embedding 비용과 실행 시간이 커지고, 실패 시 원인 분리가 어렵습니다.
+- 문서에 순서만 기록: 안전하지만 사용자가 매번 문서를 찾아야 하고 현재 프로젝트 상태를 반영하지 못합니다.
+- 각 화면에만 개별 경고 표시: 기존 흐름과 비슷해 Git Sync 직후의 다음 행동을 한눈에 잡기 어렵습니다.
+
+### 영향과 tradeoff
+
+후속 작업 패널은 안내와 이동을 담당하며, 실제 실행은 RAG 검색, Project Chat, Mapping, Risk Analysis, Knowledge Graph 각 화면의 기존 action을 사용합니다. 따라서 한 번에 끝나는 자동 pipeline은 아니지만, 비용이 큰 작업을 사용자가 통제할 수 있고 실패/부분 완료 상태에서 필요한 화면으로 다시 들어가기 쉽습니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `Git Sync follow-up action orchestrator`
+- `ROADMAP.md`의 `P2 - Git Sync Follow-Up Action Orchestrator`
+- `docs/feature-guide.md`
+- `docs/setup-and-operations.md`
+- `docs/architecture.md`
+
 ## 2026-06-15 - Local LLM 검증은 명시 실행 script와 AI invocation telemetry로 남긴다
 
 ### 배경

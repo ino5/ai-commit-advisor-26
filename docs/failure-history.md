@@ -31,6 +31,59 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-15 - Git Sync 후속 작업 패널에서 Streamlit expander를 중첩했다
+
+분류:
+
+- Streamlit UI runtime failure
+- Browser verification finding
+
+관련 기능 및 문서:
+
+- `src/ui/git_page.py`
+- `src/services/git_followup_service.py`
+- `AI_CHANGELOG.md`의 `Git Sync follow-up action orchestrator`
+
+### 증상
+
+`Git 동기화` 화면에 `동기화 후 다음 작업` 패널을 추가한 뒤 Browser 검증에서 `나중에 해도 됨` 영역에 `StreamlitAPIException`이 표시되었습니다.
+
+오류 요지:
+
+```text
+Expanders may not be nested inside other expanders.
+```
+
+### 직접 원인
+
+`나중에 해도 됨`을 `st.expander`로 감싼 뒤, 공통 렌더링 helper가 내부에서 다시 `상세 표`용 `st.expander`를 만들었습니다. Streamlit은 expander 안의 expander를 허용하지 않으므로 화면 렌더링 중 예외가 발생했습니다.
+
+### 배경 또는 구조적 원인
+
+권장 작업과 나중 작업을 같은 helper로 렌더링하면서, 호출 위치가 이미 expander 내부인지 구분하지 않았습니다. 단위 테스트는 service 계산만 검증했기 때문에 Streamlit layout 제약을 잡지 못했습니다.
+
+### 사전 검증에서 놓친 이유
+
+초기 focused tests는 Python compile과 service 결과 중심이었고, 실제 Streamlit 화면을 열기 전까지 layout runtime 제약을 확인하지 못했습니다.
+
+### 수정 내용
+
+후속 작업 렌더링 helper에 `detail_expander` 옵션을 추가했습니다. 일반 권장 영역에서는 `상세 표`를 expander로 접고, 이미 expander 안에서 렌더링되는 `나중에 해도 됨` 영역에서는 caption과 dataframe만 표시해 expander 중첩을 피했습니다.
+
+### 재발 방지 규칙
+
+- Streamlit 공통 UI helper가 `st.expander`, `st.tabs`, `st.form` 같은 layout container를 만들 때는 호출 위치의 container 제약을 인자로 분리합니다.
+- layout 변경은 service 테스트뿐 아니라 실제 Streamlit 화면 Browser 검증으로 확인합니다.
+
+### 남은 한계 또는 후속 확인
+
+Streamlit layout 제약은 정적 테스트로 모두 잡기 어렵습니다. UI 구조를 바꾸는 작업은 최소 한 번 실제 화면을 열어 주요 텍스트와 예외 표시 여부를 확인해야 합니다.
+
+### 검증 명령과 결과
+
+- Browser로 `http://127.0.0.1:8507`의 `Git 동기화` 화면에서 `동기화 후 다음 작업`, `권장 순서`, `현재 소스 근거 갱신`, `검색 준비 생성`, `Mapping 분석`, `Risk Analysis 재계산` 표시와 `StreamlitAPIException` 미표시 확인.
+- `.\.venv\Scripts\python.exe -m pytest tests\test_git_followup_service.py tests\test_runtime_estimator.py tests\test_documentation_images.py -q`: 6개 테스트 통과.
+
 ## 2026-06-15 - Neo4j impact path 조회에서 Cypher alias가 node 변수와 충돌했다
 
 분류:
