@@ -56,7 +56,7 @@ PL Briefing 회의 질문, 다음 action, 이력 확인
 <details>
 <summary>AI 운영 현황</summary>
 
-연결된 LLM/embedding/Neo4j 설정, Knowledge Graph 최신성, Project Chat GraphRAG 준비 상태, 최근 AI 호출, 검색 준비 상태를 먼저 확인하고 필요한 AI 실행을 바로 시작하는 화면입니다. 준비 상태와 품질 점검은 요약 지표와 `주의/실패 우선 확인` 영역으로 먼저 보여주며, 같은 화면에서 저장된 AI 결과가 어떤 근거와 provider/model/fallback 상태로 만들어졌는지 추적할 수 있습니다.
+연결된 LLM/embedding/Neo4j 설정, Knowledge Graph 최신성, Project Chat GraphRAG 준비 상태, 최근 AI 호출, 검색 준비 상태를 먼저 확인하고 필요한 AI 실행을 바로 시작하는 화면입니다. 준비 상태와 프로젝트 AI 품질 점검은 요약 지표와 `주의/실패 우선 확인` 영역으로 먼저 보여주며, Mapping 품질 신호, Project Chat 근거 사용률, PL Briefing validation/fallback, AI Code Review 결과, Knowledge Graph 신선도를 같은 화면에서 추적할 수 있습니다.
 
 ![AI 운영 현황](images/features/ai-evidence.png)
 

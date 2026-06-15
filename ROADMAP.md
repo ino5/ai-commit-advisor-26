@@ -115,6 +115,7 @@
 | P1 | Graph Ops | Knowledge Graph freshness and incremental Neo4j sync | Done | Knowledge Graph freshness and incremental Neo4j sync |
 | P1 | AI Ops | AI operations graph status | Done | AI operations graph status |
 | P2 | Graph UX | Knowledge Graph exploration UI | Done | Knowledge Graph exploration UI |
+| P2 | AI Quality | Project-level AI quality scorecard | Done | Project-level AI quality scorecard |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -207,6 +208,28 @@ Checklist:
 - [x] Knowledge Graph UI와 documentation, `AI_CHANGELOG.md`를 갱신한다.
 - [x] Compile/test/diff verification을 실행한다.
 
+## P2 - Project-Level AI Quality Scorecard
+
+Status: Done
+
+Goal:
+sample project 전용 점검을 실제 프로젝트에서도 쓸 수 있는 AI 품질 상태판으로 확장한다.
+
+Rationale:
+기존 `품질 점검`은 현재 프로젝트 ID를 받지만 "결과가 존재하는지"와 sample project 중심 조치 문구에 가깝다. 실제 AX Use Case에서는 프로젝트별 Mapping 품질, Project Chat 근거 사용률, PL Briefing fallback/validation, Code Review 결과 분포, Knowledge Graph 신선도를 한 화면에서 설명할 수 있어야 한다.
+
+Checklist:
+
+- [x] Mapping 판단불가 비율, low relevance 비율, 짧은 reason, feedback pending count를 계산한다.
+- [x] Project Chat verified source 사용률, insufficient-evidence 비율, stale/invalid excluded count를 계산한다.
+- [x] PL Briefing fallback/repair 발생률, 최근 provider/model, validation status를 표시한다.
+- [x] Code Review 최근 대상 commit, risk level 분포, 저장 결과 count를 표시한다.
+- [x] Knowledge Graph class/import 추출 수, impact path 수, graph stale 여부를 표시한다.
+- [x] pass/warn/fail 상태와 다음 조치 이동 버튼을 제공한다.
+- [x] 관련 tests를 추가/갱신한다.
+- [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
+- [x] Compile/test/diff verification을 실행한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -215,7 +238,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P2 | AI Quality | Project-level AI quality scorecard | sample project 전용 점검을 넘어 실제 프로젝트별 AI 결과 품질과 근거 충분성을 확인한다. |
 | P2 | AI Verification | Local LLM verification routine | mock/fallback이 아닌 실제 local LLM 실행 증거를 반복 가능하게 남긴다. |
 | P2 | Workflow | Git Sync follow-up action orchestrator | Git Sync 이후 RAG, embedding, Mapping, Neo4j 갱신 같은 다음 작업을 한 흐름으로 안내한다. |
 | P2 | Graph Ops | Neo4j production hardening | 대형 저장소에서 batch, transaction, health check, 복구 동작을 안정화한다. |
@@ -223,20 +245,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P3 | Project Chat UX | Graph-aware question templates | 사용자가 graph/RAG가 잘 답할 수 있는 질문을 쉽게 시작하게 한다. |
 | P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
 | P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - Project-Level AI Quality Scorecard
-
-Goal:
-sample project 전용 점검을 실제 프로젝트에서도 쓸 수 있는 AI 품질 상태판으로 확장한다.
-
-Expected scope:
-
-- Mapping: 판단불가 비율, low relevance 비율, 짧은 reason, feedback pending count.
-- Project Chat: verified source 사용률, insufficient-evidence 비율, stale/invalid excluded count.
-- PL Briefing: fallback/repair 발생률, 최근 provider/model, validation status.
-- Code Review: 최근 리뷰 대상 commit, risk level 분포, 저장 결과 count.
-- Knowledge Graph: class/import 추출 수, impact path 수, graph stale 여부.
-- 품질 상태를 pass/warn/fail로 표시하고, 다음 조치 링크를 제공한다.
 
 ### Candidate - Local LLM Verification Routine
 

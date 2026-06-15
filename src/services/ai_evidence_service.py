@@ -32,9 +32,14 @@ from src.services.ai_resource_radar_service import (
     get_latest_pl_briefing,
     save_pl_briefing,
 )
+from src.services.mapping_feedback_service import (
+    SHORT_REASON_LENGTH,
+    summarize_mapping_feedback_quality,
+)
 from src.services.mapping_service import MappingService
 from src.services.neo4j_graph_service import (
     get_neo4j_connection_status,
+    get_neo4j_project_preview,
     get_neo4j_project_summary,
     get_project_graph_freshness,
 )
@@ -54,6 +59,8 @@ class EvidenceStatusRow:
     status: str
     value: str
     action: str
+    target_group: str | None = None
+    target_page: str | None = None
 
 
 @dataclass(frozen=True)
@@ -126,6 +133,24 @@ def _graph_freshness_label(status: str) -> str:
 
 def _short_hash(value: str | None) -> str:
     return value[:12] if value else "-"
+
+
+def _format_percent(numerator: int, denominator: int) -> str:
+    if denominator <= 0:
+        return "-"
+    return f"{(numerator / denominator) * 100:.1f}%"
+
+
+def _contains_truthy_key(payload: object, key: str) -> bool:
+    if isinstance(payload, dict):
+        for raw_key, value in payload.items():
+            if str(raw_key).lower() == key.lower() and bool(value):
+                return True
+            if _contains_truthy_key(value, key):
+                return True
+    if isinstance(payload, list):
+        return any(_contains_truthy_key(item, key) for item in payload)
+    return False
 
 
 def _recent_graph_evidence_row(db: Session, project_id: int, *, graph_ready: bool, graph_freshness_status: str) -> EvidenceStatusRow:
@@ -581,20 +606,57 @@ def get_ai_evaluation_scorecard(db: Session, project_id: int) -> list[EvidenceSt
     if project is None:
         return [EvidenceStatusRow("프로젝트", FAIL, "-", "프로젝트를 다시 선택하세요.")]
 
+    program_count = db.query(Program).filter(Program.project_id == project_id).count()
     commit_count = db.query(GitCommit).filter(GitCommit.project_id == project_id).count()
-    mapping_count = (
+    mappings = (
         db.query(ProgramCommitMapping)
         .join(Program, ProgramCommitMapping.program_id == Program.id)
         .filter(Program.project_id == project_id)
-        .count()
+        .all()
     )
+    mapping_count = len(mappings)
+    mapping_quality = summarize_mapping_feedback_quality(db, project_id)
+    mapping_short_reason_count = sum(
+        1 for mapping in mappings if len((mapping.reason or "").strip()) < SHORT_REASON_LENGTH
+    )
+    mapping_fallback_count = sum(
+        1
+        for mapping in mappings
+        if _contains_truthy_key(mapping.raw_response or {}, "fallback") or "fallback" in (mapping.reason or "").lower()
+    )
+    mapping_status = PASS
+    if commit_count > 0 and mapping_count == 0:
+        mapping_status = FAIL
+    elif commit_count == 0:
+        mapping_status = WARN
+    elif (
+        mapping_quality.unknown_status_count
+        or mapping_quality.low_relevance_count
+        or mapping_short_reason_count
+        or mapping_quality.feedback_pending_count
+        or mapping_fallback_count
+    ):
+        mapping_status = WARN
+
     implementation_count = (
         db.query(ProgramImplementationStatus)
         .join(Program, ProgramImplementationStatus.program_id == Program.id)
         .filter(Program.project_id == project_id)
         .count()
     )
+    implementation_coverage_status = PASS
+    if program_count > 0 and implementation_count == 0:
+        implementation_coverage_status = FAIL
+    elif program_count == 0 or implementation_count < program_count:
+        implementation_coverage_status = WARN
+
     risk_count = db.query(RiskFinding).filter(RiskFinding.project_id == project_id).count()
+    unresolved_risk_count = db.query(RiskFinding).filter(RiskFinding.project_id == project_id, RiskFinding.resolved_yn == "N").count()
+    high_risk_count = (
+        db.query(RiskFinding)
+        .filter(RiskFinding.project_id == project_id, RiskFinding.resolved_yn == "N", RiskFinding.risk_level == "HIGH")
+        .count()
+    )
     source_chunk_count = db.query(DocumentChunk).filter(DocumentChunk.project_id == project_id, DocumentChunk.source_type == "source_file").count()
     vector_count = (
         db.query(VectorItem)
@@ -602,63 +664,192 @@ def get_ai_evaluation_scorecard(db: Session, project_id: int) -> list[EvidenceSt
         .filter(DocumentChunk.project_id == project_id, DocumentChunk.source_type == "source_file")
         .count()
     )
-    chat_evidence_count = (
+    chat_answers = (
         db.query(ProjectChatMessage)
         .join(ProjectChatSession, ProjectChatMessage.session_id == ProjectChatSession.id)
-        .filter(
-            ProjectChatSession.project_id == project_id,
-            ProjectChatMessage.role == "assistant",
-            ProjectChatMessage.used_source_count > 0,
-        )
-        .count()
+        .filter(ProjectChatSession.project_id == project_id, ProjectChatMessage.role == "assistant")
+        .all()
     )
-    review_count = db.query(CodeReviewResult).filter(CodeReviewResult.project_id == project_id, CodeReviewResult.status == "completed").count()
+    chat_answer_count = len(chat_answers)
+    chat_verified_source_count = sum(
+        1
+        for message in chat_answers
+        if (message.used_source_count or 0) > 0
+        and any(
+            str(source.get("verification_status") or "").lower() == "verified"
+            for source in (message.sources or [])
+            if isinstance(source, dict)
+        )
+    )
+    chat_insufficient_count = sum(1 for message in chat_answers if message.insufficient_evidence)
+    chat_excluded_count = sum(int(message.excluded_count or 0) for message in chat_answers)
+    chat_status = PASS
+    if source_chunk_count == 0 or vector_count == 0:
+        chat_status = FAIL
+    elif chat_answer_count == 0:
+        chat_status = WARN
+    elif chat_verified_source_count == 0:
+        chat_status = FAIL
+    elif chat_verified_source_count < chat_answer_count or chat_insufficient_count or chat_excluded_count:
+        chat_status = WARN
+
+    reviews = (
+        db.query(CodeReviewResult)
+        .filter(CodeReviewResult.project_id == project_id)
+        .order_by(CodeReviewResult.created_at.desc().nullslast(), CodeReviewResult.id.desc())
+        .all()
+    )
+    review_count = len(reviews)
+    completed_reviews = [review for review in reviews if review.status == "completed"]
+    failed_review_count = sum(1 for review in reviews if review.status == "failed")
+    latest_review = reviews[0] if reviews else None
+    review_risk_counter = Counter(
+        str((review.commit_analysis or {}).get("risk_level") or "-").upper() for review in completed_reviews
+    )
+    code_review_status = PASS
+    if not reviews:
+        code_review_status = WARN
+    elif not completed_reviews:
+        code_review_status = FAIL
+    elif failed_review_count:
+        code_review_status = WARN
+
     latest_briefing = get_latest_pl_briefing(db, project_id)
+    briefing_invocations = (
+        db.query(AIInvocationLog)
+        .filter(AIInvocationLog.project_id == project_id, AIInvocationLog.feature.ilike("%briefing%"))
+        .order_by(AIInvocationLog.started_at.desc().nullslast(), AIInvocationLog.id.desc())
+        .limit(20)
+        .all()
+    )
+    briefing_validation = "-"
+    briefing_repair_attempted = False
+    if latest_briefing is not None:
+        briefing_validation = str((latest_briefing.raw_response or {}).get("validation_status") or "-")
+        briefing_repair_attempted = bool((latest_briefing.raw_response or {}).get("repair_attempted"))
+    briefing_fallback_count = sum(1 for row in briefing_invocations if row.fallback_used)
+    briefing_failed_count = sum(1 for row in briefing_invocations if row.status == "failed")
+    briefing_status = PASS
+    if latest_briefing is None:
+        briefing_status = FAIL
+    elif (
+        latest_briefing.mode != "LLM 생성"
+        or briefing_validation not in {"valid", "not_applicable", "-"}
+        or briefing_repair_attempted
+        or briefing_fallback_count
+        or briefing_failed_count
+    ):
+        briefing_status = WARN
+
     resource_summary = get_resource_metrics_summary(db, project_id)
     radar = build_ai_resource_radar(db, resource_summary, limit=5)
+    graph_freshness = get_project_graph_freshness(db, project_id)
+    graph_summary = get_neo4j_project_summary(project_id)
+    graph_preview = get_neo4j_project_preview(project_id) if graph_summary.status == "completed" else None
+    graph_error = "; ".join(graph_summary.errors)
+    if graph_preview is not None and graph_preview.errors:
+        graph_error = "; ".join([value for value in [graph_error, "; ".join(graph_preview.errors)] if value])
+    graph_class_count = graph_summary.node_counts.get("class", 0) if graph_summary.status == "completed" else 0
+    graph_import_count = graph_summary.edge_counts.get("IMPORTS_CLASS", 0) if graph_summary.status == "completed" else 0
+    graph_impact_count = len(graph_preview.impact_rows) if graph_preview is not None and graph_preview.status == "completed" else 0
+    graph_status = PASS
+    if graph_freshness.status == "failed" or graph_summary.status == "failed":
+        graph_status = FAIL
+    elif graph_freshness.status != "latest" or graph_summary.status != "completed" or graph_class_count == 0 or graph_impact_count == 0:
+        graph_status = WARN
+
+    risk_status = PASS
+    if program_count == 0:
+        risk_status = WARN
+    elif risk_count == 0:
+        risk_status = WARN
 
     return [
         EvidenceStatusRow(
             "Mapping",
-            _status(mapping_count > 0, warn=commit_count > 0),
-            f"mappings={mapping_count}, commits={commit_count}",
-            "샘플 commit과 프로그램 연결 결과가 보여야 합니다.",
+            mapping_status,
+            (
+                f"mappings={mapping_count}, commits={commit_count}, "
+                f"unknown={mapping_quality.unknown_status_count}({_format_percent(mapping_quality.unknown_status_count, mapping_count)}), "
+                f"low={mapping_quality.low_relevance_count}, short_reason={mapping_short_reason_count}, "
+                f"feedback_pending={mapping_quality.feedback_pending_count}, fallback={mapping_fallback_count}"
+            ),
+            "판단불가, 낮은 관련도, 짧은 근거, 미검토 피드백이 많으면 Mapping 리뷰 큐에서 보정하세요.",
+            "분석 실행",
+            "Mapping",
         ),
         EvidenceStatusRow(
             "AI Progress",
-            _status(implementation_count > 0, warn=mapping_count > 0),
-            f"implementation_status={implementation_count}",
-            "Program Detail 구현상태 분석 결과가 필요합니다.",
+            implementation_coverage_status,
+            f"implementation_status={implementation_count}/{program_count}",
+            "프로그램별 구현상태 분석이 비어 있거나 일부만 있으면 Program Detail에서 재분석하세요.",
+            "개요",
+            "AI Progress",
         ),
         EvidenceStatusRow(
             "Risk Analysis",
-            _status(risk_count > 0, warn=True),
-            f"risk_findings={risk_count}",
-            "NO_COMMIT, PROGRESS_GAP, FORECAST_DELAY 같은 리스크 신호가 있어야 합니다.",
+            risk_status,
+            f"risk_findings={risk_count}, unresolved={unresolved_risk_count}, high={high_risk_count}",
+            "리스크가 전혀 없으면 Risk Analysis 실행 여부와 산출물/Mapping 데이터를 확인하세요.",
+            "분석 실행",
+            "Risk Analysis",
         ),
         EvidenceStatusRow(
             "RAG / Project Chat",
-            _status(source_chunk_count > 0 and vector_count > 0 and chat_evidence_count > 0, warn=source_chunk_count > 0),
-            f"chunks={source_chunk_count}, vectors={vector_count}, cited_answers={chat_evidence_count}",
-            "source_file 인덱싱, embedding 생성, 대표 질문 1개를 실행하세요.",
+            chat_status,
+            (
+                f"chunks={source_chunk_count}, vectors={vector_count}, answers={chat_answer_count}, "
+                f"verified_source={_format_percent(chat_verified_source_count, chat_answer_count)}, "
+                f"insufficient={_format_percent(chat_insufficient_count, chat_answer_count)}, excluded={chat_excluded_count}"
+            ),
+            "검색 준비 후 Project Chat에서 현재 소스 근거가 붙는 대표 질문을 실행하세요.",
+            "분석 실행",
+            "Project Chat",
         ),
         EvidenceStatusRow(
             "AI Code Review",
-            _status(review_count > 0, warn=True),
-            f"completed_reviews={review_count}",
-            "대표 commit 1개를 AI Code Review로 실행하세요.",
+            code_review_status,
+            (
+                f"completed={len(completed_reviews)}/{review_count}, failed={failed_review_count}, "
+                f"latest={latest_review.target_ref[:12] if latest_review and latest_review.target_ref else '-'}, "
+                f"risk={dict(review_risk_counter)}"
+            ),
+            "최근 변경 commit 1개 이상을 AI Code Review로 실행하고 실패한 리뷰를 확인하세요.",
+            "분석 실행",
+            "AI Code Review",
         ),
         EvidenceStatusRow(
             "PL Briefing",
-            _status(bool(latest_briefing and latest_briefing.mode == "LLM 생성"), warn=latest_briefing is not None),
-            f"latest={latest_briefing.mode if latest_briefing else '-'}",
-            "Dashboard에서 local LLM 기반 PL Briefing을 생성하세요.",
+            briefing_status,
+            (
+                f"latest={latest_briefing.mode if latest_briefing else '-'}, "
+                f"provider={latest_briefing.provider if latest_briefing else '-'}, "
+                f"model={(latest_briefing.model or '-') if latest_briefing else '-'}, validation={briefing_validation}, "
+                f"repair={briefing_repair_attempted}, fallback={briefing_fallback_count}/{len(briefing_invocations)}"
+            ),
+            "fallback이나 repair가 반복되면 provider/model 설정과 PL Briefing raw response를 확인하세요.",
+            "개요",
+            "Dashboard",
         ),
         EvidenceStatusRow(
             "AI Resource Radar",
             _status(len(radar.items) > 0, warn=len(resource_summary.program_metrics) > 0),
             f"radar_items={len(radar.items)}",
             "Dashboard 자원관리 지표와 Risk Analysis 근거를 확인하세요.",
+            "개요",
+            "Dashboard",
+        ),
+        EvidenceStatusRow(
+            "Knowledge Graph",
+            graph_status,
+            (
+                f"graph={_graph_freshness_label(graph_freshness.status)}, "
+                f"classes={graph_class_count}, imports={graph_import_count}, impact_paths={graph_impact_count}, "
+                f"repo={_short_hash(graph_freshness.repo_head_hash)}, graph_head={_short_hash(graph_freshness.graph_sync_head_hash)}"
+            ),
+            graph_error or "Graph가 오래되었거나 class/import/impact path가 부족하면 Knowledge Graph에서 동기화하세요.",
+            "분석 결과",
+            "Knowledge Graph",
         ),
     ]
 

@@ -36,7 +36,7 @@ from src.services.ai_evidence_service import (
     summarize_status_rows,
 )
 from src.services import ai_evidence_service
-from src.services.neo4j_graph_service import Neo4jConnectionStatus, Neo4jGraphFreshness, Neo4jSyncResult
+from src.services.neo4j_graph_service import Neo4jConnectionStatus, Neo4jGraphFreshness, Neo4jGraphPreview, Neo4jSyncResult
 
 
 def _unique(prefix: str) -> str:
@@ -63,8 +63,42 @@ def test_ai_evidence_status_summary_prioritizes_attention_rows():
     assert [row.status for row in all_rows] == [FAIL, WARN, PASS]
 
 
-def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report():
+def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report(monkeypatch):
     init_db()
+    monkeypatch.setattr(
+        ai_evidence_service,
+        "get_project_graph_freshness",
+        lambda db, project_id: Neo4jGraphFreshness(
+            "latest",
+            "Neo4j graph가 현재 DB/Git 기준과 일치합니다.",
+            repo_head_hash="abc123456789",
+            graph_sync_head_hash="abc123456789",
+            node_count=10,
+            edge_count=20,
+        ),
+    )
+    monkeypatch.setattr(
+        ai_evidence_service,
+        "get_neo4j_project_summary",
+        lambda project_id: Neo4jSyncResult(
+            "completed",
+            "Neo4j summary 조회 완료",
+            node_count=10,
+            edge_count=20,
+            node_counts={"class": 2, "commit": 2},
+            edge_counts={"IMPORTS_CLASS": 1, "MAPPED_TO_COMMIT": 2},
+        ),
+    )
+    monkeypatch.setattr(
+        ai_evidence_service,
+        "get_neo4j_project_preview",
+        lambda project_id: Neo4jGraphPreview(
+            "completed",
+            "Neo4j graph preview 조회 완료",
+            class_import_rows=[{"source": "EvidenceService", "target": "EvidenceClient"}],
+            impact_rows=[{"program": "Evidence Program"}],
+        ),
+    )
     with SessionLocal() as db:
         developer = Developer(
             developer_key=_unique("evidence-key"),
@@ -99,7 +133,15 @@ def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report():
             committed_at=datetime(2026, 6, 15, tzinfo=timezone.utc),
             mapping_analyzed_at=datetime(2026, 6, 15, tzinfo=timezone.utc),
         )
-        db.add_all([program, commit])
+        low_confidence_commit = GitCommit(
+            project_id=project.id,
+            commit_hash=uuid.uuid4().hex,
+            message="Adjust evidence fallback path",
+            author_name=developer.developer_name,
+            committed_at=datetime(2026, 6, 15, tzinfo=timezone.utc),
+            mapping_analyzed_at=datetime(2026, 6, 15, tzinfo=timezone.utc),
+        )
+        db.add_all([program, commit, low_confidence_commit])
         db.flush()
         db.add_all(
             [
@@ -116,8 +158,17 @@ def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report():
                     relevance_score=90,
                     is_related=True,
                     implementation_status="일부구현",
-                    reason="evidence mapping",
+                    reason="evidence mapping reason is clear enough",
                     raw_response={"llm": {"provider": "local_openai"}, "prompt_length": 100},
+                ),
+                ProgramCommitMapping(
+                    program_id=program.id,
+                    commit_id=low_confidence_commit.id,
+                    relevance_score=55,
+                    is_related=True,
+                    implementation_status="판단불가",
+                    reason="짧음",
+                    raw_response={"fallback": True, "prompt_length": 50},
                 ),
                 ProgramImplementationStatus(
                     program_id=program.id,
@@ -230,6 +281,27 @@ def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report():
             assert any(row.area == "최근 AI 호출" and "pl_briefing" in row.value for row in operations)
             assert any(row.area == "검색 준비" and "vectors=1" in row.value for row in operations)
             assert any(row.area == "PL Briefing" and row.status == PASS for row in scorecard)
+            scorecard_rows = {row.area: row for row in scorecard}
+            assert scorecard_rows["Mapping"].status == WARN
+            assert "unknown=1" in scorecard_rows["Mapping"].value
+            assert "low=1" in scorecard_rows["Mapping"].value
+            assert "short_reason=1" in scorecard_rows["Mapping"].value
+            assert "feedback_pending=2" in scorecard_rows["Mapping"].value
+            assert "fallback=1" in scorecard_rows["Mapping"].value
+            assert scorecard_rows["Mapping"].target_page == "Mapping"
+            assert scorecard_rows["RAG / Project Chat"].status == PASS
+            assert "verified_source=100.0%" in scorecard_rows["RAG / Project Chat"].value
+            assert "insufficient=0.0%" in scorecard_rows["RAG / Project Chat"].value
+            assert scorecard_rows["RAG / Project Chat"].target_page == "Project Chat"
+            assert "provider=local_openai" in scorecard_rows["PL Briefing"].value
+            assert "validation=valid" in scorecard_rows["PL Briefing"].value
+            assert scorecard_rows["PL Briefing"].target_page == "Dashboard"
+            assert "completed=1/1" in scorecard_rows["AI Code Review"].value
+            assert scorecard_rows["Knowledge Graph"].status == PASS
+            assert "classes=2" in scorecard_rows["Knowledge Graph"].value
+            assert "imports=1" in scorecard_rows["Knowledge Graph"].value
+            assert "impact_paths=1" in scorecard_rows["Knowledge Graph"].value
+            assert all("샘플" not in row.action for row in scorecard)
             assert trace.latest_pl_briefing is not None
             assert trace.latest_pl_briefing["validation_status"] == "valid"
             assert trace.recent_mappings

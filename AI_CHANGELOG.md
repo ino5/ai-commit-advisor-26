@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Project-level AI quality scorecard
+
+- `AI 운영 현황 > 품질 점검`을 sample project 중심 존재 확인에서 현재 프로젝트 기준 품질 상태판으로 확장했습니다. Mapping 판단불가/낮은 관련도/짧은 reason/피드백 미완료/fallback, Project Chat verified source 사용률/insufficient evidence/excluded count, PL Briefing provider/model/validation/repair/fallback, AI Code Review 결과 분포, Knowledge Graph class/import/impact path와 freshness를 함께 표시합니다.
+- `EvidenceStatusRow`에 이동 대상 정보를 추가하고, 품질 점검의 주의/실패 항목에서 `Mapping`, `Project Chat`, `Dashboard`, `AI Code Review`, `Knowledge Graph` 등 관련 화면으로 바로 이동할 수 있게 했습니다.
+- Knowledge Graph 품질 신호는 전체 소스 graph를 다시 파싱하지 않고 Neo4j 저장 graph readback과 preview를 사용해 `AI 운영 현황` 진입 비용을 줄였습니다.
+- 사용자-facing 기능 가이드, Application Preview 설명, AI 기술 개요, 아키텍처, engineering decision, Roadmap을 프로젝트 AI 품질 점검 기준으로 갱신했습니다.
+- 주요 파일: `src/services/ai_evidence_service.py`, `src/ui/ai_evidence_page.py`, `tests/test_ai_evidence_service.py`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/application-preview.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\ai_evidence_service.py src\ui\ai_evidence_page.py tests\test_ai_evidence_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_ai_evidence_service.py tests\test_documentation_images.py -q` 5개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 141개 테스트 통과; Browser로 `http://127.0.0.1:8505`의 `AI 운영 현황 > 품질 점검`에서 `프로젝트 AI 품질 점검`, `verified_source=`, `feedback_pending=`, `fallback=`, `Mapping로 이동` 표시와 `Mapping` 화면 이동 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Knowledge Graph exploration UI
 
 - `Knowledge Graph` 화면에 `관계 탐색` 탭을 추가해 Neo4j에 저장된 프로그램, 클래스, 도메인, 커밋 node를 선택하고 주변 path를 조회할 수 있게 했습니다. 탐색은 최대 3-depth와 최대 path 수로 제한해 대형 graph 전체를 한 번에 펼치지 않습니다.

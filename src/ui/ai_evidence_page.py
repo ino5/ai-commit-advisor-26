@@ -28,9 +28,17 @@ def _rows_to_df(rows) -> pd.DataFrame:
     columns = {"area": "영역", "status": "상태", "value": "현재 값", "action": "다음 조치"}
     if not rows:
         return pd.DataFrame(columns=columns.values())
-    return pd.DataFrame([row.__dict__ for row in rows]).rename(
-        columns=columns
-    )
+    return pd.DataFrame(
+        [
+            {
+                "area": row.area,
+                "status": row.status,
+                "value": row.value,
+                "action": row.action,
+            }
+            for row in rows
+        ]
+    ).rename(columns=columns)
 
 
 def _json_block(label: str, payload: dict | list) -> None:
@@ -101,7 +109,7 @@ def _render_action_shortcuts(context: ProjectContext) -> None:
         )
 
 
-def _render_status_focus(title: str, rows) -> None:
+def _render_status_focus(title: str, rows, *, action_buttons: bool = False, key_prefix: str = "status_focus") -> None:
     summary = summarize_status_rows(rows)
     st.markdown(f"#### {title}")
     cols = st.columns(4)
@@ -113,7 +121,7 @@ def _render_status_focus(title: str, rows) -> None:
     focused_rows = priority_status_rows(rows)
     st.markdown("##### 주의/실패 우선 확인")
     if focused_rows:
-        for row in focused_rows:
+        for index, row in enumerate(focused_rows):
             message = f"**{row.area}** · `{row.value}`\n\n{row.action}"
             if row.status == FAIL:
                 st.error(message)
@@ -121,6 +129,16 @@ def _render_status_focus(title: str, rows) -> None:
                 st.warning(message)
             else:
                 st.info(message)
+            if action_buttons and row.target_group and row.target_page:
+                if st.button(
+                    f"{row.target_page}로 이동",
+                    key=f"{key_prefix}_{index}_{row.target_group}_{row.target_page}",
+                ):
+                    st.session_state["sidebar_navigation"] = {
+                        "group": row.target_group,
+                        "page": row.target_page,
+                    }
+                    st.rerun()
     else:
         st.success("주의/실패 항목이 없습니다.")
 
@@ -165,7 +183,12 @@ def _render_readiness(context: ProjectContext) -> None:
 def _render_scorecard(project_id: int) -> None:
     with SessionLocal() as db:
         rows = get_ai_evaluation_scorecard(db, project_id)
-    _render_status_focus("품질 점검 요약", rows)
+    _render_status_focus(
+        "프로젝트 AI 품질 점검",
+        rows,
+        action_buttons=True,
+        key_prefix=project_scoped_key(project_id, "ai_quality_scorecard"),
+    )
 
 
 def _render_trace(project_id: int) -> None:
