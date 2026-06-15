@@ -2,6 +2,14 @@
 
 ## 2026-06-15
 
+### Application Preview expanded sections
+
+- `docs/application-preview.md`의 화면별 `<details>` 접힘 구조를 제거하고 모든 screenshot 설명과 이미지를 기본 펼침 상태로 보이게 했습니다.
+- 각 화면 이름은 `Preview Screens` 아래 `###` heading으로 정리해 문서 목차와 스크롤 탐색이 자연스럽게 유지되도록 했습니다.
+- Roadmap에 Application Preview 펼침 작업을 등록했습니다.
+- 주요 파일: `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `Select-String -Path docs\application-preview.md -Pattern '<details|</details>|<summary' -Encoding UTF8` 결과 없음으로 접힘 태그 제거 확인; heading 확인으로 `Preview Screens` 아래 화면별 `###` heading 확인; Application Preview image/link 존재 확인 PowerShell script 통과(`application-preview links OK`); `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Local setup prerequisites guide
 
 - `docs/setup-and-operations.md`에 로컬 실행 전 준비물 섹션을 추가해 Python 3.11+, Git, Docker Desktop, LM Studio 준비 기준을 실행 전 체크리스트로 정리했습니다.
