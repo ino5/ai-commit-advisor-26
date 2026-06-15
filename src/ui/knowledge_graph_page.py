@@ -172,6 +172,8 @@ def _render_sync_result(result) -> None:
                 st.dataframe(pd.DataFrame(metadata_rows), hide_index=True, use_container_width=True)
     for error in result.errors:
         st.warning(error)
+    for warning in getattr(result, "warnings", []):
+        st.warning(warning)
 
 
 def _render_neo4j_saved_summary(project_id: int) -> Neo4jSyncResult:
@@ -392,10 +394,12 @@ def render_knowledge_graph_page() -> None:
         for error in neo4j_preview.errors:
             st.warning(error)
 
-    if payload.errors:
+    if payload.errors or payload.warnings:
         with st.expander("동기화 준비 경고", expanded=True):
             for error in payload.errors:
                 st.warning(error)
+            for warning in payload.warnings:
+                st.warning(warning)
 
     domain_tab, explore_tab, class_tab, impact_tab, count_tab = st.tabs(
         ["도메인 묶음", "관계 탐색", "클래스 관계도", "영향 경로", "노드/엣지"]

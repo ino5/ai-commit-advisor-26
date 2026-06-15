@@ -322,6 +322,8 @@ Knowledge Graph 화면의 `Graph 상태`는 세 기준을 비교합니다.
 
 Neo4j 동기화는 node와 edge를 `NEO4J_WRITE_BATCH_SIZE` 단위로 나누어 저장합니다. 일시적인 연결 오류가 나면 `NEO4J_RETRY_ATTEMPTS`와 `NEO4J_RETRY_BACKOFF_SECONDS` 기준으로 같은 batch를 다시 시도합니다. 실패가 계속되면 일부 batch만 반영된 상태일 수 있으므로 `Knowledge Graph` 화면의 실행 세부에서 `completed_*_batch_count`, `written_*_count`, `failed_operation`을 확인하고 `전체 재동기화`로 복구합니다.
 
+`동기화 준비 경고`에 Java parser 제외 파일이나 type 선언 없음이 표시될 수 있습니다. generated source, build output, test fixture, `package-info.java`, `module-info.java`는 graph class/import 근거에서 제외됩니다. 이 경고는 동기화 실패가 아니라 graph coverage 안내입니다. 실제 업무 class가 제외 규칙에 걸렸거나 parser rule이 바뀐 뒤 graph가 어긋나 보이면 `전체 재동기화`를 실행하세요.
+
 `AI 운영 현황` 상단에서도 Neo4j 연결, Knowledge Graph 최신성, 저장 graph readback, 최근 Project Chat GraphRAG evidence 상태를 확인할 수 있습니다. 운영 점검 중 graph 관련 경고가 보이면 `Knowledge Graph로 이동` 버튼으로 graph 동기화 화면에 이동한 뒤 아래 기준에 따라 증분 반영 또는 전체 재동기화를 선택합니다.
 
 다음 경우에는 `전체 재동기화`를 선택하세요.

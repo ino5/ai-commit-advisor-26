@@ -208,7 +208,7 @@ Knowledge Graph는 LLM 호출을 새로 만드는 기능이 아니라, AI Commit
 
 - `projects`, `programs`, `git_commits`, `commit_files`, `program_commit_mappings`
 - 앱 서버 Git 저장소의 Java source file
-- Java `package`, `class/interface/enum/record`, `import` 구문
+- Java `package`, `class/interface/enum/record`, annotation type, static import, nested member type 구문
 - 프로그램 `module`, 파일 경로, package 경로에서 파생한 domain grouping
 
 주요 node와 edge는 다음처럼 구성됩니다.
@@ -224,6 +224,8 @@ GraphRAG가 오래된 관계를 근거처럼 보여주지 않도록 프로젝트
 
 Neo4j write는 대형 저장소에서도 transaction memory와 timeout 위험을 줄이기 위해 node/edge를 batch 단위로 나누어 실행하고, 일시적 실패에는 retry/backoff를 적용합니다. 실패가 계속되면 일부 batch만 반영됐을 수 있으므로 `Knowledge Graph` 화면의 실행 세부에서 완료 batch와 실패 operation을 확인하고 `전체 재동기화`로 graph read model을 다시 만듭니다.
 
+Java parser는 compiler가 아니라 graph read model을 만들기 위한 경량 구조 추출기입니다. 주석과 문자열을 먼저 제거해 가짜 선언 오탐을 줄이고, generated source, build output, test fixture, `package-info.java`, `module-info.java`는 class/import 근거에서 제외합니다. 제외되거나 type 선언을 찾지 못한 파일 수는 `Knowledge Graph`의 `동기화 준비 경고`로 표시해 graph coverage를 운영자가 확인할 수 있게 합니다.
+
 증분 반영은 graph를 세 성격으로 나눠 다룹니다.
 
 - `current_source`: 현재 checkout 기준 Java file, class, import, domain 관계입니다. 변경/삭제/rename된 Java 파일은 해당 path의 class node를 먼저 삭제한 뒤 현재 파일을 다시 읽어 관계를 만듭니다.
@@ -235,7 +237,7 @@ Neo4j write는 대형 저장소에서도 transaction memory와 timeout 위험을
 - Neo4j 동기화는 사용자가 `Knowledge Graph` 화면에서 실행합니다. 처음에는 `전체 재동기화`, Git Sync 이후에는 `최신 변경분만 Neo4j 반영`을 사용합니다.
 - Project Chat graph evidence는 저장된 Neo4j graph가 있을 때만 조회됩니다. Graph가 없거나 Neo4j가 꺼져 있으면 기존 RAG-only 답변 흐름을 유지합니다.
 - Graph evidence는 관계 보조 근거입니다. 현재 코드 사실은 계속 verified `source_file` evidence가 있어야 답변합니다.
-- Java class/import 추출은 정규식 기반 경량 parser입니다. 복잡한 generic, annotation processing, generated source까지 완전한 compiler-level 분석을 보장하지 않습니다.
+- Java class/import 추출은 정규식과 brace depth를 조합한 경량 parser입니다. annotation type, static import, nested member type은 다루지만, annotation processing 결과물이나 compiler-level type resolution을 보장하지 않습니다.
 - Neo4j가 꺼져 있어도 PostgreSQL 기반 preview와 기존 AI/RAG 기능은 계속 동작합니다.
 
 ## 구현상태 분석 안전장치

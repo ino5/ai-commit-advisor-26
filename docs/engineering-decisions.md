@@ -45,6 +45,40 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-15 - Knowledge Graph Java 구조 추출은 경량 parser와 coverage warning으로 확장한다
+
+### 배경
+
+Knowledge Graph와 Project Chat GraphRAG는 Java class/import 관계를 보조 근거로 사용합니다. 단순 정규식은 빠르지만 annotation type, static import, nested member type, 주석/문자열 안의 가짜 선언, generated/build/test fixture 파일에서 graph 품질을 흔들 수 있습니다. 반대로 compiler-level semantic analysis를 바로 도입하면 설정, classpath, build tool 의존성이 커집니다.
+
+### 결정
+
+현재 단계에서는 Java source를 compiler로 빌드하지 않고, 주석/문자열 제거, static import 정규화, brace depth 기반 nested member type 추출, generated/build/test fixture 제외 규칙을 가진 경량 parser를 유지합니다. 제외 파일과 type 선언을 찾지 못한 파일은 `GraphPayload.warnings`와 `Neo4jSyncResult.warnings`로 분리해 `Knowledge Graph` 화면의 `동기화 준비 경고`에 표시합니다.
+
+### 이유
+
+- AX Use Case에서 필요한 것은 완전한 Java semantic graph보다 commit-program-file-class 관계를 설명할 수 있는 안정적인 read model입니다.
+- 경량 parser는 앱 서버 저장소만 있으면 동작하므로 Maven/Gradle 설정, JDK, classpath 차이에 덜 민감합니다.
+- warning을 error와 분리하면 graph coverage 문제를 운영자가 확인하면서도 증분 동기화를 불필요하게 실패시키지 않습니다.
+- generated/build/test fixture를 제외하면 실제 업무 class/import 관계가 noise에 묻히는 일을 줄일 수 있습니다.
+
+### 검토한 대안
+
+- Java compiler 또는 language server 기반 AST/semantic 분석: 정확도는 높지만 환경 의존성과 실행 비용이 커서 별도 대형 작업으로 둡니다.
+- 모든 `.java` 파일을 계속 포함: 구현은 단순하지만 generated/build/test fixture가 graph node와 import 관계를 오염시킬 수 있습니다.
+- parser warning을 기존 `errors`에 섞기: UI 노출은 쉽지만 증분 동기화 실패 조건과 섞여 운영 흐름이 불안정해질 수 있습니다.
+
+### 영향과 tradeoff
+
+Nested member type과 static import 관계는 개선되지만, local class, anonymous class, generic type resolution, annotation processing 결과물은 여전히 완전하게 해석하지 않습니다. parser rule이 바뀐 뒤 기존 Neo4j graph와 preview가 다르게 보이면 `전체 재동기화`가 기준 복구 절차입니다.
+
+### 관련 문서
+
+- `AI_CHANGELOG.md`의 `Source parser accuracy expansion`
+- `ROADMAP.md`의 `P3 - Source Parser Accuracy Expansion`
+- `docs/ai-technical-overview.md`
+- `docs/setup-and-operations.md`
+
 ## 2026-06-15 - Neo4j graph write는 batch/retry 기반으로 처리하고 전체 재동기화를 복구 기준으로 둔다
 
 ### 배경

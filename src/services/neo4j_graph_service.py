@@ -24,8 +24,8 @@ except ImportError:  # pragma: no cover - exercised when dependency is not insta
 
 
 PACKAGE_RE = re.compile(r"(?m)^\s*package\s+([A-Za-z_][\w.]*)\s*;")
-IMPORT_RE = re.compile(r"(?m)^\s*import\s+(?:static\s+)?([A-Za-z_][\w.]*)(?:\.\*)?\s*;")
-TYPE_RE = re.compile(r"\b(class|interface|enum|record)\s+([A-Z][A-Za-z0-9_]*)\b")
+IMPORT_RE = re.compile(r"(?m)^\s*import\s+(?P<static>static\s+)?(?P<target>[A-Za-z_][\w.]*)(?P<wildcard>\.\*)?\s*;")
+TYPE_DECL_RE = re.compile(r"(?:@interface\b|(?P<kind>\bclass\b|\binterface\b|\benum\b|\brecord\b))\s+(?P<name>[A-Z][A-Za-z0-9_]*)\b")
 GRAPH_SEED_RE = re.compile(r"[A-Za-z가-힣][A-Za-z0-9가-힣_.$:/\\-]{1,}")
 GRAPH_SEED_STOPWORDS = {
     "about",
@@ -53,6 +53,10 @@ GRAPH_SEED_STOPWORDS = {
 }
 SOURCE_GRAPH_CHANGE_TYPES = {"Added", "Modified", "Copied", "Renamed"}
 SOURCE_GRAPH_CLEAR_TYPES = {"Added", "Modified", "Copied", "Deleted", "Renamed"}
+JAVA_BUILD_OUTPUT_ROOTS = {"build", "target", "out", "bin"}
+JAVA_GENERATED_DIR_MARKERS = {"generated", "generated-sources", "generated-test-sources"}
+JAVA_TEST_FIXTURE_DIRS = {"fixture", "fixtures", "__fixtures__", "testfixture", "testfixtures", "test-fixtures"}
+JAVA_METADATA_FILES = {"package-info.java", "module-info.java"}
 
 
 @dataclass(frozen=True)
@@ -210,6 +214,7 @@ class GraphPayload:
     impact_rows: list[ImpactPathRow]
     class_import_rows: list[dict[str, str]]
     errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def node_counts(self) -> Counter:
@@ -239,6 +244,7 @@ class Neo4jSyncResult:
     edge_counts: dict[str, int] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
     raw_metadata: dict[str, Any] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -466,16 +472,134 @@ def _domain_from_path(file_path: str) -> str:
     return "unknown"
 
 
+def _strip_java_comments_and_literals(text: str) -> str:
+    result: list[str] = []
+    index = 0
+    length = len(text)
+    while index < length:
+        char = text[index]
+        next_char = text[index + 1] if index + 1 < length else ""
+
+        if char == "/" and next_char == "/":
+            result.extend("  ")
+            index += 2
+            while index < length and text[index] != "\n":
+                result.append(" ")
+                index += 1
+            continue
+
+        if char == "/" and next_char == "*":
+            result.extend("  ")
+            index += 2
+            while index < length:
+                if text[index] == "*" and index + 1 < length and text[index + 1] == "/":
+                    result.extend("  ")
+                    index += 2
+                    break
+                result.append("\n" if text[index] == "\n" else " ")
+                index += 1
+            continue
+
+        if text.startswith('"""', index):
+            result.extend("   ")
+            index += 3
+            while index < length:
+                if text.startswith('"""', index):
+                    result.extend("   ")
+                    index += 3
+                    break
+                result.append("\n" if text[index] == "\n" else " ")
+                index += 1
+            continue
+
+        if char in {'"', "'"}:
+            quote = char
+            result.append(" ")
+            index += 1
+            escaped = False
+            while index < length:
+                current = text[index]
+                result.append("\n" if current == "\n" else " ")
+                if current == quote and not escaped:
+                    index += 1
+                    break
+                escaped = current == "\\" and not escaped
+                if current != "\\":
+                    escaped = False
+                index += 1
+            continue
+
+        result.append(char)
+        index += 1
+    return "".join(result)
+
+
+def _normalize_java_import(match: re.Match[str]) -> str:
+    target = match.group("target")
+    if match.group("static"):
+        if match.group("wildcard"):
+            return target
+        parts = target.split(".")
+        if len(parts) > 1:
+            return ".".join(parts[:-1])
+    return target
+
+
+def _find_type_body_open(text: str, start: int) -> int | None:
+    for index in range(start, len(text)):
+        char = text[index]
+        if char == "{":
+            return index
+        if char in {";", "="}:
+            return None
+    return None
+
+
+def _advance_java_brace_depth(
+    text: str,
+    start: int,
+    end: int,
+    brace_depth: int,
+    type_stack: list[tuple[int, str]],
+) -> int:
+    for char in text[start:end]:
+        if char == "{":
+            brace_depth += 1
+        elif char == "}":
+            brace_depth = max(0, brace_depth - 1)
+            while type_stack and brace_depth < type_stack[-1][0]:
+                type_stack.pop()
+    return brace_depth
+
+
 def extract_java_symbols(file_path: str, text: str) -> list[JavaSymbol]:
-    package_match = PACKAGE_RE.search(text)
+    clean_text = _strip_java_comments_and_literals(text)
+    package_match = PACKAGE_RE.search(clean_text)
     package = package_match.group(1) if package_match else None
-    imports = tuple(sorted({match.group(1) for match in IMPORT_RE.finditer(text)}))
+    imports = tuple(sorted({_normalize_java_import(match) for match in IMPORT_RE.finditer(clean_text)}))
     domain = _domain_from_package(package) or _domain_from_path(file_path)
     symbols: list[JavaSymbol] = []
-    for match in TYPE_RE.finditer(text):
-        kind = match.group(1)
-        class_name = match.group(2)
-        qualified_name = f"{package}.{class_name}" if package else class_name
+    type_stack: list[tuple[int, str]] = []
+    brace_depth = 0
+    cursor = 0
+    for match in TYPE_DECL_RE.finditer(clean_text):
+        brace_depth = _advance_java_brace_depth(clean_text, cursor, match.start(), brace_depth, type_stack)
+        cursor = match.start()
+        if type_stack and brace_depth > type_stack[-1][0]:
+            continue
+
+        body_open = _find_type_body_open(clean_text, match.end())
+        if body_open is None:
+            continue
+
+        raw_kind = match.group("kind") or "annotation"
+        kind = raw_kind.strip("@")
+        class_name = match.group("name")
+        parent_qualified_name = type_stack[-1][1] if type_stack and brace_depth == type_stack[-1][0] else None
+        if parent_qualified_name:
+            qualified_name = f"{parent_qualified_name}.{class_name}"
+        else:
+            qualified_name = f"{package}.{class_name}" if package else class_name
         symbols.append(
             JavaSymbol(
                 file_path=file_path,
@@ -487,31 +611,83 @@ def extract_java_symbols(file_path: str, text: str) -> list[JavaSymbol]:
                 imports=imports,
             )
         )
+        brace_depth = _advance_java_brace_depth(clean_text, match.start(), body_open + 1, brace_depth, type_stack)
+        type_stack.append((brace_depth, qualified_name))
+        cursor = body_open + 1
     return symbols
 
 
-def _source_java_symbols(repo_path: str | None) -> tuple[list[JavaSymbol], list[str]]:
+def _java_source_skip_reason(file_path: str) -> str | None:
+    path = Path(file_path.replace("\\", "/"))
+    if path.name.lower() in JAVA_METADATA_FILES:
+        return "metadata"
+    normalized_parts = [part.strip().lower() for part in path.parts]
+    compact_parts = {part.replace("_", "").replace("-", "") for part in normalized_parts}
+    if normalized_parts and normalized_parts[0] in JAVA_BUILD_OUTPUT_ROOTS:
+        return "build_output"
+    if ".gradle" in normalized_parts or (
+        "classes" in normalized_parts and {"build", "target"} & set(normalized_parts)
+    ):
+        return "build_output"
+    if set(normalized_parts) & JAVA_GENERATED_DIR_MARKERS or any(part.startswith("generated-") for part in normalized_parts):
+        return "generated_source"
+    compact_fixture_parts = {part.replace("_", "").replace("-", "") for part in JAVA_TEST_FIXTURE_DIRS}
+    if compact_parts & {"testfixture", "testfixtures"} or (
+        compact_parts & compact_fixture_parts and any(part.startswith("test") for part in compact_parts)
+    ):
+        return "test_fixture"
+    return None
+
+
+def _java_parser_warnings(skipped_counts: Counter, no_type_paths: list[str]) -> list[str]:
+    warnings: list[str] = []
+    if skipped_counts:
+        labels = {
+            "build_output": "build output",
+            "generated_source": "generated source",
+            "metadata": "metadata",
+            "test_fixture": "test fixture",
+        }
+        parts = [f"{labels.get(reason, reason)} {count}개" for reason, count in sorted(skipped_counts.items())]
+        warnings.append(f"Java parser 제외 파일: {', '.join(parts)}")
+    if no_type_paths:
+        examples = ", ".join(no_type_paths[:3])
+        suffix = " ..." if len(no_type_paths) > 3 else ""
+        warnings.append(f"Java parser가 type 선언을 찾지 못한 Java 파일 {len(no_type_paths)}개: {examples}{suffix}")
+    return warnings
+
+
+def _source_java_symbols(repo_path: str | None) -> tuple[list[JavaSymbol], list[str], list[str]]:
     if not repo_path:
-        return [], ["프로젝트에 앱 서버 Git 저장소 경로가 등록되지 않았습니다."]
+        return [], ["프로젝트에 앱 서버 Git 저장소 경로가 등록되지 않았습니다."], []
     errors: list[str] = []
     symbols: list[JavaSymbol] = []
+    skipped_counts: Counter = Counter()
+    no_type_paths: list[str] = []
     try:
         repo_root = resolve_repo_path(repo_path)
     except Exception as exc:
-        return [], [f"Git 저장소 경로 확인 실패: {exc}"]
+        return [], [f"Git 저장소 경로 확인 실패: {exc}"], []
     if not repo_root.exists():
-        return [], [f"Git 저장소 경로가 존재하지 않습니다: {repo_root}"]
+        return [], [f"Git 저장소 경로가 존재하지 않습니다: {repo_root}"], []
 
     for path in sorted(repo_root.rglob("*.java")):
         if not path.is_file() or not _is_source_file(path, repo_root):
+            continue
+        relative_path = path.relative_to(repo_root).as_posix()
+        if skip_reason := _java_source_skip_reason(relative_path):
+            skipped_counts[skip_reason] += 1
             continue
         text = _read_text_file(path)
         if text is None:
             errors.append(f"읽을 수 없는 Java 파일: {path}")
             continue
-        relative_path = path.relative_to(repo_root).as_posix()
-        symbols.extend(extract_java_symbols(relative_path, text))
-    return symbols, errors
+        file_symbols = extract_java_symbols(relative_path, text)
+        if file_symbols:
+            symbols.extend(file_symbols)
+        else:
+            no_type_paths.append(relative_path)
+    return symbols, errors, _java_parser_warnings(skipped_counts, no_type_paths)
 
 
 def _normalize_file_path(file_path: str | None) -> str:
@@ -564,22 +740,28 @@ def _changed_source_parse_paths(files: list[CommitFile]) -> list[str]:
     return sorted(paths)
 
 
-def _source_java_symbols_for_paths(repo_path: str | None, file_paths: list[str]) -> tuple[list[JavaSymbol], list[str]]:
+def _source_java_symbols_for_paths(repo_path: str | None, file_paths: list[str]) -> tuple[list[JavaSymbol], list[str], list[str]]:
     if not file_paths:
-        return [], []
+        return [], [], []
     if not repo_path:
-        return [], ["프로젝트에 앱 서버 Git 저장소 경로가 등록되지 않았습니다."]
+        return [], ["프로젝트에 앱 서버 Git 저장소 경로가 등록되지 않았습니다."], []
     try:
         repo_root = resolve_repo_path(repo_path)
     except Exception as exc:
-        return [], [f"Git 저장소 경로 확인 실패: {exc}"]
+        return [], [f"Git 저장소 경로 확인 실패: {exc}"], []
     if not repo_root.exists():
-        return [], [f"Git 저장소 경로가 존재하지 않습니다: {repo_root}"]
+        return [], [f"Git 저장소 경로가 존재하지 않습니다: {repo_root}"], []
 
     symbols: list[JavaSymbol] = []
     errors: list[str] = []
+    skipped_counts: Counter = Counter()
+    no_type_paths: list[str] = []
     for file_path in file_paths:
-        absolute_path = repo_root / file_path
+        normalized_file_path = _normalize_file_path(file_path)
+        if skip_reason := _java_source_skip_reason(normalized_file_path):
+            skipped_counts[skip_reason] += 1
+            continue
+        absolute_path = repo_root / normalized_file_path
         if not absolute_path.exists():
             continue
         if not absolute_path.is_file() or not _is_source_file(absolute_path, repo_root):
@@ -588,8 +770,12 @@ def _source_java_symbols_for_paths(repo_path: str | None, file_paths: list[str])
         if text is None:
             errors.append(f"읽을 수 없는 Java 파일: {absolute_path}")
             continue
-        symbols.extend(extract_java_symbols(file_path, text))
-    return symbols, errors
+        file_symbols = extract_java_symbols(normalized_file_path, text)
+        if file_symbols:
+            symbols.extend(file_symbols)
+        else:
+            no_type_paths.append(normalized_file_path)
+    return symbols, errors, _java_parser_warnings(skipped_counts, no_type_paths)
 
 
 def _project_repo_head(project: Project) -> str | None:
@@ -678,6 +864,7 @@ def _record_graph_sync_attempt(
         "last_attempt_status": result.status,
         "last_attempt_summary": result.summary,
         "last_attempt_errors": result.errors,
+        "last_attempt_warnings": result.warnings,
         "last_attempt_node_count": int(result.node_count or 0),
         "last_attempt_edge_count": int(result.edge_count or 0),
         **(result.raw_metadata or {}),
@@ -769,6 +956,7 @@ def build_project_graph_payload(db: Session, project_id: int) -> GraphPayload:
     nodes: dict[str, GraphNode] = {}
     edges: dict[tuple[str, str, str], GraphEdge] = {}
     errors: list[str] = []
+    warnings: list[str] = []
 
     def add_node(node: GraphNode) -> None:
         nodes[node.node_id] = node
@@ -891,8 +1079,9 @@ def build_project_graph_payload(db: Session, project_id: int) -> GraphPayload:
                 )
             )
 
-    symbols, symbol_errors = _source_java_symbols(project.git_repo_path)
+    symbols, symbol_errors, symbol_warnings = _source_java_symbols(project.git_repo_path)
     errors.extend(symbol_errors)
+    warnings.extend(symbol_warnings)
     classes_by_fqn = {symbol.qualified_name: symbol for symbol in symbols}
     classes_by_simple = defaultdict(list)
     for symbol in symbols:
@@ -1011,6 +1200,7 @@ def build_project_graph_payload(db: Session, project_id: int) -> GraphPayload:
         impact_rows=impact_rows,
         class_import_rows=class_import_rows,
         errors=errors,
+        warnings=warnings,
     )
 
 
@@ -1034,6 +1224,7 @@ def _build_incremental_project_graph_payload(
     nodes: dict[str, GraphNode] = {}
     edges: dict[tuple[str, str, str], GraphEdge] = {}
     errors: list[str] = []
+    warnings: list[str] = []
     project_id = int(project.id)
 
     def add_node(node: GraphNode) -> None:
@@ -1156,8 +1347,9 @@ def _build_incremental_project_graph_payload(
                 )
             )
 
-    symbols, symbol_errors = _source_java_symbols_for_paths(project.git_repo_path, parse_source_paths)
+    symbols, symbol_errors, symbol_warnings = _source_java_symbols_for_paths(project.git_repo_path, parse_source_paths)
     errors.extend(symbol_errors)
+    warnings.extend(symbol_warnings)
     for symbol in symbols:
         file_path = _normalize_file_path(symbol.file_path)
         file_node_id = file_nodes.setdefault(file_path, _node_id(project_id, "file", file_path))
@@ -1196,6 +1388,7 @@ def _build_incremental_project_graph_payload(
             impact_rows=[],
             class_import_rows=[],
             errors=errors,
+            warnings=warnings,
         ),
         clear_source_paths,
         stats,
@@ -1266,8 +1459,19 @@ def _clear_project_graph_tx(tx, project_id: int) -> int:
 def sync_project_graph_to_neo4j(db: Session, project_id: int) -> Neo4jSyncResult:
     payload = build_project_graph_payload(db, project_id)
     if payload.errors and not payload.nodes:
-        result = Neo4jSyncResult("failed", "Neo4j 동기화 payload 생성 실패", errors=payload.errors)
-        _record_graph_sync_attempt(db, project_id, "full", result, raw_metadata={"payload_errors": payload.errors})
+        result = Neo4jSyncResult(
+            "failed",
+            "Neo4j 동기화 payload 생성 실패",
+            errors=payload.errors,
+            warnings=payload.warnings,
+        )
+        _record_graph_sync_attempt(
+            db,
+            project_id,
+            "full",
+            result,
+            raw_metadata={"payload_errors": payload.errors, "payload_warnings": payload.warnings},
+        )
         return result
     if not settings.neo4j_enabled:
         return Neo4jSyncResult(
@@ -1278,11 +1482,17 @@ def sync_project_graph_to_neo4j(db: Session, project_id: int) -> Neo4jSyncResult
             node_counts=dict(payload.node_counts),
             edge_counts=dict(payload.edge_counts),
             errors=payload.errors,
+            warnings=payload.warnings,
         )
 
     nodes = [node.to_neo4j(project_id) for node in payload.nodes]
     edges = [edge.to_neo4j(project_id) for edge in payload.edges]
-    write_metadata = _new_write_metadata("full", nodes, edges, extra={"payload_errors": payload.errors})
+    write_metadata = _new_write_metadata(
+        "full",
+        nodes,
+        edges,
+        extra={"payload_errors": payload.errors, "payload_warnings": payload.warnings},
+    )
     try:
         with _driver() as driver:
             with driver.session(**_session_kwargs()) as session:
@@ -1298,6 +1508,7 @@ def sync_project_graph_to_neo4j(db: Session, project_id: int) -> Neo4jSyncResult
             edge_counts=dict(payload.edge_counts),
             errors=[*payload.errors, str(exc)],
             raw_metadata=write_metadata,
+            warnings=payload.warnings,
         )
         _record_graph_sync_attempt(db, project_id, "full", result)
         return result
@@ -1314,6 +1525,7 @@ def sync_project_graph_to_neo4j(db: Session, project_id: int) -> Neo4jSyncResult
         edge_counts=dict(payload.edge_counts),
         errors=payload.errors,
         raw_metadata=write_metadata,
+        warnings=payload.warnings,
     )
     _record_graph_sync_attempt(db, project_id, "full", result)
     return result
@@ -1370,13 +1582,25 @@ def sync_project_graph_incrementally_to_neo4j(db: Session, project_id: int) -> N
             node_counts=dict(payload.node_counts),
             edge_counts=dict(payload.edge_counts),
             errors=payload.errors,
+            warnings=payload.warnings,
         )
-        _record_graph_sync_attempt(db, project_id, "incremental", result, raw_metadata=stats)
+        _record_graph_sync_attempt(
+            db,
+            project_id,
+            "incremental",
+            result,
+            raw_metadata={**stats, "payload_warnings": payload.warnings},
+        )
         return result
 
     nodes = [node.to_neo4j(project_id) for node in payload.nodes]
     edges = [edge.to_neo4j(project_id) for edge in payload.edges]
-    write_metadata = _new_write_metadata("incremental", nodes, edges, extra=stats)
+    write_metadata = _new_write_metadata(
+        "incremental",
+        nodes,
+        edges,
+        extra={**stats, "payload_warnings": payload.warnings},
+    )
     try:
         with _driver() as driver:
             with driver.session(**_session_kwargs()) as session:
@@ -1400,6 +1624,7 @@ def sync_project_graph_incrementally_to_neo4j(db: Session, project_id: int) -> N
             edge_counts=dict(payload.edge_counts),
             errors=[*payload.errors, str(exc)],
             raw_metadata=write_metadata,
+            warnings=payload.warnings,
         )
         _record_graph_sync_attempt(db, project_id, "incremental", result)
         return result
@@ -1424,6 +1649,7 @@ def sync_project_graph_incrementally_to_neo4j(db: Session, project_id: int) -> N
         edge_counts=edge_counts,
         errors=payload.errors,
         raw_metadata=stats,
+        warnings=payload.warnings,
     )
     _record_graph_sync_attempt(db, project_id, "incremental", result)
     return result

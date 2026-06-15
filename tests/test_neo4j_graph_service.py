@@ -46,6 +46,54 @@ def test_extract_java_symbols_detects_package_class_domain_and_imports() -> None
     assert "com.example.market.order.mapper.OrderMapper" in symbol.imports
 
 
+def test_extract_java_symbols_handles_nested_annotation_static_import_and_ignores_noise() -> None:
+    text = """
+        package com.example.market.payment.service;
+
+        import static com.example.market.payment.support.PaymentConstants.DEFAULT_STATUS;
+        import com.example.market.order.mapper.OrderMapper;
+
+        /*
+         * public class CommentGhost {}
+         */
+        public @interface Audited {
+        }
+
+        public class PaymentService {
+            private String sample = "public interface StringGhost {}";
+
+            public static class InnerProcessor {
+            }
+
+            void handle() {
+                class LocalHandler {
+                }
+            }
+        }
+
+        public record PaymentEvent(String id) {
+        }
+    """
+
+    symbols = extract_java_symbols("src/main/java/com/example/market/payment/service/PaymentService.java", text)
+    by_name = {symbol.qualified_name: symbol for symbol in symbols}
+
+    assert "com.example.market.payment.service.Audited" in by_name
+    assert by_name["com.example.market.payment.service.Audited"].kind == "annotation"
+    assert "com.example.market.payment.service.PaymentService" in by_name
+    assert "com.example.market.payment.service.PaymentService.InnerProcessor" in by_name
+    assert "com.example.market.payment.service.PaymentEvent" in by_name
+    assert "com.example.market.payment.service.PaymentService.LocalHandler" not in by_name
+    assert "com.example.market.payment.service.CommentGhost" not in by_name
+    assert "com.example.market.payment.service.StringGhost" not in by_name
+    assert "com.example.market.payment.support.PaymentConstants" in by_name[
+        "com.example.market.payment.service.PaymentService"
+    ].imports
+    assert "com.example.market.payment.support.PaymentConstants.DEFAULT_STATUS" not in by_name[
+        "com.example.market.payment.service.PaymentService"
+    ].imports
+
+
 def test_build_graph_evidence_seeds_uses_question_expansion_and_source_symbols() -> None:
     seeds = build_graph_evidence_seeds(
         "결제 변경이 주문 쪽에 영향을 줄 수 있는 근거가 뭐야?",
@@ -70,6 +118,78 @@ def test_build_graph_evidence_seeds_uses_question_expansion_and_source_symbols()
     assert "paymentservice" in seeds
     assert "payment" in seeds
     assert "ordermapper" in seeds
+
+
+def test_build_project_graph_payload_reports_java_parser_skips_without_class_nodes(tmp_path) -> None:
+    init_db()
+    repo = tmp_path / "repo"
+    service_dir = repo / "src" / "main" / "java" / "com" / "example" / "market" / "payment" / "service"
+    generated_dir = repo / "build" / "generated" / "sources" / "annotationProcessor" / "java" / "main"
+    fixture_dir = repo / "src" / "testFixtures" / "java" / "com" / "example" / "fixtures"
+    metadata_dir = repo / "src" / "main" / "java" / "com" / "example" / "market" / "payment"
+    service_dir.mkdir(parents=True)
+    generated_dir.mkdir(parents=True)
+    fixture_dir.mkdir(parents=True)
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+    (service_dir / "PaymentService.java").write_text(
+        """
+        package com.example.market.payment.service;
+        public class PaymentService {}
+        """,
+        encoding="utf-8",
+    )
+    (generated_dir / "GeneratedMapper.java").write_text(
+        """
+        package com.example.generated;
+        public class GeneratedMapper {}
+        """,
+        encoding="utf-8",
+    )
+    (fixture_dir / "PaymentFixture.java").write_text(
+        """
+        package com.example.fixtures;
+        public class PaymentFixture {}
+        """,
+        encoding="utf-8",
+    )
+    (metadata_dir / "package-info.java").write_text(
+        """
+        @Deprecated
+        package com.example.market.payment;
+        """,
+        encoding="utf-8",
+    )
+    (service_dir / "NoType.java").write_text(
+        """
+        package com.example.market.payment.service;
+        import com.example.market.order.mapper.OrderMapper;
+        """,
+        encoding="utf-8",
+    )
+
+    with SessionLocal() as db:
+        project = Project(name=_unique("graph-parser-project"), git_repo_path=str(repo))
+        db.add(project)
+        db.commit()
+
+        try:
+            payload = build_project_graph_payload(db, project.id)
+
+            class_labels = {node.label for node in payload.nodes if node.node_type == "class"}
+            assert "com.example.market.payment.service.PaymentService" in class_labels
+            assert "com.example.generated.GeneratedMapper" not in class_labels
+            assert "com.example.fixtures.PaymentFixture" not in class_labels
+            assert any("Java parser 제외 파일" in warning for warning in payload.warnings)
+            assert any("build output" in warning for warning in payload.warnings)
+            assert any("metadata" in warning for warning in payload.warnings)
+            assert any("test fixture" in warning for warning in payload.warnings)
+            assert any("type 선언을 찾지 못한 Java 파일 1개" in warning for warning in payload.warnings)
+            assert not payload.errors
+        finally:
+            remaining = db.get(Project, project.id)
+            if remaining is not None:
+                db.delete(remaining)
+            db.commit()
 
 
 def test_build_project_graph_payload_links_program_commit_file_class_and_domain(tmp_path) -> None:

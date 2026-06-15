@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Source parser accuracy expansion
+
+- Knowledge Graph와 Project Chat GraphRAG가 사용하는 Java source 구조 추출을 보강했습니다. parser는 주석/문자열을 제거한 뒤 `package`, `import`, `class`, `interface`, `enum`, `record`, annotation type을 읽고, static import는 class 기준으로 정규화합니다.
+- nested member type qualified name을 `Outer.Inner` 형태로 저장해 클래스 관계도와 graph seed가 내부 type을 더 정확히 사용할 수 있게 했습니다. method 내부 local class, 주석, 문자열 안의 가짜 선언은 graph node로 만들지 않습니다.
+- generated source, build output, test fixture, `package-info.java`, `module-info.java`를 Java class/import graph에서 제외하고, type 선언을 찾지 못한 Java 파일 수를 `GraphPayload.warnings`와 `Neo4jSyncResult.warnings`로 분리했습니다. `Knowledge Graph` 화면은 이 값을 `동기화 준비 경고`와 sync result warning으로 표시합니다.
+- README, 기능 가이드, AI 기술 개요, 아키텍처, 설치/운영 가이드, engineering decision, Roadmap을 경량 Java parser와 coverage warning 정책 기준으로 갱신했습니다.
+- 주요 파일: `src/services/neo4j_graph_service.py`, `src/ui/knowledge_graph_page.py`, `tests/test_neo4j_graph_service.py`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\neo4j_graph_service.py src\ui\knowledge_graph_page.py tests\test_neo4j_graph_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py tests\test_documentation_images.py -q` 17개 테스트 통과; Browser로 `http://127.0.0.1:8509/?project_id=4`의 `AI 운영 현황 -> Knowledge Graph` 이동 후 `Knowledge Graph`, `Graph 상태`, `동기화 대상 요약`, `클래스 관계도` 표시와 `StreamlitAPIException`/`Traceback` 미표시 확인; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 149개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Neo4j production hardening
 
 - Neo4j Knowledge Graph full sync와 incremental sync를 batch write 기반으로 바꿨습니다. `NEO4J_WRITE_BATCH_SIZE`로 node/edge batch 크기를 조절하고, 각 write batch와 연결 확인에는 `NEO4J_RETRY_ATTEMPTS`, `NEO4J_RETRY_BACKOFF_SECONDS` 기준 retry/backoff를 적용합니다.

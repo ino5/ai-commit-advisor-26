@@ -119,6 +119,7 @@
 | P2 | AI Verification | Local LLM verification routine | Done | Local LLM verification routine |
 | P2 | Workflow | Git Sync follow-up action orchestrator | Done | Git Sync follow-up action orchestrator |
 | P2 | Graph Ops | Neo4j production hardening | Done | Neo4j production hardening |
+| P3 | Source Analysis | Source parser accuracy expansion | Done | Source parser accuracy expansion |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -298,6 +299,27 @@ Checklist:
 - [x] 사용자-facing/architecture/operations/decision/failure-history 검토와 `AI_CHANGELOG.md`를 갱신한다.
 - [x] Compile/test/diff verification을 실행한다.
 
+## P3 - Source Parser Accuracy Expansion
+
+Status: Done
+
+Goal:
+정규식 기반 Java class/import 추출의 한계를 줄이고 Knowledge Graph 품질을 높인다.
+
+Rationale:
+Knowledge Graph와 Project Chat GraphRAG는 Java class/import 관계를 근거로 사용한다. 현재 parser는 단순 정규식 기반이라 annotation type, static import, nested type, 주석/문자열 안의 가짜 선언, generated/build/test fixture 제외 같은 현실적인 SI Java project 패턴에서 graph 품질이 흔들릴 수 있다. compiler-level semantic analysis로 가기 전, 경량 parser의 누락과 오탐을 줄이고 skip/warning을 화면에 노출한다.
+
+Checklist:
+
+- [x] Java 주석/문자열을 제거한 뒤 package/import/type 선언을 추출해 오탐을 줄인다.
+- [x] annotation type, static import, record/interface/enum/class, nested member type qualified name을 보강한다.
+- [x] generated source, build output, test fixture Java 파일 제외 규칙과 skip count를 추가한다.
+- [x] type 선언을 찾지 못한 Java 파일 수를 Knowledge Graph 준비 경고로 표시한다.
+- [x] full/incremental graph payload와 GraphRAG seed 추출이 새 parser 결과를 사용하게 한다.
+- [x] parser edge case와 graph payload warning tests를 추가한다.
+- [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
+- [x] Compile/test/diff verification을 실행한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -306,27 +328,9 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P3 | Source Analysis | Source parser accuracy expansion | 정규식 기반 Java class/import 추출 한계를 줄이고 graph 품질을 높인다. |
 | P3 | Project Chat UX | Graph-aware question templates | 사용자가 graph/RAG가 잘 답할 수 있는 질문을 쉽게 시작하게 한다. |
 | P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
 | P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - Source Parser Accuracy Expansion
-
-Goal:
-정규식 기반 Java class/import 추출의 한계를 줄이고 Knowledge Graph 품질을 높인다.
-
-Expected scope:
-
-- Java annotation, static import, nested class, record/interface/enum edge case 보강.
-- generated source, build output, test fixture 제외 규칙 정리.
-- parser 실패/skip count를 Knowledge Graph warning으로 표시.
-- Kotlin, TypeScript, Python 같은 추가 언어를 후보로 검토하되, 한 번에 모두 넣지 않는다.
-
-Boundaries:
-
-- compiler-level semantic analysis는 별도 대형 작업으로 본다.
-- 우선은 sample/typical SI Java project에서 누락을 줄이는 수준으로 시작한다.
 
 ### Candidate - Graph-Aware Project Chat Question Templates
 
