@@ -113,6 +113,7 @@
 | P1 | Graph / AI | Neo4j knowledge graph foundation | Done | Neo4j Knowledge Graph 기반 추가 |
 | P1 | Graph / AI | Project Chat GraphRAG context injection | Done | Project Chat GraphRAG context injection |
 | P1 | Graph Ops | Knowledge Graph freshness and incremental Neo4j sync | Done | Knowledge Graph freshness and incremental Neo4j sync |
+| P1 | AI Ops | AI operations graph status | Done | AI operations graph status |
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -162,6 +163,27 @@ Checklist:
 - [x] Compile/test/diff verification을 실행한다.
 - [x] `AI_CHANGELOG.md`를 갱신한다.
 
+## P1 - AI Operations Graph Status
+
+Status: Done
+
+Goal:
+`AI 운영 현황`에서 LLM, embedding, source/vector 상태뿐 아니라 Neo4j graph와 Project Chat GraphRAG 준비 상태를 함께 확인하게 한다.
+
+Rationale:
+Project Chat이 GraphRAG 보조 근거를 사용할 수 있게 되었고, Knowledge Graph가 Repo HEAD/DB Sync HEAD/Graph HEAD 최신성을 갖게 되었지만, 운영자는 아직 AI 운영 현황 첫 화면에서 graph 계층이 준비되어 있는지 한눈에 보기 어렵다. 이 작업은 GraphRAG가 왜 사용 가능하거나 준비 필요 상태인지 AI 운영 상태판에서 설명하는 범위다.
+
+Checklist:
+
+- [x] AI 운영 상태 row에 Neo4j enabled/connected/database 상태를 추가한다.
+- [x] Knowledge Graph node/edge count, 마지막 sync, stale 여부를 표시한다.
+- [x] Neo4j 저장 graph readback 성공/실패와 오류 메시지를 표시한다.
+- [x] Project Chat GraphRAG 최근 사용 상태와 evidence count를 표시한다.
+- [x] Knowledge Graph 화면으로 이동하는 shortcut action을 추가한다.
+- [x] 관련 tests를 추가/갱신한다.
+- [x] 사용자-facing/AI/architecture documentation과 `AI_CHANGELOG.md`를 갱신한다.
+- [x] Compile/test/diff verification을 실행한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -170,7 +192,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P1 | AI Ops | AI operations graph status | `AI 운영 현황`에서 LLM, embedding, pgvector뿐 아니라 Neo4j graph 상태도 함께 확인하게 한다. |
 | P2 | Graph UX | Knowledge Graph exploration UI | 프로그램, class, domain, commit 기준으로 관계 경로를 탐색해 Neo4j 적용 가치를 화면에서 더 직접 보여준다. |
 | P2 | AI Quality | Project-level AI quality scorecard | sample project 전용 점검을 넘어 실제 프로젝트별 AI 결과 품질과 근거 충분성을 확인한다. |
 | P2 | AI Verification | Local LLM verification routine | mock/fallback이 아닌 실제 local LLM 실행 증거를 반복 가능하게 남긴다. |
@@ -180,24 +201,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | P3 | Project Chat UX | Graph-aware question templates | 사용자가 graph/RAG가 잘 답할 수 있는 질문을 쉽게 시작하게 한다. |
 | P3 | Reporting | Graph-aware weekly report | 주간 보고서에 graph impact path와 AI 근거 관계를 포함한다. |
 | P3 | Product UX | First-run and empty-state polish | 기능이 많아진 앱의 첫 사용 흐름, 빈 상태, 복구 안내를 정리한다. |
-
-### Candidate - AI Operations Graph Status
-
-Goal:
-`AI 운영 현황`에서 Neo4j graph 상태를 LLM/embedding/source/vector 상태와 함께 보여준다.
-
-Expected scope:
-
-- Neo4j 연결 상태, database, enabled 여부 표시.
-- graph node/edge count, 마지막 sync 시각, stale 여부 표시.
-- Project Chat GraphRAG 보조 근거 사용 가능 여부와 최근 graph evidence 조회 상태 표시.
-- graph readback 실패가 있으면 최근 오류를 보여준다.
-- Knowledge Graph 동기화 화면으로 이동할 수 있는 shortcut action을 제공한다.
-
-Boundaries:
-
-- 이 후보는 graph sync 자체를 구현하지 않는다.
-- GraphRAG가 graph 미동기화 또는 Neo4j 미연결 때문에 비활성인 경우 `준비 필요/미연결`처럼 상태를 명확히 구분한다.
 
 ### Candidate - Knowledge Graph Exploration UI
 

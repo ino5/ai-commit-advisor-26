@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### AI operations graph status
+
+- `AI 운영 현황` 상단의 `연결된 AI` 영역에 Neo4j 연결 상태, Knowledge Graph freshness, Neo4j 저장 graph readback, 최근 Project Chat GraphRAG evidence 상태를 추가했습니다. Graph 상태가 준비되지 않았거나 오래된 경우 LLM/embedding 상태와 별도로 원인을 확인할 수 있습니다.
+- `Knowledge Graph로 이동` shortcut action을 추가해 graph 관련 경고가 보일 때 바로 `Knowledge Graph` 화면으로 이동하도록 했습니다.
+- AI 운영 상태 service에서 `get_neo4j_connection_status`, `get_project_graph_freshness`, `get_neo4j_project_summary`, 최근 `project_chat_messages.raw_metadata.graph_evidence_metadata`를 조합해 `Neo4j`, `Knowledge Graph`, `Graph Readback`, `Project Chat GraphRAG` 상태 row를 구성하도록 했습니다.
+- Application Preview capture 기준, README, 기능 가이드, AI 기술 개요, 아키텍처, 운영 가이드, Roadmap을 graph 운영 상태 표시 기준으로 갱신했습니다.
+- 주요 파일: `src/services/ai_evidence_service.py`, `src/ui/ai_evidence_page.py`, `tests/test_ai_evidence_service.py`, `scripts/capture_feature_screenshot.py`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/architecture.md`, `docs/setup-and-operations.md`, `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\ai_evidence_service.py src\ui\ai_evidence_page.py tests\test_ai_evidence_service.py scripts\capture_feature_screenshot.py` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py tests scripts` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_ai_evidence_service.py tests\test_documentation_images.py -q` 5개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 139개 테스트 통과; Browser로 `http://127.0.0.1:8503`의 `AI 운영 현황` 화면에서 `Neo4j`, `Knowledge Graph`, `Graph Readback`, `Project Chat GraphRAG`, `Knowledge Graph로 이동` 표시 확인; `Knowledge Graph로 이동` 클릭 후 `Knowledge Graph` 화면의 `Graph 상태`, `동기화 대상 요약` 표시 확인; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Knowledge Graph freshness and incremental Neo4j sync
 
 - `project_graph_sync_state` PostgreSQL metadata table을 추가해 Repo HEAD, DB Sync HEAD, Graph HEAD, sync mode, node/edge count, 마지막 commit row, mapping update 기준을 저장하도록 했습니다. Schema 변경은 Alembic migration `20260615_0010_add_project_graph_sync_state.py`로 처리했습니다.

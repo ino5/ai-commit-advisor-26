@@ -35,6 +35,8 @@ from src.services.ai_evidence_service import (
     priority_status_rows,
     summarize_status_rows,
 )
+from src.services import ai_evidence_service
+from src.services.neo4j_graph_service import Neo4jConnectionStatus, Neo4jGraphFreshness, Neo4jSyncResult
 
 
 def _unique(prefix: str) -> str:
@@ -241,4 +243,113 @@ def test_ai_evidence_service_returns_readiness_trace_scorecard_and_report():
         finally:
             db.delete(project)
             db.delete(developer)
+            db.commit()
+
+
+def test_ai_operations_status_includes_graph_readiness_rows(monkeypatch):
+    init_db()
+    synced_at = datetime(2026, 6, 15, tzinfo=timezone.utc)
+
+    monkeypatch.setattr(
+        ai_evidence_service,
+        "get_neo4j_connection_status",
+        lambda: Neo4jConnectionStatus(True, True, "Neo4j 연결됨", "bolt://localhost:7687", "neo4j"),
+    )
+    monkeypatch.setattr(
+        ai_evidence_service,
+        "get_project_graph_freshness",
+        lambda db, project_id: Neo4jGraphFreshness(
+            "latest",
+            "Neo4j graph가 현재 DB/Git 기준과 일치합니다.",
+            repo_head_hash="abc123456789",
+            db_sync_head_hash="abc123456789",
+            graph_sync_head_hash="abc123456789",
+            synced_at=synced_at,
+            sync_mode="incremental",
+            node_count=10,
+            edge_count=20,
+        ),
+    )
+    monkeypatch.setattr(
+        ai_evidence_service,
+        "get_neo4j_project_summary",
+        lambda project_id: Neo4jSyncResult("completed", "Neo4j summary 조회 완료", node_count=10, edge_count=20),
+    )
+
+    with SessionLocal() as db:
+        project = Project(name=_unique("graph-ops-project"), git_repo_path=None)
+        db.add(project)
+        db.flush()
+        session = ProjectChatSession(project_id=project.id, title="graph chat")
+        db.add(session)
+        db.flush()
+        db.add(
+            ProjectChatMessage(
+                session_id=session.id,
+                role="assistant",
+                content="graph answer",
+                message_index=1,
+                raw_metadata={
+                    "graph_evidence": [{"evidence_type": "impact_path"}],
+                    "graph_evidence_metadata": {"status": "completed", "evidence_count": 1},
+                },
+            )
+        )
+        db.commit()
+
+        try:
+            rows = {row.area: row for row in get_ai_operations_status_rows(db, project.id)}
+
+            assert rows["Neo4j"].status == PASS
+            assert "database=neo4j" in rows["Neo4j"].value
+            assert rows["Knowledge Graph"].status == PASS
+            assert "최신" in rows["Knowledge Graph"].value
+            assert rows["Graph Readback"].status == PASS
+            assert rows["Graph Readback"].value == "nodes=10, edges=20"
+            assert rows["Project Chat GraphRAG"].status == PASS
+            assert "evidence=1" in rows["Project Chat GraphRAG"].value
+        finally:
+            db.delete(project)
+            db.commit()
+
+
+def test_ai_operations_status_reports_graph_readback_failure(monkeypatch):
+    init_db()
+    monkeypatch.setattr(
+        ai_evidence_service,
+        "get_neo4j_connection_status",
+        lambda: Neo4jConnectionStatus(True, True, "Neo4j 연결됨", "bolt://localhost:7687", "neo4j"),
+    )
+    monkeypatch.setattr(
+        ai_evidence_service,
+        "get_project_graph_freshness",
+        lambda db, project_id: Neo4jGraphFreshness(
+            "latest",
+            "Neo4j graph가 현재 DB/Git 기준과 일치합니다.",
+            repo_head_hash="abc123",
+            graph_sync_head_hash="abc123",
+            node_count=10,
+            edge_count=20,
+        ),
+    )
+    monkeypatch.setattr(
+        ai_evidence_service,
+        "get_neo4j_project_summary",
+        lambda project_id: Neo4jSyncResult("failed", "Neo4j summary 조회 실패", errors=["readback failed"]),
+    )
+
+    with SessionLocal() as db:
+        project = Project(name=_unique("graph-readback-project"), git_repo_path=None)
+        db.add(project)
+        db.commit()
+
+        try:
+            rows = {row.area: row for row in get_ai_operations_status_rows(db, project.id)}
+
+            assert rows["Graph Readback"].status == FAIL
+            assert rows["Graph Readback"].action == "readback failed"
+            assert rows["Project Chat GraphRAG"].status == WARN
+            assert "recent=없음" in rows["Project Chat GraphRAG"].value
+        finally:
+            db.delete(project)
             db.commit()

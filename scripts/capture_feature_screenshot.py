@@ -496,6 +496,11 @@ SCENARIOS: dict[str, FeatureScenario] = {
         required_texts=(
             "AI 운영 현황",
             "연결된 AI",
+            "Neo4j",
+            "Knowledge Graph",
+            "Graph Readback",
+            "Project Chat GraphRAG",
+            "Knowledge Graph로 이동",
             "운영 준비",
             "AI 실행 바로가기",
             "Mapping 실행",

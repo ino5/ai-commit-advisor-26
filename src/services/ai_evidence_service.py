@@ -33,6 +33,11 @@ from src.services.ai_resource_radar_service import (
     save_pl_briefing,
 )
 from src.services.mapping_service import MappingService
+from src.services.neo4j_graph_service import (
+    get_neo4j_connection_status,
+    get_neo4j_project_summary,
+    get_project_graph_freshness,
+)
 from src.services.resource_metrics_service import get_resource_metrics_summary
 from src.services.risk_service import run_risk_analysis
 from src.utils.config import settings
@@ -109,6 +114,65 @@ def priority_status_rows(rows: list[EvidenceStatusRow], *, include_pass: bool = 
     return sorted(visible_rows, key=lambda row: (_STATUS_PRIORITY.get(row.status, 99), row.area))
 
 
+def _graph_freshness_label(status: str) -> str:
+    return {
+        "latest": "최신",
+        "stale": "갱신 필요",
+        "missing": "저장 필요",
+        "failed": "실패",
+        "skipped": "미사용",
+    }.get(status, status)
+
+
+def _short_hash(value: str | None) -> str:
+    return value[:12] if value else "-"
+
+
+def _recent_graph_evidence_row(db: Session, project_id: int, *, graph_ready: bool, graph_freshness_status: str) -> EvidenceStatusRow:
+    messages = (
+        db.query(ProjectChatMessage)
+        .join(ProjectChatSession, ProjectChatMessage.session_id == ProjectChatSession.id)
+        .filter(ProjectChatSession.project_id == project_id, ProjectChatMessage.role == "assistant")
+        .order_by(ProjectChatMessage.created_at.desc(), ProjectChatMessage.id.desc())
+        .limit(20)
+        .all()
+    )
+    latest_metadata = None
+    latest_count = 0
+    for message in messages:
+        metadata = message.raw_metadata or {}
+        graph_metadata = metadata.get("graph_evidence_metadata") or {}
+        if not graph_metadata:
+            continue
+        latest_metadata = graph_metadata
+        latest_count = len(metadata.get("graph_evidence") or [])
+        break
+
+    if latest_metadata is None:
+        return EvidenceStatusRow(
+            "Project Chat GraphRAG",
+            WARN,
+            f"ready={graph_ready}, recent=없음",
+            "Knowledge Graph를 최신으로 맞춘 뒤 Project Chat에서 graph 관계 질문을 실행하세요.",
+        )
+
+    graph_status = str(latest_metadata.get("status") or "-")
+    evidence_count = int(latest_metadata.get("evidence_count") or latest_count or 0)
+    if graph_status == "failed":
+        row_status = FAIL
+    elif graph_ready and graph_freshness_status == "latest" and graph_status == "completed" and evidence_count > 0:
+        row_status = PASS
+    else:
+        row_status = WARN
+
+    return EvidenceStatusRow(
+        "Project Chat GraphRAG",
+        row_status,
+        f"ready={graph_ready}, recent={graph_status}, evidence={evidence_count}",
+        "Graph evidence가 없거나 오래되면 Knowledge Graph 동기화와 Project Chat 질문 seed를 확인하세요.",
+    )
+
+
 def get_ai_operations_status_rows(db: Session, project_id: int) -> list[EvidenceStatusRow]:
     project = db.get(Project, project_id)
     if project is None:
@@ -163,6 +227,40 @@ def get_ai_operations_status_rows(db: Session, project_id: int) -> list[Evidence
             f"missing={source_status.missing_embedding_count}, models={model_count}"
         )
 
+    neo4j_status = get_neo4j_connection_status()
+    graph_freshness = get_project_graph_freshness(db, project_id)
+    graph_summary = get_neo4j_project_summary(project_id) if neo4j_status.connected else None
+    graph_ready = (
+        neo4j_status.connected
+        and graph_freshness.status == "latest"
+        and graph_summary is not None
+        and graph_summary.status == "completed"
+        and graph_summary.node_count > 0
+        and graph_summary.edge_count > 0
+    )
+    neo4j_row_status = PASS if neo4j_status.connected else WARN if not neo4j_status.enabled else FAIL
+    graph_row_status = (
+        PASS
+        if graph_freshness.status == "latest"
+        else FAIL
+        if graph_freshness.status == "failed"
+        else WARN
+    )
+    if graph_summary is None:
+        readback_status = WARN if not neo4j_status.enabled else FAIL
+        readback_value = "미연결"
+        readback_action = neo4j_status.message
+    else:
+        readback_status = (
+            PASS
+            if graph_summary.status == "completed" and graph_summary.node_count > 0 and graph_summary.edge_count > 0
+            else FAIL
+            if graph_summary.status == "failed"
+            else WARN
+        )
+        readback_value = f"nodes={graph_summary.node_count}, edges={graph_summary.edge_count}"
+        readback_action = graph_summary.errors[0] if graph_summary.errors else graph_summary.summary
+
     return [
         EvidenceStatusRow(
             "LLM",
@@ -193,6 +291,36 @@ def get_ai_operations_status_rows(db: Session, project_id: int) -> list[Evidence
             _status(telemetry.total_count > 0, warn=True),
             f"total={telemetry.total_count}, failed={telemetry.failed_count}, fallback={telemetry.fallback_count}, avg={telemetry.average_duration_ms}ms",
             "AI 기능 실행 뒤 상태를 다시 확인하세요.",
+        ),
+        EvidenceStatusRow(
+            "Neo4j",
+            neo4j_row_status,
+            f"enabled={neo4j_status.enabled}, connected={neo4j_status.connected}, database={neo4j_status.database or 'default'}",
+            neo4j_status.message,
+        ),
+        EvidenceStatusRow(
+            "Knowledge Graph",
+            graph_row_status,
+            (
+                f"{_graph_freshness_label(graph_freshness.status)}, "
+                f"repo={_short_hash(graph_freshness.repo_head_hash)}, "
+                f"graph={_short_hash(graph_freshness.graph_sync_head_hash)}, "
+                f"nodes={graph_freshness.node_count}, edges={graph_freshness.edge_count}, "
+                f"sync={_format_dt(graph_freshness.synced_at)}"
+            ),
+            graph_freshness.summary,
+        ),
+        EvidenceStatusRow(
+            "Graph Readback",
+            readback_status,
+            readback_value,
+            readback_action,
+        ),
+        _recent_graph_evidence_row(
+            db,
+            project_id,
+            graph_ready=graph_ready,
+            graph_freshness_status=graph_freshness.status,
         ),
     ]
 

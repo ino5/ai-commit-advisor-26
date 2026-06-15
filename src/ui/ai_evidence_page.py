@@ -137,16 +137,21 @@ def _render_ai_operations_status(project_id: int) -> None:
         rows = get_ai_operations_status_rows(db, project_id)
 
     st.markdown("#### 연결된 AI")
-    cols = st.columns(len(rows))
-    for col, row in zip(cols, rows):
-        col.metric(row.area, row.status)
-        col.caption(row.value)
-        if row.status == FAIL:
-            col.error(row.action)
-        elif row.status == WARN:
-            col.warning(row.action)
-        else:
-            col.success("정상")
+    for start in range(0, len(rows), 4):
+        cols = st.columns(min(4, len(rows) - start))
+        for col, row in zip(cols, rows[start : start + 4]):
+            col.metric(row.area, row.status)
+            col.caption(row.value)
+            if row.status == FAIL:
+                col.error(row.action)
+            elif row.status == WARN:
+                col.warning(row.action)
+            else:
+                col.success("정상")
+
+    if st.button("Knowledge Graph로 이동", use_container_width=True):
+        st.session_state["sidebar_navigation"] = {"group": "분석 결과", "page": "Knowledge Graph"}
+        st.rerun()
 
 
 def _render_readiness(context: ProjectContext) -> None:

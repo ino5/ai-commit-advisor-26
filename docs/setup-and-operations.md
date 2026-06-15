@@ -315,6 +315,8 @@ Knowledge Graph 화면의 `Graph 상태`는 세 기준을 비교합니다.
 
 일반 운영에서는 Git Sync로 새 commit을 가져온 뒤 `최신 변경분만 Neo4j 반영`을 먼저 사용합니다. 이 action은 최근 DB commit/file row를 기준으로 변경된 Java 파일의 current source class/import 관계를 다시 만들고, program mapping edge를 현재 DB 기준으로 새로 맞춥니다. 과거 commit이 어떤 file을 건드렸다는 `TOUCHES_FILE` 이력은 삭제하지 않습니다.
 
+`AI 운영 현황` 상단에서도 Neo4j 연결, Knowledge Graph 최신성, 저장 graph readback, 최근 Project Chat GraphRAG evidence 상태를 확인할 수 있습니다. 운영 점검 중 graph 관련 경고가 보이면 `Knowledge Graph로 이동` 버튼으로 graph 동기화 화면에 이동한 뒤 아래 기준에 따라 증분 반영 또는 전체 재동기화를 선택합니다.
+
 다음 경우에는 `전체 재동기화`를 선택하세요.
 
 - 프로젝트에서 처음 Neo4j graph를 저장하는 경우
