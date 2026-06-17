@@ -2,6 +2,17 @@
 
 ## 2026-06-17
 
+### GraphRAG 기본 근거 그래프 풍부도 복원
+
+- Project Chat 기본 `GraphRAG 관계도`, 기본 관계 표, 복사용 Markdown에서 `impact_path`를 다시 표시하도록 바꿨습니다.
+- 기본 화면에는 `class_import`와 `program -> commit -> file -> class` 영향 경로를 함께 보여주고, 연결이 약한 `domain_summary`만 원본 metadata로 제한합니다.
+- `원본 메타데이터 표시`에서 기본 표시 근거보다 원본 graph evidence가 더 많아도 안전하게 표시되도록 metadata 제목 렌더링을 보정했습니다.
+- Project 97에 실제 `local_openai / qwen2.5-coder-7b-instruct` Mapping을 다시 실행해 프로그램-커밋 mapping 39건을 생성하고, Neo4j graph를 재동기화해 `MAPPED_TO_COMMIT` edge 39건을 반영했습니다.
+- 같은 local LLM으로 GraphRAG 재현 질문을 다시 실행해 `chat_session=367`, `fallback=False`, `used_sources=8`, `graph_evidence=8`, `class_import`/`impact_path` 혼합 근거를 저장했습니다.
+- Application Preview와 AI 기술 설명, engineering decision, failure history, 사용 가이드 검증 문서를 새 GraphRAG 표시 정책에 맞게 갱신했습니다.
+- 주요 파일: `src/ui/project_chat_page.py`, `tests/test_project_chat_page.py`, `scripts/capture_feature_screenshot.py`, `docs/ai-technical-overview.md`, `docs/application-preview.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `docs/sample-project-usage-verification.md`, `docs/images/features/project-chat-graph-evidence.png`, `docs/images/usage-verification/project-chat-graph-repro-2026-06-17.png`, `docs/images/usage-verification/project-chat-repro-2026-06-17.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_chat_page.py scripts\capture_feature_screenshot.py tests\test_project_chat_page.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_page.py tests\test_documentation_images.py -q` 8개 통과; `.\.venv\Scripts\python.exe scripts\run_local_ai_verification.py --project-id 97 --features mapping --mapping-commit-limit 48 --mapping-candidates 10` 결과 `analyzed=39`, `created=39`, `failed=0`; Neo4j full sync 결과 `nodes=213`, `edges=591`, `MAPPED_TO_COMMIT=39`; 실제 Project Chat 재실행 결과 `session=367`, `provider=local_openai`, `fallback=False`, `insufficient=False`, `used_sources=8`, `graph_evidence=8`; `project-chat-graph-evidence` screenshot capture에서 `class_import`, `impact_path`, `OrderStatusMapper` 확인 및 `domain_summary`, `Mock answer`, `fallback=True`, `Traceback` 금지 조건 통과; `.\.venv\Scripts\python.exe -m pytest -q` 166개 통과; `git diff --check` 통과.
+
 ### GraphRAG 관계도와 샘플 결제 흐름 정리
 
 - Project Chat 기본 `GraphRAG 관계도`, 기본 관계 표, 복사용 Markdown에서 `impact_path`와 `domain_summary`를 제외하고 `class_import`만 먼저 보이도록 정리했습니다.

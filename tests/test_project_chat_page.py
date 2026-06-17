@@ -57,22 +57,36 @@ def test_build_graph_evidence_display_renders_class_import_relationships() -> No
     ]
 
 
-def test_build_graph_evidence_display_keeps_impact_path_out_of_default_graph() -> None:
+def test_build_graph_evidence_display_renders_impact_path_context() -> None:
     nodes, edges = build_graph_evidence_display(
         [
             {
                 "evidence_type": "impact_path",
                 "program": "Payment Checkout",
+                "commit": "abcdef123456",
                 "commit_hash": "abcdef1234567890",
                 "file_path": "src/main/java/com/example/market/payment/service/PaymentService.java",
                 "class_name": "com.example.market.payment.service.PaymentService",
-                "matched_seeds": ["payment"],
+                "matched_seeds": ["paymentcheckout"],
             }
         ]
     )
 
-    assert nodes == []
-    assert edges == []
+    assert {node.label for node in nodes} == {"Payment Checkout", "abcdef123456", "PaymentService.java", "PaymentService"}
+    assert any(node.label == "Payment Checkout" and node.highlighted for node in nodes)
+    assert [(edge.label, edge.source, edge.target) for edge in edges] == [
+        ("MAPPED_COMMIT", "program:Payment Checkout", "commit:abcdef123456"),
+        (
+            "TOUCHES_FILE",
+            "commit:abcdef123456",
+            "file:src/main/java/com/example/market/payment/service/PaymentService.java",
+        ),
+        (
+            "CONTAINS_CLASS",
+            "file:src/main/java/com/example/market/payment/service/PaymentService.java",
+            "class:com.example.market.payment.service.PaymentService",
+        ),
+    ]
 
 
 def test_build_graph_evidence_display_keeps_domain_summary_out_of_default_graph() -> None:

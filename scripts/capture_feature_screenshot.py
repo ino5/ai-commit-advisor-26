@@ -593,6 +593,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
             "PaymentService",
             "OrderStatusService",
             "class_import",
+            "impact_path",
         ),
         forbidden_texts=("Mock answer", "fallback=True", "domain_summary"),
         default_screenshot="docs/images/features/project-chat-graph-evidence.png",

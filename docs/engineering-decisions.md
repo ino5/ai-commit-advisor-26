@@ -21,32 +21,32 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
-## 2026-06-17 - Project Chat 기본 GraphRAG 화면은 직접 class 관계만 먼저 보여준다
+## 2026-06-17 - Project Chat 기본 GraphRAG 화면은 코드 관계와 영향 경로를 함께 보여주고 약한 domain 요약은 숨긴다
 
 ### 배경
 
-Project Chat의 graph evidence에는 class import, 영향 경로, domain 요약이 함께 저장됩니다. 이 정보들은 모두 검증에는 유용하지만, 기본 관계도에 한꺼번에 표시하면 사용자가 관계도를 업무 호출 흐름으로 오해할 수 있습니다.
+Project Chat의 graph evidence에는 class import, 영향 경로, domain 요약이 함께 저장됩니다. 이 정보들은 모두 검증에는 유용하지만, 기본 관계도에 한꺼번에 표시하면 연결이 약한 domain 요약이 별도 덩어리처럼 보일 수 있습니다. 반대로 class import만 남기면 사용자가 좋아했던 프로그램, 커밋, 파일 근거의 풍부함이 사라집니다.
 
 ### 결정
 
-Project Chat 기본 `GraphRAG 관계도`, 기본 관계 표, 복사용 Markdown은 `class_import` evidence만 표시합니다. `impact_path`와 `domain_summary`는 답변 context와 원본 metadata에는 남기되, 기본 화면에는 노출하지 않습니다.
+Project Chat 기본 `GraphRAG 관계도`, 기본 관계 표, 복사용 Markdown은 `class_import`와 `impact_path` evidence를 표시합니다. `domain_summary`는 답변 context와 원본 metadata에는 남기되, 기본 화면에는 노출하지 않습니다.
 
 ### 이유
 
-- 질문에 대한 직접 class 관계를 먼저 보여줘야 화면 해석이 빠릅니다.
-- `impact_path`는 프로그램/커밋/파일/class 영향 추적 경로라 호출 흐름과 다릅니다.
+- 질문에 대한 직접 class 관계와 프로그램/커밋/파일 근거를 함께 보여줘야 GraphRAG의 가치가 드러납니다.
+- `impact_path`는 프로그램/커밋/파일/class 영향 추적 경로라 답변 근거를 설명하는 데 유용합니다.
 - `domain_summary`는 domain 묶음 요약이라 class 관계도에 섞이면 분리된 덩어리처럼 보일 수 있습니다.
-- 검증 가능성은 raw metadata로 유지하면서, 사용자 기본 화면은 더 선별된 관계만 보여주는 편이 제품 설명에 맞습니다.
+- 검증 가능성은 raw metadata로 유지하면서, 사용자 기본 화면에서는 실제 코드 관계와 추적 가능한 영향 경로를 우선 보여주는 편이 제품 설명에 맞습니다.
 
 ### 검토한 대안
 
-- 모든 evidence type을 기본 그래프에 계속 표시: 정보량은 많지만 질문 흐름을 흐리고 Application Preview에서 오해를 만듭니다.
-- `impact_path`/`domain_summary`를 완전히 삭제: 화면은 단순해지지만 GraphRAG 근거 추적과 debugging 정보가 줄어듭니다.
+- 모든 evidence type을 기본 그래프에 계속 표시: 정보량은 많지만 연결이 약한 domain 요약이 Application Preview에서 오해를 만듭니다.
+- `impact_path`/`domain_summary`를 모두 숨김: 화면은 단순해지지만 GraphRAG 근거 추적과 프로그램/커밋/파일 맥락이 줄어듭니다.
 - 탭을 즉시 추가: 장기적으로는 좋지만 이번 문제의 1차 해결보다 구현 범위가 커집니다.
 
 ### 영향과 tradeoff
 
-기본 화면은 더 읽기 쉬워지지만, 프로그램/커밋 영향 경로를 한눈에 보고 싶은 사용자는 원본 metadata나 별도 Knowledge Graph 화면을 열어야 합니다. 이후 영향 경로 전용 view를 추가할 때도 class 관계도와 섞지 않는 기준을 유지합니다.
+기본 화면은 class 관계만 표시할 때보다 풍부해지고, domain 요약까지 모두 섞을 때보다 덜 산만합니다. 다만 `impact_path`는 실제 method call graph가 아니라 분석 영향 경로이므로, 세밀한 호출 여부는 verified source 답변과 파일 근거로 함께 확인해야 합니다.
 
 ### 관련 문서
 
