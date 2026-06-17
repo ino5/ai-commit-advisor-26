@@ -2,6 +2,14 @@
 
 ## 2026-06-17
 
+### Application Preview AI Code Review 추천 커밋 보강
+
+- Application Preview의 AI Code Review 섹션에 selected commit으로 리뷰하기 좋은 샘플 커밋 후보를 추가했습니다.
+- high-risk bug 후보, 금액 한도 방어, cross-module 집계 회귀, 회귀 수정 비교, partial feature 확인용 커밋을 hash와 기대 리뷰 포인트로 정리했습니다.
+- 기존 AI Code Review screenshot은 유지하고, 사용자가 같은 화면에서 어떤 커밋을 골라 리뷰하면 결과 차이를 볼 수 있는지 설명을 보강했습니다.
+- 주요 파일: `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 통과; `git diff --check` 통과.
+
 ### Application Preview GraphRAG 질문 문구 보강
 
 - Application Preview의 Project Chat GraphRAG preview 설명에 실제 캡처에 사용한 한국어 질문을 함께 표시했습니다.
