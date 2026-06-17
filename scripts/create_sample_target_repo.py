@@ -2287,16 +2287,12 @@ def _commit_steps() -> list[CommitStep]:
                     - Inventory release evidence: InventoryService.java, InventoryMapper.xml, operations-smoke-test.md.
                     - Settlement readiness: settlement-export.md, settlement-not-ready.md, operator-audit-evidence.md.
                     - Coupon partial implementation: CouponDiscountService.java, coupon-policy.md.
-                    - Release readiness / 릴리스 리허설: release-rehearsal-2026-06-14.md, go-no-go-summary.md, operator-handoff-checklist.md.
-                    - Incident learning / 장애 회고: payment-dashboard-reconciliation-postmortem.md and dashboard-overcount-risk.md.
 
                     ## Risk and AI Progress contrast cases
 
                     - Coupon has partial source and explicit remaining policy gaps.
                     - Settlement has a controller stub but no service, mapper, export writer, or assignee.
                     - Return request has backlog documentation but no implementation source.
-                    - Release rehearsal marks payment, inventory, and report checks ready while coupon and settlement remain not ready.
-                    - Korean demo questions may ask for 준비 완료, 주의, 출시 불가, 운영 인수인계, 장애 회고, or 정합성 점검 evidence.
                     """,
                 },
             ),
@@ -2349,130 +2345,6 @@ def _commit_steps() -> list[CommitStep]:
 
                     PL Briefing should summarize both the ready evidence and the explicit not-ready items instead of presenting the sample as uniformly complete.
                     """,
-                    "docs/release-evidence/release-rehearsal-2026-06-14.md": """
-                    # Release rehearsal 2026-06-14
-
-                    The rehearsal covers the final sample release checkpoint for operations reviewers.
-                    Korean demo terms: 릴리스 리허설, 준비 완료, 주의, 출시 불가, 운영 인수인계.
-
-                    ## 한국어 판단 요약
-
-                    - 준비 완료: 결제 금액 검증, 결제 감사 로그, 재고 예약 해제, 대시보드 요약, 매출 리포트 세금 계산.
-                    - 주의: stale payment warning 임계값은 운영 모니터링 기준을 더 조정해야 한다.
-                    - 출시 불가: 쿠폰 최소 주문 금액/중복 사용 제한, 정산 export 파일 생성과 운영자 다운로드 감사 증거.
-
-                    ## Ready checks
-
-                    - Payment authorization rejects zero, negative, and excessive amount requests in PaymentService.
-                    - Payment audit logging records authorization decisions before the dashboard reads payment waiting indicators.
-                    - Inventory release records are created when a reservation must be released after payment or cancellation handling.
-                    - Sales report tax calculation excludes canceled payment rows after the report tax fix.
-                    - Dashboard summary over-counting was fixed and should be reviewed together with the dashboard over-counting postmortem.
-
-                    ## Watch checks
-
-                    - Stale payment warning thresholds are documented but still require operations monitoring calibration.
-                    - Coupon expiration validation exists, but minimum order amount and duplicate use restrictions remain policy gaps.
-                    - Settlement export still returns NOT_READY and has no export writer, mapper, batch job, or operator download evidence.
-
-                    ## Evidence to cite
-
-                    - docs/review-targets/dashboard-overcount-risk.md
-                    - docs/incidents/payment-dashboard-reconciliation-postmortem.md
-                    - docs/operations/operator-handoff-checklist.md
-                    - docs/release-evidence/go-no-go-summary.md
-                    """,
-                    "docs/release-evidence/go-no-go-summary.md": """
-                    # Go / No-Go summary
-
-                    Korean demo terms: Go / No-Go, 준비 완료, 출시 가능, 출시 불가, 제한 사항.
-
-                    ## 한국어 Go / No-Go 요약
-
-                    - 출시 가능: 주문 생성, 결제 승인, 결제 감사, 재고 예약 해제, 대시보드 요약, 매출 리포트 세금 검증은 현재 소스 근거가 있다.
-                    - 출시 불가: 쿠폰 할인은 최소 주문 금액, 중복 사용, 회원 등급 검증이 구현되기 전까지 완료로 표시하면 안 된다.
-                    - 출시 불가: 정산 export는 파일 생성, mapper, batch job, 운영자 다운로드 감사 증거가 생기기 전까지 완료로 표시하면 안 된다.
-                    - 제한 사항: 반품 요청 접수는 backlog 문서만 있고 현재 구현 소스가 없다.
-
-                    ## Go
-
-                    - Order creation, payment authorization, payment audit, inventory reservation release, dashboard summary, and sales report tax checks have current source evidence.
-                    - The payment zero amount risk was intentionally introduced and then fixed, so reviewers can compare the risky commit and the corrective commit.
-                    - Dashboard summary over-counting has a review target and a postmortem so Code Review and PL Briefing can explain both the defect and the fix.
-
-                    ## No-Go
-
-                    - Coupon discount must not be marked complete until minimum order amount, duplicate use, and member grade checks are implemented.
-                    - Settlement export must not be marked complete until export file generation, mapper, batch job, and operator download audit evidence exist.
-                    - Return request intake remains a backlog item with no current source implementation.
-
-                    ## PL briefing prompt
-
-                    A useful briefing should separate ready modules, watch items, and explicit no-go items.
-                    It should not treat documented limitations as completed implementation.
-                    """,
-                    "docs/incidents/payment-dashboard-reconciliation-postmortem.md": """
-                    # Payment dashboard reconciliation postmortem
-
-                    Korean demo terms: 결제 대시보드 정합성 점검, 장애 회고, 과다 집계, 재발 방지.
-
-                    ## 한국어 장애 회고 요약
-
-                    결제 대시보드 정합성 점검 중 취소 결제 row가 들어온 뒤 payment waiting과 daily sales total이 맞지 않는 문제가 발견됐다.
-                    원인은 orders, payments, inventory reservations를 엄격한 집계 경계 없이 조인해 open order와 payment waiting 지표가 과다 집계될 수 있었기 때문이다.
-                    재발 방지를 위해 대시보드 쿼리는 주문 단위로 먼저 집계한 뒤 재고 예약 row와 조인해야 한다.
-
-                    ## Symptom
-
-                    During dashboard rehearsal, operations noticed that payment waiting and daily sales totals did not reconcile after canceled payment rows were introduced.
-
-                    ## Root cause
-
-                    The dashboard summary query joined orders, payments, and inventory reservations without a strict aggregation boundary.
-                    This could over-count open orders and payment waiting indicators when one order had multiple payment or inventory rows.
-
-                    ## Fix evidence
-
-                    - Review target: docs/review-targets/dashboard-overcount-risk.md.
-                    - Fix commit: dashboard summary over-counting was corrected after the risky cross-module query change.
-                    - Report tax calculation fix excludes canceled payments from sales report tax totals.
-
-                    ## Prevention
-
-                    - Dashboard summary queries must aggregate per order before joining inventory reservation rows.
-                    - Release rehearsal must compare dashboard indicators with sales report totals and payment audit rows.
-                    - AI Code Review should flag cross-module dashboard query changes that touch orders, payments, and inventory in one commit.
-                    """,
-                    "docs/operations/operator-handoff-checklist.md": """
-                    # Operator handoff checklist
-
-                    Korean demo terms: 운영 인수인계, 일일 점검, 에스컬레이션, 결제 감사, 대시보드 정합성.
-
-                    ## 한국어 운영 인수인계 요약
-
-                    - 일일 점검: fulfillment cutoff 전에 stale payment warning count를 확인한다.
-                    - 일일 점검: 결제 감사 row와 dashboard payment waiting indicator를 비교한다.
-                    - 일일 점검: 취소 또는 거절된 결제 흐름에서 inventory release evidence가 남았는지 확인한다.
-                    - 에스컬레이션: 쿠폰이 계획상 완료처럼 보이면 최소 주문 금액과 중복 사용 규칙이 실제 소스에 있는지 확인한다.
-                    - 에스컬레이션: 정산 export 요청이 오면 현재 endpoint는 NOT_READY이며 export file evidence가 없다고 안내한다.
-
-                    ## Daily checks
-
-                    - Review stale payment warning count before fulfillment cutoff.
-                    - Compare payment audit rows with dashboard payment waiting indicators.
-                    - Confirm inventory release evidence exists for canceled or rejected payment flows.
-                    - Confirm sales report totals exclude canceled payment rows.
-
-                    ## Escalation checks
-
-                    - If coupon discount looks complete in plan status, verify minimum order amount and duplicate use rules in source before announcing completion.
-                    - If settlement export is requested, explain that the current endpoint returns NOT_READY and no export file evidence exists.
-                    - If dashboard payment waiting count jumps after a query change, review the dashboard reconciliation postmortem before release.
-
-                    ## Handoff evidence
-
-                    This checklist should be cited by Project Chat and PL Briefing when the question asks what operations can safely run after release.
-                    """,
                 },
             ),
             CommitStep(
@@ -2487,7 +2359,6 @@ def _commit_steps() -> list[CommitStep]:
                     Use dashboard summary commits for Commit Impact across dashboard, orders, inventory, and payments.
                     Ask Project Chat where payment amount validation is performed.
                     Ask Project Chat how payment audit, inventory hold release, and settlement export readiness are tracked.
-                    Ask Project Chat what the release rehearsal and operator handoff say is ready, watch, or no-go.
                     Run Risk Analysis after Mapping to show delayed coupon work and unassigned settlement export.
 
                     Recommended live LLM flow:
@@ -2496,8 +2367,7 @@ def _commit_steps() -> list[CommitStep]:
                     2. Run Risk Analysis and AI Progress to show coupon partial completion and settlement missing assignment.
                     3. Run AI Code Review on the payment zero amount commit or dashboard over-counting commit.
                     4. Ask Project Chat one implementation question and one readiness question.
-                    5. Ask Project Chat one operations handoff question using the release rehearsal evidence.
-                    6. Run PL Briefing so the model summarizes ready, watch, and not-ready evidence.
+                    5. Run PL Briefing so the model summarizes ready, watch, and not-ready evidence.
                     """,
                 },
             ),

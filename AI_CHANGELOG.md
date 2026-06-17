@@ -2,20 +2,6 @@
 
 ## 2026-06-17
 
-### Final sample operations evidence hardening
-
-- 샘플 프로젝트를 처음부터 다시 돌려도 데모 가치가 충분하도록 최종 release rehearsal, go/no-go summary, payment dashboard reconciliation postmortem, operator handoff checklist를 보강했습니다.
-- release/go-no-go/handoff/postmortem 문서에 한국어 판단 요약과 검색 단서를 추가해 Project Chat이 `준비 완료`, `주의`, `출시 불가`, `운영 인수인계`, `결제 대시보드 정합성 점검` 질문을 더 잘 찾도록 했습니다.
-- `docs/demo-guide.md`와 `docs/business-rules/ai-evidence-index.md`가 release readiness, incident learning, operator handoff evidence를 함께 안내하도록 샘플 생성 스크립트를 확장했습니다.
-- 샘플 생성 테스트가 최종 운영 증거 파일과 한국어 evidence 문구를 검증하도록 갱신했습니다.
-- `C:\dev\ai-advisor-sample-shop` 샘플 repo를 force regenerate해 48 commits, 최신 commit `0e722ba4149d39eded3d5d0cb42ba27a0446f30d`, release evidence commit `4150015`를 확인했습니다.
-- 프로젝트 97을 reset하고 Git Sync, source_file index, local embedding, Mapping, Risk Analysis, Neo4j sync, Project Chat, AI Code Review, PL Briefing을 실제 local provider로 재실행했습니다.
-- 검증 결과: Git Sync 48 commits/110 files, `source_file` chunks 88, 전체 chunks/vectors 291, Mapping 80건 실패 0, Risk 21건, Neo4j node 192/edge 558 freshness `latest`, Project Chat `local_openai/qwen2.5-coder-7b-instruct fallback=False`, AI Code Review 2개 commit 각 bug finding 1건, PL Briefing validation `valid`.
-- Project Chat, AI Code Review, Knowledge Graph 검증 스크린샷을 `docs/images/usage-verification/2026-06-17-*.png`에 저장했습니다.
-- `source_file` 인덱스 누락과 4096 token local LLM context overflow 실패를 `docs/failure-history.md`에 기록하고, 샘플 AI 검증의 source_file-first/context-budget 기준을 `docs/engineering-decisions.md`에 남겼습니다.
-- 주요 파일: `scripts/create_sample_target_repo.py`, `tests/test_sample_data_generation.py`, `docs/sample-target-repo-demo-design.md`, `docs/sample-project-usage-verification.md`, `docs/failure-history.md`, `docs/engineering-decisions.md`, `docs/images/usage-verification/2026-06-17-project-chat-release-evidence.png`, `docs/images/usage-verification/2026-06-17-ai-code-review-real-local.png`, `docs/images/usage-verification/2026-06-17-knowledge-graph-latest.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
-- 검증: `.\.venv\Scripts\python.exe -m py_compile scripts\create_sample_target_repo.py tests\test_sample_data_generation.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_sample_data_generation.py -q` 14개 통과; `.\.venv\Scripts\python.exe scripts\create_sample_target_repo.py --target-path C:\dev\ai-advisor-sample-shop --force` 성공; 실제 local LLM/embedding/Neo4j 재분석 성공; Playwright screenshot 저장 성공.
-
 ### GraphRAG Korean seed failure documentation
 
 - 한국어 질문에서 code identifier 뒤 조사가 붙어 GraphRAG class seed가 빗나간 실패를 `docs/failure-history.md`에 기록했습니다.

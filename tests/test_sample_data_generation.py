@@ -86,10 +86,6 @@ def test_sample_target_repo_has_rich_demo_commit_history() -> None:
     assert "docs/requirements/settlement-export.md" in all_paths
     assert "docs/business-rules/project-chat-demo-questions.md" in all_paths
     assert "docs/business-rules/ai-evidence-index.md" in all_paths
-    assert "docs/release-evidence/release-rehearsal-2026-06-14.md" in all_paths
-    assert "docs/release-evidence/go-no-go-summary.md" in all_paths
-    assert "docs/incidents/payment-dashboard-reconciliation-postmortem.md" in all_paths
-    assert "docs/operations/operator-handoff-checklist.md" in all_paths
     assert "docs/demo-guide.md" in all_paths
 
 
@@ -106,23 +102,6 @@ def test_sample_target_repo_has_scenario_designed_ai_evidence() -> None:
     assert "missing join condition" in file_texts["docs/review-targets/dashboard-overcount-risk.md"]
     assert "controller stub but no service" in file_texts["docs/business-rules/ai-evidence-index.md"]
     assert "not-ready items" in file_texts["docs/release-evidence/cross-module-release-notes.md"]
-    assert "Release rehearsal" in file_texts["docs/business-rules/ai-evidence-index.md"]
-    assert "Korean demo questions may ask for 준비 완료" in file_texts["docs/business-rules/ai-evidence-index.md"]
-    assert "ready modules, watch items, and explicit no-go items" in file_texts[
-        "docs/release-evidence/go-no-go-summary.md"
-    ]
-    assert "Korean demo terms: 릴리스 리허설" in file_texts[
-        "docs/release-evidence/release-rehearsal-2026-06-14.md"
-    ]
-    assert "준비 완료: 결제 금액 검증" in file_texts[
-        "docs/release-evidence/release-rehearsal-2026-06-14.md"
-    ]
-    assert "출시 불가: 쿠폰 할인" in file_texts["docs/release-evidence/go-no-go-summary.md"]
-    assert "dashboard rehearsal" in file_texts["docs/incidents/payment-dashboard-reconciliation-postmortem.md"]
-    assert "결제 대시보드 정합성 점검" in file_texts["docs/incidents/payment-dashboard-reconciliation-postmortem.md"]
-    assert "Daily checks" in file_texts["docs/operations/operator-handoff-checklist.md"]
-    assert "운영 인수인계" in file_texts["docs/operations/operator-handoff-checklist.md"]
-    assert "정산 export 요청" in file_texts["docs/operations/operator-handoff-checklist.md"]
 
 
 def test_sample_target_repo_commit_dates_do_not_exceed_verification_date() -> None:

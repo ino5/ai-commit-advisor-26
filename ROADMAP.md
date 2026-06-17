@@ -104,7 +104,6 @@
 | P2 | Code Review / Demo UX | AI Code Review demo evidence and preview screenshot | Done | AI Code Review demo evidence and preview screenshot |
 | P2 | AI Verification / Demo Quality | Real local LLM demo evidence correction | Done | Real local LLM demo evidence correction |
 | P2 | Sample Data / Demo Quality | Scenario-designed sample evidence for rich AI outputs across features | Done | Scenario-designed sample evidence for rich AI outputs |
-| P2 | Sample Data / Demo Quality | Final sample operations evidence hardening | Done | Final sample operations evidence hardening |
 | P2 | AI Verification / Demo Quality | Project Chat real local LLM screenshot evidence | Done | Project Chat real local LLM screenshot evidence |
 | P2 | GraphRAG / Demo Quality | Korean Project Chat class relationship evidence screenshot | Done | Korean Project Chat class relationship evidence screenshot |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
@@ -405,30 +404,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
 | P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
-
-## P2 - Final Sample Operations Evidence Hardening
-
-Status: Done
-
-Goal:
-샘플 프로젝트를 다시 전체 분석해도 아깝지 않을 만큼 release rehearsal, incident postmortem, operator handoff evidence를 보강하고, 실제 local LLM/embedding/Neo4j 검증까지 한 번에 마무리한다.
-
-Rationale:
-현재 샘플은 기능별 기본 증거는 충분하지만, 실제 프로젝트 검토처럼 보이려면 마지막 릴리스 준비, 장애 회고, 운영 인수인계 자료가 함께 있어야 한다. 이 자료는 PL Briefing, Risk Analysis, Project Chat, AI Code Review가 단순 코드 설명을 넘어 ready/watch/not-ready 판단을 만들 수 있게 한다.
-
-Checklist:
-
-- [x] `scripts/create_sample_target_repo.py`에 release rehearsal, incident postmortem, operator handoff evidence를 추가한다.
-- [x] 샘플 설계 문서와 tests에 최종 운영 증거 기준을 반영한다.
-- [x] `C:\dev\ai-advisor-sample-shop` 샘플 repo를 force regenerate한다.
-- [x] 프로젝트 97을 초기화하고 Git Sync, source chunk, local embedding, Mapping, Risk/AI Progress, Neo4j sync를 다시 실행한다.
-- [x] 실제 local LLM으로 Project Chat, AI Code Review, PL Briefing 대표 결과를 확인한다.
-- [x] Application Preview screenshot 또는 검증 증거를 최신 샘플 기준으로 갱신한다.
-- [x] `AI_CHANGELOG.md`와 필요한 문서를 갱신하고 전체 테스트를 통과시킨다.
-
-Completed changelog:
-
-- `Final sample operations evidence hardening`
 
 ## P2 - Korean Project Chat Class Relationship Evidence Screenshot
 

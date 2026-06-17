@@ -45,47 +45,6 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
-## 2026-06-17 - 샘플 AI 검증은 source_file-first와 context budget을 명시한다
-
-### 배경
-
-샘플 프로젝트를 처음부터 재생성하고 Project Chat을 검증하는 과정에서 `commit`, `commit_file`, `program` chunk만 만든 상태로 질문을 실행해 verified `source_file` 근거가 없는 실패가 발생했습니다. 이후 release evidence 문서를 정확히 검색했지만, `TOP K=8`, graph evidence, history context가 함께 들어가 local LLM 4096 token context limit을 초과했습니다.
-
-### 결정
-
-샘플 프로젝트의 실제 AI 검증은 다음 순서를 기준으로 합니다.
-
-- Git Sync 후 `refresh_source_file_index`를 먼저 실행해 verified `source_file` chunk를 만든다.
-- `source_file`, `program`, `commit`, `commit_file` embedding 수를 모두 기록한다.
-- Project Chat 증거는 `fallback=False`, `insufficient_evidence=False`, used source count, provider/model을 함께 기록한다.
-- 4096 token local LLM 환경에서는 release/operations 질문의 `TOP K`를 낮추거나 history/graph context를 분리해 검증한다.
-- UI screenshot은 빈 form이 아니라 실제 답변, source evidence count, provider/model/fallback 상태가 보이는 화면을 사용한다.
-
-### 이유
-
-Project Chat의 현재 코드 답변 안전 모델은 verified `source_file`을 요구합니다. 따라서 source_file 인덱스를 생략한 검증은 샘플 데이터 품질이 아니라 검증 절차의 결함을 보여줍니다. 또한 local LLM demo는 사용자가 실제로 실행할 수 있는 context budget 안에서 재현돼야 하므로, 근거를 무조건 많이 넣는 것보다 질문 목적에 맞게 근거 범위를 줄이는 편이 신뢰도가 높습니다.
-
-### 검토한 대안
-
-- UI 기본값 그대로 `TOP K=8`만 사용: 큰 context 모델에서는 편하지만 4096 context local LLM에서 overflow가 반복될 수 있습니다.
-- commit/history/graph 근거를 항상 포함: 풍부해 보이지만 release 문서 질문처럼 current source evidence만으로 충분한 경우 prompt를 불필요하게 키웁니다.
-- mock 또는 fallback answer로 screenshot을 채움: 제품 신뢰를 해치므로 금지합니다.
-
-### 영향과 tradeoff
-
-검증 스크립트와 문서가 더 길어지고, 샘플 검증에 걸리는 시간이 늘어납니다. 대신 screenshot과 문서가 실제 local LLM/embedding/Neo4j 결과임을 더 명확히 증명할 수 있고, 재생성 비용이 큰 샘플 프로젝트를 다시 돌릴 때 누락 단계를 줄일 수 있습니다.
-
-### 후속 확인
-
-Project Chat UI가 모델 context length를 알 수 있거나 추정할 수 있게 되면, `TOP K` 권장값 또는 context overflow 안내를 화면에 표시하는 개선을 검토합니다.
-
-### 관련 문서
-
-- `docs/failure-history.md`의 `샘플 Project Chat 검증에서 source_file 인덱스와 local LLM context 한계를 놓쳤다`
-- `docs/sample-project-usage-verification.md`
-- `docs/sample-target-repo-demo-design.md`
-- `AI_CHANGELOG.md`의 `Final sample operations evidence hardening`
-
 ## 2026-06-15 - Project Chat GraphRAG는 compact interactive evidence graph로 보여준다
 
 ### 배경
