@@ -106,6 +106,7 @@
 | P2 | Sample Data / Demo Quality | Scenario-designed sample evidence for rich AI outputs across features | Done | Scenario-designed sample evidence for rich AI outputs |
 | P2 | AI Verification / Demo Quality | Project Chat real local LLM screenshot evidence | Done | Project Chat real local LLM screenshot evidence |
 | P2 | GraphRAG / Demo Quality | Korean Project Chat class relationship evidence screenshot | Done | Korean Project Chat class relationship evidence screenshot |
+| P2 | Sample Data / Demo Quality | Source-first sample project and demo verification guide | Done | Source-first sample project and demo verification guide |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
@@ -404,6 +405,27 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
 | P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
+
+## P2 - Source-First Sample Project And Demo Verification Guide
+
+Status: Done
+
+Goal:
+샘플 프로젝트 내부의 AI 판단 근거를 Markdown 설명 파일이 아니라 Java source, MyBatis XML, test/probe class, Excel upload 데이터, Git diff만으로 읽히게 재설계한다. 기존 `Application Preview` screenshot은 실제 local LLM/Neo4j 조건으로 재검증되기 전까지 덮어쓰지 않는다.
+
+Rationale:
+샘플 보강의 목적은 mock output이나 정답 문서로 결과를 꾸미는 것이 아니라, 제품 기능이 실제 local LLM과 graph/RAG 근거를 읽었을 때 설득력 있는 판단을 만들 수 있게 하는 것이다. 기존 preview screenshot은 이미 실제 결과 증거로 쓰이고 있으므로, 새 샘플 검증이 준비되지 않은 상태에서 훼손되면 안 된다.
+
+Checklist:
+
+- [x] 기존 `Application Preview` screenshot capture 조건과 실제 local LLM 검증 기준을 확인한다.
+- [x] 샘플 프로젝트 내부 `docs/...` evidence 의존을 source/test/XML evidence로 전환한다.
+- [x] 표준용어 Excel dataset을 새 source identifiers와 맞춘다.
+- [x] 앱 저장소에 기능 테스트용 질문/리뷰 대상 가이드를 추가한다.
+- [x] sample generation tests와 설계 문서를 source-first 기준으로 갱신한다.
+- [x] 기본 샘플 경로를 덮어쓰기 전에 별도 target path에서 생성과 Git history shape를 검증한다.
+- [x] 실제 local LLM/embedding/Neo4j 검증과 screenshot 갱신 여부를 분리해 기록한다.
+- [x] `AI_CHANGELOG.md`를 갱신하고 commit/push한다.
 
 ## P2 - Korean Project Chat Class Relationship Evidence Screenshot
 

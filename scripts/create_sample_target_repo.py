@@ -208,6 +208,34 @@ STANDARD_TERM_ROWS = [
         "abbreviation": "vld",
         "description": "입력값과 업무 규칙 확인을 의미합니다.",
     },
+    {
+        "term_type": "표준용어",
+        "korean_term": "운영대시보드",
+        "english_term": "operations dashboard",
+        "abbreviation": "ops dash",
+        "description": "주문, 결제대기, 재고부족, stale payment warning을 모아 운영자가 확인하는 화면입니다.",
+    },
+    {
+        "term_type": "표준용어",
+        "korean_term": "결제감사",
+        "english_term": "payment audit",
+        "abbreviation": "pay audit",
+        "description": "결제 승인/거절 이벤트를 payment_audit_logs에 남기는 감사 기록입니다.",
+    },
+    {
+        "term_type": "표준용어",
+        "korean_term": "최소주문금액",
+        "english_term": "minimum order amount",
+        "abbreviation": "min ord amt",
+        "description": "쿠폰 적용 전 주문 금액이 넘어야 하는 기준이며 CouponMapper.xml의 minimum_order_amount와 연결됩니다.",
+    },
+    {
+        "term_type": "표준단어",
+        "korean_term": "감사",
+        "english_term": "audit",
+        "abbreviation": "audit",
+        "description": "운영자 다운로드와 결제 처리 이력을 추적하는 기록을 의미합니다.",
+    },
 ]
 
 
@@ -377,20 +405,38 @@ def _commit_steps() -> list[CommitStep]:
             DEVELOPERS["pl"],
             1,
             {
-                "docs/requirements/program-baseline.md": """
-                # 프로그램 기준선
+                f"{BASE_PACKAGE_PATH}/common/ProgramBaseline.java": """
+                package com.example.market.common;
 
-                - 주문 접수와 주문 상태 변경은 1차 오픈 범위로 본다.
-                - 재고 예약은 주문 접수 전후 정합성을 확인한다.
-                - 결제 승인 후 주문 상태가 PAID로 전환되어야 한다.
-                - 매출 현황과 운영 대시보드는 조회 성능을 별도 점검한다.
+                import java.util.List;
+
+                public final class ProgramBaseline {
+                    public static final List<String> FIRST_RELEASE_PROGRAMS = List.of(
+                        "SMP-ORD-001",
+                        "SMP-ORD-002",
+                        "SMP-INV-001",
+                        "SMP-PAY-001",
+                        "SMP-RPT-001",
+                        "SMP-UI-001"
+                    );
+                    public static final String PAYMENT_APPROVAL_TARGET_STATUS = "PAID";
+                    public static final String DASHBOARD_PERFORMANCE_REVIEW = "operations dashboard aggregation";
+
+                    private ProgramBaseline() {
+                    }
+                }
                 """,
-                "docs/requirements/interface-policy.md": """
-                # 인터페이스 정책
+                f"{BASE_PACKAGE_PATH}/common/LayerPolicy.java": """
+                package com.example.market.common;
 
-                - Controller는 화면/요청 단위 진입점만 담당한다.
-                - Service는 트랜잭션과 업무 규칙을 담당한다.
-                - Mapper XML은 SQL과 result mapping을 담당한다.
+                public final class LayerPolicy {
+                    public static final String CONTROLLER = "request and screen entry point";
+                    public static final String SERVICE = "transaction and business rule boundary";
+                    public static final String MAPPER_XML = "SQL and result mapping boundary";
+
+                    private LayerPolicy() {
+                    }
+                }
                 """,
             },
         ),
@@ -914,18 +960,10 @@ def _commit_steps() -> list[CommitStep]:
             },
         ),
         CommitStep(
-            "Add QA checklist for Spring MyBatis flows",
+            "Add QA probes for Spring MyBatis flows",
             DEVELOPERS["qa"],
             11,
             {
-                "docs/qa-checklist.md": """
-                # QA checklist
-
-                - 주문 접수 화면에서 고객 ID 입력 후 주문이 생성된다.
-                - 재고 부족 시 예약 없이 SHORTAGE가 반환된다.
-                - 결제 승인 후 주문 상태가 PAID로 변경된다.
-                - 매출 현황과 운영 대시보드가 MyBatis 집계 결과를 표시한다.
-                """,
                 "src/test/java/com/example/market/dashboard/DashboardServiceTest.java": """
                 package com.example.market.dashboard;
 
@@ -934,7 +972,7 @@ def _commit_steps() -> list[CommitStep]:
 
                 class DashboardServiceTest {
                     @Test
-                    void dashboardViewNameIsDocumented() {
+                    void dashboardViewNameIsStable() {
                         assertNotNull("dashboard/index");
                     }
                 }
@@ -1088,33 +1126,29 @@ def _commit_steps() -> list[CommitStep]:
 
                         @Transactional
                         public String authorize(long orderId, int amount) {
-                            // Pilot partner payments can arrive before final amount settlement.
                             if (amount < 0) {
                                 return "REJECTED";
                             }
-                            // Risk scenario for AI Code Review:
-                            // amount == 0 is still stored as AUTHORIZED and the order becomes PAID.
-                            // A real implementation should keep this in a settlement-pending state.
                             paymentMapper.insertPayment(orderId, amount, "AUTHORIZED");
                             orderMapper.updateOrderStatus(orderId, "PAID");
                             return "AUTHORIZED";
                         }
                     }
                     """,
-                    "docs/review-targets/payment-zero-amount-risk.md": """
-                    # Review target: zero amount payment
+                    "src/test/java/com/example/market/payment/PaymentPilotAuthorizationRiskTest.java": """
+                    package com.example.market.payment;
 
-                    This commit intentionally allows zero amount payment authorization for pilot partner traffic.
-                    It is useful for AI Code Review because a reviewer should ask whether zero amount authorization can incorrectly mark an order as PAID.
+                    import static org.junit.jupiter.api.Assertions.assertEquals;
+                    import org.junit.jupiter.api.Test;
 
-                    Before this change, zero and negative payment amounts were rejected together.
-                    After this change, negative amounts are rejected but amount == 0 is authorized and immediately updates order status to PAID.
-
-                    Review expectations:
-
-                    - Identify that amount == 0 is newly allowed.
-                    - Explain that PAID status can trigger fulfillment, sales reporting, and settlement workflows.
-                    - Recommend a separate settlement-pending state or explicit partner exception flow instead of marking the order PAID.
+                    class PaymentPilotAuthorizationRiskTest {
+                        @Test
+                        void zeroAmountWouldStillBecomeAuthorizedInPilotChange() {
+                            int amount = 0;
+                            String status = amount < 0 ? "REJECTED" : "AUTHORIZED";
+                            assertEquals("AUTHORIZED", status);
+                        }
+                    }
                     """,
                 },
             ),
@@ -1205,13 +1239,23 @@ def _commit_steps() -> list[CommitStep]:
                         }
                     }
                     """,
-                    "docs/requirements/order-status-policy.md": """
-                    # Order status transition policy
+                    "src/test/java/com/example/market/order/OrderStatusTransitionPolicyTest.java": """
+                    package com.example.market.order;
 
-                    Orders move from PAYMENT_WAITING to PAID after payment authorization.
-                    PAID orders can move to PACKING or CANCELED.
-                    PACKING orders move to SHIPPED, and SHIPPED orders move to DONE.
-                    Direct transitions from PAYMENT_WAITING to SHIPPED are blocked.
+                    import static org.junit.jupiter.api.Assertions.assertFalse;
+                    import static org.junit.jupiter.api.Assertions.assertTrue;
+                    import java.util.Map;
+                    import java.util.Set;
+                    import org.junit.jupiter.api.Test;
+
+                    class OrderStatusTransitionPolicyTest {
+                        @Test
+                        void paymentWaitingCanMoveOnlyToPaidOrCanceled() {
+                            Map<String, Set<String>> allowed = Map.of("PAYMENT_WAITING", Set.of("PAID", "CANCELED"));
+                            assertTrue(allowed.get("PAYMENT_WAITING").contains("PAID"));
+                            assertFalse(allowed.get("PAYMENT_WAITING").contains("SHIPPED"));
+                        }
+                    }
                     """,
                 },
             ),
@@ -1235,11 +1279,21 @@ def _commit_steps() -> list[CommitStep]:
                         </select>
                     </mapper>
                     """,
-                    "docs/requirements/sales-report-policy.md": """
-                    # Sales report policy
+                    "src/test/java/com/example/market/report/SalesReportPolicyTest.java": """
+                    package com.example.market.report;
 
-                    Daily sales report totals must exclude canceled payments from authorized amount.
-                    Canceled amount is shown separately so operations users can reconcile payment changes.
+                    import static org.junit.jupiter.api.Assertions.assertEquals;
+                    import org.junit.jupiter.api.Test;
+
+                    class SalesReportPolicyTest {
+                        @Test
+                        void canceledPaymentIsTrackedOutsideAuthorizedAmount() {
+                            int authorizedAmount = 10000;
+                            int canceledAmount = 3000;
+                            assertEquals(10000, authorizedAmount);
+                            assertEquals(3000, canceledAmount);
+                        }
+                    }
                     """,
                 },
             ),
@@ -1529,12 +1583,17 @@ def _commit_steps() -> list[CommitStep]:
                         }
                     }
                     """,
-                    "docs/requirements/coupon-policy.md": """
-                    # Coupon policy draft
+                    f"{BASE_PACKAGE_PATH}/coupon/service/CouponPolicyStatus.java": """
+                    package com.example.market.coupon.service;
 
-                    Coupon discount is intentionally incomplete in this sample.
-                    Expiration, duplicate use, and minimum order amount checks are still open.
-                    This program is useful for AI Progress in-progress analysis.
+                    public final class CouponPolicyStatus {
+                        public static final boolean EXPIRATION_VALIDATION_READY = false;
+                        public static final boolean MINIMUM_ORDER_AMOUNT_READY = false;
+                        public static final boolean DUPLICATE_USE_VALIDATION_READY = false;
+
+                        private CouponPolicyStatus() {
+                        }
+                    }
                     """,
                 },
             ),
@@ -1566,17 +1625,22 @@ def _commit_steps() -> list[CommitStep]:
                 },
             ),
             CommitStep(
-                "Document payment and inventory business rules",
+                "Add payment and inventory business rule constants",
                 DEVELOPERS["pl"],
                 26,
                 {
-                    "docs/business-rules/payment-inventory-rules.md": """
-                    # Payment and inventory business rules
+                    f"{BASE_PACKAGE_PATH}/common/BusinessRuleCatalog.java": """
+                    package com.example.market.common;
 
-                    Payment authorization rejects zero and negative amounts.
-                    Successful payment authorization changes the order status to PAID.
-                    Inventory reservation rejects blank SKU values and non-positive quantities.
-                    Inventory shortage creates an operations signal that appears on the dashboard.
+                    public final class BusinessRuleCatalog {
+                        private static final String PAID_STATUS = "PAID";
+                        public static final String PAYMENT_AMOUNT_MUST_BE_POSITIVE = "payment amount must be positive";
+                        public static final String PAYMENT_AUTHORIZATION_TARGET_ORDER_STATUS = PAID_STATUS;
+                        public static final String INVENTORY_SHORTAGE_SIGNAL = "inventory shortage signal";
+
+                        private BusinessRuleCatalog() {
+                        }
+                    }
                     """,
                 },
             ),
@@ -1601,25 +1665,21 @@ def _commit_steps() -> list[CommitStep]:
                         </select>
                     </mapper>
                     """,
-                    "docs/review-targets/dashboard-overcount-risk.md": """
-                    # Review target: dashboard over-counting
+                    "src/test/java/com/example/market/dashboard/DashboardSummaryJoinRiskTest.java": """
+                    package com.example.market.dashboard;
 
-                    This commit intentionally joins orders, shortage signals, and payments without grouping.
-                    It can over-count dashboard metrics when multiple payments or shortage signals exist.
+                    import static org.junit.jupiter.api.Assertions.assertTrue;
+                    import org.junit.jupiter.api.Test;
 
-                    Example:
-
-                    - 2 open orders
-                    - 3 unresolved shortage signals
-                    - 2 payment rows for one order
-
-                    The joined result can multiply rows and make open_orders, inventory_shortage, and payment_waiting look larger than the real operational counts.
-
-                    Review expectations:
-
-                    - Identify the missing join condition between shortage signals and orders/items.
-                    - Identify that count(o.order_id), count(s.signal_id), and count(p.payment_id) operate on the multiplied join result.
-                    - Recommend independent subqueries, grouped metrics, or count(distinct ...) depending on the intended business definition.
+                    class DashboardSummaryJoinRiskTest {
+                        @Test
+                        void joinBasedCountsNeedIndependentMetricDefinitions() {
+                            String query = "count(o.order_id), count(s.signal_id), count(p.payment_id)";
+                            assertTrue(query.contains("count(o.order_id)"));
+                            assertTrue(query.contains("count(s.signal_id)"));
+                            assertTrue(query.contains("count(p.payment_id)"));
+                        }
+                    }
                     """,
                 },
             ),
@@ -1657,19 +1717,26 @@ def _commit_steps() -> list[CommitStep]:
                 },
             ),
             CommitStep(
-                "Add release verification checklist",
+                "Add release verification source probes",
                 DEVELOPERS["qa"],
                 29,
                 {
-                    "docs/release-verification.md": """
-                    # Release verification checklist
+                    "src/test/java/com/example/market/release/ReleaseVerificationProbeTest.java": """
+                    package com.example.market.release;
 
-                    - Confirm order creation rejects blank customer IDs.
-                    - Confirm payment authorization rejects zero and negative amounts.
-                    - Confirm inventory shortage creates a dashboard signal.
-                    - Confirm dashboard summary counts do not multiply through joins.
-                    - Confirm coupon discount remains marked as incomplete until policy validation is implemented.
-                    - Confirm settlement export is still a planned program with no implementation evidence.
+                    import static org.junit.jupiter.api.Assertions.assertFalse;
+                    import static org.junit.jupiter.api.Assertions.assertTrue;
+                    import org.junit.jupiter.api.Test;
+
+                    class ReleaseVerificationProbeTest {
+                        @Test
+                        void completedAndIncompleteReleaseSignalsAreSeparated() {
+                            assertTrue("payment amount validation".contains("payment"));
+                            assertTrue("dashboard independent subqueries".contains("dashboard"));
+                            assertFalse(Boolean.getBoolean("coupon.minimum.order.ready"));
+                            assertFalse(Boolean.getBoolean("settlement.export.ready"));
+                        }
+                    }
                     """,
                 },
             ),
@@ -1725,7 +1792,13 @@ def _commit_steps() -> list[CommitStep]:
                       "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
                     <mapper namespace="com.example.market.coupon.mapper.CouponMapper">
                         <select id="selectCoupon" resultType="map">
-                            select coupon_code, discount_type, discount_value, expires_at
+                            select coupon_code,
+                                   discount_type,
+                                   discount_value,
+                                   expires_at,
+                                   minimum_order_amount,
+                                   duplicate_use_yn,
+                                   member_grade
                             from coupons
                             where coupon_code = #{couponCode}
                         </select>
@@ -1818,12 +1891,21 @@ def _commit_steps() -> list[CommitStep]:
                         }
                     }
                     """,
-                    "docs/business-rules/payment-limit-rules.md": """
-                    # Payment authorization limit
+                    "src/test/java/com/example/market/payment/PaymentLimitRuleTest.java": """
+                    package com.example.market.payment;
 
-                    Single payment authorization requests over 10,000,000 won are rejected.
-                    Operators review split payment requests outside this sample workflow.
-                    This rule gives Project Chat and Code Review a concrete amount boundary to cite.
+                    import static org.junit.jupiter.api.Assertions.assertEquals;
+                    import org.junit.jupiter.api.Test;
+
+                    class PaymentLimitRuleTest {
+                        @Test
+                        void excessivePaymentAmountIsRejected() {
+                            int maxAuthorizationAmount = 10_000_000;
+                            int requestedAmount = 10_000_001;
+                            String result = requestedAmount > maxAuthorizationAmount ? "REJECTED" : "AUTHORIZED";
+                            assertEquals("REJECTED", result);
+                        }
+                    }
                     """,
                 },
             ),
@@ -1923,12 +2005,21 @@ def _commit_steps() -> list[CommitStep]:
                         }
                     }
                     """,
-                    "docs/qa/inventory-release-checklist.md": """
-                    # Inventory release QA checklist
+                    "src/test/java/com/example/market/inventory/InventoryReleaseOperationsTest.java": """
+                    package com.example.market.inventory;
 
-                    - Cancel a payment and confirm inventory release evidence is recorded.
-                    - Confirm shortage signals remain unresolved until an operator clears them.
-                    - Confirm dashboard shortage counts do not decrease after unrelated releases.
+                    import static org.junit.jupiter.api.Assertions.assertEquals;
+                    import static org.junit.jupiter.api.Assertions.assertTrue;
+                    import org.junit.jupiter.api.Test;
+
+                    class InventoryReleaseOperationsTest {
+                        @Test
+                        void releaseAndShortageSignalsStaySeparate() {
+                            assertEquals("payment canceled", "payment canceled");
+                            assertTrue("unresolved shortage signals".contains("shortage"));
+                            assertTrue("dashboard shortage counts".contains("dashboard"));
+                        }
+                    }
                     """,
                 },
             ),
@@ -1993,25 +2084,22 @@ def _commit_steps() -> list[CommitStep]:
                 },
             ),
             CommitStep(
-                "Add settlement export requirement draft",
+                "Add settlement export readiness contract",
                 DEVELOPERS["pm"],
                 37,
                 {
-                    "docs/requirements/settlement-export.md": """
-                    # Settlement export requirement
+                    f"{BASE_PACKAGE_PATH}/settlement/service/SettlementReadiness.java": """
+                    package com.example.market.settlement.service;
 
-                    Settlement export is planned but intentionally unassigned in the sample development plan.
-                    The export should include authorized payments, canceled payment reversal rows, and operator download evidence.
-                    This document exists so Risk Analysis can contrast a planned program with limited implementation evidence.
+                    public final class SettlementReadiness {
+                        public static final boolean EXPORT_FILE_WRITER_READY = false;
+                        public static final boolean AUTHORIZED_PAYMENT_QUERY_READY = false;
+                        public static final boolean REVERSAL_ROW_QUERY_READY = false;
+                        public static final boolean OPERATOR_DOWNLOAD_AUDIT_READY = false;
 
-                    Required source evidence for completion:
-
-                    - SettlementController must return a downloadable file or job id, not NOT_READY.
-                    - SettlementService must select authorized payment rows and reversal rows.
-                    - SettlementMapper must contain the export query.
-                    - Operator audit evidence must record who downloaded the settlement file and when.
-
-                    Until those artifacts exist, AI Progress should treat the program as partial or incomplete even if a controller stub exists.
+                        private SettlementReadiness() {
+                        }
+                    }
                     """,
                 },
             ),
@@ -2036,33 +2124,42 @@ def _commit_steps() -> list[CommitStep]:
                         }
                     }
                     """,
-                    "docs/review-targets/settlement-not-ready.md": """
-                    # Review target: settlement export stub
+                    "src/test/java/com/example/market/settlement/SettlementNotReadyTest.java": """
+                    package com.example.market.settlement;
 
-                    The endpoint exists but returns NOT_READY and has no mapper or file writer.
-                    AI Progress should treat this as partial evidence, not complete implementation.
+                    import static org.junit.jupiter.api.Assertions.assertEquals;
+                    import static org.junit.jupiter.api.Assertions.assertFalse;
+                    import org.junit.jupiter.api.Test;
 
-                    This is intentionally designed as a contrast case:
-
-                    - Git history has a commit touching the settlement package.
-                    - The source file has a route-like endpoint.
-                    - The implementation still lacks business logic, persistence access, export file generation, and audit records.
-
-                    A useful local LLM answer should avoid calling this complete just because a controller class exists.
+                    class SettlementNotReadyTest {
+                        @Test
+                        void controllerStubDoesNotMeanSettlementExportIsComplete() {
+                            assertEquals("NOT_READY", "NOT_READY");
+                            assertFalse(Boolean.getBoolean("settlement.export.file.writer.ready"));
+                        }
+                    }
                     """,
                 },
             ),
             CommitStep(
-                "Document return request backlog without implementation",
+                "Keep return request outside release source scope",
                 DEVELOPERS["pl"],
                 39,
                 {
-                    "docs/requirements/return-request-backlog.md": """
-                    # Return request backlog
+                    "src/test/java/com/example/market/planning/ReturnRequestScopeTest.java": """
+                    package com.example.market.planning;
 
-                    Return request intake is outside the current release scope.
-                    The team keeps the backlog note to show how Project Chat handles planned work that has no source implementation.
-                    No controller, service, mapper, or program upload row is added for this backlog item.
+                    import static org.junit.jupiter.api.Assertions.assertFalse;
+                    import java.util.Set;
+                    import org.junit.jupiter.api.Test;
+
+                    class ReturnRequestScopeTest {
+                        @Test
+                        void returnRequestIsNotInCurrentReleaseProgramIds() {
+                            Set<String> releasePrograms = Set.of("SMP-ORD-001", "SMP-PAY-001", "SMP-CPN-001", "SMP-SET-001");
+                            assertFalse(releasePrograms.contains("SMP-RET-001"));
+                        }
+                    }
                     """,
                 },
             ),
@@ -2179,36 +2276,40 @@ def _commit_steps() -> list[CommitStep]:
                 },
             ),
             CommitStep(
-                "Add coupon minimum order TODO note",
+                "Expose coupon minimum order gap in source",
                 DEVELOPERS["payment"],
                 43,
                 {
-                    "docs/requirements/coupon-policy.md": """
-                    # Coupon policy draft
+                    f"{BASE_PACKAGE_PATH}/coupon/service/CouponPolicyStatus.java": """
+                    package com.example.market.coupon.service;
 
-                    Coupon discount now checks coupon expiration in the service layer.
-                    Minimum order amount, duplicate use, and member-grade restrictions are still open.
-                    This program remains useful for AI Progress partial implementation analysis.
+                    public final class CouponPolicyStatus {
+                        public static final boolean EXPIRATION_VALIDATION_READY = true;
+                        public static final boolean MINIMUM_ORDER_AMOUNT_READY = false;
+                        public static final boolean DUPLICATE_USE_VALIDATION_READY = false;
+                        public static final boolean MEMBER_GRADE_VALIDATION_READY = false;
+                        public static final String UNREAD_COUPON_COLUMN = "minimum_order_amount";
 
-                    Completion evidence that is still missing:
-
-                    - minimum_order_amount from the coupon row must be compared with orderAmount.
-                    - duplicate use must be checked against issued coupon history.
-                    - member grade restriction must be enforced before returning a discount.
-
-                    Project Chat should cite this document together with CouponDiscountService when asked why coupon discount is not complete.
+                        private CouponPolicyStatus() {
+                        }
+                    }
                     """,
-                    "docs/review-targets/coupon-minimum-order-gap.md": """
-                    # Review target: coupon minimum order gap
+                    "src/test/java/com/example/market/coupon/CouponMinimumOrderGapTest.java": """
+                    package com.example.market.coupon;
 
-                    The coupon service validates expiration but does not check minimum order amount.
-                    This should appear as a remaining implementation gap rather than a completed feature.
+                    import static org.junit.jupiter.api.Assertions.assertFalse;
+                    import static org.junit.jupiter.api.Assertions.assertTrue;
+                    import org.junit.jupiter.api.Test;
 
-                    AI Code Review can use this as a medium-risk selected commit:
-
-                    - The mapper returns coupon data but the service ignores minimum_order_amount.
-                    - A discount can be previewed for an order that is below the promotion threshold.
-                    - The fix should read the threshold from the coupon row and compare it with orderAmount.
+                    class CouponMinimumOrderGapTest {
+                        @Test
+                        void mapperContainsMinimumOrderAmountButServiceDoesNotEnforceItYet() {
+                            String mapperColumns = "coupon_code discount_type discount_value expires_at minimum_order_amount duplicate_use_yn member_grade";
+                            boolean serviceComparesMinimumOrderAmount = false;
+                            assertTrue(mapperColumns.contains("minimum_order_amount"));
+                            assertFalse(serviceComparesMinimumOrderAmount);
+                        }
+                    }
                     """,
                 },
             ),
@@ -2233,141 +2334,187 @@ def _commit_steps() -> list[CommitStep]:
                 },
             ),
             CommitStep(
-                "Add operations smoke test checklist",
+                "Add operations smoke test source probe",
                 DEVELOPERS["qa"],
                 45,
                 {
-                    "docs/qa/operations-smoke-test.md": """
-                    # Operations smoke test
+                    "src/test/java/com/example/market/operations/OperationsSmokeFlowTest.java": """
+                    package com.example.market.operations;
 
-                    - Create an order and confirm PAYMENT_WAITING status.
-                    - Reserve inventory and confirm shortage signals when stock is insufficient.
-                    - Authorize payment and confirm payment audit rows.
-                    - Open dashboard and confirm stale payment warning count.
-                    - Run sales report and confirm canceled payments do not increase tax amount.
+                    import static org.junit.jupiter.api.Assertions.assertEquals;
+                    import static org.junit.jupiter.api.Assertions.assertTrue;
+                    import org.junit.jupiter.api.Test;
+
+                    class OperationsSmokeFlowTest {
+                        @Test
+                        void smokeFlowCoversOrderInventoryPaymentDashboardAndReport() {
+                            assertEquals("PAYMENT_WAITING", "PAYMENT_WAITING");
+                            assertEquals("SHORTAGE", "SHORTAGE");
+                            assertTrue("payment audit rows".contains("audit"));
+                            assertTrue("stale payment warning count".contains("warning"));
+                            assertTrue("canceled payments do not increase tax amount".contains("tax"));
+                        }
+                    }
                     """,
                 },
             ),
             CommitStep(
-                "Add source citation hints for Project Chat",
+                "Add source evidence probes for Project Chat",
                 DEVELOPERS["pl"],
                 46,
                 {
-                    "docs/business-rules/project-chat-demo-questions.md": """
-                    # Project Chat demo questions
+                    "src/test/java/com/example/market/advisor/ProjectChatSourceEvidenceTest.java": """
+                    package com.example.market.advisor;
 
-                    - 결제금액 한도는 어디에서 검증하나요?
-                    - 재고 예약이 해제될 때 어떤 기록이 남나요?
-                    - 정산 내보내기는 왜 아직 완료로 보면 안 되나요?
-                    - 쿠폰 할인에서 아직 남은 구현 gap은 무엇인가요?
-                    - 대시보드의 stale payment warning은 어떤 조건으로 계산하나요?
+                    import static org.junit.jupiter.api.Assertions.assertTrue;
+                    import java.util.List;
+                    import org.junit.jupiter.api.Test;
 
-                    Evidence hints:
-
-                    - Payment amount validation is in PaymentService.authorize and the business rule document.
-                    - Inventory release is in InventoryService.release and InventoryMapper.insertReservationRelease.
-                    - Settlement export is intentionally split across requirement, controller stub, and operator audit evidence documents.
-                    - Coupon completion should compare CouponDiscountService with coupon-policy.md.
-                    - Dashboard stale payment warning is calculated in DashboardMapper.selectStalePaymentWaitingCount.
-                    """,
-                    "docs/business-rules/ai-evidence-index.md": """
-                    # AI evidence index
-
-                    This index tells reviewers which sample artifacts should be read together.
-
-                    ## AI Code Review targets
-
-                    - Payment zero amount risk: PaymentService.java and docs/review-targets/payment-zero-amount-risk.md.
-                    - Dashboard over-counting risk: DashboardMapper.xml and docs/review-targets/dashboard-overcount-risk.md.
-                    - Coupon minimum order gap: CouponDiscountService.java and docs/review-targets/coupon-minimum-order-gap.md.
-
-                    ## Project Chat and RAG targets
-
-                    - Payment amount validation: PaymentService.java, payment-inventory-rules.md, payment-limit-rules.md.
-                    - Inventory release evidence: InventoryService.java, InventoryMapper.xml, operations-smoke-test.md.
-                    - Settlement readiness: settlement-export.md, settlement-not-ready.md, operator-audit-evidence.md.
-                    - Coupon partial implementation: CouponDiscountService.java, coupon-policy.md.
-
-                    ## Risk and AI Progress contrast cases
-
-                    - Coupon has partial source and explicit remaining policy gaps.
-                    - Settlement has a controller stub but no service, mapper, export writer, or assignee.
-                    - Return request has backlog documentation but no implementation source.
+                    class ProjectChatSourceEvidenceTest {
+                        @Test
+                        void sourceIdentifiersCoverRecommendedChatQuestions() {
+                            List<String> identifiers = List.of(
+                                "PaymentService.authorize",
+                                "InventoryService.release",
+                                "InventoryMapper.insertReservationRelease",
+                                "SettlementReadiness.EXPORT_FILE_WRITER_READY",
+                                "CouponPolicyStatus.MINIMUM_ORDER_AMOUNT_READY",
+                                "DashboardMapper.countStalePaymentWaitingOrders"
+                            );
+                            assertTrue(identifiers.contains("PaymentService.authorize"));
+                            assertTrue(identifiers.contains("CouponPolicyStatus.MINIMUM_ORDER_AMOUNT_READY"));
+                        }
+                    }
                     """,
                 },
             ),
             CommitStep(
-                "Tighten settlement export risk note",
+                "Tighten settlement export source readiness",
                 DEVELOPERS["pm"],
                 47,
                 {
-                    "docs/requirements/settlement-export.md": """
-                    # Settlement export requirement
+                    f"{BASE_PACKAGE_PATH}/settlement/service/SettlementReadiness.java": """
+                    package com.example.market.settlement.service;
 
-                    Settlement export is planned but intentionally unassigned in the sample development plan.
-                    The export should include authorized payments, canceled payment reversal rows, and operator download evidence.
-                    Current source has only a controller stub that returns NOT_READY.
-                    Risk Analysis should keep this program visible as missing assignment and incomplete implementation.
+                    public final class SettlementReadiness {
+                        public static final boolean EXPORT_FILE_WRITER_READY = false;
+                        public static final boolean AUTHORIZED_PAYMENT_QUERY_READY = false;
+                        public static final boolean REVERSAL_ROW_QUERY_READY = false;
+                        public static final boolean OPERATOR_DOWNLOAD_AUDIT_READY = false;
+                        public static final String CURRENT_ENDPOINT_STATUS = "NOT_READY";
+                        public static final String ASSIGNMENT_STATUS = "UNASSIGNED_IN_DEVELOPMENT_PLAN";
+
+                        private SettlementReadiness() {
+                        }
+                    }
                     """,
                 },
             ),
             CommitStep(
-                "Document operator audit evidence requirements",
+                "Add operator audit source contract",
                 DEVELOPERS["pl"],
                 48,
                 {
-                    "docs/business-rules/operator-audit-evidence.md": """
-                    # Operator audit evidence
+                    f"{BASE_PACKAGE_PATH}/audit/OperatorAuditEvent.java": """
+                    package com.example.market.audit;
 
-                    Dashboard and report access require an operator role header in the sample source.
-                    Payment authorization audit rows and settlement download evidence are the main records operators review.
-                    Settlement download evidence is still a requirement, not implemented source.
+                    public class OperatorAuditEvent {
+                        private final String operatorId;
+                        private final String actionType;
+                        private final String evidenceKey;
+
+                        public OperatorAuditEvent(String operatorId, String actionType, String evidenceKey) {
+                            this.operatorId = operatorId;
+                            this.actionType = actionType;
+                            this.evidenceKey = evidenceKey;
+                        }
+
+                        public String getOperatorId() {
+                            return operatorId;
+                        }
+
+                        public String getActionType() {
+                            return actionType;
+                        }
+
+                        public String getEvidenceKey() {
+                            return evidenceKey;
+                        }
+                    }
+                    """,
+                    f"{BASE_PACKAGE_PATH}/audit/OperatorAuditMapper.java": """
+                    package com.example.market.audit;
+
+                    import org.apache.ibatis.annotations.Mapper;
+                    import org.apache.ibatis.annotations.Param;
+
+                    @Mapper
+                    public interface OperatorAuditMapper {
+                        void insertOperatorAudit(@Param("event") OperatorAuditEvent event);
+                    }
+                    """,
+                    f"{RESOURCE_MAPPER_PATH}/OperatorAuditMapper.xml": """
+                    <?xml version="1.0" encoding="UTF-8" ?>
+                    <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                      "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+                    <mapper namespace="com.example.market.audit.OperatorAuditMapper">
+                        <insert id="insertOperatorAudit">
+                            insert into operator_audit_events(operator_id, action_type, evidence_key, created_at)
+                            values (#{event.operatorId}, #{event.actionType}, #{event.evidenceKey}, current_timestamp)
+                        </insert>
+                    </mapper>
                     """,
                 },
             ),
             CommitStep(
-                "Add final cross-module release evidence",
+                "Add final cross-module release readiness probes",
                 DEVELOPERS["qa"],
                 49,
                 {
-                    "docs/release-evidence/cross-module-release-notes.md": """
-                    # Cross-module release evidence
+                    "src/test/java/com/example/market/release/CrossModuleReleaseReadinessTest.java": """
+                    package com.example.market.release;
 
-                    Payment amount validation, inventory release, dashboard summary, and sales report tax checks are verified together.
-                    Coupon minimum order and settlement export remain documented limitations for the next release.
-                    This note helps AI Progress separate completed evidence from known unfinished scope.
+                    import static org.junit.jupiter.api.Assertions.assertFalse;
+                    import static org.junit.jupiter.api.Assertions.assertTrue;
+                    import org.junit.jupiter.api.Test;
 
-                    Release readiness summary:
-
-                    - Ready: order creation, payment amount validation, payment audit logging, inventory release, dashboard summary, sales report tax calculation.
-                    - Watch: stale payment warning depends on operations monitoring thresholds.
-                    - Not ready: coupon minimum order policy, duplicate coupon use, settlement export file generation, settlement operator audit download evidence.
-
-                    PL Briefing should summarize both the ready evidence and the explicit not-ready items instead of presenting the sample as uniformly complete.
+                    class CrossModuleReleaseReadinessTest {
+                        @Test
+                        void readyWatchAndNotReadySignalsStayVisibleInSource() {
+                            assertTrue("order payment audit inventory dashboard sales report".contains("payment"));
+                            assertTrue("stale payment warning".contains("warning"));
+                            assertFalse(Boolean.getBoolean("coupon.minimum.order.ready"));
+                            assertFalse(Boolean.getBoolean("settlement.export.file.ready"));
+                        }
+                    }
                     """,
                 },
             ),
             CommitStep(
-                "Add sample demo guide for advisor walkthrough",
+                "Add advisor review target source probes",
                 DEVELOPERS["pm"],
                 50,
                 {
-                    "docs/demo-guide.md": """
-                    # AI Commit Advisor demo guide
+                    "src/test/java/com/example/market/advisor/AdvisorReviewTargetProbeTest.java": """
+                    package com.example.market.advisor;
 
-                    Use the payment zero amount commit for AI Code Review.
-                    Use dashboard summary commits for Commit Impact across dashboard, orders, inventory, and payments.
-                    Ask Project Chat where payment amount validation is performed.
-                    Ask Project Chat how payment audit, inventory hold release, and settlement export readiness are tracked.
-                    Run Risk Analysis after Mapping to show delayed coupon work and unassigned settlement export.
+                    import static org.junit.jupiter.api.Assertions.assertTrue;
+                    import java.util.Map;
+                    import org.junit.jupiter.api.Test;
 
-                    Recommended live LLM flow:
-
-                    1. Run Mapping on all synced commits.
-                    2. Run Risk Analysis and AI Progress to show coupon partial completion and settlement missing assignment.
-                    3. Run AI Code Review on the payment zero amount commit or dashboard over-counting commit.
-                    4. Ask Project Chat one implementation question and one readiness question.
-                    5. Run PL Briefing so the model summarizes ready, watch, and not-ready evidence.
+                    class AdvisorReviewTargetProbeTest {
+                        @Test
+                        void reviewTargetsAreDiscoverableFromSourceAndDiffs() {
+                            Map<String, String> targets = Map.of(
+                                "payment-zero-amount", "PaymentService.authorize amount == 0 and order status PAID",
+                                "dashboard-over-count", "DashboardMapper count(o.order_id) count(s.signal_id) count(p.payment_id)",
+                                "coupon-minimum-order-gap", "CouponMapper minimum_order_amount but CouponDiscountService ignores it",
+                                "settlement-not-ready", "SettlementController returns NOT_READY and SettlementReadiness flags remain false"
+                            );
+                            assertTrue(targets.get("payment-zero-amount").contains("PaymentService"));
+                            assertTrue(targets.get("dashboard-over-count").contains("count(o.order_id)"));
+                        }
+                    }
                     """,
                 },
             ),

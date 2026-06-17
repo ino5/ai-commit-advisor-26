@@ -2,6 +2,17 @@
 
 ## 2026-06-17
 
+### Source-first sample project and demo verification guide
+
+- 샘플 프로젝트 내부에 AI 답변을 유도하는 Markdown 정답지나 demo guide를 두지 않도록 `scripts/create_sample_target_repo.py`의 `docs/...` evidence 파일 생성을 제거했습니다.
+- 기존 review target, business rule, release readiness, Project Chat hint 역할은 Java source, MyBatis XML, test/probe class, Git diff, Excel upload 데이터로 대체했습니다.
+- `sample_standard_terms.xlsx` 생성 기준에 `운영대시보드`, `결제감사`, `최소주문금액`, `감사`를 추가해 새 source identifiers와 한국어 질문 확장 흐름을 맞췄습니다.
+- 기능별 Project Chat 질문, AI Code Review 추천 commit, 좋은/나쁜 결과 신호, `Application Preview` 보존 기준을 `docs/sample-project-test-playbook.md`에 추가했습니다.
+- `docs/sample-target-repo-demo-design.md`, `docs/failure-history.md`, `docs/engineering-decisions.md`, `ROADMAP.md`를 source-first 샘플 기준과 기존 `Application Preview` screenshot 보존 정책에 맞게 갱신했습니다.
+- 기존 `docs/images/features/*.png`는 갱신하지 않았고, 기본 샘플 경로 `C:\dev\ai-advisor-sample-shop`도 덮어쓰지 않았습니다. 새 샘플은 `C:\dev\ai-advisor-sample-shop-source-demo` 별도 경로에서 생성 검증했습니다.
+- 주요 파일: `scripts/create_sample_target_repo.py`, `tests/test_sample_data_generation.py`, `docs/sample-target-repo-demo-design.md`, `docs/sample-project-test-playbook.md`, `docs/failure-history.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile scripts\create_sample_target_repo.py tests\test_sample_data_generation.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_sample_data_generation.py -q` 14개 통과; `.\.venv\Scripts\python.exe scripts\create_sample_target_repo.py --target-path C:\dev\ai-advisor-sample-shop-source-demo --force` 성공; `git -C C:\dev\ai-advisor-sample-shop-source-demo rev-list --count HEAD` 결과 48; `git -C C:\dev\ai-advisor-sample-shop-source-demo log -1 --format="%h %ad %s" --date=short` 결과 `1a20df9 2026-06-14 Add advisor review target source probes`; `git -C C:\dev\ai-advisor-sample-shop-source-demo ls-files docs` 결과 없음; 전체 테스트는 별도 최종 검증에서 확인.
+
 ### 샘플 Project Chat 검증 절차 교훈 기록
 
 - revert된 `103577a Harden final sample operations evidence`에서 되살릴 만한 교훈만 `docs/failure-history.md`에 기록했습니다.

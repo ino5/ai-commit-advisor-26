@@ -78,15 +78,15 @@ def test_sample_target_repo_has_rich_demo_commit_history() -> None:
     assert "Reject excessive payment amount requests" in messages
     assert "Add settlement export controller stub" in messages
     assert "Fix sales report tax calculation for canceled payments" in messages
-    assert "Add source citation hints for Project Chat" in messages
-    assert "Add release verification checklist" in messages
-    assert "docs/review-targets/payment-zero-amount-risk.md" in all_paths
-    assert "docs/business-rules/payment-inventory-rules.md" in all_paths
-    assert "docs/business-rules/payment-limit-rules.md" in all_paths
-    assert "docs/requirements/settlement-export.md" in all_paths
-    assert "docs/business-rules/project-chat-demo-questions.md" in all_paths
-    assert "docs/business-rules/ai-evidence-index.md" in all_paths
-    assert "docs/demo-guide.md" in all_paths
+    assert "Add source evidence probes for Project Chat" in messages
+    assert "Add release verification source probes" in messages
+    assert "src/test/java/com/example/market/payment/PaymentPilotAuthorizationRiskTest.java" in all_paths
+    assert "src/test/java/com/example/market/dashboard/DashboardSummaryJoinRiskTest.java" in all_paths
+    assert "src/test/java/com/example/market/payment/PaymentLimitRuleTest.java" in all_paths
+    assert "src/main/java/com/example/market/settlement/service/SettlementReadiness.java" in all_paths
+    assert "src/test/java/com/example/market/advisor/ProjectChatSourceEvidenceTest.java" in all_paths
+    assert "src/test/java/com/example/market/advisor/AdvisorReviewTargetProbeTest.java" in all_paths
+    assert all(not path.startswith("docs/") for path in all_paths)
 
 
 def test_sample_target_repo_has_scenario_designed_ai_evidence() -> None:
@@ -95,13 +95,21 @@ def test_sample_target_repo_has_scenario_designed_ai_evidence() -> None:
         for step in _commit_steps()
         for path, text in step.files.items()
     }
+    all_text = "\n".join(text for step in _commit_steps() for text in step.files.values())
 
-    assert "amount == 0 is newly allowed" in file_texts["docs/review-targets/payment-zero-amount-risk.md"]
-    assert "updates order status to PAID" in file_texts["docs/review-targets/payment-zero-amount-risk.md"]
-    assert "count(o.order_id)" in file_texts["docs/review-targets/dashboard-overcount-risk.md"]
-    assert "missing join condition" in file_texts["docs/review-targets/dashboard-overcount-risk.md"]
-    assert "controller stub but no service" in file_texts["docs/business-rules/ai-evidence-index.md"]
-    assert "not-ready items" in file_texts["docs/release-evidence/cross-module-release-notes.md"]
+    assert "amount < 0 ? \"REJECTED\" : \"AUTHORIZED\"" in all_text
+    assert "orderMapper.updateOrderStatus(orderId, \"PAID\")" in all_text
+    assert "count(o.order_id)" in all_text
+    assert "count(s.signal_id)" in file_texts[
+        "src/test/java/com/example/market/dashboard/DashboardSummaryJoinRiskTest.java"
+    ]
+    assert "EXPORT_FILE_WRITER_READY = false" in file_texts[
+        "src/main/java/com/example/market/settlement/service/SettlementReadiness.java"
+    ]
+    assert "minimum_order_amount" in file_texts["src/main/resources/mappers/CouponMapper.xml"]
+    assert "MINIMUM_ORDER_AMOUNT_READY = false" in file_texts[
+        "src/main/java/com/example/market/coupon/service/CouponPolicyStatus.java"
+    ]
 
 
 def test_sample_target_repo_commit_dates_do_not_exceed_verification_date() -> None:
@@ -121,8 +129,8 @@ def test_sample_standard_terms_cover_demo_domains() -> None:
     korean_terms = {row["korean_term"] for row in STANDARD_TERM_ROWS}
     english_terms = {row["english_term"] for row in STANDARD_TERM_ROWS}
 
-    assert {"결제금액", "결제승인", "주문상태", "쿠폰할인", "정산내보내기"}.issubset(korean_terms)
-    assert {"payment amount", "payment authorization", "order status", "coupon discount"}.issubset(english_terms)
+    assert {"결제금액", "결제승인", "주문상태", "쿠폰할인", "정산내보내기", "최소주문금액"}.issubset(korean_terms)
+    assert {"payment amount", "payment authorization", "order status", "coupon discount", "minimum order amount"}.issubset(english_terms)
     assert all(row["abbreviation"] for row in STANDARD_TERM_ROWS)
 
 

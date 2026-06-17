@@ -45,6 +45,41 @@
 
 모든 항목을 길게 쓸 필요는 없습니다. 다만 결정 배경, 선택한 방향, 포기한 대안, 남은 한계는 다음 사람이 판단을 이어받을 수 있을 정도로 남깁니다.
 
+## 2026-06-17 - 샘플 프로젝트 내부 AI 근거는 source-first로 유지한다
+
+### 배경
+
+샘플 프로젝트는 AI Commit Advisor의 Mapping, Project Chat, AI Code Review, Risk Analysis, AI Progress, Knowledge Graph를 실제 local LLM/embedding/Neo4j로 검증하기 위한 대상입니다. 이전 보강 과정에서 샘플 repo 내부 Markdown 설명 파일이 review target, business rule, release evidence 역할을 하도록 추가되었는데, 이는 LLM이 실제 소스와 diff를 분석한 결과인지 별도 정답지를 읽은 결과인지 경계를 흐릴 수 있었습니다.
+
+### 결정
+
+샘플 프로젝트 내부의 AI 판단 근거는 Java source, MyBatis XML, test/probe class, Git diff, Excel upload 데이터로 유지합니다. 기능별 질문 예시, 추천 리뷰 커밋, 좋은/나쁜 결과 신호는 애플리케이션 저장소 문서인 `docs/sample-project-test-playbook.md`에 둡니다. `Application Preview` AI 결과 screenshot은 새 샘플을 실제 provider로 다시 검증하기 전까지 덮어쓰지 않습니다.
+
+### 이유
+
+- source-first 샘플은 실제 프로젝트 분석 흐름과 더 가깝습니다.
+- Markdown 정답지는 빠르게 풍부한 답변을 만들 수 있지만, 제품 검증 증거로는 신뢰 경계를 약하게 만듭니다.
+- 앱 저장소 문서에 가이드를 두면 사람은 테스트 절차를 알 수 있고, 샘플 repo 자체는 LLM이 분석할 코드 대상 역할에 집중합니다.
+- 기존 preview screenshot은 실제 검증 증거이므로, 기본 샘플 경로를 무심코 재생성해 깨뜨리지 않아야 합니다.
+
+### 검토한 대안
+
+- 샘플 repo 내부 Markdown guide 유지: 작성은 쉽지만 LLM 결과가 설명 파일을 따라가는 것처럼 보일 수 있습니다.
+- README만 남기고 모든 가이드를 제거: source purity는 높지만 기능별 수동 검증 절차가 흩어집니다.
+- 기본 샘플 경로를 바로 재생성하고 screenshot 갱신: 빠르지만 기존 검증된 `Application Preview` 상태를 잃을 수 있습니다.
+
+### 영향과 tradeoff
+
+샘플 source/test/probe class가 실제 production code보다 약간 설명적인 형태를 가질 수 있습니다. 대신 답변 근거는 파일 경로와 diff로 추적 가능하며, 앱 문서의 가이드와 샘플 repo의 분석 대상 역할이 분리됩니다. 기본 샘플 경로와 프로젝트 97을 갱신하는 실제 local LLM 검증은 별도 단계로 남습니다.
+
+### 관련 문서
+
+- `docs/failure-history.md`의 `샘플 프로젝트 내부 Markdown 정답지로 AI 결과를 유도하면 안 된다`
+- `docs/sample-target-repo-demo-design.md`
+- `docs/sample-project-test-playbook.md`
+- `ROADMAP.md`의 `P2 - Source-First Sample Project And Demo Verification Guide`
+- `AI_CHANGELOG.md`의 `Source-first sample project and demo verification guide`
+
 ## 2026-06-15 - Project Chat GraphRAG는 compact interactive evidence graph로 보여준다
 
 ### 배경
