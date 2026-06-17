@@ -72,18 +72,19 @@ def test_build_graph_evidence_display_renders_impact_path_context() -> None:
         ]
     )
 
-    assert {node.label for node in nodes} == {"Payment Checkout", "abcdef123456", "PaymentService.java", "PaymentService"}
+    assert {node.label for node in nodes} == {"Payment Checkout", "abcdef123456", "PaymentService"}
     assert any(node.label == "Payment Checkout" and node.highlighted for node in nodes)
+    assert any(
+        node.label == "PaymentService"
+        and "PaymentService.java" in node.title
+        and "com.example.market.payment.service.PaymentService" in node.title
+        for node in nodes
+    )
     assert [(edge.label, edge.source, edge.target) for edge in edges] == [
         ("MAPPED_COMMIT", "program:Payment Checkout", "commit:abcdef123456"),
         (
             "TOUCHES_FILE",
             "commit:abcdef123456",
-            "file:src/main/java/com/example/market/payment/service/PaymentService.java",
-        ),
-        (
-            "CONTAINS_CLASS",
-            "file:src/main/java/com/example/market/payment/service/PaymentService.java",
             "class:com.example.market.payment.service.PaymentService",
         ),
     ]

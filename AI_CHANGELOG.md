@@ -2,6 +2,15 @@
 
 ## 2026-06-17
 
+### GraphRAG 파일/class 중복 노드 접기
+
+- Project Chat `GraphRAG 관계도`에서 `PaymentService.java`와 `PaymentService`처럼 file basename과 class label이 같은 경우 그래프 표시에서 하나의 class 노드로 접도록 했습니다.
+- 원본 `impact_path`, 관계 근거 표, 복사용 Markdown, metadata는 유지하고, 시각화 노드만 중복을 줄입니다.
+- 접힌 노드의 hover/title에는 class FQN과 file path를 함께 남겨 file 근거를 잃지 않게 했습니다.
+- Application Preview GraphRAG screenshot을 중복 file/class 노드가 접힌 상태로 갱신했습니다.
+- 주요 파일: `src/ui/project_chat_page.py`, `tests/test_project_chat_page.py`, `docs/ai-technical-overview.md`, `docs/images/features/project-chat-graph-evidence.png`, `docs/images/usage-verification/project-chat-graph-repro-2026-06-17.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_chat_page.py tests\test_project_chat_page.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_page.py -q` 7개 통과; `project-chat-graph-evidence` screenshot capture에서 `class_import`, `impact_path`, `OrderStatusMapper` 확인 및 `domain_summary`, `Mock answer`, `fallback=True`, `Traceback` 금지 조건 통과.
+
 ### GraphRAG 혼합 근거 그래프 배치 자연화
 
 - Project Chat `GraphRAG 관계도`에서 `class_import`와 `impact_path`가 함께 표시될 때 노드가 긴 세로줄로 늘어나는 문제를 줄이기 위해 혼합 그래프의 고정 열 배치를 제거했습니다.

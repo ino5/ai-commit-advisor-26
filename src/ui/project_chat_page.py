@@ -520,26 +520,30 @@ def _add_graph_node(
     value: str | None,
     *,
     highlighted: bool = False,
+    title: str | None = None,
 ) -> str | None:
     node_id = _graph_node_id(node_type, value)
     if node_id is None:
         return None
     existing = nodes.get(node_id)
     if existing is not None:
-        if highlighted and not existing.highlighted:
+        next_title = existing.title
+        if title and title not in existing.title:
+            next_title = f"{existing.title}\n{title}"
+        if (highlighted and not existing.highlighted) or next_title != existing.title:
             nodes[node_id] = GraphDisplayNode(
                 id=existing.id,
                 label=existing.label,
                 node_type=existing.node_type,
-                title=existing.title,
-                highlighted=True,
+                title=next_title,
+                highlighted=existing.highlighted or highlighted,
             )
         return node_id
     nodes[node_id] = GraphDisplayNode(
         id=node_id,
         label=_short_graph_label(str(value)),
         node_type=node_type,
-        title=f"{node_type}: {value}",
+        title=title or f"{node_type}: {value}",
         highlighted=highlighted,
     )
     return node_id
@@ -568,6 +572,15 @@ def _is_graph_seed_match(value: str | None, evidence: dict) -> bool:
         if len(str(seed)) > 4 and str(seed).lower() not in GRAPH_HIGHLIGHT_SEED_STOPWORDS
     ]
     return any(seed == compact_label or (len(seed) >= 8 and seed in compact_label) for seed in meaningful_seeds)
+
+
+def _file_path_matches_class(file_path: str | None, class_name: str | None) -> bool:
+    if not file_path or not class_name or class_name == "-":
+        return False
+    file_name = file_path.replace("\\", "/").rsplit("/", 1)[-1]
+    file_stem = file_name.rsplit(".", 1)[0]
+    class_label = _short_graph_label(str(class_name))
+    return bool(file_stem) and file_stem == class_label
 
 
 def build_graph_evidence_display(
@@ -600,6 +613,8 @@ def build_graph_evidence_display(
             )
             _add_graph_edge(edges, source_id, target_id, "IMPORTS_CLASS")
         elif evidence_type == "impact_path":
+            file_path = evidence.get("file_path")
+            class_name = evidence.get("class_name")
             program_id = _add_graph_node(
                 nodes,
                 "program",
@@ -610,21 +625,31 @@ def build_graph_evidence_display(
                 str(evidence.get("commit_hash") or "")[:12] if evidence.get("commit_hash") else None
             )
             commit_id = _add_graph_node(nodes, "commit", commit_label)
-            file_id = _add_graph_node(
-                nodes,
-                "file",
-                evidence.get("file_path"),
-                highlighted=_is_graph_seed_match(evidence.get("file_path"), evidence),
-            )
-            class_id = _add_graph_node(
-                nodes,
-                "class",
-                evidence.get("class_name"),
-                highlighted=_is_graph_seed_match(evidence.get("class_name"), evidence),
-            )
             _add_graph_edge(edges, program_id, commit_id, "MAPPED_COMMIT")
-            _add_graph_edge(edges, commit_id, file_id, "TOUCHES_FILE")
-            _add_graph_edge(edges, file_id, class_id, "CONTAINS_CLASS")
+            if _file_path_matches_class(file_path, class_name):
+                class_id = _add_graph_node(
+                    nodes,
+                    "class",
+                    class_name,
+                    highlighted=_is_graph_seed_match(class_name, evidence) or _is_graph_seed_match(file_path, evidence),
+                    title=f"class: {class_name}\nfile: {file_path}",
+                )
+                _add_graph_edge(edges, commit_id, class_id, "TOUCHES_FILE")
+            else:
+                file_id = _add_graph_node(
+                    nodes,
+                    "file",
+                    file_path,
+                    highlighted=_is_graph_seed_match(file_path, evidence),
+                )
+                class_id = _add_graph_node(
+                    nodes,
+                    "class",
+                    class_name,
+                    highlighted=_is_graph_seed_match(class_name, evidence),
+                )
+                _add_graph_edge(edges, commit_id, file_id, "TOUCHES_FILE")
+                _add_graph_edge(edges, file_id, class_id, "CONTAINS_CLASS")
 
         if len(nodes) >= max_nodes and len(edges) >= max_edges:
             break
