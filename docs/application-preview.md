@@ -160,17 +160,17 @@ Neo4j Knowledge Graph가 최신이면 Project Chat 답변 아래에서 그래프
 
 ### AI Code Review
 
-샘플 프로젝트의 결제 검증 완화 커밋을 `local_openai` provider로 실제 리뷰한 결과입니다. 화면은 특정 커밋의 상태, provider/model, 영향 범위, 위험도, 버그 후보, 권장 수정, 리팩토링 제안을 함께 보여줘 AI Code Review가 단순 실행 버튼이 아니라 실제 local LLM 검토 근거를 남기는 흐름임을 확인할 수 있습니다.
+샘플 프로젝트의 선별 커밋을 `local_openai / qwen2.5-coder-7b-instruct`로 실제 리뷰하고 저장한 결과입니다. 화면은 최신 저장 리뷰인 `2325182 Relax partner payment validation for pilot channel`의 상태, provider/model, 영향 범위, 위험도, 버그 후보, 권장 수정, 리팩토링 제안을 함께 보여줘 AI Code Review가 단순 실행 버튼이 아니라 실제 local LLM 검토 근거를 남기는 흐름임을 확인할 수 있습니다.
 
-AI Code Review를 직접 확인할 때는 아래 커밋을 selected commit으로 리뷰하면 결과 차이를 보기 좋습니다.
+아래 커밋들은 Application Preview 갱신 전에 실제 AI Code Review로 실행해 DB에 저장한 대상입니다. 최신 화면은 high-risk 후보인 `2325182`를 보여주고, 나머지는 `리뷰 기록`에서 확인할 수 있습니다.
 
-| 용도 | Commit | 기대 리뷰 포인트 |
+| 용도 | Commit | 실제 리뷰 결과 |
 |---|---|---|
-| high-risk bug 후보 | `2325182 Relax partner payment validation for pilot channel` | `amount == 0` 허용이 결제 승인과 `orderStatusService.markPaid(orderId)` 흐름으로 이어질 수 있는지 확인 |
-| 금액 한도 방어 | `5999f24 Reject excessive payment amount requests` | 단일 결제 한도 방어와 기존 금액 검증과의 경계 확인 |
-| cross-module 집계 회귀 | `7e5e41 Change dashboard summary query across operations modules` | 여러 module join이 운영 지표를 과대 집계할 가능성 확인 |
-| 회귀 수정 비교 | `95562a1 Fix dashboard summary over-counting` | 이전 집계 위험을 줄이는 수정인지, 테스트 근거가 충분한지 확인 |
-| partial feature 확인 | `3cb54de Add coupon mapper draft without policy enforcement` | mapper/source는 생겼지만 정책 검증이 없어 완료 기능처럼 보기 어려운 점 확인 |
+| high-risk bug 후보 | `2325182 Relax partner payment validation for pilot channel` | `medium` risk, bug finding 1건. `amount <= 0` 검증이 `amount < 0`으로 완화되어 `amount == 0` 결제가 허용되는 문제를 탐지했습니다. |
+| 금액 한도 방어 | `5999f24 Reject excessive payment amount requests` | `low` risk, bug finding 0건. 최대 승인 금액 차단 규칙과 테스트 추가를 방어성 변경으로 요약했습니다. |
+| cross-module 집계 회귀 | `7e5e41 Change dashboard summary query across operations modules` | `low` risk, bug finding 1건. dashboard summary query 변경의 집계 영향과 SQL 유지보수 제안을 남겼습니다. |
+| 회귀 수정 비교 | `95562a1 Fix dashboard summary over-counting` | `low` risk, bug finding 1건. 독립 subquery 기반 집계 보정과 테스트 추가를 리뷰했습니다. |
+| partial feature 확인 | `3cb54de Add coupon mapper draft without policy enforcement` | `low` risk, bug finding 0건. coupon mapper 초안에 대한 후속 정책 적용/검증 보강 제안을 남겼습니다. |
 
 ![AI Code Review](images/features/ai-code-review.png)
 

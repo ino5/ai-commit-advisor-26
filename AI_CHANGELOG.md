@@ -2,6 +2,16 @@
 
 ## 2026-06-17
 
+### AI Code Review 선별 커밋 실제 실행과 preview 갱신
+
+- 샘플 프로젝트 선별 커밋 5개를 `CodeReviewService.review_project(..., target_type="commit")`로 실제 `local_openai / qwen2.5-coder-7b-instruct` 리뷰 실행했습니다.
+- Project 97에 `2325182`, `5999f24`, `7e5e41f`, `95562a1`, `3cb54de` 리뷰 결과를 저장했고, 최신 preview가 high-risk 후보인 `2325182`의 `amount == 0` 허용 bug finding을 보여주도록 갱신했습니다.
+- Application Preview의 AI Code Review 섹션을 “추천 커밋”이 아니라 실제 실행된 커밋 리뷰 결과 표로 정정했습니다.
+- 실제 화면 캡처로 `docs/images/features/ai-code-review.png`를 갱신하고, 동일한 검증 증거를 `docs/images/usage-verification/ai-code-review-repro-2026-06-17.png`에 보관했습니다.
+- 실제 실행이 필요한 demo 요청을 문서 안내로 잘못 처리한 문제를 `docs/failure-history.md`에 기록했습니다.
+- 주요 파일: `docs/application-preview.md`, `docs/sample-project-usage-verification.md`, `docs/failure-history.md`, `docs/images/features/ai-code-review.png`, `docs/images/usage-verification/ai-code-review-repro-2026-06-17.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: 선별 커밋 실제 리뷰 실행 결과 `2325182` completed/medium/bug 1건, `5999f24` completed/low/bug 0건, `7e5e41f` completed/low/bug 1건, `95562a1` completed/low/bug 1건, `3cb54de` completed/low/bug 0건; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8521/?project_id=97" --feature ai-code-review --screenshot docs\images\features\ai-code-review.png --surface local --height 1700 --expect-text "2325182" --expect-text "zero amount" --expect-text "리뷰 기록" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"` 통과; `Get-FileHash docs\images\features\ai-code-review.png,docs\images\usage-verification\ai-code-review-repro-2026-06-17.png` 결과 두 파일 hash 동일.
+
 ### Application Preview AI Code Review 추천 커밋 보강
 
 - Application Preview의 AI Code Review 섹션에 selected commit으로 리뷰하기 좋은 샘플 커밋 후보를 추가했습니다.

@@ -31,6 +31,61 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-17 - AI Code Review demo 요청을 실제 실행 대신 추천 목록 문서화로 처리했다
+
+분류:
+
+- AI Code Review demo verification
+- Application Preview screenshot quality
+- Agent workflow
+
+관련 기능 및 문서:
+
+- `docs/application-preview.md`
+- `docs/sample-project-usage-verification.md`
+- `docs/images/features/ai-code-review.png`
+- `docs/images/usage-verification/ai-code-review-repro-2026-06-17.png`
+- `AI_CHANGELOG.md` 항목 `AI Code Review 선별 커밋 실제 실행과 preview 갱신`
+
+### 증상
+
+사용자는 샘플 프로젝트 커밋 중 AI Code Review 결과가 잘 드러나는 커밋을 골라 실제로 리뷰해 보라고 요청했습니다. 그러나 처음 작업에서는 선별 커밋 목록과 기대 리뷰 포인트만 `Application Preview`에 추가했고, 해당 커밋들을 local LLM으로 실행해 DB에 저장하거나 새 screenshot으로 검증하지 않았습니다.
+
+### 직접 원인
+
+“커밋리뷰하기 적정한 커밋들 몇 개 정해서 한번 올려봐”라는 요청을 실제 실행 증거 생성이 아니라 문서 안내 보강으로 해석했습니다. 이전 대화에서 사용자가 모든 데이터는 mock이 아니라 실제 local LLM 결과여야 한다고 명확히 말했는데도, 이번 작업의 완료 기준에 “선별 커밋 review_project 실행”을 넣지 않았습니다.
+
+### 배경 또는 구조적 원인
+
+Application Preview 문서 작업과 실제 AI 실행 검증 작업이 같은 흐름에 섞여 있었습니다. 문서에 “어떤 커밋을 실행하면 좋은지”를 적는 것과, 제품 화면에 “이미 실행된 실제 결과를 보여주는 것”은 서로 다른 산출물인데, 작업 경계를 분리하지 않았습니다.
+
+### 사전 검증에서 놓친 이유
+
+문서 이미지 테스트와 `git diff --check`는 통과했지만, AI Code Review DB에 새 결과가 생성됐는지, 최신 저장 리뷰가 preview screenshot에 보이는지, provider/model이 실제 local LLM인지 확인하지 않았습니다. 즉 문서 검증은 했지만 기능 실행 검증을 하지 않았습니다.
+
+### 수정 내용
+
+- Project 97에서 `CodeReviewService.review_project(..., target_type="commit")`로 선별 샘플 커밋 5개를 실제 실행했습니다.
+- `2325182`, `5999f24`, `7e5e41f`, `95562a1`, `3cb54de` 리뷰 결과를 DB에 저장했고, 최신 preview가 high-risk 후보인 `2325182`를 보여주도록 마지막에 실행했습니다.
+- `docs/images/features/ai-code-review.png`와 `docs/images/usage-verification/ai-code-review-repro-2026-06-17.png`를 실제 화면 캡처로 갱신했습니다.
+- `docs/application-preview.md`의 추천 목록 표현을 실제 실행 결과 표로 바꿨습니다.
+
+### 재발 방지 규칙
+
+- 사용자가 demo, preview, screenshot, AI 결과를 요청했을 때는 문서 설명만 추가하지 말고 실제 기능 실행 여부를 먼저 완료 기준으로 둡니다.
+- AI 기능 preview는 provider/model, fallback/mock 금지 조건, 저장 결과 ID 또는 최신 화면 상태 중 하나 이상을 검증해야 합니다.
+- “추천 커밋” 같은 후보 목록은 실제 실행 결과와 명확히 구분해서 작성합니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+local LLM 출력은 실행 시점에 따라 표현이 달라질 수 있습니다. 따라서 screenshot 검증은 문장 전체의 동일성이 아니라 `local_openai`, target commit, 핵심 위험 문구, 관련 파일, fallback/mock 금지 조건을 기준으로 삼습니다.
+
+### 검증 명령과 결과
+
+- `CodeReviewService.review_project` 실제 실행 결과: `2325182` completed/medium/bug 1건, `5999f24` completed/low/bug 0건, `7e5e41f` completed/low/bug 1건, `95562a1` completed/low/bug 1건, `3cb54de` completed/low/bug 0건.
+- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8521/?project_id=97" --feature ai-code-review --screenshot docs\images\features\ai-code-review.png --surface local --height 1700 --expect-text "2325182" --expect-text "zero amount" --expect-text "리뷰 기록" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"` 통과.
+- `Get-FileHash docs\images\features\ai-code-review.png,docs\images\usage-verification\ai-code-review-repro-2026-06-17.png` 결과 두 파일 SHA256 hash 동일.
+
 ## 2026-06-17 - GraphRAG 기본 관계도에 연결 약한 domain 근거를 섞으면 질문 흐름이 흐려진다
 
 분류:

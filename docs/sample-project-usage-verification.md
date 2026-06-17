@@ -35,7 +35,7 @@
 | Program implementation analysis | 8개 프로그램의 구현상태 분석 결과가 저장됐습니다. |
 | Risk Analysis | 14개 risk finding을 생성했습니다. |
 | Project Chat | `결제금액 검증은 어디에서 수행되나요?` 질문에 `PaymentService.java` 근거가 포함된 답변을 생성했습니다. |
-| AI Code Review | `Relax partner payment validation for pilot channel` commit을 실제 LLM으로 리뷰했고 결과를 저장했습니다. |
+| AI Code Review | 2026-06-17에 선별 샘플 커밋 5개를 실제 `local_openai` LLM으로 리뷰했고, 최신 preview는 `2325182`의 `amount == 0` 허용 버그 후보를 보여줍니다. |
 | PL Briefing 추가 리허설 | 2026-06-15에 Dashboard `AI Resource Radar`에서 `PL Briefing 생성`을 실행했고, `provider=local_openai`, `mode=LLM 생성` 상태, 저장된 최근 브리핑, 이력 표를 확인했습니다. |
 
 ## 대표 화면 증거
@@ -94,6 +94,35 @@
 
 ![Project Chat GraphRAG 재현 검증](images/usage-verification/project-chat-graph-repro-2026-06-17.png)
 
+### 14. AI Code Review 선별 커밋 재현 검증
+
+![AI Code Review 선별 커밋 재현 검증](images/usage-verification/ai-code-review-repro-2026-06-17.png)
+
+## 2026-06-17 AI Code Review 선별 커밋 검증
+
+Application Preview의 AI Code Review 화면이 단순 추천 목록이나 mock 결과가 아니라 실제 local LLM 리뷰 결과를 보여주는지 확인했습니다. Project 97에서 아래 커밋을 `target_type=commit`으로 실행했고, 최신 저장 리뷰가 high-risk 후보인 `2325182`가 되도록 마지막에 실행했습니다.
+
+| 항목 | 값 |
+|---|---|
+| 검증일 | 2026-06-17 |
+| 실행 surface | Local Python + local PostgreSQL + local LM Studio |
+| 앱 URL | `http://localhost:8521/?project_id=97` |
+| 검증 프로젝트 | `AAA Sample Shop Rich Demo 48` |
+| 샘플 프로젝트 경로 | `C:\dev\ai-advisor-sample-shop` |
+| `LLM_PROVIDER` | `local_openai` |
+| `LLM_MODEL` | `qwen2.5-coder-7b-instruct` |
+| `LLM_BASE_URL` | `http://127.0.0.1:1234/v1` |
+
+| Commit | 실제 리뷰 결과 |
+|---|---|
+| `2325182 Relax partner payment validation for pilot channel` | `completed`, `medium` risk, bug finding 1건. `amount <= 0` 검증이 `amount < 0`으로 완화되어 `amount == 0` 결제가 허용되는 문제를 탐지했습니다. |
+| `5999f24 Reject excessive payment amount requests` | `completed`, `low` risk, bug finding 0건. 최대 승인 금액 차단 규칙과 테스트 추가를 방어성 변경으로 요약했습니다. |
+| `7e5e41 Change dashboard summary query across operations modules` | `completed`, `low` risk, bug finding 1건. dashboard summary query 변경의 집계 영향과 SQL 유지보수 제안을 남겼습니다. |
+| `95562a1 Fix dashboard summary over-counting` | `completed`, `low` risk, bug finding 1건. 독립 subquery 기반 집계 보정과 테스트 추가를 리뷰했습니다. |
+| `3cb54de Add coupon mapper draft without policy enforcement` | `completed`, `low` risk, bug finding 0건. coupon mapper 초안에 대한 후속 정책 적용/검증 보강 제안을 남겼습니다. |
+
+통과 기준은 AI Code Review 화면이 `local_openai / qwen2.5-coder-7b-instruct`, `2325182`, `zero amount`, `PaymentService.java`, `리뷰 기록`을 포함하고, `Mock review`, `LLM 코드리뷰 호출 실패`, `Traceback`, `StreamlitAPIException`을 포함하지 않는 것입니다.
+
 ## 2026-06-17 Project Chat 재현 검증
 
 Application Preview에 사용한 Project Chat 질문이 저장된 화면에서만 좋아 보이는지, 같은 질문을 실제 local LLM으로 다시 실행해도 핵심 답변이 재현되는지 별도로 확인했습니다.
@@ -144,6 +173,15 @@ Mermaid/문서 검증과 화면 캡처:
 .\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature ai-progress --project-name "AAA Sample Shop Usage Verification 20260614" --screenshot docs\images\usage-verification\07-ai-progress.png --surface local --expect-text "40.6"
 .\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature rag-search --project-name "AAA Sample Shop Usage Verification 20260614" --screenshot docs\images\usage-verification\09-rag-search.png --surface local --expect-text "PaymentService.java"
 .\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature project-chat --project-name "AAA Sample Shop Usage Verification 20260614" --screenshot docs\images\usage-verification\10-project-chat.png --surface local --expect-text "결제금액 검증은 어디에서 수행되나요?" --expect-text "PaymentService.java" --forbid-text "현재 검증된 소스 근거만으로는 답변하기 어렵습니다"
+```
+
+2026-06-17 AI Code Review 선별 커밋 검증:
+
+```powershell
+$env:LLM_PROVIDER='local_openai'
+$env:LLM_MODEL='qwen2.5-coder-7b-instruct'
+$env:LLM_BASE_URL='http://127.0.0.1:1234/v1'
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8521/?project_id=97" --feature ai-code-review --screenshot docs\images\usage-verification\ai-code-review-repro-2026-06-17.png --surface local --height 1700 --expect-text "2325182" --expect-text "zero amount" --expect-text "리뷰 기록" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"
 ```
 
 2026-06-17 Project Chat 재현 검증:

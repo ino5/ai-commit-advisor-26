@@ -113,6 +113,7 @@
 | P1 | GraphRAG / Demo Quality | Fold duplicate file and class graph nodes | Done | GraphRAG 파일/class 중복 노드 접기 |
 | P2 | Docs / Application Preview | GraphRAG preview question caption | Done | Application Preview GraphRAG 질문 문구 보강 |
 | P2 | Docs / Application Preview | AI Code Review recommended commits | Done | Application Preview AI Code Review 추천 커밋 보강 |
+| P1 | Code Review / Demo Quality | AI Code Review selected sample commit execution | Done | AI Code Review 선별 커밋 실제 실행과 preview 갱신 |
 | P2 | Sample Data / Demo Quality | Source-first sample project and demo verification guide | Done | Source-first sample project and demo verification guide |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
