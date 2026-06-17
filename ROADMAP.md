@@ -111,6 +111,7 @@
 | P1 | GraphRAG / Demo Quality | Rich GraphRAG evidence without weak domain nodes | Done | GraphRAG 기본 근거 그래프 풍부도 복원 |
 | P1 | GraphRAG / Demo Quality | Natural mixed GraphRAG layout | Done | GraphRAG 혼합 근거 그래프 배치 자연화 |
 | P1 | GraphRAG / Demo Quality | Fold duplicate file and class graph nodes | Done | GraphRAG 파일/class 중복 노드 접기 |
+| P2 | Docs / Application Preview | GraphRAG preview question caption | Done | Application Preview GraphRAG 질문 문구 보강 |
 | P2 | Sample Data / Demo Quality | Source-first sample project and demo verification guide | Done | Source-first sample project and demo verification guide |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |

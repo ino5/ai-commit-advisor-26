@@ -149,7 +149,11 @@ PL Briefing 회의 질문, 다음 action, 이력 확인
 
 ![Project Chat Answer](images/features/project-chat-answer.png)
 
-Neo4j Knowledge Graph가 최신이면 Project Chat 답변 아래에서 그래프 관계 근거를 따로 펼쳐 볼 수 있습니다. 이 예시는 `PaymentController`, `PaymentService`, `OrderStatusService`의 결제 승인 요청 흐름을 실제 local LLM으로 다시 실행한 상태입니다. `GraphRAG 관계도`와 기본 관계 표는 class import 관계와 program-commit-file-class 영향 경로를 함께 보여주되, 단독 덩어리처럼 보이기 쉬운 `domain_summary`는 필요할 때 `원본 메타데이터 표시`에서 확인합니다.
+Neo4j Knowledge Graph가 최신이면 Project Chat 답변 아래에서 그래프 관계 근거를 따로 펼쳐 볼 수 있습니다. 이 예시는 실제 local LLM으로 아래 질문을 다시 실행한 상태입니다.
+
+질문: `반드시 한국어로만 답해줘. 결제 승인 흐름을 PaymentController, PaymentService, OrderStatusService, OrderStatusMapper 순서로 설명해줘. 각 단계에서 authorize, markPaid, updateStatus, insertStatusHistory가 어디서 호출되는지와 관련 프로그램/커밋/파일 GraphRAG 근거를 함께 설명해줘.`
+
+`GraphRAG 관계도`와 기본 관계 표는 class import 관계와 program-commit-file-class 영향 경로를 함께 보여주되, 같은 소스 대상을 가리키는 file/class 노드는 그래프에서 접어 보여줍니다. 단독 덩어리처럼 보이기 쉬운 `domain_summary`는 필요할 때 `원본 메타데이터 표시`에서 확인합니다.
 
 ![Project Chat Graph Evidence](images/features/project-chat-graph-evidence.png)
 

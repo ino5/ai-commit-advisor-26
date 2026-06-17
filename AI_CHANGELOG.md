@@ -2,6 +2,14 @@
 
 ## 2026-06-17
 
+### Application Preview GraphRAG 질문 문구 보강
+
+- Application Preview의 Project Chat GraphRAG preview 설명에 실제 캡처에 사용한 한국어 질문을 함께 표시했습니다.
+- 같은 소스 대상을 가리키는 file/class 노드는 그래프에서 접어 보여주고, `domain_summary`는 원본 metadata에서 확인한다는 설명을 preview 문구에 반영했습니다.
+- `docs/images/features/project-chat-graph-evidence.png`와 `docs/images/usage-verification/project-chat-graph-repro-2026-06-17.png`의 SHA256 hash가 동일해 현재 preview 이미지가 검증본과 같은 파일임을 확인했습니다.
+- 주요 파일: `docs/application-preview.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `Get-FileHash docs\images\features\project-chat-graph-evidence.png,docs\images\usage-verification\project-chat-graph-repro-2026-06-17.png` 결과 두 파일 hash 동일; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 통과; `git diff --check` 통과.
+
 ### GraphRAG 파일/class 중복 노드 접기
 
 - Project Chat `GraphRAG 관계도`에서 `PaymentService.java`와 `PaymentService`처럼 file basename과 class label이 같은 경우 그래프 표시에서 하나의 class 노드로 접도록 했습니다.
