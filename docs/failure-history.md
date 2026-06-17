@@ -31,6 +31,66 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-17 - 한국어 조사 때문에 GraphRAG class seed가 빗나갔다
+
+분류:
+
+- GraphRAG retrieval quality failure
+- Korean query normalization gap
+- Screenshot verification finding
+
+관련 기능 및 문서:
+
+- `src/services/neo4j_graph_service.py`
+- `src/ui/project_chat_page.py`
+- `scripts/capture_feature_screenshot.py`
+- `tests/test_neo4j_graph_service.py`
+- `docs/ai-technical-overview.md`
+- `AI_CHANGELOG.md`의 `Korean Project Chat class relationship evidence screenshot`
+- commit `ebe48cd show korean graphrag class evidence`
+
+### 증상
+
+한국어 질문 `PaymentService와 OrderMapper는 어떤 클래스 import 관계로 연결돼 있고...`로 실제 local LLM Project Chat을 실행했지만, GraphRAG 관계도는 처음에 `PaymentService -> OrderMapper` class import 관계보다 `OrderStatusService`, `OrderStatusMapper`, 주문 상태 변경 impact path를 더 앞에 보여줬습니다. 질문은 class import 관계를 묻고 있었지만, 화면에서 가장 먼저 읽히는 graph evidence가 질문 의도와 어긋났습니다.
+
+### 직접 원인
+
+GraphRAG seed 추출이 코드 식별자 뒤에 붙은 한국어 조사를 제거하지 않았습니다. 질문에서 `PaymentService와`, `OrderMapper는`이 그대로 seed 후보가 되었고, Neo4j label인 `PaymentService`, `OrderMapper`와 정확히 매칭되지 않았습니다. 대신 `주문`, `상태`, `order`, `status` 같은 일반 seed가 강하게 작동해 주문 상태 관련 graph path가 앞에 배치되었습니다.
+
+### 배경 또는 구조적 원인
+
+기존 GraphRAG seed 추출은 file path, package/class name, expanded query, 영문 identifier token에는 비교적 강했지만, 한국어 문장 안에 code identifier가 자연스럽게 섞이고 바로 뒤에 조사가 붙는 SI/업무 질문 형태를 충분히 반영하지 못했습니다. 또한 evidence 선택은 `impact_path`가 많은 경우 한 evidence type이 화면을 독점할 수 있어, class import 관계가 있어도 compact graph에서 뒤로 밀릴 수 있었습니다.
+
+### 사전 검증에서 놓친 이유
+
+기존 테스트는 `payment service order mapper` 같은 영문 확장 질의와 source symbol 기반 seed를 확인했지만, `PaymentService와`, `OrderMapper는`처럼 코드 식별자 뒤에 한국어 조사가 붙는 입력은 없었습니다. Screenshot 검증도 `class_import` 문자열이 있는지 정도는 확인할 수 있었지만, 첫 graph evidence가 실제 질문 의도와 맞는지까지는 자동으로 검증하지 않았습니다.
+
+### 수정 내용
+
+- Graph seed 정규화에서 영문/코드 식별자 뒤에 붙은 한국어 조사(`와`, `과`, `은`, `는`, `이`, `가`, `을`, `를`, `의`, `로`, `으로`, `에서`, `에게`, `도`, `만`)를 제거합니다.
+- GraphRAG evidence 선택에서 `class_import`, `impact_path`, `domain_summary`가 균형 있게 남도록 조정해 한 종류가 결과를 독점하지 않게 했습니다.
+- Project Chat GraphRAG expander에 `관계 유형: class_import ...` 요약을 추가해 표 내부를 보지 않아도 evidence type을 확인할 수 있게 했습니다.
+- 한국어 질문으로 실제 `local_openai / qwen2.5-coder-7b-instruct` Project Chat을 다시 실행하고, 첫 graph evidence가 `class_import PaymentService -> OrderMapper`인지 확인한 뒤 screenshot을 갱신했습니다.
+
+### 재발 방지 규칙
+
+- 한국어 업무 질문에서 code identifier를 추출하는 로직은 조사, 종결 어미, punctuation이 붙은 identifier를 포함해 테스트합니다.
+- GraphRAG screenshot 검증은 단순히 graph가 열리는지뿐 아니라, 질문 의도와 맞는 핵심 evidence type과 대표 node/class가 화면에 보이는지 확인합니다.
+- Compact graph evidence는 한 relation type이 결과를 독점하지 않도록 type balance 또는 explicit ranking 기준을 둡니다.
+- 실제 데모 screenshot은 `provider=local_openai`, `fallback=False`, `mock_logs=0`, `fallback_logs=0`과 함께 질문/근거가 자연어 사용 맥락에 맞는지 시각적으로 확인합니다.
+
+### 남은 한계 또는 후속 확인
+
+현재 조사는 대표적인 식별자 뒤 조사만 제거합니다. `PaymentService에서는`, `OrderMapper까지는`, `updateOrderStatus를`처럼 더 다양한 한국어 어절이나 method name 뒤 조사가 붙는 경우는 추가 테스트와 정규화가 필요할 수 있습니다. Graph evidence ranking도 seed 수와 type balance를 함께 쓰므로, 질문이 여러 domain을 동시에 묻는 경우에는 여전히 사용자가 기대한 하나의 관계만 최상단에 오지 않을 수 있습니다.
+
+### 검증 명령과 결과
+
+- 실제 Project Chat 실행: `chat_session=333`, `provider=local_openai`, `model=qwen2.5-coder-7b-instruct`, `fallback=False`, `used_sources=8`, `graph_evidence=8`, 첫 graph evidence `class_import PaymentService -> OrderMapper`, `mock_logs=0`, `fallback_logs=0`.
+- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8515/?project_id=97" --feature project-chat-answer --surface local --height 1500 --expect-text "PaymentService와 OrderMapper" --expect-text "Provider: local_openai" --expect-text "fallback=False" --expect-text "답변에 사용된 현재 소스 근거 8건" --expect-text "답변에 사용된 그래프 관계 근거 8건" --forbid-text "Mock answer" --forbid-text "fallback=True" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"`: 통과.
+- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8515/?project_id=97" --feature project-chat-graph-evidence --surface local --height 1700 --expect-text "PaymentService와 OrderMapper" --expect-text "Provider: local_openai" --expect-text "fallback=False" --expect-text "답변에 사용된 그래프 관계 근거 8건" --expect-text "GraphRAG 관계도" --expect-text "class_import" --expect-text "OrderMapper" --forbid-text "Mock answer" --forbid-text "fallback=True" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"`: 통과.
+- `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py tests\test_project_chat_page.py tests\test_documentation_images.py -q`: 25개 통과.
+- `.\.venv\Scripts\python.exe -m pytest -q`: 162개 통과.
+
 ## 2026-06-17 - Mock AI Code Review 결과를 실제 분석처럼 보이게 만들었다
 
 분류:

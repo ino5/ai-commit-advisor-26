@@ -2,6 +2,13 @@
 
 ## 2026-06-17
 
+### GraphRAG Korean seed failure documentation
+
+- 한국어 질문에서 code identifier 뒤 조사가 붙어 GraphRAG class seed가 빗나간 실패를 `docs/failure-history.md`에 기록했습니다.
+- `docs/ai-technical-overview.md`에 `PaymentService와`, `OrderMapper는` 같은 code identifier+조사 입력을 graph seed 정규화에서 처리한다는 설명을 추가했습니다.
+- 주요 파일: `docs/failure-history.md`, `docs/ai-technical-overview.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "한국어 조사|PaymentService와|OrderMapper는|class_import PaymentService" docs AI_CHANGELOG.md`로 문서 기록 위치 확인.
+
 ### Korean Project Chat class relationship evidence screenshot
 
 - Project Chat GraphRAG evidence가 `impact_path`만 먼저 채워져 class 관계가 화면에서 밀리는 문제를 줄이기 위해 `class_import`, `impact_path`, `domain_summary`를 균형 있게 선택하도록 조정했습니다.
