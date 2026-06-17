@@ -2,6 +2,17 @@
 
 ## 2026-06-17
 
+### Project Chat real local LLM screenshot evidence
+
+- Project Chat assistant 메시지에 provider/model/fallback metadata를 저장하고 화면에 `Provider: local_openai / qwen2.5-coder-7b-instruct / fallback=False` 형태로 표시하도록 했습니다.
+- Project Chat 답변/GraphRAG screenshot capture 조건에 `Provider: local_openai`, `fallback=False`, `Mock answer` 금지, `fallback=True` 금지를 추가했습니다.
+- 최신 샘플 repo `1acd027fbe16a97d09ae846e6834cdf10516106b` 기준으로 프로젝트 97을 full Git Sync하고, source/program/commit/commit_file chunk 273건과 local embedding 273건을 생성했습니다.
+- 실제 `local_openai / qwen2.5-coder-7b-instruct`로 48개 commit Mapping을 실행해 mapping 57건을 저장했고, fallback/mocking log는 0건으로 확인했습니다.
+- `NEO4J_ENABLED=true`로 Neo4j graph sync를 실행해 node 188건, edge 569건, freshness `latest`를 확인했습니다.
+- 실제 Project Chat 질문 `PaymentService OrderMapper relationship and payment amount validation?`을 실행해 현재 소스 근거 4건, graph evidence 4건, `graph_status=completed`, mock/fallback 0건을 확인하고 screenshot용 chat session에 저장했습니다.
+- 주요 파일: `src/rag/chat_service.py`, `src/rag/chat_history_service.py`, `src/ui/project_chat_page.py`, `scripts/capture_feature_screenshot.py`, `docs/application-preview.md`, `docs/images/features/mapping.png`, `docs/images/features/project-chat-answer.png`, `docs/images/features/project-chat-graph-evidence.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\rag\chat_service.py src\rag\chat_history_service.py src\ui\project_chat_page.py scripts\capture_feature_screenshot.py tests\test_project_chat_service.py tests\test_project_chat_history_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_service.py tests\test_project_chat_history_service.py tests\test_project_chat_page.py tests\test_documentation_images.py -q` 15개 통과; 실제 DB 확인 결과 `programs=8`, `commits=48`, `mappings=57`, `chunks=273`, `vectors=273`, `graph_nodes=188`, `graph_edges=569`, `chat_session=321`, `provider=local_openai`, `model=qwen2.5-coder-7b-instruct`, `fallback=False`, `used_sources=4`, `graph_evidence=4`, `graph_status=completed`, `mock_logs=0`, `fallback_logs=0`; `mapping`, `project-chat-answer`, `project-chat-graph-evidence` screenshot capture 통과.
+
 ### Scenario-designed sample evidence for rich AI outputs
 
 - 샘플 프로젝트 보강을 단순 commit 수 증량이 아니라 실제 local LLM이 읽을 판단 재료 확장으로 정리했습니다.

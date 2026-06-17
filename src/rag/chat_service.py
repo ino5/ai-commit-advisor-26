@@ -34,6 +34,9 @@ class RagChatAnswer:
     insufficient_evidence: bool = False
     graph_evidence: list[dict] = field(default_factory=list)
     graph_evidence_metadata: dict = field(default_factory=dict)
+    provider: str | None = None
+    model: str | None = None
+    fallback_used: bool = False
     errors: list[str] = field(default_factory=list)
 
 
@@ -378,6 +381,9 @@ def answer_source_question(
             excluded_count=excluded_count,
             used_source_count=0,
             insufficient_evidence=True,
+            provider=getattr(llm_client, "provider", None),
+            model=getattr(llm_client, "model", None),
+            fallback_used=True,
         )
 
     graph_evidence, graph_metadata = _collect_graph_evidence(
@@ -425,6 +431,9 @@ def answer_source_question(
             used_source_count=len(verified_sources),
             graph_evidence=graph_evidence,
             graph_evidence_metadata=graph_metadata,
+            provider=getattr(llm_client, "provider", None),
+            model=getattr(llm_client, "model", None),
+            fallback_used=True,
         )
 
     try:
@@ -457,6 +466,9 @@ def answer_source_question(
             used_source_count=len(verified_sources),
             graph_evidence=graph_evidence,
             graph_evidence_metadata=graph_metadata,
+            provider=getattr(llm_client, "provider", None),
+            model=getattr(llm_client, "model", None),
+            fallback_used=True,
             errors=[f"LLM generation failed: {exc}"],
         )
 
@@ -488,4 +500,7 @@ def answer_source_question(
         used_source_count=len(verified_sources),
         graph_evidence=graph_evidence,
         graph_evidence_metadata=graph_metadata,
+        provider=getattr(llm_client, "provider", None),
+        model=getattr(llm_client, "model", None),
+        fallback_used=False,
     )

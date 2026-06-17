@@ -104,6 +104,7 @@
 | P2 | Code Review / Demo UX | AI Code Review demo evidence and preview screenshot | Done | AI Code Review demo evidence and preview screenshot |
 | P2 | AI Verification / Demo Quality | Real local LLM demo evidence correction | Done | Real local LLM demo evidence correction |
 | P2 | Sample Data / Demo Quality | Scenario-designed sample evidence for rich AI outputs across features | Done | Scenario-designed sample evidence for rich AI outputs |
+| P2 | AI Verification / Demo Quality | Project Chat real local LLM screenshot evidence | Done | Project Chat real local LLM screenshot evidence |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
@@ -402,6 +403,25 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
 | P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
+
+## P2 - Project Chat Real Local LLM Screenshot Evidence
+
+Status: Done
+
+Goal:
+Project Chat과 GraphRAG screenshot도 mock/fallback 결과가 아니라 실제 local LLM과 최신 Neo4j graph evidence로 만들어졌음을 화면과 캡처 조건에서 확인할 수 있게 한다.
+
+Rationale:
+AI Code Review만 provider/fallback을 표시하면 Project Chat, GraphRAG, 다른 AI 화면의 스크린샷 신뢰성은 여전히 약하다. AI 결과가 보이는 화면은 모두 실제 provider, fallback 여부, 근거 최신성을 검증할 수 있어야 한다.
+
+Checklist:
+
+- [x] 최신 샘플 repo HEAD로 Git Sync, chunk, local embedding, Mapping, Risk/AI Progress를 다시 실행한다.
+- [x] Neo4j graph sync를 `NEO4J_ENABLED=true`로 실행해 graph freshness가 latest인지 확인한다.
+- [x] Project Chat 답변에 provider/model/fallback metadata를 저장하고 화면에 표시한다.
+- [x] Project Chat answer와 GraphRAG screenshot capture 조건에 `local_openai`, `fallback=False`, mock/fallback 금지를 추가한다.
+- [x] 실제 local LLM Project Chat과 GraphRAG screenshot을 캡처한다.
+- [x] focused tests와 `AI_CHANGELOG.md`를 갱신한다.
 
 ## P2 - Scenario-Designed Sample Evidence For Rich AI Outputs Across Features
 

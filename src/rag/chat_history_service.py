@@ -122,6 +122,9 @@ def message_to_ui_dict(message: ProjectChatMessage) -> dict:
         "insufficient_evidence": bool(message.insufficient_evidence),
         "graph_evidence": metadata.get("graph_evidence") or [],
         "graph_evidence_metadata": metadata.get("graph_evidence_metadata") or {},
+        "provider": metadata.get("provider") or metadata.get("llm_provider"),
+        "model": metadata.get("model") or metadata.get("llm_model"),
+        "fallback_used": bool(metadata.get("fallback_used", False)),
     }
 
 

@@ -743,6 +743,11 @@ def _render_chat_history(messages: list[dict]) -> None:
         with st.chat_message(message["role"]):
             st.write(message["content"])
             if message["role"] == "assistant":
+                provider = message.get("provider") or "-"
+                model = message.get("model") or "-"
+                fallback_used = bool(message.get("fallback_used"))
+                if provider != "-" or model != "-":
+                    st.caption(f"Provider: {provider} / {model} / fallback={fallback_used}")
                 used_source_count = int(message.get("used_source_count") or 0)
                 insufficient = bool(message.get("insufficient_evidence"))
                 if insufficient:
@@ -894,6 +899,7 @@ def render_project_chat_page() -> None:
                     st.warning(content)
                 else:
                     st.write(content)
+                    st.caption(f"Provider: {answer.provider or '-'} / {answer.model or '-'} / fallback={answer.fallback_used}")
                     if answer.used_source_count:
                         st.caption(f"답변에 사용된 현재 소스 근거 {answer.used_source_count}건")
                     if answer.graph_evidence:
@@ -938,11 +944,17 @@ def render_project_chat_page() -> None:
                     "errors": answer.errors,
                     "graph_evidence": answer.graph_evidence,
                     "graph_evidence_metadata": answer.graph_evidence_metadata,
+                    "provider": answer.provider,
+                    "model": answer.model,
+                    "fallback_used": answer.fallback_used,
                 }
                 if answer.errors
                 else {
                     "graph_evidence": answer.graph_evidence,
                     "graph_evidence_metadata": answer.graph_evidence_metadata,
+                    "provider": answer.provider,
+                    "model": answer.model,
+                    "fallback_used": answer.fallback_used,
                 }
             ),
         )

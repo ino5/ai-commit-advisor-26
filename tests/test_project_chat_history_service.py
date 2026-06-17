@@ -57,6 +57,9 @@ def test_project_chat_session_persists_messages_in_order():
                         }
                     ],
                     "graph_evidence_metadata": {"status": "completed", "evidence_count": 1},
+                    "provider": "local_openai",
+                    "model": "qwen2.5-coder-7b-instruct",
+                    "fallback_used": False,
                 },
             )
 
@@ -72,6 +75,9 @@ def test_project_chat_session_persists_messages_in_order():
             assert ui_messages[1]["expanded_queries"] == ["결제 금액 검증", "payment amount validation"]
             assert ui_messages[1]["graph_evidence"][0]["target_class"] == "OrderMapper"
             assert ui_messages[1]["graph_evidence_metadata"]["status"] == "completed"
+            assert ui_messages[1]["provider"] == "local_openai"
+            assert ui_messages[1]["model"] == "qwen2.5-coder-7b-instruct"
+            assert ui_messages[1]["fallback_used"] is False
         finally:
             db.delete(project)
             db.commit()

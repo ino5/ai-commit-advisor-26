@@ -26,6 +26,7 @@ class FakeRetriever:
 
 class MockLLM:
     provider = "mock"
+    model = "mock-chat-model"
 
 
 class FakeGraphResult:
@@ -74,6 +75,9 @@ def test_answer_source_question_returns_insufficient_evidence_without_sources():
     assert answer.answer == INSUFFICIENT_EVIDENCE_ANSWER
     assert "현재 검증된 소스 근거만으로는 답변하기 어렵습니다." in answer.answer
     assert answer.used_source_count == 0
+    assert answer.provider == "mock"
+    assert answer.model == "mock-chat-model"
+    assert answer.fallback_used is True
 
 
 def test_answer_source_question_excludes_invalid_source_file_from_current_answer():
@@ -251,6 +255,9 @@ def test_answer_source_question_adds_graph_evidence_without_replacing_source_ver
     assert answer.graph_evidence_metadata["status"] == "completed"
     assert "그래프 관계 근거" in answer.answer
     assert "PaymentService" in answer.answer
+    assert answer.provider == "mock"
+    assert answer.model == "mock-chat-model"
+    assert answer.fallback_used is True
 
 
 def test_answer_source_question_does_not_use_graph_evidence_without_verified_sources():
