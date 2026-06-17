@@ -1,0 +1,48 @@
+from src.services.code_review_service import ReviewTarget, _build_review_prompt
+from src.ui.code_review_page import _commit_analysis_display_rows, _severity_label, _status_label
+
+
+def test_code_review_prompt_requests_korean_human_readable_values() -> None:
+    prompt = _build_review_prompt(
+        ReviewTarget(
+            target_type="commit",
+            target_ref="abc123",
+            title="커밋 abc123",
+            diff_text="+ if (amount < 0) { throw new IllegalArgumentException(); }",
+            commit_message="Relax validation",
+        )
+    )
+
+    assert "Write all human-readable text values in Korean." in prompt
+    assert "Keep JSON keys exactly as shown above." in prompt
+    assert "Keep enum values for `impact_scope`, `risk_level`, and `severity`" in prompt
+    assert "Do not translate file paths, class names, method names" in prompt
+    assert "`amount == 0`" in prompt
+    assert "only `amount == 0` is newly allowed" in prompt
+    assert "Never claim that negative amounts are newly allowed" in prompt
+    assert "include one concrete example input such as `amount == 0` in Korean text" in prompt
+    assert "Do not suggest replacing service-layer calls or mapper calls" in prompt
+    assert "do not recommend using `OrderStatusService` or `markPaid` as a new suggestion" in prompt
+    assert "return an empty `refactoring_suggestions` array" in prompt
+    assert "`summary`, `commit_analysis.change_intent`, `bug_findings`, and `refactoring_suggestions`" in prompt
+
+
+def test_code_review_page_labels_saved_status_and_review_enums_in_korean() -> None:
+    assert _status_label("completed") == "완료"
+    assert _status_label("failed") == "실패"
+    assert _status_label("custom") == "custom"
+    assert _severity_label("high") == "높음"
+
+    rows = _commit_analysis_display_rows(
+        {
+            "risk_level": "medium",
+            "impact_scope": "module",
+            "change_intent": "결제 검증 조건을 완화합니다.",
+        }
+    )
+
+    assert rows == [
+        ("위험도", "보통"),
+        ("영향 범위", "모듈"),
+        ("변경 의도", "결제 검증 조건을 완화합니다."),
+    ]

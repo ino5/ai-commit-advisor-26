@@ -127,6 +127,13 @@ Review the following Git diff and return only valid JSON in this exact shape:
   ]
 }}
 
+Language rules:
+- Write all human-readable text values in Korean.
+- Keep JSON keys exactly as shown above.
+- Keep enum values for `impact_scope`, `risk_level`, and `severity` as the exact allowed English tokens.
+- Do not translate file paths, class names, method names, function names, API names, table names, column names, constants, or code expressions.
+- When referring to code, keep expressions such as `amount == 0`, `PaymentService.java`, and `markPaid` exactly as code.
+
 Focus on:
 - commit/change analysis
 - potential bugs and regressions
@@ -140,6 +147,15 @@ Diff reading rules:
 - If a validation condition changed, explain the exact before/after behavior and the input values newly allowed or newly rejected.
 - Do not recommend changing code to the same condition that the commit already added.
 - For numeric boundary checks, test example values mentally before writing the finding. For example, changing `amount <= 0` to `amount < 0` still rejects negative values but newly allows `amount == 0`.
+- Boundary analysis is mandatory for validation changes. In Korean findings, state the boundary value precisely.
+- If a diff changes `amount <= 0` to `amount < 0`, every field must say this consistently: negative amounts are still rejected and only `amount == 0` is newly allowed.
+- For that exact pattern, the Korean summary, issue, and recommendation must mention `amount == 0` or `0원` as the newly allowed boundary.
+- Never claim that negative amounts are newly allowed when the added condition is `amount < 0`.
+- If your finding is about a numeric condition, include one concrete example input such as `amount == 0` in Korean text.
+- Keep refactoring suggestions grounded in the shown diff. Do not suggest replacing service-layer calls or mapper calls unless that call appears in the changed lines.
+- Do not suggest code that the commit already added. If the added diff already uses `orderStatusService.markPaid(orderId)`, do not recommend using `OrderStatusService` or `markPaid` as a new suggestion.
+- If there is no clearly different refactoring suggestion grounded in the changed lines, return an empty `refactoring_suggestions` array.
+- Before returning JSON, check that `summary`, `commit_analysis.change_intent`, `bug_findings`, and `refactoring_suggestions` do not contradict each other.
 
 Target: {target.title}
 Commit message:

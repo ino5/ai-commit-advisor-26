@@ -160,13 +160,13 @@ Neo4j Knowledge Graph가 최신이면 Project Chat 답변 아래에서 그래프
 
 ### AI Code Review
 
-샘플 프로젝트의 선별 커밋을 `local_openai / qwen2.5-coder-7b-instruct`로 실제 리뷰하고 저장한 결과입니다. 화면은 최신 저장 리뷰인 `2325182 Relax partner payment validation for pilot channel`의 상태, provider/model, 영향 범위, 위험도, 버그 후보, 권장 수정, 리팩토링 제안을 함께 보여줘 AI Code Review가 단순 실행 버튼이 아니라 실제 local LLM 검토 근거를 남기는 흐름임을 확인할 수 있습니다.
+샘플 프로젝트의 선별 커밋을 `local_openai / qwen2.5-coder-7b-instruct`로 실제 리뷰하고 저장한 결과입니다. 화면은 한국어 출력 prompt로 다시 실행한 최신 저장 리뷰인 `2325182 Relax partner payment validation for pilot channel`의 상태, provider/model, 영향 범위, 위험도, 버그 후보, 권장 수정, 리팩토링 제안을 함께 보여줘 AI Code Review가 단순 실행 버튼이 아니라 실제 local LLM 검토 근거를 남기는 흐름임을 확인할 수 있습니다.
 
 아래 커밋들은 Application Preview 갱신 전에 실제 AI Code Review로 실행해 DB에 저장한 대상입니다. 최신 화면은 high-risk 후보인 `2325182`를 보여주고, 나머지는 `리뷰 기록`에서 확인할 수 있습니다.
 
 | 용도 | Commit | 실제 리뷰 결과 |
 |---|---|---|
-| high-risk bug 후보 | `2325182 Relax partner payment validation for pilot channel` | `medium` risk, bug finding 1건. `amount <= 0` 검증이 `amount < 0`으로 완화되어 `amount == 0` 결제가 허용되는 문제를 탐지했습니다. |
+| high-risk bug 후보 | `2325182 Relax partner payment validation for pilot channel` | `완료`, `보통` 위험도, bug finding 1건. `amount <= 0` 검증이 `amount < 0`으로 완화되어 `0원` 결제가 허용되는 문제를 한국어로 탐지했습니다. |
 | 금액 한도 방어 | `5999f24 Reject excessive payment amount requests` | `low` risk, bug finding 0건. 최대 승인 금액 차단 규칙과 테스트 추가를 방어성 변경으로 요약했습니다. |
 | cross-module 집계 회귀 | `7e5e41 Change dashboard summary query across operations modules` | `low` risk, bug finding 1건. dashboard summary query 변경의 집계 영향과 SQL 유지보수 제안을 남겼습니다. |
 | 회귀 수정 비교 | `95562a1 Fix dashboard summary over-counting` | `low` risk, bug finding 1건. 독립 subquery 기반 집계 보정과 테스트 추가를 리뷰했습니다. |

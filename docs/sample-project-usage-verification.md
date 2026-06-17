@@ -100,13 +100,13 @@
 
 ## 2026-06-17 AI Code Review 선별 커밋 검증
 
-Application Preview의 AI Code Review 화면이 단순 추천 목록이나 mock 결과가 아니라 실제 local LLM 리뷰 결과를 보여주는지 확인했습니다. Project 97에서 아래 커밋을 `target_type=commit`으로 실행했고, 최신 저장 리뷰가 high-risk 후보인 `2325182`가 되도록 마지막에 실행했습니다.
+Application Preview의 AI Code Review 화면이 단순 추천 목록이나 mock 결과가 아니라 실제 local LLM 리뷰 결과를 보여주는지 확인했습니다. 이후 한국어 출력 prompt와 한글 상태 표시를 적용한 뒤 Project 97에서 `2325182`를 다시 실행해 최신 저장 리뷰가 한국어 결과를 보여주도록 갱신했습니다.
 
 | 항목 | 값 |
 |---|---|
 | 검증일 | 2026-06-17 |
 | 실행 surface | Local Python + local PostgreSQL + local LM Studio |
-| 앱 URL | `http://localhost:8521/?project_id=97` |
+| 앱 URL | `http://localhost:8522/?project_id=97` |
 | 검증 프로젝트 | `AAA Sample Shop Rich Demo 48` |
 | 샘플 프로젝트 경로 | `C:\dev\ai-advisor-sample-shop` |
 | `LLM_PROVIDER` | `local_openai` |
@@ -115,13 +115,13 @@ Application Preview의 AI Code Review 화면이 단순 추천 목록이나 mock 
 
 | Commit | 실제 리뷰 결과 |
 |---|---|
-| `2325182 Relax partner payment validation for pilot channel` | `completed`, `medium` risk, bug finding 1건. `amount <= 0` 검증이 `amount < 0`으로 완화되어 `amount == 0` 결제가 허용되는 문제를 탐지했습니다. |
+| `2325182 Relax partner payment validation for pilot channel` | `완료`, `보통` 위험도, bug finding 1건. `amount <= 0` 검증이 `amount < 0`으로 완화되어 `0원` 결제가 허용되는 문제를 한국어로 탐지했습니다. |
 | `5999f24 Reject excessive payment amount requests` | `completed`, `low` risk, bug finding 0건. 최대 승인 금액 차단 규칙과 테스트 추가를 방어성 변경으로 요약했습니다. |
 | `7e5e41 Change dashboard summary query across operations modules` | `completed`, `low` risk, bug finding 1건. dashboard summary query 변경의 집계 영향과 SQL 유지보수 제안을 남겼습니다. |
 | `95562a1 Fix dashboard summary over-counting` | `completed`, `low` risk, bug finding 1건. 독립 subquery 기반 집계 보정과 테스트 추가를 리뷰했습니다. |
 | `3cb54de Add coupon mapper draft without policy enforcement` | `completed`, `low` risk, bug finding 0건. coupon mapper 초안에 대한 후속 정책 적용/검증 보강 제안을 남겼습니다. |
 
-통과 기준은 AI Code Review 화면이 `local_openai / qwen2.5-coder-7b-instruct`, `2325182`, `zero amount`, `PaymentService.java`, `리뷰 기록`을 포함하고, `Mock review`, `LLM 코드리뷰 호출 실패`, `Traceback`, `StreamlitAPIException`을 포함하지 않는 것입니다.
+통과 기준은 AI Code Review 화면이 `local_openai / qwen2.5-coder-7b-instruct`, `2325182`, `0원`, `완료`, `PaymentService.java`, `리뷰 기록`을 포함하고, `Mock review`, `LLM 코드리뷰 호출 실패`, `Traceback`, `StreamlitAPIException`을 포함하지 않는 것입니다.
 
 ## 2026-06-17 Project Chat 재현 검증
 
@@ -181,7 +181,7 @@ Mermaid/문서 검증과 화면 캡처:
 $env:LLM_PROVIDER='local_openai'
 $env:LLM_MODEL='qwen2.5-coder-7b-instruct'
 $env:LLM_BASE_URL='http://127.0.0.1:1234/v1'
-.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8521/?project_id=97" --feature ai-code-review --screenshot docs\images\usage-verification\ai-code-review-repro-2026-06-17.png --surface local --height 1700 --expect-text "2325182" --expect-text "zero amount" --expect-text "리뷰 기록" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8522/?project_id=97" --feature ai-code-review --screenshot docs\images\usage-verification\ai-code-review-repro-2026-06-17.png --surface local --height 2600 --expect-text "2325182" --expect-text "0원" --expect-text "완료" --expect-text "리뷰 기록" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"
 ```
 
 2026-06-17 Project Chat 재현 검증:

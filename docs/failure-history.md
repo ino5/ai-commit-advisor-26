@@ -31,6 +31,62 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-17 - AI Code Review 한국어 prompt 전환 중 경계값 해석이 흔들렸다
+
+분류:
+
+- AI Code Review prompt quality
+- Local LLM verification
+- Numeric validation review safety
+
+관련 기능 및 문서:
+
+- `src/services/code_review_service.py`
+- `src/ui/code_review_page.py`
+- `tests/test_code_review_korean_output.py`
+- `docs/images/features/ai-code-review.png`
+- `AI_CHANGELOG.md` 항목 `AI Code Review 한국어 출력과 상태 표시 개선`
+
+### 증상
+
+AI Code Review prompt를 한국어 출력으로 바꾼 뒤 `2325182 Relax partner payment validation for pilot channel` 커밋을 실제 local LLM으로 다시 리뷰했을 때, 처음 실행 결과가 `amount <= 0`에서 `amount < 0`으로 바뀐 조건을 “음수 금액 허용”처럼 잘못 설명했습니다. 실제로는 음수는 계속 거절되고 `amount == 0`만 새로 허용됩니다.
+
+### 직접 원인
+
+기존 prompt에는 경계값 예시가 있었지만, 한국어 출력 전환 후 summary, finding, suggestion 전체가 같은 경계값 해석을 유지해야 한다는 제약이 충분히 강하지 않았습니다. 모델은 일부 필드에서는 `0원`을 언급했지만 summary나 refactoring suggestion에서는 변경 내용을 일관되게 유지하지 못했습니다.
+
+### 배경 또는 구조적 원인
+
+Code Review는 diff의 `-`/`+` 조건을 비교해야 하며, 숫자 경계값 변경은 작은 표현 차이로도 의미가 반대로 읽힐 수 있습니다. 한국어 출력 자체가 문제라기보다, “사람이 읽는 문장은 한국어로 쓰되 enum token과 code expression은 유지”하는 요구와 “경계값을 정확히 비교”하는 요구가 동시에 필요했습니다.
+
+### 사전 검증에서 놓친 이유
+
+단위 테스트는 prompt에 한국어 출력 지시가 들어갔는지만 확인했고, 실제 local LLM 결과가 경계값을 정확히 설명하는지는 첫 실행 전까지 확인하지 못했습니다. 기존 영어 결과 screenshot은 정확했지만, prompt 언어 전환 후 같은 커밋을 다시 실행해야 하는 검증 기준이 별도로 없었습니다.
+
+### 수정 내용
+
+- AI Code Review prompt에 `amount <= 0`에서 `amount < 0`으로 바뀐 경우 음수는 계속 거절되고 `amount == 0`만 새로 허용된다는 규칙을 명시했습니다.
+- summary, `commit_analysis.change_intent`, bug finding, refactoring suggestion이 서로 모순되지 않아야 한다는 사전 점검 규칙을 추가했습니다.
+- 이미 diff에 추가된 `orderStatusService.markPaid(orderId)` 같은 코드를 새 refactoring suggestion으로 다시 제안하지 않도록 제한했습니다.
+- UI는 DB enum 값을 유지하면서 `completed`, `medium`, `module`, `high` 등을 `완료`, `보통`, `모듈`, `높음`으로 표시하도록 바꿨습니다.
+- 실제 local LLM으로 `2325182`를 다시 실행하고, 최신 screenshot을 한국어 결과 기준으로 갱신했습니다.
+
+### 재발 방지 규칙
+
+- AI Code Review prompt가 언어를 바꾸거나 출력 형식을 바꿀 때는 기존 대표 커밋을 실제 local LLM으로 다시 실행해 핵심 finding이 유지되는지 확인합니다.
+- 숫자 validation 변경은 `amount == 0`처럼 구체적인 예시 입력을 포함해 검증합니다.
+- screenshot capture는 영어 키워드만 보지 말고 현재 출력 언어의 핵심 위험 문구와 상태 표시를 같이 확인합니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+local LLM은 실행마다 표현이 달라질 수 있습니다. 이번 변경은 prompt와 UI를 보강하지만, 모든 커밋에서 완전한 리뷰 품질을 보장하지는 않습니다. 추후에는 Code Review 결과의 경계값 모순을 자동 감지하는 후처리 validation을 별도 작업으로 검토할 수 있습니다.
+
+### 검증 명령과 결과
+
+- `.\.venv\Scripts\python.exe -m pytest tests\test_code_review_korean_output.py -q` 2개 통과.
+- `CodeReviewService.review_project(..., target_type="commit", target_ref="2325182")` 실제 실행 결과 `review.id=408`, `status=completed`, `risk_level=medium`, `impact_scope=module`, bug finding 1건, 최신 summary/finding 한국어 출력 확인.
+- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8522/?project_id=97" --feature ai-code-review --screenshot docs\images\features\ai-code-review.png --surface local --height 2600 --expect-text "2325182" --expect-text "0원" --expect-text "완료" --expect-text "리뷰 기록" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"` 통과.
+
 ## 2026-06-17 - AI Code Review demo 요청을 실제 실행 대신 추천 목록 문서화로 처리했다
 
 분류:

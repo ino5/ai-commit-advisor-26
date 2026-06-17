@@ -16,6 +16,52 @@ TARGET_OPTIONS = {
 }
 
 TARGET_TYPE_LABELS = {value: label for label, value in TARGET_OPTIONS.items()}
+STATUS_LABELS = {
+    "completed": "완료",
+    "failed": "실패",
+    "running": "실행 중",
+    "pending": "대기",
+}
+SEVERITY_LABELS = {
+    "high": "높음",
+    "medium": "보통",
+    "low": "낮음",
+}
+COMMIT_ANALYSIS_LABELS = {
+    "change_intent": "변경 의도",
+    "impact_scope": "영향 범위",
+    "risk_level": "위험도",
+}
+COMMIT_ANALYSIS_VALUE_LABELS = {
+    "local": "국소",
+    "module": "모듈",
+    "cross-cutting": "전반",
+    "unknown": "판단 불가",
+    "high": "높음",
+    "medium": "보통",
+    "low": "낮음",
+}
+
+
+def _status_label(status: str | None) -> str:
+    if not status:
+        return "-"
+    return STATUS_LABELS.get(status, status)
+
+
+def _severity_label(severity: str | None) -> str:
+    if not severity:
+        return "-"
+    return SEVERITY_LABELS.get(severity, severity)
+
+
+def _commit_analysis_display_rows(commit_analysis: dict) -> list[tuple[str, object]]:
+    rows: list[tuple[str, object]] = []
+    for key, value in commit_analysis.items():
+        label = COMMIT_ANALYSIS_LABELS.get(str(key), str(key))
+        display_value = COMMIT_ANALYSIS_VALUE_LABELS.get(value, value) if isinstance(value, str) else value
+        rows.append((label, display_value))
+    return rows
 
 
 def _review_provider_label(review) -> str:
@@ -30,7 +76,7 @@ def _review_provider_label(review) -> str:
 def _render_finding_cards(findings: list[dict]) -> None:
     for index, finding in enumerate(findings, start=1):
         with st.container(border=True):
-            st.markdown(f"**Finding {index} · {finding.get('severity', '-')}**")
+            st.markdown(f"**Finding {index} · {_severity_label(finding.get('severity'))}**")
             st.write(f"파일: {finding.get('file') or '-'}")
             if finding.get("line") is not None:
                 st.write(f"라인: {finding.get('line')}")
@@ -52,7 +98,7 @@ def _render_suggestion_cards(suggestions: list[dict]) -> None:
 def _render_review_result(review) -> None:
     st.subheader("리뷰 결과")
     status_col, provider_col, target_col, ref_col = st.columns(4)
-    status_col.metric("상태", review.status)
+    status_col.metric("상태", _status_label(review.status))
     provider_col.metric("Provider", _review_provider_label(review))
     target_col.metric("대상", TARGET_TYPE_LABELS.get(review.target_type, review.target_type))
     ref_col.metric("참조", review.target_ref[:12] if review.target_ref else "-")
@@ -63,7 +109,7 @@ def _render_review_result(review) -> None:
     st.markdown("**커밋 분석**")
     commit_analysis = review.commit_analysis or {}
     if isinstance(commit_analysis, dict) and commit_analysis:
-        st.table(key_value_dataframe((str(key), value) for key, value in commit_analysis.items()))
+        st.table(key_value_dataframe(_commit_analysis_display_rows(commit_analysis)))
     else:
         st.info("커밋 분석 요약이 없습니다.")
 
@@ -95,7 +141,7 @@ def _render_review_history(project_id: int) -> None:
         {
             "id": review.id,
             "created_at": review.created_at,
-            "status": review.status,
+            "status": _status_label(review.status),
             "target_type": TARGET_TYPE_LABELS.get(review.target_type, review.target_type),
             "target_ref": review.target_ref[:12] if review.target_ref else "-",
             "bug_count": len(review.bug_findings or []),

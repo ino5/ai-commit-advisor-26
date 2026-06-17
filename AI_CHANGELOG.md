@@ -2,6 +2,16 @@
 
 ## 2026-06-17
 
+### AI Code Review 한국어 출력과 상태 표시 개선
+
+- AI Code Review prompt가 요약, 변경 의도, 버그 후보, 권장 수정, 리팩토링 제안 같은 사람이 읽는 값을 한국어로 작성하도록 바꿨습니다.
+- JSON key와 `impact_scope`, `risk_level`, `severity` enum token은 내부 안정성을 위해 유지하고, UI에서는 `completed`, `medium`, `module`, `high` 등을 `완료`, `보통`, `모듈`, `높음`으로 표시하게 했습니다.
+- 숫자 validation 변경을 리뷰할 때 `amount <= 0`에서 `amount < 0`으로 바뀐 경우 음수는 계속 거절되고 `amount == 0`만 새로 허용된다는 경계값 규칙을 prompt에 보강했습니다.
+- Project 97의 `2325182 Relax partner payment validation for pilot channel` 커밋을 실제 `local_openai / qwen2.5-coder-7b-instruct`로 다시 리뷰해 최신 결과를 한국어로 저장하고 Application Preview screenshot을 갱신했습니다.
+- 한국어 prompt 전환 중 경계값 오독이 발생했던 과정을 `docs/failure-history.md`에 기록했습니다.
+- 주요 파일: `src/services/code_review_service.py`, `src/ui/code_review_page.py`, `scripts/capture_feature_screenshot.py`, `tests/test_code_review_korean_output.py`, `docs/ai-technical-overview.md`, `docs/application-preview.md`, `docs/sample-project-usage-verification.md`, `docs/failure-history.md`, `docs/images/features/ai-code-review.png`, `docs/images/usage-verification/ai-code-review-repro-2026-06-17.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\code_review_service.py src\ui\code_review_page.py scripts\capture_feature_screenshot.py tests\test_code_review_korean_output.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_code_review_korean_output.py -q` 2개 통과; 실제 local LLM 리뷰 실행 결과 `review.id=408`, `status=completed`, `target_ref=2325182ecf5c`, `risk_level=medium`, bug finding 1건, 한국어 summary/finding 저장 확인; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8522/?project_id=97" --feature ai-code-review --screenshot docs\images\features\ai-code-review.png --surface local --height 2600 --expect-text "2325182" --expect-text "0원" --expect-text "완료" --expect-text "리뷰 기록" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"` 통과; `Get-FileHash docs\images\features\ai-code-review.png,docs\images\usage-verification\ai-code-review-repro-2026-06-17.png` 결과 두 파일 hash 동일.
+
 ### AI Code Review preview 하단 기록 포함 캡처 보완
 
 - Application Preview의 AI Code Review screenshot이 `리팩토링 제안` 하단과 `리뷰 기록` 표를 충분히 보여주도록 더 긴 viewport로 다시 캡처했습니다.
