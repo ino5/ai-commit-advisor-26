@@ -356,6 +356,7 @@ def _short_commit(commit_hash: str | None) -> str:
 def _normalize_graph_seed(value: Any) -> str:
     seed = str(value or "").strip().replace("\\", "/").lower()
     seed = re.sub(r"^[^\w가-힣]+|[^\w가-힣]+$", "", seed)
+    seed = re.sub(r"^([a-z0-9_.:/-]+)(?:와|과|은|는|이|가|을|를|의|로|으로|에서|에게|도|만)$", r"\1", seed)
     return seed
 
 
@@ -2046,7 +2047,16 @@ def _read_project_graph_evidence_tx(tx, project_id: int, seeds: list[str], limit
             }
         )
 
-    deduped: list[dict[str, Any]] = []
+    return _dedupe_and_balance_graph_evidence(evidence, limit)
+
+
+def _dedupe_and_balance_graph_evidence(evidence: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    deduped_by_type: dict[str, list[dict[str, Any]]] = {
+        "class_import": [],
+        "impact_path": [],
+        "domain_summary": [],
+    }
+    other: list[dict[str, Any]] = []
     seen: set[tuple] = set()
     for item in evidence:
         key = (
@@ -2062,10 +2072,29 @@ def _read_project_graph_evidence_tx(tx, project_id: int, seeds: list[str], limit
         if key in seen:
             continue
         seen.add(key)
-        deduped.append(item)
-        if len(deduped) >= limit:
+        evidence_type = str(item.get("evidence_type") or "")
+        if evidence_type in deduped_by_type:
+            deduped_by_type[evidence_type].append(item)
+        else:
+            other.append(item)
+
+    balanced: list[dict[str, Any]] = []
+    type_order = ["class_import", "impact_path", "domain_summary"]
+    while len(balanced) < limit:
+        added = False
+        for evidence_type in type_order:
+            bucket = deduped_by_type[evidence_type]
+            if not bucket:
+                continue
+            balanced.append(bucket.pop(0))
+            added = True
+            if len(balanced) >= limit:
+                break
+        if not added:
             break
-    return deduped
+    if len(balanced) < limit:
+        balanced.extend(other[: max(0, limit - len(balanced))])
+    return balanced
 
 
 def get_neo4j_project_preview(project_id: int, limit: int = 100) -> Neo4jGraphPreview:

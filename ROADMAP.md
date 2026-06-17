@@ -105,6 +105,7 @@
 | P2 | AI Verification / Demo Quality | Real local LLM demo evidence correction | Done | Real local LLM demo evidence correction |
 | P2 | Sample Data / Demo Quality | Scenario-designed sample evidence for rich AI outputs across features | Done | Scenario-designed sample evidence for rich AI outputs |
 | P2 | AI Verification / Demo Quality | Project Chat real local LLM screenshot evidence | Done | Project Chat real local LLM screenshot evidence |
+| P2 | GraphRAG / Demo Quality | Korean Project Chat class relationship evidence screenshot | Done | Korean Project Chat class relationship evidence screenshot |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
@@ -403,6 +404,23 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
 | P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
+
+## P2 - Korean Project Chat Class Relationship Evidence Screenshot
+
+Status: Done
+
+Goal:
+Project Chat GraphRAG screenshot이 영어 질문이나 impact path 중심 화면이 아니라, 한국어 질문과 `PaymentService -> OrderMapper` class import 관계를 더 자연스럽게 보여주도록 한다.
+
+Rationale:
+GraphRAG의 demo 가치는 커밋 경로만 많이 보이는 화면보다 class import, program impact, domain summary가 함께 보여질 때 더 잘 전달된다. 실제 local LLM 결과 원칙은 유지하되, 질문과 evidence 선택이 화면에서 관계를 읽기 쉽게 해야 한다.
+
+Checklist:
+
+- [x] GraphRAG evidence 선택에서 `class_import`, `impact_path`, `domain_summary`가 균형 있게 남도록 조정한다.
+- [x] Project Chat 질문을 한국어로 다시 실행하고 실제 `local_openai` 응답을 저장한다.
+- [x] Project Chat answer/GraphRAG screenshot capture 조건을 한국어 질문과 `class_import` 근거 기준으로 갱신한다.
+- [x] `docs/ai-technical-overview.md`, screenshot, tests, `AI_CHANGELOG.md`를 갱신한다.
 
 ## P2 - Project Chat Real Local LLM Screenshot Evidence
 

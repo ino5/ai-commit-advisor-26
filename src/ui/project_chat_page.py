@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 
 import pandas as pd
@@ -703,8 +704,11 @@ def _render_graph_evidence(graph_evidence: list[dict], message_index: int, key_p
         return
 
     rows = [_graph_evidence_row(evidence, rank) for rank, evidence in enumerate(graph_evidence, start=1)]
+    type_counts = Counter(str(evidence.get("evidence_type") or "-") for evidence in graph_evidence)
+    type_summary = ", ".join(f"{evidence_type} {count}건" for evidence_type, count in type_counts.items())
     with st.expander("그래프 관계 근거 보기", expanded=False):
         st.caption("Neo4j graph read model에서 조회한 program, commit, file, class, domain 관계 근거입니다.")
+        st.caption(f"관계 유형: {type_summary}")
         _render_graph_evidence_visualization(graph_evidence)
         st.markdown("#### 관계 근거 표")
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)

@@ -9,6 +9,7 @@ from src.db.models import CommitFile, GitCommit, Program, ProgramCommitMapping, 
 from src.services import neo4j_graph_service
 from src.services.neo4j_graph_service import (
     _changed_source_clear_paths,
+    _dedupe_and_balance_graph_evidence,
     build_graph_evidence_seeds,
     build_project_graph_payload,
     explore_neo4j_project_graph,
@@ -118,6 +119,19 @@ def test_build_graph_evidence_seeds_uses_question_expansion_and_source_symbols()
     assert "paymentservice" in seeds
     assert "payment" in seeds
     assert "ordermapper" in seeds
+
+
+def test_build_graph_evidence_seeds_strips_korean_particles_from_code_identifiers() -> None:
+    seeds = build_graph_evidence_seeds(
+        "PaymentService와 OrderMapper는 어떤 클래스 import 관계야?",
+        [],
+        limit=10,
+    )
+
+    assert "paymentservice" in seeds
+    assert "ordermapper" in seeds
+    assert "paymentservice와" not in seeds
+    assert "ordermapper는" not in seeds
 
 
 def test_build_project_graph_payload_reports_java_parser_skips_without_class_nodes(tmp_path) -> None:
@@ -1140,9 +1154,36 @@ def test_find_project_graph_evidence_reads_impact_import_and_domain_paths(monkey
 
     assert result.status == "completed"
     assert [row["evidence_type"] for row in result.evidence] == [
-        "impact_path",
         "class_import",
+        "impact_path",
         "domain_summary",
     ]
-    assert result.evidence[0]["commit"] == "abcdef123456"
-    assert result.evidence[1]["target_class"].endswith("OrderMapper")
+    assert result.evidence[0]["target_class"].endswith("OrderMapper")
+    assert result.evidence[1]["commit"] == "abcdef123456"
+
+
+def test_dedupe_and_balance_graph_evidence_keeps_class_import_visible() -> None:
+    evidence = [
+        {
+            "evidence_type": "impact_path",
+            "program": f"PAY-{index}",
+            "commit_hash": f"commit-{index}",
+            "file_path": "PaymentService.java",
+            "class_name": "PaymentService",
+        }
+        for index in range(5)
+    ]
+    evidence.append(
+        {
+            "evidence_type": "class_import",
+            "source_class": "PaymentService",
+            "target_class": "OrderMapper",
+            "source_file": "PaymentService.java",
+            "target_file": "OrderMapper.java",
+        }
+    )
+
+    balanced = _dedupe_and_balance_graph_evidence(evidence, limit=3)
+
+    assert [row["evidence_type"] for row in balanced] == ["class_import", "impact_path", "impact_path"]
+    assert balanced[0]["target_class"] == "OrderMapper"

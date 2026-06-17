@@ -2,6 +2,17 @@
 
 ## 2026-06-17
 
+### Korean Project Chat class relationship evidence screenshot
+
+- Project Chat GraphRAG evidence가 `impact_path`만 먼저 채워져 class 관계가 화면에서 밀리는 문제를 줄이기 위해 `class_import`, `impact_path`, `domain_summary`를 균형 있게 선택하도록 조정했습니다.
+- 한국어 질문에서 `PaymentService와`, `OrderMapper는`처럼 코드 식별자 뒤에 조사가 붙어도 graph seed는 `paymentservice`, `ordermapper`로 정규화되도록 했습니다.
+- GraphRAG expander에 `관계 유형: class_import ...` 요약을 추가해 표 내부를 보지 않아도 어떤 관계 근거가 답변에 쓰였는지 확인할 수 있게 했습니다.
+- 실제 `local_openai / qwen2.5-coder-7b-instruct`로 한국어 질문 `PaymentService와 OrderMapper는 어떤 클래스 import 관계로 연결돼 있고, 결제 승인 흐름에서 주문 상태 업데이트가 어떻게 이어지는지 한국어로 설명해줘.`를 실행해 screenshot용 chat session을 다시 저장했습니다.
+- Project Chat answer/GraphRAG screenshot capture 조건을 한국어 질문과 `class_import`, `Provider: local_openai`, `fallback=False`, mock/fallback 금지 기준으로 갱신했습니다.
+- `docs/ai-technical-overview.md`에 GraphRAG evidence type 균형 선택 정책을 설명했습니다.
+- 주요 파일: `src/services/neo4j_graph_service.py`, `src/ui/project_chat_page.py`, `tests/test_neo4j_graph_service.py`, `scripts/capture_feature_screenshot.py`, `docs/ai-technical-overview.md`, `docs/images/features/project-chat-answer.png`, `docs/images/features/project-chat-graph-evidence.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: 실제 local LLM Project Chat 실행 결과 `chat_session=333`, `provider=local_openai`, `model=qwen2.5-coder-7b-instruct`, `fallback=False`, `used_sources=8`, `graph_evidence=8`, 첫 graph evidence `class_import PaymentService -> OrderMapper`, `mock_logs=0`, `fallback_logs=0`; `project-chat-answer`, `project-chat-graph-evidence` screenshot capture 통과; `.\.venv\Scripts\python.exe -m py_compile src\services\neo4j_graph_service.py src\ui\project_chat_page.py scripts\capture_feature_screenshot.py tests\test_neo4j_graph_service.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_neo4j_graph_service.py tests\test_project_chat_page.py tests\test_documentation_images.py -q` 25개 통과; `.\.venv\Scripts\python.exe -m pytest -q` 162개 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Project Chat real local LLM screenshot evidence
 
 - Project Chat assistant 메시지에 provider/model/fallback metadata를 저장하고 화면에 `Provider: local_openai / qwen2.5-coder-7b-instruct / fallback=False` 형태로 표시하도록 했습니다.
