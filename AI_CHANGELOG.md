@@ -2,6 +2,15 @@
 
 ## 2026-06-17
 
+### GraphRAG 혼합 근거 그래프 배치 자연화
+
+- Project Chat `GraphRAG 관계도`에서 `class_import`와 `impact_path`가 함께 표시될 때 노드가 긴 세로줄로 늘어나는 문제를 줄이기 위해 혼합 그래프의 고정 열 배치를 제거했습니다.
+- class-only 그래프는 기존 계층 배치를 유지하고, program/commit/file/class가 섞인 그래프는 force layout으로 자연스럽게 분산되도록 했습니다.
+- in-app Browser 확인 중 `streamlit-agraph`에 전달되던 미지원 config option 콘솔 오류를 발견해 제거하고, `groups={}`를 명시했습니다.
+- `domain_summary` 기본 제외 정책과 `class_import`/`impact_path` 기본 표시 정책은 유지했습니다.
+- 주요 파일: `src/ui/project_chat_page.py`, `docs/images/features/project-chat-graph-evidence.png`, `docs/images/usage-verification/project-chat-graph-repro-2026-06-17.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_chat_page.py tests\test_project_chat_page.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_page.py tests\test_documentation_images.py -q` 8개 통과; `project-chat-graph-evidence` screenshot capture에서 `class_import`, `impact_path`, `OrderStatusMapper` 확인 및 `domain_summary`, `Mock answer`, `fallback=True`, `Traceback` 금지 조건 통과; in-app Browser에서 Project Chat 화면의 `impact_path`, `OrderStatusMapper` 표시와 `domain_summary` 미표시를 DOM으로 확인.
+
 ### GraphRAG 기본 근거 그래프 풍부도 복원
 
 - Project Chat 기본 `GraphRAG 관계도`, 기본 관계 표, 복사용 Markdown에서 `impact_path`를 다시 표시하도록 바꿨습니다.

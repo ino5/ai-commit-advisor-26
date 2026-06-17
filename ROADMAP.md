@@ -109,6 +109,7 @@
 | P1 | Project Chat / Demo Quality | Project Chat preview question replay stability | Done | Project Chat preview 질문 재현 안정화 |
 | P1 | GraphRAG / Sample Quality | Service-layer Project Chat graph cleanup | Done | GraphRAG 관계도와 샘플 결제 흐름 정리 |
 | P1 | GraphRAG / Demo Quality | Rich GraphRAG evidence without weak domain nodes | Done | GraphRAG 기본 근거 그래프 풍부도 복원 |
+| P1 | GraphRAG / Demo Quality | Natural mixed GraphRAG layout | Done | GraphRAG 혼합 근거 그래프 배치 자연화 |
 | P2 | Sample Data / Demo Quality | Source-first sample project and demo verification guide | Done | Source-first sample project and demo verification guide |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |

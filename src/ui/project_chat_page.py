@@ -202,32 +202,6 @@ def _graph_component_variant_indexes(
     return component_indexes
 
 
-def _graph_node_positions(nodes: list[GraphDisplayNode]) -> dict[str, dict[str, object]]:
-    columns = {
-        "program": -330,
-        "commit": -130,
-        "file": 110,
-        "class": 330,
-    }
-    by_type: dict[str, list[GraphDisplayNode]] = {}
-    for node in nodes:
-        by_type.setdefault(node.node_type, []).append(node)
-
-    positions: dict[str, dict[str, object]] = {}
-    for node_type, type_nodes in by_type.items():
-        x = columns.get(node_type, 0)
-        spacing = 125
-        start_y = -((len(type_nodes) - 1) * spacing) / 2
-        for index, node in enumerate(type_nodes):
-            positions[node.id] = {
-                "x": x,
-                "y": int(start_y + index * spacing),
-                "fixed": {"x": True, "y": True},
-                "physics": False,
-            }
-    return positions
-
-
 def _chat_key(project_id: int) -> str:
     return f"project_chat_messages_{project_id}"
 
@@ -669,7 +643,6 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
     agraph_nodes = []
     single_type_graph = len({node.node_type for node in nodes}) == 1
     component_variant_indexes = _graph_component_variant_indexes(nodes, edges) if single_type_graph else {}
-    mixed_node_positions = {} if single_type_graph else _graph_node_positions(nodes)
     for node in nodes:
         style = GRAPH_NODE_STYLE.get(
             node.node_type,
@@ -697,7 +670,6 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
                 size=style["size"] + (3 if node.highlighted else 0),
                 borderWidth=3 if node.highlighted else 2,
                 font={"color": "#111827", "face": "Inter, Arial", "size": 14},
-                **mixed_node_positions.get(node.id, {}),
             )
         )
     agraph_edges = [
@@ -716,11 +688,9 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
         height=560 if not single_type_graph else 480,
         width="100%",
         directed=True,
-        physics=False,
+        physics=not single_type_graph,
         hierarchical=single_type_graph,
-        nodeHighlightBehavior=True,
-        highlightColor=GRAPH_HIGHLIGHT_COLOR,
-        collapsible=False,
+        groups={},
     )
     agraph(nodes=agraph_nodes, edges=agraph_edges, config=config)
 
