@@ -2,6 +2,17 @@
 
 ## 2026-06-17
 
+### AI Code Review demo evidence and preview screenshot
+
+- AI Code Review mock/default 결과가 샘플 프로젝트의 risky/refactoring commit 신호를 읽어 concrete finding을 보여주도록 보강했습니다.
+- `Relax partner payment validation for pilot channel` commit은 0원 결제 승인과 주문 상태 `PAID` 전환 위험을 high/medium bug finding으로 보여줍니다.
+- `Change dashboard summary query across operations modules` commit은 dashboard query over-count risk를 cross-cutting high-risk finding으로 보여줍니다.
+- AI Code Review 화면은 최근 저장된 review result를 상세 카드로 먼저 보여주고, bug/refactoring 항목을 `st.dataframe` 안에만 숨기지 않도록 텍스트 카드로 표시합니다.
+- Application Preview screenshot 자동화는 AI Code Review 시나리오에서 샘플 결제 위험 commit review result를 mock provider로 preseed한 뒤 결과 화면을 캡처합니다.
+- Application Preview의 AI Code Review 설명과 screenshot을 결과 중심으로 갱신하고, Roadmap task를 완료 처리했습니다.
+- 주요 파일: `src/services/code_review_service.py`, `src/ui/code_review_page.py`, `scripts/capture_feature_screenshot.py`, `tests/test_feedback_and_review_services.py`, `docs/application-preview.md`, `docs/images/features/ai-code-review.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\code_review_page.py src\services\code_review_service.py scripts\capture_feature_screenshot.py tests\test_feedback_and_review_services.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_feedback_and_review_services.py tests\test_sample_data_generation.py -q` 23개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8514/?project_id=97" --feature ai-code-review --surface local --height 1500 --expect-text "리뷰 결과" --expect-text "PaymentService.java" --expect-text "0원 결제" --expect-text "리뷰 기록" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 테스트 통과; `.\.venv\Scripts\python.exe -m compileall src app.py scripts tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 161개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### AI Code Review 결과 screenshot과 샘플 보강 후보 기록
 
 - Application Preview의 AI Code Review screenshot이 리뷰 대상 선택만 보여줘 결과가 없는 기능처럼 보이는 문제를 `ROADMAP.md` Candidate Task로 기록했습니다.

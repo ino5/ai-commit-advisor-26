@@ -18,6 +18,28 @@ TARGET_OPTIONS = {
 TARGET_TYPE_LABELS = {value: label for label, value in TARGET_OPTIONS.items()}
 
 
+def _render_finding_cards(findings: list[dict]) -> None:
+    for index, finding in enumerate(findings, start=1):
+        with st.container(border=True):
+            st.markdown(f"**Finding {index} · {finding.get('severity', '-')}**")
+            st.write(f"파일: {finding.get('file') or '-'}")
+            if finding.get("line") is not None:
+                st.write(f"라인: {finding.get('line')}")
+            st.write(f"문제: {finding.get('issue') or '-'}")
+            st.write(f"권장 수정: {finding.get('recommendation') or '-'}")
+
+
+def _render_suggestion_cards(suggestions: list[dict]) -> None:
+    for index, suggestion in enumerate(suggestions, start=1):
+        with st.container(border=True):
+            st.markdown(f"**Suggestion {index}**")
+            st.write(f"파일: {suggestion.get('file') or '-'}")
+            if suggestion.get("line") is not None:
+                st.write(f"라인: {suggestion.get('line')}")
+            st.write(f"제안: {suggestion.get('suggestion') or '-'}")
+            st.write(f"효과: {suggestion.get('benefit') or '-'}")
+
+
 def _render_review_result(review) -> None:
     st.subheader("리뷰 결과")
     status_col, target_col, ref_col = st.columns(3)
@@ -38,14 +60,14 @@ def _render_review_result(review) -> None:
     st.markdown("**버그 탐지**")
     bug_findings = review.bug_findings or []
     if bug_findings:
-        st.dataframe(pd.DataFrame(bug_findings), use_container_width=True, hide_index=True)
+        _render_finding_cards(bug_findings)
     else:
         st.success("탐지된 버그 후보가 없습니다.")
 
     st.markdown("**리팩토링 제안**")
     suggestions = review.refactoring_suggestions or []
     if suggestions:
-        st.dataframe(pd.DataFrame(suggestions), use_container_width=True, hide_index=True)
+        _render_suggestion_cards(suggestions)
     else:
         st.info("리팩토링 제안이 없습니다.")
 
@@ -73,6 +95,17 @@ def _render_review_history(project_id: int) -> None:
         for review in reviews
     ]
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def _render_latest_saved_review(project_id: int) -> None:
+    with SessionLocal() as db:
+        reviews = get_recent_code_reviews(db, project_id, limit=1)
+
+    if not reviews:
+        return
+
+    st.caption("가장 최근에 저장된 AI Code Review 결과입니다. 새 리뷰를 실행하면 이 영역과 아래 기록이 함께 갱신됩니다.")
+    _render_review_result(reviews[0])
 
 
 def render_code_review_page() -> None:
@@ -106,6 +139,7 @@ def render_code_review_page() -> None:
     elif target_type in {"working_tree", "staged"}:
         st.info("이 옵션은 앱 서버 Git 저장소의 local 변경을 리뷰합니다. 개발자 개인 PC의 작업트리나 staged 변경은 서버 앱에서 직접 볼 수 없습니다.")
 
+    rendered_current_review = False
     if st.button("AI 코드리뷰 실행", type="primary"):
         with SessionLocal() as db:
             project = db.query(Project).filter(Project.id == project_id).one()
@@ -118,6 +152,9 @@ def render_code_review_page() -> None:
                 st.error(error)
         elif result.review:
             _render_review_result(result.review)
+            rendered_current_review = True
 
     st.divider()
+    if not rendered_current_review:
+        _render_latest_saved_review(project_id)
     _render_review_history(project_id)

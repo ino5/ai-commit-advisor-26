@@ -6,9 +6,14 @@ from dataclasses import dataclass, field
 import os
 from pathlib import Path
 import sys
+from urllib.parse import parse_qs, urlparse
 
 from PIL import Image
 from playwright.sync_api import Error, Page, sync_playwright
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 
 @dataclass(frozen=True)
@@ -24,6 +29,7 @@ class FeatureScenario:
     scroll_to_text: str | None = None
     full_page: bool = True
     tab_label: str | None = None
+    radio_label: str | None = None
     fill_label: str | None = None
     fill_value: str | None = None
     click_label: str | None = None
@@ -32,6 +38,7 @@ class FeatureScenario:
     action_wait_text: str | None = None
     expander_label: str | None = None
     crop_box: tuple[int, int, int, int] | None = None
+    preseed_code_review_ref: str | None = None
 
 
 SCENARIOS: dict[str, FeatureScenario] = {
@@ -592,10 +599,20 @@ SCENARIOS: dict[str, FeatureScenario] = {
     "ai-code-review": FeatureScenario(
         name="ai-code-review",
         sidebar_label="AI Code Review",
-        wait_text="리뷰 대상",
-        required_texts=("AI Code Review", "리뷰 대상", "AI 코드리뷰 실행"),
+        wait_text="리뷰 결과",
+        required_texts=(
+            "AI Code Review",
+            "리뷰 결과",
+            "버그 탐지",
+            "PaymentService.java",
+            "0원 결제",
+            "리팩토링 제안",
+            "리뷰 기록",
+        ),
         default_screenshot="docs/images/features/ai-code-review.png",
-        description="AI Code Review 대상 선택 화면",
+        description="AI Code Review 결과 화면",
+        preseed_code_review_ref="2d80976",
+        scroll_to_text="리뷰 결과",
     ),
     "settings": FeatureScenario(
         name="settings",
@@ -685,11 +702,24 @@ def _open_app(page: Page, url: str) -> None:
 
 
 def _navigate_to_sidebar_item(page: Page, label: str) -> None:
-    sidebar = page.locator('section[data-testid="stSidebar"]')
     _expand_sidebar_group(page, SIDEBAR_GROUP_BY_LABEL.get(label))
-    item = sidebar.get_by_text(label, exact=True).last
-    item.wait_for(timeout=15_000)
-    item.click()
+    page.evaluate(
+        """
+        (label) => {
+            const sidebar = document.querySelector('section[data-testid="stSidebar"]');
+            if (!sidebar) {
+                throw new Error("Sidebar not found");
+            }
+            const buttons = Array.from(sidebar.querySelectorAll('.stButton > button'));
+            const button = buttons.find((item) => (item.innerText || item.textContent || '').trim() === label);
+            if (!button) {
+                throw new Error(`Sidebar button not found: ${label}`);
+            }
+            button.click();
+        }
+        """,
+        label,
+    )
 
 
 def _expand_sidebar_group(page: Page, group: str | None) -> None:
@@ -704,7 +734,7 @@ def _expand_sidebar_group(page: Page, group: str | None) -> None:
             }
             const details = Array.from(sidebar.querySelectorAll('details')).find((item) => {
                 const summaryText = (item.querySelector('summary')?.innerText || '').trim();
-                return summaryText === group;
+                return summaryText === group || summaryText.includes(group);
             });
             if (details && !details.open) {
                 details.querySelector('summary')?.click();
@@ -713,6 +743,7 @@ def _expand_sidebar_group(page: Page, group: str | None) -> None:
         """,
         group,
     )
+    page.wait_for_timeout(300)
 
 
 def _select_sidebar_project(page: Page, project_name: str | None) -> None:
@@ -907,6 +938,38 @@ def _default_output_path(scenario: FeatureScenario, output_dir: str | None) -> P
     return Path(output_dir or "docs/images/features") / f"{scenario.name}.png"
 
 
+def _project_id_from_url(url: str) -> int | None:
+    values = parse_qs(urlparse(url).query).get("project_id") or []
+    if not values:
+        return None
+    try:
+        return int(values[0])
+    except ValueError:
+        return None
+
+
+def _preseed_code_review_result(url: str, target_ref: str) -> None:
+    project_id = _project_id_from_url(url)
+    if project_id is None:
+        raise SystemExit("AI Code Review screenshot requires a project_id query parameter.")
+
+    from src.db.database import SessionLocal
+    from src.db.models import Project
+    from src.services.code_review_service import CodeReviewService
+    from src.services.llm_client import LLMClient
+
+    with SessionLocal() as db:
+        project = db.query(Project).filter(Project.id == project_id).one()
+        result = CodeReviewService(llm_client=LLMClient(provider="mock")).review_project(
+            db,
+            project,
+            target_type="commit",
+            target_ref=target_ref,
+        )
+        if result.errors:
+            raise SystemExit("; ".join(result.errors))
+
+
 def _capture_scenario(
     page: Page,
     url: str,
@@ -916,6 +979,9 @@ def _capture_scenario(
     extra_forbidden_texts: tuple[str, ...],
     project_name: str | None,
 ) -> str:
+    if scenario.preseed_code_review_ref:
+        _preseed_code_review_result(url, scenario.preseed_code_review_ref)
+
     _open_app(page, url)
     _select_sidebar_project(page, project_name)
     if scenario.sidebar_label:
@@ -927,6 +993,8 @@ def _capture_scenario(
             _wait_for_body_text(page, scenario.action_wait_text, timeout=180_000)
     if scenario.tab_label:
         page.get_by_role("tab", name=scenario.tab_label).click()
+    if scenario.radio_label:
+        page.locator("label").filter(has_text=scenario.radio_label).click()
     if scenario.fill_label and scenario.fill_value is not None:
         page.get_by_label(scenario.fill_label).fill(scenario.fill_value)
         page.keyboard.press("Tab")

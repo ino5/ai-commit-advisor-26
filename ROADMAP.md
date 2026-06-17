@@ -101,6 +101,7 @@
 | P2 | Docs UX | Application Preview expanded sections | Done | Application Preview expanded sections |
 | P2 | Docs / Screenshot UX | Project Chat GraphRAG preview screenshot | Done | Project Chat GraphRAG preview screenshot |
 | P2 | Project Chat UX | Interactive GraphRAG evidence visualization | Done | Project Chat GraphRAG interactive visualization |
+| P2 | Code Review / Demo UX | AI Code Review demo evidence and preview screenshot | Done | AI Code Review demo evidence and preview screenshot |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
@@ -398,8 +399,26 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P2 | Docs / Screenshot UX | AI Code Review result preview screenshot | 현재 Application Preview의 AI Code Review 이미지는 리뷰 대상 선택만 보여줘 결과가 없는 기능처럼 보인다. 샘플 프로젝트의 bug-introducing payment commit 또는 dashboard cross-module commit으로 실제 finding/result가 저장된 상태를 캡처해야 기능 가치가 드러난다. |
-| P2 | Sample Data / Demo Quality | Scenario-designed sample evidence for rich AI outputs | 단순히 commit 수나 row 수를 늘리는 것으로는 기능 가치가 드러나지 않는다. AI Code Review가 풍부한 finding을 낼 수 있는 bug-introducing/refactoring/cross-module commit, Risk/AI Progress가 대비를 만들 plan/source gap, GraphRAG와 Project Chat이 설명할 수 있는 class/domain 관계처럼 기능별 LLM 판단 재료를 의도적으로 설계해야 한다. |
+| P2 | Sample Data / Demo Quality | Scenario-designed sample evidence for rich AI outputs across features | 단순히 commit 수나 row 수를 늘리는 것으로는 기능 가치가 드러나지 않는다. Risk/AI Progress가 대비를 만들 plan/source gap, GraphRAG와 Project Chat이 설명할 수 있는 class/domain 관계, PL Briefing이 요약할 수 있는 운영 evidence처럼 기능별 LLM 판단 재료를 계속 확장해야 한다. |
+
+## P2 - AI Code Review Demo Evidence And Preview Screenshot
+
+Status: Done
+
+Goal:
+Application Preview의 AI Code Review 화면이 대상 선택만 보여주는 상태를 벗어나, 샘플 프로젝트의 의도된 risky/refactoring commit을 기반으로 실제 review finding과 제안이 보이는 결과 화면을 보여준다.
+
+Rationale:
+AI Code Review는 단순 데이터량보다 리뷰할 만한 diff와 commit message가 중요하다. 샘플 프로젝트에는 bug-introducing payment commit과 dashboard cross-module commit이 이미 있지만, mock/default 실행과 preview screenshot은 그 근거를 풍부한 결과로 드러내지 못했다. 이 작업은 LLM이든 mock provider든 데모에서 구체적인 finding, 영향, 제안 수정이 보이게 만드는 범위다.
+
+Checklist:
+
+- [x] AI Code Review mock/default result가 샘플 risky/refactoring commit 신호를 읽어 concrete finding을 만들도록 보강한다.
+- [x] 결과 화면을 캡처할 수 있도록 screenshot automation을 갱신한다.
+- [x] Application Preview 문구와 screenshot을 결과 중심으로 갱신한다.
+- [x] 샘플 설계 문서의 AI Code Review commit quality 기준과 preview 흐름을 맞춘다.
+- [x] Focused tests와 screenshot verification을 실행한다.
+- [x] `AI_CHANGELOG.md`를 갱신한다.
 
 ## P1 - AI 검증 Trace View
 
