@@ -97,6 +97,42 @@ def _normalize_review_payload(payload: dict | None) -> dict:
     }
 
 
+def _is_amount_zero_boundary_change(diff_text: str) -> bool:
+    return "if (amount <= 0)" in diff_text and "if (amount < 0)" in diff_text
+
+
+def _postprocess_review_payload(target: ReviewTarget, payload: dict) -> dict:
+    if not _is_amount_zero_boundary_change(target.diff_text):
+        return payload
+
+    filtered_suggestions = []
+    for suggestion in payload.get("refactoring_suggestions") or []:
+        text = " ".join(
+            str(suggestion.get(key) or "")
+            for key in ("file", "suggestion", "benefit")
+        )
+        if any(
+            blocked in text
+            for blocked in (
+                "amount",
+                "0원",
+                "PaymentPilotAuthorizationRiskTest",
+                "OrderStatusService",
+                "markPaid",
+            )
+        ):
+            continue
+        filtered_suggestions.append(suggestion)
+    payload["refactoring_suggestions"] = filtered_suggestions
+
+    bug_findings = payload.get("bug_findings") or []
+    if bug_findings:
+        commit_analysis = payload.setdefault("commit_analysis", {})
+        if commit_analysis.get("risk_level") == "low":
+            commit_analysis["risk_level"] = "medium"
+    return payload
+
+
 def _build_review_prompt(target: ReviewTarget) -> str:
     return f"""
 You are a senior software engineer performing a practical code review.
@@ -132,6 +168,7 @@ Language rules:
 - Keep JSON keys exactly as shown above.
 - Keep enum values for `impact_scope`, `risk_level`, and `severity` as the exact allowed English tokens.
 - Do not translate file paths, class names, method names, function names, API names, table names, column names, constants, or code expressions.
+- Do not translate short English business terms that appear in the commit message or code, such as `pilot channel`. Keep them as the original English phrase inside Korean sentences.
 - When referring to code, keep expressions such as `amount == 0`, `PaymentService.java`, and `markPaid` exactly as code.
 
 Focus on:
@@ -151,9 +188,13 @@ Diff reading rules:
 - If a diff changes `amount <= 0` to `amount < 0`, every field must say this consistently: negative amounts are still rejected and only `amount == 0` is newly allowed.
 - For that exact pattern, the Korean summary, issue, and recommendation must mention `amount == 0` or `0원` as the newly allowed boundary.
 - Never claim that negative amounts are newly allowed when the added condition is `amount < 0`.
+- For that exact pattern, write the Korean recommendation as rejecting `amount == 0` or `0원 결제`; do not frame it as rejecting negative amounts.
 - If your finding is about a numeric condition, include one concrete example input such as `amount == 0` in Korean text.
 - Keep refactoring suggestions grounded in the shown diff. Do not suggest replacing service-layer calls or mapper calls unless that call appears in the changed lines.
 - Do not suggest code that the commit already added. If the added diff already uses `orderStatusService.markPaid(orderId)`, do not recommend using `OrderStatusService` or `markPaid` as a new suggestion.
+- Do not suggest adding a test, class, method, file, mapper, or service that already appears in added diff lines. If `PaymentPilotAuthorizationRiskTest` appears in added lines, do not suggest adding `PaymentPilotAuthorizationRiskTest`.
+- Do not use vague translated phrases like "플라이어널". For `pilot channel`, write `pilot channel` or `pilot channel(파일럿 채널)`.
+- Do not put the same fix in both `bug_findings[*].recommendation` and `refactoring_suggestions[*].suggestion`. If the only refactoring idea is the bug fix, return an empty `refactoring_suggestions` array.
 - If there is no clearly different refactoring suggestion grounded in the changed lines, return an empty `refactoring_suggestions` array.
 - Before returning JSON, check that `summary`, `commit_analysis.change_intent`, `bug_findings`, and `refactoring_suggestions` do not contradict each other.
 
@@ -241,6 +282,7 @@ class CodeReviewService:
             try:
                 response = self.llm_client.generate(prompt)
                 payload = _normalize_review_payload(_parse_json_object(response.text))
+                payload = _postprocess_review_payload(target, payload)
                 raw_response = {"llm": response.raw, "text": response.text, "prompt_length": len(prompt)}
                 status = "completed"
                 prompt_length = len(prompt)

@@ -115,13 +115,13 @@ Application Preview의 AI Code Review 화면이 단순 추천 목록이나 mock 
 
 | Commit | 실제 리뷰 결과 |
 |---|---|
-| `2325182 Relax partner payment validation for pilot channel` | `완료`, `보통` 위험도, bug finding 1건. `amount <= 0` 검증이 `amount < 0`으로 완화되어 `0원` 결제가 허용되는 문제를 한국어로 탐지했습니다. |
+| `2325182 Relax partner payment validation for pilot channel` | `완료`, `보통` 위험도, bug finding 1건, refactoring suggestion 0건. `pilot channel` 원문을 유지하면서 `amount <= 0` 검증이 `amount < 0`으로 완화되어 `0원` 결제가 허용되는 문제를 한국어로 탐지했습니다. |
 | `5999f24 Reject excessive payment amount requests` | `completed`, `low` risk, bug finding 0건. 최대 승인 금액 차단 규칙과 테스트 추가를 방어성 변경으로 요약했습니다. |
 | `7e5e41 Change dashboard summary query across operations modules` | `completed`, `low` risk, bug finding 1건. dashboard summary query 변경의 집계 영향과 SQL 유지보수 제안을 남겼습니다. |
 | `95562a1 Fix dashboard summary over-counting` | `completed`, `low` risk, bug finding 1건. 독립 subquery 기반 집계 보정과 테스트 추가를 리뷰했습니다. |
 | `3cb54de Add coupon mapper draft without policy enforcement` | `completed`, `low` risk, bug finding 0건. coupon mapper 초안에 대한 후속 정책 적용/검증 보강 제안을 남겼습니다. |
 
-통과 기준은 AI Code Review 화면이 `local_openai / qwen2.5-coder-7b-instruct`, `2325182`, `0원`, `완료`, `PaymentService.java`, `리뷰 기록`을 포함하고, `Mock review`, `LLM 코드리뷰 호출 실패`, `Traceback`, `StreamlitAPIException`을 포함하지 않는 것입니다.
+통과 기준은 AI Code Review 화면이 `local_openai / qwen2.5-coder-7b-instruct`, `2325182`, `0원`, `pilot channel`, `완료`, `PaymentService.java`, `리팩토링 제안이 없습니다`, `리뷰 기록`을 포함하고, `플라이어널`, `PaymentPilotAuthorizationRiskTest 클래스 추가`, `Mock review`, `LLM 코드리뷰 호출 실패`, `Traceback`, `StreamlitAPIException`을 포함하지 않는 것입니다.
 
 ## 2026-06-17 Project Chat 재현 검증
 
@@ -181,7 +181,7 @@ Mermaid/문서 검증과 화면 캡처:
 $env:LLM_PROVIDER='local_openai'
 $env:LLM_MODEL='qwen2.5-coder-7b-instruct'
 $env:LLM_BASE_URL='http://127.0.0.1:1234/v1'
-.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8522/?project_id=97" --feature ai-code-review --screenshot docs\images\usage-verification\ai-code-review-repro-2026-06-17.png --surface local --height 2600 --expect-text "2325182" --expect-text "0원" --expect-text "완료" --expect-text "리뷰 기록" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8523/?project_id=97" --feature ai-code-review --screenshot docs\images\usage-verification\ai-code-review-repro-2026-06-17.png --surface local --height 2600 --expect-text "2325182" --expect-text "0원" --expect-text "pilot channel" --expect-text "완료" --expect-text "리팩토링 제안이 없습니다" --expect-text "리뷰 기록" --forbid-text "플라이어널" --forbid-text "PaymentPilotAuthorizationRiskTest 클래스 추가" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"
 ```
 
 2026-06-17 Project Chat 재현 검증:

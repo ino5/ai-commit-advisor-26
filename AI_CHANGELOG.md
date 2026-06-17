@@ -2,6 +2,16 @@
 
 ## 2026-06-17
 
+### AI Code Review grounded suggestion 보정
+
+- AI Code Review prompt에서 `pilot channel`처럼 commit message나 code에 나온 짧은 영어 업무 표현을 한국어 문장 안에서도 원문 유지하도록 했습니다.
+- diff에 이미 추가된 test/class/method/file/service를 다시 추가하라고 제안하지 않도록 prompt를 보강했습니다.
+- `amount <= 0`에서 `amount < 0`으로 바뀐 경계값 변경에서는 bug fix와 같은 내용을 refactoring suggestion으로 반복하거나 `amount` 조건을 억지로 다시 제안하는 항목을 후처리로 제거하게 했습니다.
+- Project 97의 `2325182 Relax partner payment validation for pilot channel`을 실제 `local_openai / qwen2.5-coder-7b-instruct`로 다시 리뷰해 `review.id=411`, bug finding 1건, refactoring suggestion 0건 결과를 저장했습니다.
+- Application Preview AI Code Review screenshot을 `pilot channel` 원문 유지, `0원` bug finding, `리팩토링 제안이 없습니다` 상태가 보이는 화면으로 갱신했습니다.
+- 주요 파일: `src/services/code_review_service.py`, `tests/test_code_review_korean_output.py`, `scripts/capture_feature_screenshot.py`, `docs/application-preview.md`, `docs/ai-technical-overview.md`, `docs/sample-project-usage-verification.md`, `docs/failure-history.md`, `docs/images/features/ai-code-review.png`, `docs/images/usage-verification/ai-code-review-repro-2026-06-17.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\services\code_review_service.py tests\test_code_review_korean_output.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_code_review_korean_output.py -q` 3개 통과; 실제 local LLM 리뷰 실행 결과 `review.id=411`, `status=completed`, `risk_level=medium`, bug finding 1건, refactoring suggestion 0건; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8523/?project_id=97" --feature ai-code-review --screenshot docs\images\features\ai-code-review.png --surface local --height 2600 --expect-text "2325182" --expect-text "0원" --expect-text "pilot channel" --expect-text "완료" --expect-text "리팩토링 제안이 없습니다" --expect-text "리뷰 기록" --forbid-text "플라이어널" --forbid-text "PaymentPilotAuthorizationRiskTest 클래스 추가" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"` 통과; `Get-FileHash docs\images\features\ai-code-review.png,docs\images\usage-verification\ai-code-review-repro-2026-06-17.png` 결과 두 파일 hash 동일.
+
 ### AI Code Review 한국어 출력과 상태 표시 개선
 
 - AI Code Review prompt가 요약, 변경 의도, 버그 후보, 권장 수정, 리팩토링 제안 같은 사람이 읽는 값을 한국어로 작성하도록 바꿨습니다.
