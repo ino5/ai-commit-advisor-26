@@ -1,5 +1,12 @@
+from types import SimpleNamespace
+
 from src.services.code_review_service import ReviewTarget, _build_review_prompt, _postprocess_review_payload
-from src.ui.code_review_page import _commit_analysis_display_rows, _severity_label, _status_label
+from src.ui.code_review_page import (
+    _commit_analysis_display_rows,
+    _review_metadata_display_rows,
+    _severity_label,
+    _status_label,
+)
 
 
 def test_code_review_prompt_requests_korean_human_readable_values() -> None:
@@ -50,6 +57,22 @@ def test_code_review_page_labels_saved_status_and_review_enums_in_korean() -> No
         ("위험도", "보통"),
         ("영향 범위", "모듈"),
         ("변경 의도", "결제 검증 조건을 완화합니다."),
+    ]
+
+
+def test_review_metadata_rows_are_compact_key_values() -> None:
+    review = SimpleNamespace(
+        status="completed",
+        target_type="commit",
+        target_ref="2325182ecf5cb054",
+        raw_response={"llm": {"provider": "local_openai", "model": "qwen2.5-coder-7b-instruct"}},
+    )
+
+    assert _review_metadata_display_rows(review) == [
+        ("상태", "완료"),
+        ("Provider", "local_openai / qwen2.5-coder-7b-instruct"),
+        ("대상", "특정 커밋"),
+        ("참조", "2325182ecf5c"),
     ]
 
 

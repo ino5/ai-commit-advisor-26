@@ -116,6 +116,7 @@
 | P1 | Code Review / Demo Quality | AI Code Review selected sample commit execution | Done | AI Code Review 선별 커밋 실제 실행과 preview 갱신 |
 | P1 | Code Review UX | Korean AI Code Review output and status labels | Done | AI Code Review 한국어 출력과 상태 표시 개선 |
 | P1 | Code Review Quality | Grounded Korean AI Code Review suggestions | Done | AI Code Review grounded suggestion 보정 |
+| P2 | Code Review UX | Compact AI Code Review metadata display | Done | AI Code Review 메타데이터 표시 compact화 |
 | P2 | Sample Data / Demo Quality | Source-first sample project and demo verification guide | Done | Source-first sample project and demo verification guide |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |

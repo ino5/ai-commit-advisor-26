@@ -181,7 +181,7 @@ Mermaid/문서 검증과 화면 캡처:
 $env:LLM_PROVIDER='local_openai'
 $env:LLM_MODEL='qwen2.5-coder-7b-instruct'
 $env:LLM_BASE_URL='http://127.0.0.1:1234/v1'
-.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8523/?project_id=97" --feature ai-code-review --screenshot docs\images\usage-verification\ai-code-review-repro-2026-06-17.png --surface local --height 2600 --expect-text "2325182" --expect-text "0원" --expect-text "pilot channel" --expect-text "완료" --expect-text "리팩토링 제안이 없습니다" --expect-text "리뷰 기록" --forbid-text "플라이어널" --forbid-text "PaymentPilotAuthorizationRiskTest 클래스 추가" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8524/?project_id=97" --feature ai-code-review --screenshot docs\images\usage-verification\ai-code-review-repro-2026-06-17.png --surface local --height 2600 --expect-text "리뷰 메타데이터" --expect-text "2325182" --expect-text "0원" --expect-text "pilot channel" --expect-text "완료" --expect-text "리팩토링 제안이 없습니다" --expect-text "리뷰 기록" --forbid-text "플라이어널" --forbid-text "PaymentPilotAuthorizationRiskTest 클래스 추가" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"
 ```
 
 2026-06-17 Project Chat 재현 검증:

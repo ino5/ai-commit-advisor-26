@@ -2,6 +2,14 @@
 
 ## 2026-06-17
 
+### AI Code Review 메타데이터 표시 compact화
+
+- AI Code Review 결과 상단의 `상태`, `Provider`, `대상`, `참조` 표시를 큰 `st.metric` 4개에서 작은 `리뷰 메타데이터` key-value 표로 바꿨습니다.
+- 리뷰 본문보다 보조 속성이 과하게 커 보이는 문제를 줄이고, 기존 `커밋 분석` 표와 같은 표시 패턴으로 맞췄습니다.
+- Application Preview AI Code Review screenshot과 검증 증거 이미지를 compact metadata 표시 화면으로 갱신했습니다.
+- 주요 파일: `src/ui/code_review_page.py`, `tests/test_code_review_korean_output.py`, `docs/application-preview.md`, `docs/sample-project-usage-verification.md`, `docs/images/features/ai-code-review.png`, `docs/images/usage-verification/ai-code-review-repro-2026-06-17.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\code_review_page.py tests\test_code_review_korean_output.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_code_review_korean_output.py -q` 4개 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8524/?project_id=97" --feature ai-code-review --screenshot docs\images\features\ai-code-review.png --surface local --height 2600 --expect-text "리뷰 메타데이터" --expect-text "2325182" --expect-text "0원" --expect-text "pilot channel" --expect-text "완료" --expect-text "리팩토링 제안이 없습니다" --expect-text "리뷰 기록" --forbid-text "플라이어널" --forbid-text "PaymentPilotAuthorizationRiskTest 클래스 추가" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"` 통과; `Get-FileHash docs\images\features\ai-code-review.png,docs\images\usage-verification\ai-code-review-repro-2026-06-17.png` 결과 두 파일 hash 동일.
+
 ### AI Code Review grounded suggestion 보정
 
 - AI Code Review prompt에서 `pilot channel`처럼 commit message나 code에 나온 짧은 영어 업무 표현을 한국어 문장 안에서도 원문 유지하도록 했습니다.

@@ -64,6 +64,15 @@ def _commit_analysis_display_rows(commit_analysis: dict) -> list[tuple[str, obje
     return rows
 
 
+def _review_metadata_display_rows(review) -> list[tuple[str, object]]:
+    return [
+        ("상태", _status_label(review.status)),
+        ("Provider", _review_provider_label(review)),
+        ("대상", TARGET_TYPE_LABELS.get(review.target_type, review.target_type)),
+        ("참조", review.target_ref[:12] if review.target_ref else "-"),
+    ]
+
+
 def _review_provider_label(review) -> str:
     raw_response = review.raw_response or {}
     if isinstance(raw_response.get("llm"), dict):
@@ -97,11 +106,8 @@ def _render_suggestion_cards(suggestions: list[dict]) -> None:
 
 def _render_review_result(review) -> None:
     st.subheader("리뷰 결과")
-    status_col, provider_col, target_col, ref_col = st.columns(4)
-    status_col.metric("상태", _status_label(review.status))
-    provider_col.metric("Provider", _review_provider_label(review))
-    target_col.metric("대상", TARGET_TYPE_LABELS.get(review.target_type, review.target_type))
-    ref_col.metric("참조", review.target_ref[:12] if review.target_ref else "-")
+    st.markdown("**리뷰 메타데이터**")
+    st.table(key_value_dataframe(_review_metadata_display_rows(review)))
 
     st.markdown("**요약**")
     st.write(review.summary or "-")
