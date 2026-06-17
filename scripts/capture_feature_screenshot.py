@@ -701,6 +701,10 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def _open_app(page: Page, url: str) -> None:
     page.goto(url, wait_until="networkidle", timeout=30_000)
+    page.wait_for_function(
+        "() => document.querySelector('section[data-testid=\"stSidebar\"]')",
+        timeout=30_000,
+    )
 
 
 def _navigate_to_sidebar_item(page: Page, label: str) -> None:

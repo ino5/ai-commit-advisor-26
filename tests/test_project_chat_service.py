@@ -2,7 +2,12 @@ import subprocess
 from pathlib import Path
 
 from src.db.models import Project
-from src.rag.chat_service import INSUFFICIENT_EVIDENCE_ANSWER, answer_source_question
+from src.rag.chat_service import (
+    INSUFFICIENT_EVIDENCE_ANSWER,
+    _build_prompt,
+    _sort_verified_sources_for_prompt,
+    answer_source_question,
+)
 from src.rag.source_verifier import hash_text
 from src.services.git_service import get_head_commit_hash
 
@@ -191,6 +196,67 @@ def test_answer_source_question_keeps_verified_source_citation_metadata(tmp_path
     assert answer.sources[0]["metadata"]["file_path"] == "src/app.py"
     assert answer.sources[0]["metadata"]["line_start"] == 1
     assert "src/app.py:1-2" in answer.answer
+
+
+def test_sort_verified_sources_prioritizes_question_identifiers():
+    sources = [
+        {
+            "source_type": "source_file",
+            "source_id": "src/main/java/com/example/market/payment/mapper/PaymentMapper.java",
+            "text": "public interface PaymentMapper {}",
+            "metadata": {"file_path": "src/main/java/com/example/market/payment/mapper/PaymentMapper.java", "line_start": 1},
+            "similarity": 0.99,
+        },
+        {
+            "source_type": "source_file",
+            "source_id": "src/main/java/com/example/market/order/mapper/OrderMapper.java",
+            "text": "public interface OrderMapper { void updateOrderStatus(long orderId, String status); }",
+            "metadata": {"file_path": "src/main/java/com/example/market/order/mapper/OrderMapper.java", "line_start": 1},
+            "similarity": 0.8,
+        },
+        {
+            "source_type": "source_file",
+            "source_id": "src/main/java/com/example/market/payment/service/PaymentService.java",
+            "text": "import com.example.market.order.mapper.OrderMapper; public class PaymentService {}",
+            "metadata": {"file_path": "src/main/java/com/example/market/payment/service/PaymentService.java", "line_start": 1},
+            "similarity": 0.7,
+        },
+    ]
+
+    sorted_sources = _sort_verified_sources_for_prompt(
+        sources,
+        "PaymentService와 OrderMapper는 어떤 클래스 import 관계야?",
+    )
+
+    top_files = {source["metadata"]["file_path"].rsplit("/", 1)[-1] for source in sorted_sources[:2]}
+    assert top_files == {"PaymentService.java", "OrderMapper.java"}
+
+
+def test_prompt_with_verified_sources_does_not_prime_exact_insufficient_answer():
+    prompt = _build_prompt(
+        "PaymentService와 OrderMapper 관계를 설명해줘",
+        [
+            {
+                "source_type": "source_file",
+                "source_id": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                "text": "import com.example.market.order.mapper.OrderMapper;\norderMapper.updateOrderStatus(orderId, \"PAID\");",
+                "metadata": {
+                    "file_path": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                    "line_start": 1,
+                    "line_end": 3,
+                },
+                "verification_status": "verified",
+            }
+        ],
+        [],
+        [],
+    )
+
+    assert INSUFFICIENT_EVIDENCE_ANSWER not in prompt
+    assert "still answer the parts that are covered" in prompt
+    assert "Named identifier focus" in prompt
+    assert "import com.example.market.order.mapper.OrderMapper" in prompt
+    assert "orderMapper.updateOrderStatus(orderId, \"PAID\")" in prompt
 
 
 def test_answer_source_question_adds_graph_evidence_without_replacing_source_verification(tmp_path):

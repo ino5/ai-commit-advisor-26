@@ -31,6 +31,92 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-17 - Application Preview Project Chat 질문은 같은 질문 재실행으로 검증해야 한다
+
+분류:
+
+- Project Chat/RAG replay failure
+- Application Preview verification gap
+- Local LLM prompt/context limit finding
+
+관련 기능 및 문서:
+
+- `src/rag/chat_service.py`
+- `src/services/llm_client.py`
+- `scripts/capture_feature_screenshot.py`
+- `docs/images/usage-verification/project-chat-repro-2026-06-17.png`
+- `docs/images/usage-verification/project-chat-graph-repro-2026-06-17.png`
+- `AI_CHANGELOG.md` 항목 `Project Chat preview 질문 재현 안정화`
+
+### 증상
+
+Application Preview에 올린 Project Chat 화면은 `PaymentService`와 `OrderMapper`의 관계를 잘 보여줬지만, 같은 한국어 질문을 다시 실행하면 `현재 검증된 소스 근거만으로는 답변하기 어렵습니다.`가 반환될 수 있었습니다. 근거 수를 늘려 다시 시도하면 LM Studio의 `qwen2.5-coder-7b-instruct` 4096 token context를 넘을 가능성도 있었습니다.
+
+### 직접 원인
+
+Project Chat prompt가 verified source가 있는 경우에도 정확한 insufficient-evidence 문구를 instruction 안에 그대로 포함해 local LLM이 그 문구를 과하게 따를 수 있었습니다. 또한 질문의 `PaymentService와`, `OrderMapper는` 같은 한국어 조사 결합 identifier가 source chunk 우선순위에서 충분히 강하게 작동하지 않아, 관계 질문에 필요한 named file 근거가 prompt 앞쪽에 안정적으로 들어가지 않았습니다.
+
+`LLMClient` system prompt는 모든 응답에 JSON만 강제하는 문구를 사용하고 있었고, Project Chat은 자연어 Markdown 답변을 기대했습니다. 작은 context local LLM에서는 source, history, graph evidence를 모두 많이 넣으면 답변 품질 문제가 아니라 context overflow 문제가 먼저 생길 수 있었습니다.
+
+### 배경 또는 구조적 원인
+
+이전 screenshot 검증은 저장된 chat session을 화면에서 다시 여는 데 집중했습니다. 이 방식은 provider/model/fallback metadata와 화면 표시는 확인하지만, 사용자가 같은 질문을 다시 눌렀을 때 LLM/RAG pipeline이 같은 수준으로 답하는지는 별도로 보장하지 않습니다. Application Preview는 제품 가치 증거 역할을 하므로, 저장 결과 확인과 같은 질문 재실행 검증을 분리해서 봐야 합니다.
+
+### 사전 검증에서 놓친 이유
+
+Capture script는 화면에 기대 문자열이 보이는지 확인했지만, screenshot에 쓰인 질문을 새로 실행해 답변 내용을 비교하는 replay 검증은 없었습니다. 테스트도 source verification과 citation 위주였고, 한국어 조사 결합 identifier가 실제 prompt source ordering과 named relationship answer에 어떤 영향을 주는지 검증하지 않았습니다.
+
+### 수정 내용
+
+- 질문에서 code identifier를 추출할 때 한국어 조사가 붙은 입력을 처리하고, 질문 identifier와 일치하는 `source_file` chunk를 verified source에 추가했습니다.
+- verified source를 prompt에 넣기 전에 질문 identifier가 포함된 파일과 chunk를 우선 정렬했습니다.
+- named identifier focus block을 만들어 import line, method call, graph `class_import` 관계가 LLM context 앞쪽에 들어가게 했습니다.
+- verified source가 있을 때 prompt가 insufficient-evidence 답변을 그대로 유도하지 않도록 바꾸고, 확인 가능한 부분은 답변하되 부족한 세부사항만 제한적으로 말하도록 했습니다.
+- 작은 local LLM context를 고려해 LLM prompt의 source/history/graph evidence 수를 제한했습니다.
+- Project Chat 답변 정규화에서 Markdown fence를 제거하고, `LLMClient` system prompt가 JSON만 강제하지 않고 사용자 요청 형식을 따르도록 바꿨습니다.
+- screenshot capture가 Streamlit sidebar 로딩을 기다리게 했습니다.
+
+### 재발 방지 규칙
+
+- Application Preview에 AI 답변 screenshot을 갱신하거나 보존할 때는 저장된 화면 캡처만 확인하지 말고, 같은 질문을 실제 provider로 다시 실행해 `fallback=False`, `insufficient=False`, 핵심 답변 token, source file, graph evidence를 함께 확인합니다.
+- Project Chat 관계 질문은 질문에 등장한 class/file/method identifier가 prompt source ordering에 반영되는지 테스트로 고정합니다.
+- local LLM 검증에서는 답변 품질 문제와 context overflow 문제를 분리해서 기록하고, `TOP K`, graph evidence, history context 포함 여부를 남깁니다.
+- screenshot capture는 의미 있는 workflow state를 보여주되, `Mock answer`, `fallback=True`, `Traceback` 같은 금지 조건을 함께 둡니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+Local LLM 답변 문장 자체는 모델 상태와 sampling에 따라 달라질 수 있습니다. 재현 기준은 동일 문장 복제가 아니라 실제 provider가 verified source와 graph evidence를 사용해 같은 핵심 사실, 즉 `PaymentService`가 `OrderMapper`를 import하고 `updateOrderStatus(orderId, "PAID")`로 주문 상태를 갱신한다는 내용을 답하는지입니다.
+
+### 검증 명령과 결과
+
+```powershell
+.\.venv\Scripts\python.exe -m py_compile src\rag\chat_service.py src\services\llm_client.py tests\test_project_chat_service.py tests\test_project_chat_answer_format.py
+.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_service.py tests\test_project_chat_answer_format.py -q
+```
+
+결과: focused test 13개 통과.
+
+실제 local LLM 재실행 결과:
+
+- `chat_session=353`
+- `provider=local_openai`
+- `model=qwen2.5-coder-7b-instruct`
+- `fallback=False`
+- `insufficient=False`
+- `used_sources=12`
+- `graph_evidence=8`
+- 첫 graph evidence: `class_import PaymentService -> OrderMapper`
+- 답변 핵심 token: `updateOrderStatus`, `PAID`, `PaymentService.java`, `OrderMapper.java`
+
+Screenshot capture:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8520/?project_id=97" --feature project-chat-answer --screenshot docs\images\usage-verification\project-chat-repro-2026-06-17.png --surface local --height 1500 --expect-text "Provider: local_openai" --expect-text "fallback=False" --expect-text "updateOrderStatus" --expect-text "PAID" --expect-text "PaymentService.java" --expect-text "OrderMapper.java" --forbid-text "Mock answer" --forbid-text "fallback=True" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8520/?project_id=97" --feature project-chat-graph-evidence --screenshot docs\images\usage-verification\project-chat-graph-repro-2026-06-17.png --surface local --height 1500 --expect-text "Provider: local_openai" --expect-text "fallback=False" --expect-text "PaymentService" --expect-text "OrderMapper" --expect-text "class_import" --expect-text "updateOrderStatus" --forbid-text "Mock answer" --forbid-text "fallback=True" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"
+```
+
+결과: 두 screenshot capture 모두 통과.
+
 ## 2026-06-17 - 샘플 Project Chat 검증은 source_file 인덱스와 context budget을 먼저 확인해야 한다
 
 분류:

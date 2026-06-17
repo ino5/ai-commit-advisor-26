@@ -13,6 +13,12 @@ def test_clean_llm_answer_keeps_plain_markdown() -> None:
     assert clean_llm_answer(raw) == raw
 
 
+def test_clean_llm_answer_strips_markdown_fence() -> None:
+    raw = "```markdown\n- PaymentService는 OrderMapper를 import합니다.\n```"
+
+    assert clean_llm_answer(raw) == "- PaymentService는 OrderMapper를 import합니다."
+
+
 def test_clean_llm_answer_normalizes_common_mixed_language_phrase() -> None:
     assert clean_llm_answer("具体的으로 설명하면 처리됩니다.") == "구체적으로 설명하면 처리됩니다."
 

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from src.db.models import Project
+from src.db.models import DocumentChunk, Project
 from src.rag.query_expander import expand_query_with_standard_terms
 from src.rag.retriever import Retriever
 from src.rag.source_verifier import annotate_retrieval_result
@@ -91,32 +91,69 @@ def _format_graph_context_block(index: int, evidence: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_identifier_focus_block(question: str, current_sources: list[dict], graph_evidence: list[dict] | None) -> str:
+    identifiers = _query_code_identifiers(question)
+    lines: list[str] = []
+    for source in current_sources:
+        score = _source_identifier_score(source, identifiers)
+        if score <= 0:
+            continue
+        metadata = source.get("metadata") or {}
+        file_path = metadata.get("file_path") or source.get("source_id") or "-"
+        line_start = metadata.get("line_start")
+        line_end = metadata.get("line_end")
+        text = source.get("text") or ""
+        calls = sorted(set(re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\([^;\n]*\)", text)))
+        imports = sorted(set(re.findall(r"import\s+([A-Za-z0-9_.]+);", text)))
+        details = []
+        if imports:
+            details.append("imports=" + ", ".join(imports[:5]))
+        if calls:
+            details.append("calls=" + ", ".join(calls[:5]))
+        detail_text = "; ".join(details) if details else "matched named identifier"
+        lines.append(f"- `{file_path}:{line_start}-{line_end}` {detail_text}")
+
+    for index, evidence in enumerate(graph_evidence or [], start=1):
+        if evidence.get("evidence_type") != "class_import":
+            continue
+        source_class = evidence.get("source_class")
+        target_class = evidence.get("target_class")
+        if source_class and target_class:
+            lines.append(f"- Graph {index}: `{source_class}` imports `{target_class}`")
+
+    return "\n".join(lines) if lines else "None"
+
+
 def _build_prompt(
     question: str,
     current_sources: list[dict],
     historical_sources: list[dict],
     graph_evidence: list[dict] | None = None,
 ) -> str:
+    prompt_current_sources = current_sources[:6]
+    prompt_historical_sources = historical_sources[:2]
+    prompt_graph_evidence = list(graph_evidence or [])[:4]
     current_blocks = [
         _format_context_block(index, source, heading="Verified current source")
-        for index, source in enumerate(current_sources, start=1)
+        for index, source in enumerate(prompt_current_sources, start=1)
     ]
     historical_blocks = [
         _format_context_block(index, source, heading="Historical/reference evidence")
-        for index, source in enumerate(historical_sources, start=1)
+        for index, source in enumerate(prompt_historical_sources, start=1)
     ]
     graph_blocks = [
         _format_graph_context_block(index, evidence)
-        for index, evidence in enumerate(graph_evidence or [], start=1)
+        for index, evidence in enumerate(prompt_graph_evidence, start=1)
     ]
     historical_context = "\n\n".join(historical_blocks) if historical_blocks else "None"
     graph_context = "\n\n".join(graph_blocks) if graph_blocks else "None"
+    identifier_focus = _format_identifier_focus_block(question, prompt_current_sources, prompt_graph_evidence)
 
     return f"""
 You answer questions about the current source code.
 Use verified source_file context as the only basis for statements about the current code.
-If the verified source_file context does not contain enough evidence, answer exactly:
-{INSUFFICIENT_EVIDENCE_ANSWER}
+The application has already blocked questions with no verified source_file context before this prompt.
+If one requested detail is not covered by the verified source_file context, say that specific detail lacks evidence and still answer the parts that are covered.
 Do not speculate or fill gaps from general knowledge.
 Do not describe commit history or deleted diff lines as current source code.
 Commit and commit_file evidence, when present, is historical/reference evidence only.
@@ -124,6 +161,8 @@ Graph relationship evidence, when present, is supporting evidence for relationsh
 Do not use graph relationship evidence as a substitute for verified current source code.
 When using graph relationship evidence, separate it from source-code claims and cite it as Graph 1, Graph 2, etc.
 Always mention file path and line range for claims about code.
+When the question names classes, files, or methods, start with those named identifiers before related helper classes.
+For relationship questions, explicitly state import relationships from graph evidence and method calls found in verified source_file context.
 Answer in Korean.
 For normal answers, use Markdown prose and bullets.
 Do not wrap the answer in JSON.
@@ -132,6 +171,9 @@ Copy file paths and line ranges only from the provided context metadata. Do not 
 
 [Question]
 {question}
+
+[Named identifier focus]
+{identifier_focus}
 
 [Verified current source context]
 {chr(10).join(current_blocks)}
@@ -142,6 +184,123 @@ Copy file paths and line ranges only from the provided context metadata. Do not 
 [Graph relationship context]
 {graph_context}
 """.strip()
+
+
+def _query_code_identifiers(question: str) -> set[str]:
+    identifiers: set[str] = set()
+    for match in re.findall(r"[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)?", question):
+        token = match.strip(".,:;()[]{}\"'")
+        if len(token) < 3:
+            continue
+        identifiers.add(token.lower())
+        if "." in token:
+            identifiers.add(token.rsplit(".", 1)[-1].lower())
+    return identifiers
+
+
+def _source_identifier_score(source: dict, identifiers: set[str]) -> int:
+    if not identifiers:
+        return 0
+    metadata = source.get("metadata") or {}
+    file_path = str(metadata.get("file_path") or source.get("source_id") or "").lower()
+    text = str(source.get("text") or "").lower()
+    score = 0
+    for identifier in identifiers:
+        if identifier in file_path:
+            score += 4
+        if identifier in text:
+            score += 1
+    return score
+
+
+def _sort_verified_sources_for_prompt(sources: list[dict], question: str) -> list[dict]:
+    identifiers = _query_code_identifiers(question)
+
+    def sort_key(item: dict) -> tuple[int, int, int, float]:
+        metadata = item.get("metadata") or {}
+        file_path = str(metadata.get("file_path") or item.get("source_id") or "")
+        path_priority = 0 if file_path.startswith(("src/main/", "src/test/")) else 1
+        identifier_score = _source_identifier_score(item, identifiers)
+        line_start = int(metadata.get("line_start") or 0)
+        return (-identifier_score, path_priority, line_start, -float(item.get("similarity") or 0))
+
+    return sorted(sources, key=sort_key)
+
+
+def _file_paths_for_query_identifiers(db: Session, project_id: int, identifiers: set[str]) -> list[str]:
+    if not identifiers:
+        return []
+    rows = (
+        db.query(DocumentChunk.raw_metadata)
+        .filter(DocumentChunk.project_id == project_id, DocumentChunk.source_type == "source_file")
+        .all()
+    )
+    file_paths: list[str] = []
+    seen: set[str] = set()
+    for (metadata,) in rows:
+        file_path = str((metadata or {}).get("file_path") or "")
+        if not file_path or file_path in seen:
+            continue
+        lowered = file_path.lower()
+        stem = lowered.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        if any(identifier in lowered or identifier == stem for identifier in identifiers):
+            seen.add(file_path)
+            file_paths.append(file_path)
+    return file_paths
+
+
+def _add_identifier_source_chunks(
+    db: Session | None,
+    project: Project,
+    question: str,
+    annotated: list[dict],
+    verified_sources: list[dict],
+    *,
+    max_extra_files: int = 4,
+) -> list[dict]:
+    if db is None or project.id is None:
+        return verified_sources
+    identifiers = _query_code_identifiers(question)
+    file_paths = _file_paths_for_query_identifiers(db, project.id, identifiers)[:max_extra_files]
+    if not file_paths:
+        return verified_sources
+
+    existing_ids = {int(source["id"]) for source in verified_sources if source.get("id") is not None}
+    existing_annotated_ids = {int(source["id"]) for source in annotated if source.get("id") is not None}
+    rows = (
+        db.query(DocumentChunk)
+        .filter(DocumentChunk.project_id == project.id, DocumentChunk.source_type == "source_file")
+        .all()
+    )
+    extra_sources: list[dict] = []
+    for chunk in rows:
+        metadata = chunk.raw_metadata or {}
+        if metadata.get("file_path") not in file_paths:
+            continue
+        raw_source = {
+            "id": chunk.id,
+            "source_type": chunk.source_type,
+            "source_id": chunk.source_id,
+            "chunk_index": chunk.chunk_index,
+            "text": chunk.chunk_text,
+            "metadata": metadata,
+            "similarity": 1.0,
+            "distance": 0.0,
+        }
+        annotated_source = annotate_retrieval_result(raw_source, project.git_repo_path)
+        if annotated_source.get("verification_status") != "verified":
+            continue
+        chunk_id = int(chunk.id)
+        if chunk_id not in existing_annotated_ids:
+            annotated.append(annotated_source)
+            existing_annotated_ids.add(chunk_id)
+        if chunk_id not in existing_ids:
+            extra_sources.append(annotated_source)
+            existing_ids.add(chunk_id)
+
+    if not extra_sources:
+        return verified_sources
+    return [*verified_sources, *extra_sources]
 
 
 def _summarize_source(source: dict) -> str:
@@ -228,7 +387,7 @@ def _collect_graph_evidence(
 
 def clean_llm_answer(text: str) -> str:
     stripped = text.strip()
-    fence_match = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", stripped, flags=re.DOTALL | re.IGNORECASE)
+    fence_match = re.fullmatch(r"```(?:json|markdown|md)?\s*(.*?)\s*```", stripped, flags=re.DOTALL | re.IGNORECASE)
     payload = fence_match.group(1).strip() if fence_match else stripped
     if payload.startswith("{") and payload.endswith("}"):
         try:
@@ -239,6 +398,8 @@ def clean_llm_answer(text: str) -> str:
             value = parsed.get(key)
             if isinstance(value, str) and value.strip():
                 return _normalize_korean_answer_text(value.strip())
+    if fence_match:
+        return _normalize_korean_answer_text(payload)
     return _normalize_korean_answer_text(stripped)
 
 
@@ -354,6 +515,8 @@ def answer_source_question(
         for result in annotated
         if result.get("source_type") == "source_file" and result.get("verification_status") == "verified"
     ]
+    verified_sources = _add_identifier_source_chunks(db, project, question, annotated, verified_sources)
+    verified_sources = _sort_verified_sources_for_prompt(verified_sources, question)
     historical_sources = [
         result
         for result in annotated

@@ -46,7 +46,7 @@ class LLMClient:
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a precise software analysis assistant. Return only the requested JSON.",
+                    "content": "You are a precise software analysis assistant. Follow the user's requested output format.",
                 },
                 {"role": "user", "content": prompt},
             ],

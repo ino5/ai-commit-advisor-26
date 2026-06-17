@@ -21,6 +21,38 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-06-17 - Application Preview AI screenshot은 같은 질문 replay로 검증한다
+
+### 배경
+
+Application Preview의 Project Chat 화면은 실제 local LLM 결과를 보여줘야 합니다. 하지만 저장된 chat session을 다시 여는 screenshot capture만으로는 사용자가 같은 질문을 다시 실행했을 때 RAG, GraphRAG, prompt, local LLM context가 같은 수준으로 동작하는지 확인할 수 없습니다.
+
+### 결정
+
+AI 답변이 핵심인 Application Preview screenshot은 저장된 화면 검증과 같은 질문 replay 검증을 분리합니다. Replay 검증은 실제 provider/model로 질문을 다시 실행하고 `fallback=False`, insufficient evidence 여부, 핵심 source file, graph evidence, 답변 token을 확인한 뒤 screenshot을 남깁니다.
+
+### 이유
+
+- 저장된 결과 화면은 UI 회귀를 잘 잡지만, LLM/RAG pipeline 재현성은 보장하지 않습니다.
+- Project Chat 관계 질문은 vector search, source verification, graph evidence, prompt ordering, local LLM context limit이 함께 작동해야 하므로 screenshot capture만으로는 실패 지점을 알기 어렵습니다.
+- 사용자가 Application Preview를 보고 같은 질문을 따라 했을 때 비슷한 핵심 답변이 나와야 제품 증거로 신뢰할 수 있습니다.
+
+### 검토한 대안
+
+- 저장 session screenshot만 유지: 빠르지만 LLM 재실행 실패를 놓칩니다.
+- 답변 문장 전체를 snapshot으로 고정: local LLM 문장 변동 때문에 과도하게 취약하고, 핵심 근거 재현보다 덜 중요합니다.
+- 모든 preview screenshot을 매번 전체 샘플 재생성부터 실행: 가장 엄격하지만 비용이 커서 일반 코드 변경 검증에는 맞지 않습니다.
+
+### 영향과 tradeoff
+
+Replay 검증은 screenshot 갱신 비용을 늘리지만, `Mock answer`나 우연히 저장된 좋은 답변이 실제 기능 품질처럼 보이는 위험을 줄입니다. 답변 문장을 글자 단위로 고정하지 않으므로 모델 변동은 허용하되, provider/fallback/source/graph/key token 기준은 반드시 기록합니다.
+
+### 관련 문서
+
+- [Failure History](failure-history.md#2026-06-17---application-preview-project-chat-질문은-같은-질문-재실행으로-검증해야-한다)
+- [사용 가이드 검증 결과](sample-project-usage-verification.md#2026-06-17-project-chat-재현-검증)
+- `AI_CHANGELOG.md` 항목 `Project Chat preview 질문 재현 안정화`
+
 ## 작성 형식
 
 새 항목은 가능하면 아래 구조를 따릅니다.

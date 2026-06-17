@@ -2,6 +2,19 @@
 
 ## 2026-06-17
 
+### Project Chat preview 질문 재현 안정화
+
+- Application Preview에 사용한 Project Chat 질문을 같은 로컬 환경에서 다시 실행했을 때 insufficient-evidence 답변으로 바뀌던 문제를 수정했습니다.
+- 질문 안의 `PaymentService와`, `OrderMapper는`처럼 code identifier 뒤에 한국어 조사가 붙어도 해당 source file chunk를 우선 보강하고, prompt context 안에서 import와 method call 근거를 먼저 보게 했습니다.
+- verified source가 있을 때 prompt가 정해진 insufficient-evidence 문구를 그대로 유도하지 않도록 바꾸고, 확인 가능한 범위는 답변하되 부족한 세부사항만 제한적으로 말하도록 조정했습니다.
+- 4096-token급 local LLM에서 Project Chat prompt가 넘치지 않도록 LLM prompt에 넣는 source/history/graph evidence 수를 제한하되, UI와 저장 metadata에는 전체 근거를 유지했습니다.
+- Project Chat 답변 정규화에서 Markdown fence를 제거하고, local LLM client system prompt가 JSON만 강제하지 않고 사용자 요청 형식을 따르도록 보정했습니다.
+- screenshot capture가 Streamlit sidebar 로딩 전에 진행되지 않도록 대기 조건을 보강했습니다.
+- 실제 `local_openai / qwen2.5-coder-7b-instruct`로 한국어 질문 `PaymentService와 OrderMapper는 어떤 클래스 import 관계로 연결돼 있고, 결제 승인 흐름에서 주문 상태 업데이트가 어떻게 이어지는지 한국어로 설명해줘.`를 다시 실행해 `chat_session=353`, `fallback=False`, `used_sources=12`, `graph_evidence=8`, 첫 graph evidence `class_import PaymentService -> OrderMapper`를 확인했습니다.
+- 재현 증거 screenshot을 `docs/images/usage-verification/project-chat-repro-2026-06-17.png`, `docs/images/usage-verification/project-chat-graph-repro-2026-06-17.png`에 별도로 저장했습니다.
+- 주요 파일: `src/rag/chat_service.py`, `src/services/llm_client.py`, `scripts/capture_feature_screenshot.py`, `tests/test_project_chat_service.py`, `tests/test_project_chat_answer_format.py`, `docs/failure-history.md`, `docs/ai-technical-overview.md`, `docs/sample-project-usage-verification.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\rag\chat_service.py src\services\llm_client.py tests\test_project_chat_service.py tests\test_project_chat_answer_format.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_service.py tests\test_project_chat_answer_format.py -q` 13개 통과; 실제 local LLM Project Chat 재실행 결과 `provider=local_openai`, `model=qwen2.5-coder-7b-instruct`, `fallback=False`, `insufficient=False`, `used_sources=12`, `graph_evidence=8`; `project-chat-answer`, `project-chat-graph-evidence` screenshot capture에서 `Provider: local_openai`, `fallback=False`, `updateOrderStatus`, `PAID`, `PaymentService`, `OrderMapper`, `class_import` 확인 및 `Mock answer`, `fallback=True`, `Traceback` 금지 조건 통과.
+
 ### Source-first sample project and demo verification guide
 
 - 샘플 프로젝트 내부에 AI 답변을 유도하는 Markdown 정답지나 demo guide를 두지 않도록 `scripts/create_sample_target_repo.py`의 `docs/...` evidence 파일 생성을 제거했습니다.

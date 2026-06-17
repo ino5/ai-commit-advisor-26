@@ -88,6 +88,44 @@
 
 ![PL Briefing](images/usage-verification/12-pl-briefing.png)
 
+### 13. Project Chat 재현 검증
+
+![Project Chat 재현 검증](images/usage-verification/project-chat-repro-2026-06-17.png)
+
+![Project Chat GraphRAG 재현 검증](images/usage-verification/project-chat-graph-repro-2026-06-17.png)
+
+## 2026-06-17 Project Chat 재현 검증
+
+Application Preview에 사용한 Project Chat 질문이 저장된 화면에서만 좋아 보이는지, 같은 질문을 실제 local LLM으로 다시 실행해도 핵심 답변이 재현되는지 별도로 확인했습니다.
+
+| 항목 | 값 |
+|---|---|
+| 검증일 | 2026-06-17 |
+| 실행 surface | Local Python + local PostgreSQL + local LM Studio |
+| 앱 URL | `http://localhost:8520/?project_id=97` |
+| 검증 프로젝트 | `AAA Sample Shop Rich Demo 48` |
+| 샘플 프로젝트 경로 | `C:\dev\ai-advisor-sample-shop` |
+| Git commit 수 | 48 |
+| `LLM_PROVIDER` | `local_openai` |
+| `LLM_MODEL` | `qwen2.5-coder-7b-instruct` |
+| `LLM_BASE_URL` | `http://127.0.0.1:1234/v1` |
+| `EMBEDDING_PROVIDER` | `local_openai` |
+| `EMBEDDING_MODEL` | `text-embedding-nomic-embed-text-v1.5` |
+| `EMBEDDING_BASE_URL` | `http://127.0.0.1:1234/v1` |
+| `PGVECTOR_DIMENSION` | `768` |
+| `NEO4J_ENABLED` | `true` |
+| 질문 | `PaymentService와 OrderMapper는 어떤 클래스 import 관계로 연결돼 있고, 결제 승인 흐름에서 주문 상태 업데이트가 어떻게 이어지는지 한국어로 설명해줘.` |
+| 저장 session | `353` |
+| provider/model | `local_openai / qwen2.5-coder-7b-instruct` |
+| fallback | `False` |
+| insufficient evidence | `False` |
+| used source 수 | 12 |
+| graph evidence 수 | 8 |
+| 핵심 graph evidence | `class_import PaymentService -> OrderMapper` |
+| 핵심 답변 근거 | `PaymentService.java`, `OrderMapper.java`, `updateOrderStatus`, `PAID` |
+
+이 검증의 통과 기준은 답변 문장 전체가 screenshot과 글자 단위로 같아지는 것이 아닙니다. 실제 provider가 verified `source_file`과 GraphRAG evidence를 사용해 `PaymentService`가 `OrderMapper`를 import하고 결제 승인 후 `updateOrderStatus(orderId, "PAID")`로 주문 상태를 갱신한다는 핵심 사실을 다시 설명해야 합니다.
+
 ## 검증 명령
 
 환경 확인:
@@ -108,6 +146,13 @@ Mermaid/문서 검증과 화면 캡처:
 .\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8501 --feature project-chat --project-name "AAA Sample Shop Usage Verification 20260614" --screenshot docs\images\usage-verification\10-project-chat.png --surface local --expect-text "결제금액 검증은 어디에서 수행되나요?" --expect-text "PaymentService.java" --forbid-text "현재 검증된 소스 근거만으로는 답변하기 어렵습니다"
 ```
 
+2026-06-17 Project Chat 재현 검증:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8520/?project_id=97" --feature project-chat-answer --screenshot docs\images\usage-verification\project-chat-repro-2026-06-17.png --surface local --height 1500 --expect-text "Provider: local_openai" --expect-text "fallback=False" --expect-text "updateOrderStatus" --expect-text "PAID" --expect-text "PaymentService.java" --expect-text "OrderMapper.java" --forbid-text "Mock answer" --forbid-text "fallback=True" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"
+.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8520/?project_id=97" --feature project-chat-graph-evidence --screenshot docs\images\usage-verification\project-chat-graph-repro-2026-06-17.png --surface local --height 1500 --expect-text "Provider: local_openai" --expect-text "fallback=False" --expect-text "PaymentService" --expect-text "OrderMapper" --expect-text "class_import" --expect-text "updateOrderStatus" --forbid-text "Mock answer" --forbid-text "fallback=True" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"
+```
+
 2026-06-15 PL Briefing 추가 리허설:
 
 ```powershell
@@ -120,4 +165,4 @@ Invoke-RestMethod -Uri http://127.0.0.1:1234/v1/models -Method Get
 - 검증은 local LM Studio의 현재 모델 응답에 의존합니다. 같은 코드라도 모델, prompt template, GPU/CPU 상태에 따라 Mapping reason, Code Review summary, Project Chat wording은 달라질 수 있습니다.
 - PL Briefing 추가 리허설은 기존 검증 데이터 위에서 Dashboard 브리핑 생성 경로만 다시 확인했습니다. 전체 데이터 적재와 Mapping/RAG/Code Review 전 과정을 2026-06-15에 재실행한 것은 아닙니다.
 - 스크린샷은 local Python surface 기준입니다. Docker path mapping이나 사내 서버 storage root 정책은 별도 검증이 필요합니다.
-- `Project Chat` 검증은 저장된 대화 session을 화면에서 확인했습니다. 질문 실행 자동화는 별도 UI 자동화가 아니라 서비스 실행 후 DB history를 화면에서 캡처하는 방식입니다.
+- `Project Chat` 2026-06-14 검증은 저장된 대화 session을 화면에서 확인했습니다. 2026-06-17 재현 검증은 같은 질문을 서비스로 다시 실행해 새 session을 저장한 뒤 화면을 캡처했습니다.
