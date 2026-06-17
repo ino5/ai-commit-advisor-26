@@ -2,6 +2,13 @@
 
 ## 2026-06-17
 
+### AI Code Review preview 하단 기록 포함 캡처 보완
+
+- Application Preview의 AI Code Review screenshot이 `리팩토링 제안` 하단과 `리뷰 기록` 표를 충분히 보여주도록 더 긴 viewport로 다시 캡처했습니다.
+- `docs/images/features/ai-code-review.png`와 검증 증거 `docs/images/usage-verification/ai-code-review-repro-2026-06-17.png`를 동일 이미지로 맞췄습니다.
+- 주요 파일: `docs/images/features/ai-code-review.png`, `docs/images/usage-verification/ai-code-review-repro-2026-06-17.png`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8521/?project_id=97" --feature ai-code-review --screenshot docs\images\features\ai-code-review.png --surface local --height 2600 --expect-text "2325182" --expect-text "zero amount" --expect-text "리뷰 기록" --forbid-text "Mock review" --forbid-text "LLM 코드리뷰 호출 실패" --forbid-text "Traceback" --forbid-text "StreamlitAPIException"` 통과; `Get-FileHash docs\images\features\ai-code-review.png,docs\images\usage-verification\ai-code-review-repro-2026-06-17.png` 결과 두 파일 hash 동일.
+
 ### AI Code Review 선별 커밋 실제 실행과 preview 갱신
 
 - 샘플 프로젝트 선별 커밋 5개를 `CodeReviewService.review_project(..., target_type="commit")`로 실제 `local_openai / qwen2.5-coder-7b-instruct` 리뷰 실행했습니다.
