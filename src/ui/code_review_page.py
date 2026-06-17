@@ -18,6 +18,15 @@ TARGET_OPTIONS = {
 TARGET_TYPE_LABELS = {value: label for label, value in TARGET_OPTIONS.items()}
 
 
+def _review_provider_label(review) -> str:
+    raw_response = review.raw_response or {}
+    if isinstance(raw_response.get("llm"), dict):
+        provider = raw_response["llm"].get("provider") or "-"
+        model = raw_response["llm"].get("model") or "-"
+        return f"{provider} / {model}"
+    return str(raw_response.get("provider") or "-")
+
+
 def _render_finding_cards(findings: list[dict]) -> None:
     for index, finding in enumerate(findings, start=1):
         with st.container(border=True):
@@ -42,8 +51,9 @@ def _render_suggestion_cards(suggestions: list[dict]) -> None:
 
 def _render_review_result(review) -> None:
     st.subheader("리뷰 결과")
-    status_col, target_col, ref_col = st.columns(3)
+    status_col, provider_col, target_col, ref_col = st.columns(4)
     status_col.metric("상태", review.status)
+    provider_col.metric("Provider", _review_provider_label(review))
     target_col.metric("대상", TARGET_TYPE_LABELS.get(review.target_type, review.target_type))
     ref_col.metric("참조", review.target_ref[:12] if review.target_ref else "-")
 

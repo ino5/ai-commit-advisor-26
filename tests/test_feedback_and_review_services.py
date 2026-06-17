@@ -1,4 +1,4 @@
-from src.services.code_review_service import ReviewTarget, _mock_review_payload, _parse_json_object
+from src.services.code_review_service import _parse_json_object
 from src.services.git_service import _parse_diff_git_path
 from src.services.mapping_feedback_service import (
     MappingFeedbackRow,
@@ -14,49 +14,6 @@ def test_parse_json_object_extracts_json_from_llm_text():
     parsed = _parse_json_object('prefix {"summary": "ok", "bug_findings": []} suffix')
 
     assert parsed == {"summary": "ok", "bug_findings": []}
-
-
-def test_mock_review_payload_surfaces_sample_payment_risk():
-    payload = _mock_review_payload(
-        ReviewTarget(
-            target_type="commit",
-            target_ref="abc",
-            title="커밋 abc",
-            commit_message="Relax partner payment validation for pilot channel",
-            diff_text="""
-diff --git a/src/main/java/com/example/market/payment/service/PaymentService.java b/src/main/java/com/example/market/payment/service/PaymentService.java
--                        if (amount <= 0) {
-+                            if (amount < 0) {
-+                            orderMapper.updateOrderStatus(orderId, "PAID");
-""",
-        )
-    )
-
-    assert payload["commit_analysis"]["risk_level"] == "high"
-    assert payload["bug_findings"]
-    assert "0원 결제" in payload["bug_findings"][0]["issue"]
-    assert "PaymentService.java" in payload["bug_findings"][0]["file"]
-
-
-def test_mock_review_payload_surfaces_sample_dashboard_overcount_risk():
-    payload = _mock_review_payload(
-        ReviewTarget(
-            target_type="commit",
-            target_ref="abc",
-            title="커밋 abc",
-            commit_message="Change dashboard summary query across operations modules",
-            diff_text="""
-diff --git a/src/main/resources/mappers/DashboardMapper.xml b/src/main/resources/mappers/DashboardMapper.xml
-+                            select count(o.order_id) as open_orders,
-+                            left join inventory_shortage_signals s on s.resolved_yn = 'N'
-+                            left join payments p on p.order_id = o.order_id
-""",
-        )
-    )
-
-    assert payload["commit_analysis"]["impact_scope"] == "cross-cutting"
-    assert payload["bug_findings"]
-    assert "중복 집계" in payload["bug_findings"][0]["issue"]
 
 
 def test_parse_diff_git_path_prefers_new_path_and_handles_delete():

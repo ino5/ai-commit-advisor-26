@@ -102,6 +102,7 @@
 | P2 | Docs / Screenshot UX | Project Chat GraphRAG preview screenshot | Done | Project Chat GraphRAG preview screenshot |
 | P2 | Project Chat UX | Interactive GraphRAG evidence visualization | Done | Project Chat GraphRAG interactive visualization |
 | P2 | Code Review / Demo UX | AI Code Review demo evidence and preview screenshot | Done | AI Code Review demo evidence and preview screenshot |
+| P2 | AI Verification / Demo Quality | Real local LLM demo evidence correction | Done | Real local LLM demo evidence correction |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
@@ -401,6 +402,26 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 |---|---|---|---|
 | P2 | Sample Data / Demo Quality | Scenario-designed sample evidence for rich AI outputs across features | 단순히 commit 수나 row 수를 늘리는 것으로는 기능 가치가 드러나지 않는다. Risk/AI Progress가 대비를 만들 plan/source gap, GraphRAG와 Project Chat이 설명할 수 있는 class/domain 관계, PL Briefing이 요약할 수 있는 운영 evidence처럼 기능별 LLM 판단 재료를 계속 확장해야 한다. |
 
+## P2 - Real Local LLM Demo Evidence Correction
+
+Status: Done
+
+Goal:
+Application Preview와 검증 산출물이 mock provider 결과를 실제 AI 분석처럼 보이지 않게 바로잡고, AI Code Review를 포함한 데모 화면은 mock이 아닌 local LLM 실행 결과만 사용한다.
+
+Rationale:
+사용자는 샘플 프로젝트 데이터를 기능별 LLM 판단 재료로 풍부하게 설계하자는 의도를 밝혔는데, 이전 작업은 mock provider가 샘플 diff를 읽은 것처럼 deterministic 결과를 만들고 이를 Application Preview screenshot에 사용했다. 이는 실제 local LLM 분석 증거가 아니며, 제품 검증 신뢰를 떨어뜨린다. 데모용 데이터는 LLM이 판단할 사건을 제공해야 하지만, 결과 자체는 실제 local LLM invocation과 telemetry로 남아야 한다.
+
+Checklist:
+
+- [x] AI Code Review mock/default 결과 enrichment와 screenshot preseed를 제거한다.
+- [x] 실제 local LLM으로 샘플 AI Code Review commit을 실행하고 telemetry/fallback 상태를 확인한다.
+- [x] 실제 local LLM 결과로 Application Preview AI Code Review screenshot을 갱신한다.
+- [x] Failure History에 mock 결과를 실제 분석처럼 보이게 만든 실수를 기록한다.
+- [x] 샘플 프로젝트 확장은 별도 scenario-designed sample evidence 작업으로 남긴다.
+- [x] Focused tests, screenshot verification, diff check를 실행한다.
+- [x] `AI_CHANGELOG.md`를 갱신한다.
+
 ## P2 - AI Code Review Demo Evidence And Preview Screenshot
 
 Status: Done
@@ -409,11 +430,11 @@ Goal:
 Application Preview의 AI Code Review 화면이 대상 선택만 보여주는 상태를 벗어나, 샘플 프로젝트의 의도된 risky/refactoring commit을 기반으로 실제 review finding과 제안이 보이는 결과 화면을 보여준다.
 
 Rationale:
-AI Code Review는 단순 데이터량보다 리뷰할 만한 diff와 commit message가 중요하다. 샘플 프로젝트에는 bug-introducing payment commit과 dashboard cross-module commit이 이미 있지만, mock/default 실행과 preview screenshot은 그 근거를 풍부한 결과로 드러내지 못했다. 이 작업은 LLM이든 mock provider든 데모에서 구체적인 finding, 영향, 제안 수정이 보이게 만드는 범위다.
+AI Code Review는 단순 데이터량보다 리뷰할 만한 diff와 commit message가 중요하다. 샘플 프로젝트에는 bug-introducing payment commit과 dashboard cross-module commit이 이미 있지만, preview screenshot은 그 근거를 풍부한 결과로 드러내지 못했다. 이 작업은 처음에 mock provider 보강으로 잘못 구현되었고, `Real Local LLM Demo Evidence Correction`에서 실제 local LLM 결과만 데모 증거로 쓰도록 바로잡았다.
 
 Checklist:
 
-- [x] AI Code Review mock/default result가 샘플 risky/refactoring commit 신호를 읽어 concrete finding을 만들도록 보강한다.
+- [x] AI Code Review 결과 화면이 저장된 review result의 finding, 영향, 제안 수정을 보여주도록 보강한다.
 - [x] 결과 화면을 캡처할 수 있도록 screenshot automation을 갱신한다.
 - [x] Application Preview 문구와 screenshot을 결과 중심으로 갱신한다.
 - [x] 샘플 설계 문서의 AI Code Review commit quality 기준과 preview 흐름을 맞춘다.

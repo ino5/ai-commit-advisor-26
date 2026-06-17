@@ -62,128 +62,8 @@ def _empty_review_payload(message: str) -> dict:
     }
 
 
-def _target_text(target: ReviewTarget) -> str:
-    return f"{target.commit_message or ''}\n{target.diff_text}".lower()
-
-
-def _sample_payment_review_payload(target: ReviewTarget, changed_lines: int) -> dict:
-    return {
-        "summary": (
-            f"샘플 결제 커밋 리뷰: {target.title}에서 0원 결제 승인 가능성이 보입니다. "
-            f"변경 라인 약 {changed_lines}개를 기준으로 결제 상태 전환 영향까지 확인해야 합니다."
-        ),
-        "commit_analysis": {
-            "change_intent": "파일럿 파트너 결제를 위해 금액 검증을 완화했습니다.",
-            "impact_scope": "module",
-            "risk_level": "high",
-        },
-        "bug_findings": [
-            {
-                "severity": "high",
-                "file": "src/main/java/com/example/market/payment/service/PaymentService.java",
-                "line": 18,
-                "issue": "`amount <= 0` 거부 조건이 `amount < 0`으로 완화되어 0원 결제가 AUTHORIZED 처리될 수 있습니다.",
-                "recommendation": "0원 결제는 명시적인 파트너 정산 상태로 분리하거나, 기존처럼 `amount <= 0`을 거부하고 예외 케이스는 별도 승인 흐름으로 처리하세요.",
-            },
-            {
-                "severity": "medium",
-                "file": "src/main/java/com/example/market/payment/service/PaymentService.java",
-                "line": 22,
-                "issue": "금액 검증 완화 후에도 주문 상태를 바로 `PAID`로 바꿔 후속 출고/정산 로직이 실제 결제 완료로 오인할 수 있습니다.",
-                "recommendation": "파일럿 파트너 결제는 `PAYMENT_PENDING_SETTLEMENT` 같은 중간 상태를 사용하고 출고 가능 조건을 별도로 검증하세요.",
-            },
-        ],
-        "refactoring_suggestions": [
-            {
-                "file": "src/main/java/com/example/market/payment/service/PaymentService.java",
-                "line": 16,
-                "suggestion": "금액 검증 조건을 `validateAuthorizableAmount` 같은 private method로 분리하세요.",
-                "benefit": "파트너 예외 정책과 일반 결제 정책을 테스트하기 쉬워지고, 향후 결제 한도 규칙 추가 시 영향 범위가 줄어듭니다.",
-            }
-        ],
-    }
-
-
-def _sample_dashboard_review_payload(target: ReviewTarget, changed_lines: int) -> dict:
-    return {
-        "summary": (
-            f"샘플 dashboard 커밋 리뷰: {target.title}에서 orders, shortage, payments join으로 집계가 부풀 위험이 있습니다. "
-            f"변경 라인 약 {changed_lines}개를 기준으로 cross-module regression을 확인해야 합니다."
-        ),
-        "commit_analysis": {
-            "change_intent": "운영 dashboard summary query를 여러 업무 테이블 join 기반으로 바꿨습니다.",
-            "impact_scope": "cross-cutting",
-            "risk_level": "high",
-        },
-        "bug_findings": [
-            {
-                "severity": "high",
-                "file": "src/main/resources/mappers/DashboardMapper.xml",
-                "line": 6,
-                "issue": "orders, inventory_shortage_signals, payments를 grouping 없이 join해 payment나 shortage row가 여러 개일 때 `count(o.order_id)`가 중복 집계됩니다.",
-                "recommendation": "기존처럼 metric별 subquery를 유지하거나, `count(distinct ...)`와 조건부 집계를 사용해 지표별 cardinality를 분리하세요.",
-            },
-            {
-                "severity": "medium",
-                "file": "src/main/resources/mappers/DashboardMapper.xml",
-                "line": 8,
-                "issue": "`left join inventory_shortage_signals s on s.resolved_yn = 'N'`에 order 또는 item 연결 조건이 없어 모든 미해결 shortage가 모든 open order에 곱해질 수 있습니다.",
-                "recommendation": "shortage signal을 주문/상품 기준으로 연결하거나 별도 summary subquery로 계산하세요.",
-            },
-        ],
-        "refactoring_suggestions": [
-            {
-                "file": "src/main/resources/mappers/DashboardMapper.xml",
-                "line": 5,
-                "suggestion": "dashboard 지표별 SQL을 작은 named subquery로 분리하고 regression test fixture를 함께 추가하세요.",
-                "benefit": "주문, 결제, 재고 지표가 서로 곱해지는 회귀를 테스트로 고정할 수 있습니다.",
-            }
-        ],
-    }
-
-
-def _sample_refactoring_review_payload(target: ReviewTarget, changed_lines: int) -> dict:
-    return {
-        "summary": f"샘플 리팩터링 커밋 리뷰: {target.title}은 위험도가 낮은 상수 추출 변경입니다.",
-        "commit_analysis": {
-            "change_intent": "dashboard indicator 이름을 상수로 분리했습니다.",
-            "impact_scope": "local",
-            "risk_level": "low",
-        },
-        "bug_findings": [],
-        "refactoring_suggestions": [
-            {
-                "file": "src/main/java/com/example/market/dashboard/service/DashboardIndicatorNames.java",
-                "line": 3,
-                "suggestion": "상수 사용처까지 같은 커밋에 포함하거나 follow-up commit을 명시하세요.",
-                "benefit": "새 상수 클래스가 실제로 중복 문자열을 줄였는지 리뷰어가 바로 확인할 수 있습니다.",
-            },
-            {
-                "file": "src/main/java/com/example/market/dashboard/service/DashboardIndicatorNames.java",
-                "line": 4,
-                "suggestion": "UI/API contract에 노출되는 indicator key라면 간단한 serialization regression test를 추가하세요.",
-                "benefit": "키 이름 변경이 dashboard client와 어긋나는 문제를 조기에 잡을 수 있습니다.",
-            },
-        ],
-    }
-
-
-def _sample_signal_review_payload(target: ReviewTarget, changed_lines: int) -> dict | None:
-    text = _target_text(target)
-    if "relax partner payment validation" in text or "payment-zero-amount-risk" in text or "amount < 0" in text:
-        return _sample_payment_review_payload(target, changed_lines)
-    if "dashboard-overcount-risk" in text or "select count(o.order_id)" in text:
-        return _sample_dashboard_review_payload(target, changed_lines)
-    if "refactor dashboard indicator names" in text or "dashboardindicatornames" in text:
-        return _sample_refactoring_review_payload(target, changed_lines)
-    return None
-
-
 def _mock_review_payload(target: ReviewTarget) -> dict:
     changed_lines = sum(1 for line in target.diff_text.splitlines() if line.startswith(("+", "-")) and not line.startswith(("+++", "---")))
-    sample_payload = _sample_signal_review_payload(target, changed_lines)
-    if sample_payload is not None:
-        return sample_payload
     return {
         "summary": f"Mock review completed for {target.title}. 변경 라인 약 {changed_lines}개를 확인했습니다.",
         "commit_analysis": {
@@ -252,6 +132,14 @@ Focus on:
 - potential bugs and regressions
 - refactoring suggestions that reduce maintenance cost
 - concrete, actionable feedback
+
+Diff reading rules:
+- Lines starting with "-" were removed by this commit.
+- Lines starting with "+" were added by this commit.
+- Compare removed and added conditions carefully before describing a bug.
+- If a validation condition changed, explain the exact before/after behavior and the input values newly allowed or newly rejected.
+- Do not recommend changing code to the same condition that the commit already added.
+- For numeric boundary checks, test example values mentally before writing the finding. For example, changing `amount <= 0` to `amount < 0` still rejects negative values but newly allows `amount == 0`.
 
 Target: {target.title}
 Commit message:

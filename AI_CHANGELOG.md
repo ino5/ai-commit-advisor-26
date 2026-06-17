@@ -2,8 +2,22 @@
 
 ## 2026-06-17
 
+### Real local LLM demo evidence correction
+
+- AI Code Review demo evidence에서 mock provider 결과가 실제 분석처럼 보일 수 있던 문제를 바로잡았습니다.
+- `CodeReviewService`의 샘플 commit 전용 mock rich payload를 제거해 mock path가 제품 가치 증거를 만들지 않게 했습니다.
+- `scripts/capture_feature_screenshot.py`의 AI Code Review scenario에서 `LLMClient(provider="mock")` preseed를 제거하고, 이미 저장된 실제 local LLM review result만 캡처하도록 바꿨습니다.
+- AI Code Review prompt에 diff의 `-`/`+` 의미, before/after condition 비교, numeric boundary 예시 검토 규칙을 추가해 실제 local LLM이 결제 검증 완화 commit을 더 정확히 읽도록 했습니다.
+- AI Code Review 결과 화면은 provider/model을 함께 표시해 screenshot만 봐도 `local_openai` 실행 결과인지 확인할 수 있게 했습니다.
+- Application Preview의 AI Code Review 설명과 screenshot을 실제 `local_openai / qwen2.5-coder-7b-instruct` 실행 결과 기준으로 갱신했습니다.
+- Failure History에 mock 결과를 실제 분석처럼 보이게 만든 실수와 재발 방지 규칙을 기록했습니다.
+- 샘플 프로젝트 확장은 결과 조작이 아니라 실제 LLM 판단 재료를 설계하는 별도 `Scenario-designed sample evidence for rich AI outputs across features` 후보 작업으로 남겼습니다.
+- 주요 파일: `src/services/code_review_service.py`, `src/ui/code_review_page.py`, `scripts/capture_feature_screenshot.py`, `tests/test_feedback_and_review_services.py`, `docs/application-preview.md`, `docs/failure-history.md`, `docs/images/features/ai-code-review.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe scripts\run_local_ai_verification.py --project-id 97 --features code-review --code-review-target commit --code-review-ref 2d80976 --output docs\local-llm-verification-result.md` 실제 `local_openai / qwen2.5-coder-7b-instruct`로 완료, fallback 0건, validation `parsed`; `.\.venv\Scripts\python.exe -m py_compile src\ui\code_review_page.py src\services\code_review_service.py scripts\capture_feature_screenshot.py tests\test_feedback_and_review_services.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_feedback_and_review_services.py tests\test_sample_data_generation.py -q` 21개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8514/?project_id=97" --feature ai-code-review --surface local --height 1500 --expect-text "리뷰 결과" --expect-text "local_openai" --expect-text "PaymentService.java" --expect-text "zero amount" --expect-text "리뷰 기록" --forbid-text "StreamlitAPIException" --forbid-text "Traceback" --forbid-text "Mock review"` 통과; `.\.venv\Scripts\python.exe -m compileall src app.py scripts tests` 통과; `.\.venv\Scripts\python.exe -m pytest -q` 159개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### AI Code Review demo evidence and preview screenshot
 
+- 이 항목의 mock provider 기반 demo evidence 접근은 `Real local LLM demo evidence correction`에서 폐기했습니다. 현재 Application Preview 증거는 실제 local LLM 실행 결과만 사용합니다.
 - AI Code Review mock/default 결과가 샘플 프로젝트의 risky/refactoring commit 신호를 읽어 concrete finding을 보여주도록 보강했습니다.
 - `Relax partner payment validation for pilot channel` commit은 0원 결제 승인과 주문 상태 `PAID` 전환 위험을 high/medium bug finding으로 보여줍니다.
 - `Change dashboard summary query across operations modules` commit은 dashboard query over-count risk를 cross-cutting high-risk finding으로 보여줍니다.

@@ -31,6 +31,62 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-17 - Mock AI Code Review 결과를 실제 분석처럼 보이게 만들었다
+
+분류:
+
+- Demo evidence integrity failure
+- AI verification policy gap
+- Agent-caused mistake
+
+관련 기능 및 문서:
+
+- `src/services/code_review_service.py`
+- `scripts/capture_feature_screenshot.py`
+- `docs/application-preview.md`
+- `ROADMAP.md`의 `AI Code Review Demo Evidence And Preview Screenshot`
+- commit `1a0e60f show AI Code Review demo findings`
+
+### 증상
+
+Application Preview의 AI Code Review screenshot을 결과 중심으로 갱신하면서, 실제 local LLM 호출 결과가 아니라 `mock` provider로 샘플 commit diff를 해석한 deterministic 결과를 저장하고 캡처했습니다. 화면과 문서만 보면 실제 LLM 분석 결과처럼 보일 수 있었습니다.
+
+### 직접 원인
+
+AI Code Review mock/default path에 샘플 payment/dashboard/refactoring commit 신호를 읽는 rich payload를 추가했고, screenshot automation이 `LLMClient(provider="mock")`로 review result를 preseed한 뒤 화면을 캡처했습니다.
+
+### 배경 또는 구조적 원인
+
+사용자의 의도는 샘플 프로젝트의 commit, plan, source, graph 관계를 풍부하게 설계해 실제 local LLM이 좋은 판단을 내릴 수 있게 만드는 것이었습니다. 하지만 작업 중 "데모 화면을 그럴싸하게 보이게 한다"는 목표를 mock 결과 품질 보강으로 잘못 해석했습니다. 기존 문서에는 mock smoke check와 live local provider 검증을 분리해야 한다는 기준이 있었지만, Application Preview screenshot 갱신 작업에 그 기준을 강제하는 장치가 없었습니다.
+
+### 사전 검증에서 놓친 이유
+
+테스트와 screenshot verification은 화면에 `리뷰 결과`, `PaymentService.java`, `0원 결제`가 보이는지만 확인했습니다. provider가 `local_openai`인지, fallback이 없었는지, `ai_invocation_logs`에 실제 local LLM telemetry가 남았는지는 screenshot 검증 조건에 포함하지 않았습니다.
+
+### 수정 내용
+
+- mock provider의 샘플별 rich review payload를 제거합니다.
+- screenshot automation의 mock preseed를 제거합니다.
+- AI Code Review Application Preview는 실제 local LLM 실행으로 저장된 결과만 사용하도록 검증 절차를 바꿉니다.
+- 샘플 데이터 보강은 mock 결과 생성이 아니라 실제 LLM이 판단할 수 있는 commit/diff/source/plan/graph evidence 설계로 분리합니다.
+
+### 재발 방지 규칙
+
+- Application Preview, README, 데모 가이드, 검증 문서에서 AI 결과를 보여줄 때는 provider와 fallback 여부를 확인합니다.
+- `mock` 또는 fallback 결과를 제품 가치 증거로 캡처하지 않습니다. mock은 설치/화면 흐름 smoke check에만 사용합니다.
+- 샘플 프로젝트 보강은 LLM 판단 재료를 설계하는 작업이지, mock output을 그럴듯하게 만드는 작업이 아닙니다.
+- screenshot automation이 AI 결과를 preseed해야 할 때는 local provider telemetry가 있는 저장 결과를 사용하고, mock provider를 직접 호출하지 않습니다.
+
+### 남은 한계 또는 후속 확인
+
+실제 local LLM 품질은 모델과 설정에 따라 달라질 수 있습니다. 따라서 샘플 commit은 affected method, input condition, user impact, suggested fix가 diff와 commit message에서 충분히 드러나도록 계속 설계해야 합니다.
+
+### 검증 명령과 결과
+
+- `.\.venv\Scripts\python.exe scripts\run_local_ai_verification.py --project-id 97 --features code-review --code-review-target commit --code-review-ref 2d80976 --output docs\local-llm-verification-result.md`: 실제 `local_openai / qwen2.5-coder-7b-instruct` 호출로 완료, fallback 0건, validation `parsed`.
+- `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8514/?project_id=97" --feature ai-code-review --surface local --height 1500 --expect-text "리뷰 결과" --expect-text "local_openai" --expect-text "PaymentService.java" --expect-text "zero amount" --expect-text "리뷰 기록" --forbid-text "StreamlitAPIException" --forbid-text "Traceback" --forbid-text "Mock review"`: 통과, `docs/images/features/ai-code-review.png` 갱신.
+- Focused test와 diff check 결과는 `AI_CHANGELOG.md`의 `Real local LLM demo evidence correction` 항목에 기록합니다.
+
 ## 2026-06-15 - Project Chat GraphRAG 메타데이터에서 Streamlit expander를 다시 중첩했다
 
 분류:

@@ -156,7 +156,7 @@ Neo4j Knowledge Graph가 최신이면 Project Chat 답변 아래에서 그래프
 
 ### AI Code Review
 
-샘플 프로젝트의 결제 검증 완화 커밋을 리뷰한 결과입니다. 화면은 특정 커밋의 상태, 영향 범위, 위험도, 버그 후보, 권장 수정, 리팩토링 제안을 함께 보여줘 AI Code Review가 단순 실행 버튼이 아니라 실제 검토 근거를 남기는 흐름임을 확인할 수 있습니다.
+샘플 프로젝트의 결제 검증 완화 커밋을 `local_openai` provider로 실제 리뷰한 결과입니다. 화면은 특정 커밋의 상태, provider/model, 영향 범위, 위험도, 버그 후보, 권장 수정, 리팩토링 제안을 함께 보여줘 AI Code Review가 단순 실행 버튼이 아니라 실제 local LLM 검토 근거를 남기는 흐름임을 확인할 수 있습니다.
 
 ![AI Code Review](images/features/ai-code-review.png)
 

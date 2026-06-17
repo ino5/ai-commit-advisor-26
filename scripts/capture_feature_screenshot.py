@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 import os
 from pathlib import Path
 import sys
-from urllib.parse import parse_qs, urlparse
 
 from PIL import Image
 from playwright.sync_api import Error, Page, sync_playwright
@@ -38,7 +37,6 @@ class FeatureScenario:
     action_wait_text: str | None = None
     expander_label: str | None = None
     crop_box: tuple[int, int, int, int] | None = None
-    preseed_code_review_ref: str | None = None
 
 
 SCENARIOS: dict[str, FeatureScenario] = {
@@ -603,15 +601,15 @@ SCENARIOS: dict[str, FeatureScenario] = {
         required_texts=(
             "AI Code Review",
             "리뷰 결과",
+            "local_openai",
             "버그 탐지",
             "PaymentService.java",
-            "0원 결제",
+            "zero amount",
             "리팩토링 제안",
             "리뷰 기록",
         ),
         default_screenshot="docs/images/features/ai-code-review.png",
         description="AI Code Review 결과 화면",
-        preseed_code_review_ref="2d80976",
         scroll_to_text="리뷰 결과",
     ),
     "settings": FeatureScenario(
@@ -938,38 +936,6 @@ def _default_output_path(scenario: FeatureScenario, output_dir: str | None) -> P
     return Path(output_dir or "docs/images/features") / f"{scenario.name}.png"
 
 
-def _project_id_from_url(url: str) -> int | None:
-    values = parse_qs(urlparse(url).query).get("project_id") or []
-    if not values:
-        return None
-    try:
-        return int(values[0])
-    except ValueError:
-        return None
-
-
-def _preseed_code_review_result(url: str, target_ref: str) -> None:
-    project_id = _project_id_from_url(url)
-    if project_id is None:
-        raise SystemExit("AI Code Review screenshot requires a project_id query parameter.")
-
-    from src.db.database import SessionLocal
-    from src.db.models import Project
-    from src.services.code_review_service import CodeReviewService
-    from src.services.llm_client import LLMClient
-
-    with SessionLocal() as db:
-        project = db.query(Project).filter(Project.id == project_id).one()
-        result = CodeReviewService(llm_client=LLMClient(provider="mock")).review_project(
-            db,
-            project,
-            target_type="commit",
-            target_ref=target_ref,
-        )
-        if result.errors:
-            raise SystemExit("; ".join(result.errors))
-
-
 def _capture_scenario(
     page: Page,
     url: str,
@@ -979,9 +945,6 @@ def _capture_scenario(
     extra_forbidden_texts: tuple[str, ...],
     project_name: str | None,
 ) -> str:
-    if scenario.preseed_code_review_ref:
-        _preseed_code_review_result(url, scenario.preseed_code_review_ref)
-
     _open_app(page, url)
     _select_sidebar_project(page, project_name)
     if scenario.sidebar_label:
