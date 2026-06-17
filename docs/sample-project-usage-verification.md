@@ -4,6 +4,49 @@
 
 ## 검증 개요
 
+### 2026-06-17 최종 샘플 보강 검증
+
+| 항목 | 값 |
+|---|---|
+| 검증일 | 2026-06-17 |
+| 실행 surface | Local Python + local PostgreSQL + Neo4j + local LM Studio |
+| 앱 URL | `http://localhost:8501` |
+| 검증 프로젝트 | `AAA Sample Shop Rich Demo 48` (`project_id=97`) |
+| 샘플 프로젝트 경로 | `C:\dev\ai-advisor-sample-shop` |
+| Git commit 수 | 48 |
+| 최신 commit | `0e722ba4149d39eded3d5d0cb42ba27a0446f30d` (`Add sample demo guide for advisor walkthrough`) |
+| release evidence commit | `4150015` (`Add final cross-module release evidence`) |
+| `LLM_PROVIDER` / `LLM_MODEL` | `local_openai` / `qwen2.5-coder-7b-instruct` |
+| `EMBEDDING_PROVIDER` / `EMBEDDING_MODEL` | `local_openai` / `text-embedding-nomic-embed-text-v1.5` |
+| `PGVECTOR_DIMENSION` | `768` |
+| `NEO4J_ENABLED` | `true` |
+
+실행 결과:
+
+| 단계 | 결과 |
+|---|---|
+| 샘플 repo 재생성 | 48 commits, 최신 날짜 2026-06-14, 한국어 release/go-no-go/handoff evidence 포함 |
+| Git 동기화 | 48 commits, 110 changed files, 오류 0건 |
+| Source index | `source_file` chunk 88건, stale/unverified 삭제 0건 |
+| RAG chunk / embedding | 전체 chunk 291건, vector 291건, embedding 실패 0건 |
+| Mapping | 80건 분석, 생성 80건, 실패 0건 |
+| Risk Analysis | 21건 감지, 21건 생성 |
+| Knowledge Graph | Neo4j node 192개, edge 558개, freshness `latest` |
+| Project Chat | 실제 `local_openai` 답변 저장, `fallback=False`, 현재 소스 근거 4건, 한국어 release 판단 요약 포함 |
+| AI Code Review | payment zero amount commit과 dashboard over-count commit 모두 실제 `local_openai` 리뷰 완료, 각 bug finding 1건 |
+| PL Briefing | `provider=local_openai`, `mode=LLM 생성`, validation `valid`, 저장 history `179` |
+
+대표 화면 증거:
+
+- ![Project Chat release evidence](images/usage-verification/2026-06-17-project-chat-release-evidence.png)
+- ![AI Code Review real local result](images/usage-verification/2026-06-17-ai-code-review-real-local.png)
+- ![Knowledge Graph latest](images/usage-verification/2026-06-17-knowledge-graph-latest.png)
+
+검증 중 확인한 운영 한계:
+
+- Project Chat은 `source_file` 근거가 없으면 현재 코드 답변을 의도적으로 거부합니다. 전체 검증 스크립트는 Git Sync 후 `refresh_source_file_index`를 먼저 실행해야 합니다.
+- `qwen2.5-coder-7b-instruct`가 4096 token context로 실행되는 LM Studio 환경에서는 `TOP K=8`과 graph/history context가 함께 들어갈 때 context overflow가 발생할 수 있습니다. release evidence demo는 `TOP K`를 낮추거나 history/graph context를 제외한 source_file 근거 중심 질문으로 검증합니다.
+
 | 항목 | 값 |
 |---|---|
 | 검증일 | 2026-06-14 |
