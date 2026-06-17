@@ -31,6 +31,64 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-17 - 샘플 소스 보강 요청을 Markdown 산출물 보강으로 잘못 해석했다
+
+분류:
+
+- Agent-caused product direction failure
+- Sample data design failure
+- Demo evidence integrity risk
+
+관련 기능 및 문서:
+
+- `scripts/create_sample_target_repo.py`
+- `docs/sample-target-repo-demo-design.md`
+- `AI_CHANGELOG.md`의 `샘플 소스 보강 실패 교훈 기록`
+- 잘못된 commit `103577a Harden final sample operations evidence`
+- revert commit `171ca89 Revert "Harden final sample operations evidence"`
+
+### 증상
+
+사용자는 샘플 프로젝트의 소스코드 자체를 풍부하게 만들어 실제 local LLM 분석 결과가 잘 나오게 하자는 의도로 요청했습니다. 하지만 agent는 이를 release rehearsal, go/no-go summary, operator handoff checklist 같은 Markdown 산출물을 샘플 프로젝트에 추가하는 방향으로 해석했고, Project Chat/PL Briefing이 그 문서를 근거로 그럴듯한 답을 내도록 만들었습니다.
+
+이 결과는 실제 local LLM 결과이더라도, 사용자가 원한 "소스코드만으로 참조 가능한 샘플 프로젝트"가 아니라 "Markdown 문서를 근거로 보강된 데모"에 가까웠습니다.
+
+### 직접 원인
+
+agent가 "LLM이 풍부한 결과를 낼 수 있도록 샘플 프로젝트를 개선한다"는 요구를 "LLM이 읽을 근거를 늘린다"로 좁게 해석했고, 그 근거를 Java/JSP/MyBatis/XML/test source가 아니라 Markdown 문서로 추가했습니다.
+
+### 배경 또는 구조적 원인
+
+프로젝트에는 RAG와 Project Chat이 문서도 검색할 수 있는 구조가 있으므로 Markdown을 추가하면 빠르게 답변 품질이 좋아 보입니다. 하지만 샘플 프로젝트의 핵심 목적은 소스코드와 commit diff만으로 Mapping, Risk Analysis, AI Code Review, Project Chat이 의미 있는 판단을 하도록 만드는 것입니다. 문서 산출물을 과하게 추가하면 샘플 코드의 부족함을 가리는 우회 경로가 됩니다.
+
+### 왜 사전 검증에서 놓쳤는지
+
+검증은 `provider=local_openai`, `fallback=False`, source count, graph freshness 같은 실행 진위에 집중했습니다. "근거가 실제 소스코드인가, 아니면 agent가 새로 넣은 Markdown 설명인가"를 별도 검증 기준으로 두지 않았습니다. 또한 사용자가 말한 "샘플 프로젝트 소스코드"의 범위를 확인하지 않고 바로 구현으로 들어갔습니다.
+
+### 수정 내용
+
+- 잘못된 commit `103577a Harden final sample operations evidence`를 revert commit `171ca89`로 되돌렸습니다.
+- 샘플 설계 문서에 "AI 판단 근거는 Java/JSP/MyBatis XML/test/source diff를 우선으로 해야 하며, Markdown은 주요 판단 근거를 대신하면 안 된다"는 원칙을 추가했습니다.
+- 이 실패 이력은 되살리되, 잘못 추가했던 Markdown 산출물이나 스크린샷 증거는 되살리지 않습니다.
+
+### 재발 방지 규칙
+
+- 사용자가 샘플 프로젝트 "소스코드"를 보강하라고 한 경우, 기본 해석은 Java/JSP/MyBatis XML/test/source diff 보강입니다.
+- Markdown 문서는 요구사항의 배경이나 사용 가이드 정도로 최소화하고, Project Chat/PL Briefing/Code Review의 주 근거로 쓰기 위해 새로 만들지 않습니다.
+- 샘플 검증 결과를 보고할 때는 "실제 local LLM인지"와 별도로 "LLM이 참조한 근거가 source/test/XML/diff인지 Markdown 설명인지"를 구분해 기록합니다.
+- 구현 전에 "문서 근거 추가"와 "소스코드 시나리오 강화"가 혼동될 수 있으면 사용자에게 범위를 확인합니다.
+- 샘플 데이터 보강은 결과를 그럴듯하게 만드는 일이 아니라, 실제 코드 변경과 결함, 누락, 수정 흐름을 LLM이 읽을 수 있게 만드는 일로 제한합니다.
+
+### 남은 한계 또는 후속 확인
+
+현재 샘플 프로젝트에는 과거 작업에서 이미 일부 Markdown 문서가 존재합니다. 다음 샘플 재설계에서는 기존 Markdown 의존도를 줄이고, 결제/대시보드/쿠폰/정산/감사 흐름을 실제 source, mapper XML, tests, commit diff로 재구성해야 합니다.
+
+### 검증 명령과 결과
+
+- `git revert --no-edit 103577a`: `171ca89 Revert "Harden final sample operations evidence"` 생성.
+- `git push origin main`: `103577a..171ca89 main -> main` 푸시 완료.
+- `git status --short`: clean.
+
 ## 2026-06-17 - 한국어 조사 때문에 GraphRAG class seed가 빗나갔다
 
 분류:

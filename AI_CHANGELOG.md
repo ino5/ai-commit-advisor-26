@@ -2,6 +2,14 @@
 
 ## 2026-06-17
 
+### 샘플 소스 보강 실패 교훈 기록
+
+- revert된 `103577a Harden final sample operations evidence`에서 되살릴 가치가 있는 실패 교훈만 문서로 다시 기록했습니다.
+- 사용자의 샘플 프로젝트 소스코드 보강 요청을 Markdown 산출물 보강으로 잘못 해석한 문제를 `docs/failure-history.md`에 남겼습니다.
+- 샘플 설계 문서의 보강 원칙을 Java/JSP/MyBatis XML/test/source diff 우선으로 정정하고, Markdown 문서를 주요 판단 근거로 추가하지 않는다는 기준을 명시했습니다.
+- 주요 파일: `docs/failure-history.md`, `docs/sample-target-repo-demo-design.md`, `AI_CHANGELOG.md`.
+- 검증: `git diff --check` 통과; `rg -n "Markdown 산출물|source diff|171ca89|103577a" docs AI_CHANGELOG.md`로 기록 위치 확인.
+
 ### GraphRAG Korean seed failure documentation
 
 - 한국어 질문에서 code identifier 뒤 조사가 붙어 GraphRAG class seed가 빗나간 실패를 `docs/failure-history.md`에 기록했습니다.

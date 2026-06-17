@@ -32,8 +32,8 @@
 - package path와 program module이 명확해 program-commit mapping 후보 선택에 도움이 됩니다.
 - 생성된 Excel file이 커밋 이력과 서로 맞습니다.
 - history에는 feature addition, bug-introducing change, bug fix, test, refactoring, documentation, cross-module change, incomplete work가 포함되어 있습니다.
-- AI Code Review용 risky commit은 diff만 보고도 새로 허용된 input, affected method, user impact, suggested fix를 추론할 수 있도록 review target 문서와 source comment를 함께 둡니다.
-- Project Chat/RAG/PL Briefing은 source만 보는 것이 아니라 `docs/business-rules/ai-evidence-index.md`, release evidence, requirement gap 문서를 함께 읽어 ready/watch/not-ready 상태를 구분할 수 있습니다.
+- AI Code Review용 risky commit은 diff만 보고도 새로 허용된 input, affected method, user impact, suggested fix를 추론할 수 있도록 실제 source change, mapper XML, tests, source comment를 우선 설계합니다.
+- Project Chat/RAG/PL Briefing의 핵심 근거는 Java/JSP/MyBatis XML/test/source diff여야 합니다. Markdown 문서는 보조 설명이나 사용 가이드에 머물러야 하며, 소스코드 부족을 가리는 주요 판단 근거로 추가하지 않습니다.
 
 알려진 한계:
 
@@ -238,7 +238,7 @@ AI Progress는 다음을 보여야 합니다.
 - 샘플 프로젝트 Git 저장소는 `C:\dev\ai-commit-advisor` 밖의 sibling repo로 유지합니다.
 - 필요하면 `sample_data`와 `advisor_uploads` output을 update 또는 regenerate합니다.
 - expected sample shape, developer profile, program row, risk/demo scenario에 대한 test를 추가하거나 수정합니다.
-- 샘플 보강은 실제 local LLM이 읽을 source, diff, requirement, release evidence를 늘리는 방식으로만 진행하고, mock output을 보강해 데모 결과처럼 보이게 만들지 않습니다.
+- 샘플 보강은 실제 local LLM이 읽을 source, mapper XML, JSP/JS, tests, commit diff를 늘리는 방식으로 진행하고, Markdown 산출물이나 mock output을 보강해 데모 결과처럼 보이게 만들지 않습니다.
 - generation 또는 recommended demo flow가 바뀌면 README sample usage instruction을 업데이트합니다.
 - `AI_CHANGELOG.md`에 verification command와 result를 기록합니다.
 
