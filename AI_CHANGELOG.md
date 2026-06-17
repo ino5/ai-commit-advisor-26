@@ -2,6 +2,14 @@
 
 ## 2026-06-17
 
+### Application Preview Project Chat screenshot 재현본 교체
+
+- Application Preview가 참조하는 Project Chat 대표 screenshot 두 장을 같은 질문 replay 검증을 통과한 이미지로 교체했습니다.
+- `docs/images/features/project-chat-answer.png`는 `docs/images/usage-verification/project-chat-repro-2026-06-17.png`와 동일한 재현 검증본으로 갱신했습니다.
+- `docs/images/features/project-chat-graph-evidence.png`는 `docs/images/usage-verification/project-chat-graph-repro-2026-06-17.png`와 동일한 GraphRAG 재현 검증본으로 갱신했습니다.
+- 주요 파일: `docs/images/features/project-chat-answer.png`, `docs/images/features/project-chat-graph-evidence.png`, `AI_CHANGELOG.md`.
+- 검증: `Get-FileHash`로 feature screenshot과 usage-verification 원본의 SHA256 hash가 각각 동일함을 확인; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 통과; `git diff --check` 통과.
+
 ### Project Chat preview 질문 재현 안정화
 
 - Application Preview에 사용한 Project Chat 질문을 같은 로컬 환경에서 다시 실행했을 때 insufficient-evidence 답변으로 바뀌던 문제를 수정했습니다.
