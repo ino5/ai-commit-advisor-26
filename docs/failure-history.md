@@ -31,6 +31,62 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-17 - 샘플 Project Chat 검증은 source_file 인덱스와 context budget을 먼저 확인해야 한다
+
+분류:
+
+- Sample verification procedure
+- RAG/source indexing workflow gap
+- Local LLM context limit finding
+
+관련 기능 및 문서:
+
+- `src/rag/source_index_service.py`
+- `src/rag/chunker.py`
+- `src/rag/chat_service.py`
+- revert된 commit `103577a Harden final sample operations evidence`
+- revert commit `171ca89 Revert "Harden final sample operations evidence"`
+
+### 증상
+
+샘플 프로젝트를 처음부터 다시 분석하는 과정에서 Project Chat이 `현재 검증된 소스 근거만으로는 답변하기 어렵습니다.`를 반환했습니다. 이후 더 많은 근거를 넣어 다시 시도했을 때는 local LLM이 context overflow를 반환할 수 있다는 점도 확인했습니다.
+
+### 직접 원인
+
+`build_project_chunks()` 기본값만 실행하면 `commit`, `commit_file`, `program` chunk는 생성되지만 `source_file` chunk는 생성되지 않습니다. Project Chat은 현재 코드 사실을 답할 때 verified `source_file` 근거를 요구하므로, Git Sync 후 `refresh_source_file_index()`를 실행하지 않으면 RAG 준비가 끝난 것처럼 보여도 현재 소스 답변은 실패합니다.
+
+또한 LM Studio에서 `qwen2.5-coder-7b-instruct`가 4096 token context로 실행되는 경우, `TOP K=8`, graph evidence, history context가 함께 들어가면 prompt가 context limit을 넘을 수 있습니다.
+
+### 배경 또는 구조적 원인
+
+Project Chat의 안전 모델은 현재 코드 답변을 verified `source_file`에 묶어 둡니다. 이 설계는 맞지만, 샘플 검증 절차가 `source_file` 인덱싱을 명시하지 않으면 commit/history chunk만 있는 상태를 실제 답변 준비 완료로 오해할 수 있습니다. 또한 샘플 데모 검증에서는 근거를 많이 넣을수록 좋아 보이지만, 작은 local LLM context에서는 근거 수가 많을수록 실패 가능성이 커집니다.
+
+### 사전 검증에서 놓친 이유
+
+이전 검증은 이미 `source_file` index가 존재하는 프로젝트 상태에서 수행되어 누락 단계를 드러내지 못했습니다. 또한 provider/model/fallback 여부는 확인했지만, prompt context budget과 `TOP K` 조합은 별도 검증 기준으로 두지 않았습니다.
+
+### 재발 방지 규칙
+
+- 샘플 프로젝트를 처음부터 다시 검증할 때는 Git Sync 뒤 `refresh_source_file_index()`를 먼저 실행하고 `source_file` chunk/vector 수를 기록합니다.
+- Project Chat 검증 결과는 `fallback=False`, `insufficient_evidence=False`, provider/model, used source count와 함께 기록합니다.
+- 4096 token local LLM 환경에서는 Project Chat 검증 시 `TOP K`, graph evidence, history context 포함 여부를 명시합니다.
+- context overflow가 발생하면 샘플 데이터 품질 문제로 단정하지 말고, source_file 근거 수와 prompt 크기를 먼저 줄여 재검증합니다.
+- 샘플 검증 수치는 실제 source-only 재설계 검증의 비교 기준으로만 사용하고, Markdown 산출물 보강 결과를 최종 샘플 품질 증거로 되살리지 않습니다.
+
+### 검증 명령과 결과
+
+되돌려진 `103577a`에서 확인한 참고 수치:
+
+- Git Sync: 48 commits / 110 files
+- `source_file` chunks: 88
+- total chunks/vectors: 291 / 291
+- Mapping: 80건, 실패 0건
+- Risk Analysis: 21건
+- Neo4j: 192 nodes / 558 edges
+- AI Code Review: 2개 commit, 각 bug finding 1건
+
+이 수치는 Markdown 산출물 보강이 포함된 잘못된 샘플 위에서 나온 결과이므로 최종 데모 증거로 사용하지 않습니다. 향후 소스코드 중심 재설계 검증의 절차와 비교 기준으로만 참고합니다.
+
 ## 2026-06-17 - 한국어 조사 때문에 GraphRAG class seed가 빗나갔다
 
 분류:

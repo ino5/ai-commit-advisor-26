@@ -2,6 +2,14 @@
 
 ## 2026-06-17
 
+### 샘플 Project Chat 검증 절차 교훈 기록
+
+- revert된 `103577a Harden final sample operations evidence`에서 되살릴 만한 교훈만 `docs/failure-history.md`에 기록했습니다.
+- 샘플 Project Chat 검증은 Git Sync 후 `refresh_source_file_index()`로 verified `source_file` chunk를 먼저 만들고, local LLM의 `TOP K`/graph/history context budget을 함께 확인해야 한다는 기준을 남겼습니다.
+- Markdown 산출물 보강 내용이나 스크린샷 증거는 되살리지 않았고, 되돌려진 검증 수치는 향후 source-only 샘플 재설계의 비교 기준으로만 명시했습니다.
+- 주요 파일: `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: `git diff --check` 통과; `rg -n "source_file|context budget|103577a|refresh_source_file_index" docs/failure-history.md AI_CHANGELOG.md`로 기록 위치 확인.
+
 ### GraphRAG Korean seed failure documentation
 
 - 한국어 질문에서 code identifier 뒤 조사가 붙어 GraphRAG class seed가 빗나간 실패를 `docs/failure-history.md`에 기록했습니다.
