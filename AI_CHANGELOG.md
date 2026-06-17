@@ -2,6 +2,19 @@
 
 ## 2026-06-17
 
+### Scenario-designed sample evidence for rich AI outputs
+
+- 샘플 프로젝트 보강을 단순 commit 수 증량이 아니라 실제 local LLM이 읽을 판단 재료 확장으로 정리했습니다.
+- `scripts/create_sample_target_repo.py`에서 payment zero amount review target, dashboard over-counting review target, coupon minimum order gap, settlement readiness gap, release readiness evidence, Project Chat evidence index를 보강했습니다.
+- 샘플 생성 파일을 `textwrap.dedent`로 정리해 생성된 Markdown/Java/XML 파일이 불필요한 들여쓰기 없이 자연스럽게 저장되도록 했습니다.
+- AI Code Review용 payment risky commit은 `amount == 0`이 새로 허용되고 주문이 `PAID`로 전환되는 영향과 권장 수정 방향을 source comment와 review target 문서에서 명확히 드러내도록 했습니다.
+- Project Chat/RAG/PL Briefing용 `docs/business-rules/ai-evidence-index.md`를 추가해 payment, dashboard, coupon, settlement, release readiness evidence를 함께 읽을 수 있게 했습니다.
+- Risk Analysis와 AI Progress가 coupon partial implementation, settlement controller stub, return backlog no-source case를 구분할 수 있도록 requirement/review/release 문서를 보강했습니다.
+- `docs/sample-target-repo-demo-design.md`에 샘플 보강 원칙을 mock output 보강이 아니라 source/diff/requirement/release evidence 설계로 명시했습니다.
+- `C:\dev\ai-advisor-sample-shop` 샘플 저장소를 재생성해 48 commits, 최신 commit date 2026-06-14, 핵심 evidence 파일 생성을 확인했습니다.
+- 주요 파일: `scripts/create_sample_target_repo.py`, `tests/test_sample_data_generation.py`, `docs/sample-target-repo-demo-design.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe scripts\create_sample_target_repo.py --target-path C:\dev\ai-advisor-sample-shop --force` 성공; `git -C C:\dev\ai-advisor-sample-shop rev-list --count HEAD` 결과 48; `git -C C:\dev\ai-advisor-sample-shop log -1 --format="%h %ad %s" --date=short` 결과 최신 날짜 2026-06-14; `Select-String`으로 `amount == 0`, `missing join condition`, `not-ready items`, `PL Briefing` evidence 확인; `.\.venv\Scripts\python.exe -m py_compile scripts\create_sample_target_repo.py tests\test_sample_data_generation.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_sample_data_generation.py -q` 14개 테스트 통과; `.\.venv\Scripts\python.exe -m pytest -q` 160개 테스트 통과; `git diff --check` 통과(Windows 줄끝 변환 경고만 출력).
+
 ### Real local LLM demo evidence correction
 
 - AI Code Review demo evidence에서 mock provider 결과가 실제 분석처럼 보일 수 있던 문제를 바로잡았습니다.

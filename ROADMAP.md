@@ -103,6 +103,7 @@
 | P2 | Project Chat UX | Interactive GraphRAG evidence visualization | Done | Project Chat GraphRAG interactive visualization |
 | P2 | Code Review / Demo UX | AI Code Review demo evidence and preview screenshot | Done | AI Code Review demo evidence and preview screenshot |
 | P2 | AI Verification / Demo Quality | Real local LLM demo evidence correction | Done | Real local LLM demo evidence correction |
+| P2 | Sample Data / Demo Quality | Scenario-designed sample evidence for rich AI outputs across features | Done | Scenario-designed sample evidence for rich AI outputs |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
@@ -400,7 +401,28 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P2 | Sample Data / Demo Quality | Scenario-designed sample evidence for rich AI outputs across features | 단순히 commit 수나 row 수를 늘리는 것으로는 기능 가치가 드러나지 않는다. Risk/AI Progress가 대비를 만들 plan/source gap, GraphRAG와 Project Chat이 설명할 수 있는 class/domain 관계, PL Briefing이 요약할 수 있는 운영 evidence처럼 기능별 LLM 판단 재료를 계속 확장해야 한다. |
+| P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
+
+## P2 - Scenario-Designed Sample Evidence For Rich AI Outputs Across Features
+
+Status: Done
+
+Goal:
+샘플 프로젝트를 단순 데이터량이 아니라 실제 local LLM이 Code Review, Project Chat, Risk/AI Progress, PL Briefing에서 풍부한 판단을 낼 수 있는 source, diff, 업무 문서, 미완료 evidence 중심으로 보강한다.
+
+Rationale:
+목 결과를 그럴듯하게 만드는 것은 제품 검증이 아니다. AI 기능이 설득력 있게 보이려면 샘플 프로젝트의 commit, source, docs, plan gap 자체가 리뷰할 만한 사건과 근거를 제공해야 한다. 이 작업은 LLM output을 고정하지 않고, local LLM이 읽을 수 있는 판단 재료를 설계해 데모 품질을 높이는 범위다.
+
+Checklist:
+
+- [x] Candidate task를 active Roadmap task로 승격한다.
+- [x] AI Code Review가 읽을 high-risk commit diff와 설명 문서를 더 명확하게 만든다.
+- [x] Project Chat/RAG가 답할 수 있는 업무 규칙, demo question, evidence index를 보강한다.
+- [x] Risk Analysis와 AI Progress가 plan/source gap을 구분할 수 있는 coupon/settlement evidence를 보강한다.
+- [x] PL Briefing이 요약할 수 있는 release readiness, 운영 handoff, 남은 제한 문서를 보강한다.
+- [x] sample generation tests를 업데이트한다.
+- [x] 샘플 저장소를 재생성해 commit count, 최신 날짜, 핵심 파일을 검증한다.
+- [x] 관련 설계 문서와 `AI_CHANGELOG.md`를 갱신한다.
 
 ## P2 - Real Local LLM Demo Evidence Correction
 

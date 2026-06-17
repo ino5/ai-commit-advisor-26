@@ -7,6 +7,7 @@ import os
 import shutil
 import stat
 import subprocess
+import textwrap
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -220,7 +221,7 @@ def _run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> No
 
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content.strip() + "\n", encoding="utf-8")
+    path.write_text(textwrap.dedent(content).strip() + "\n", encoding="utf-8")
 
 
 def _remove_readonly(func, path: str, _exc_info) -> None:
@@ -1091,6 +1092,9 @@ def _commit_steps() -> list[CommitStep]:
                             if (amount < 0) {
                                 return "REJECTED";
                             }
+                            // Risk scenario for AI Code Review:
+                            // amount == 0 is still stored as AUTHORIZED and the order becomes PAID.
+                            // A real implementation should keep this in a settlement-pending state.
                             paymentMapper.insertPayment(orderId, amount, "AUTHORIZED");
                             orderMapper.updateOrderStatus(orderId, "PAID");
                             return "AUTHORIZED";
@@ -1102,6 +1106,15 @@ def _commit_steps() -> list[CommitStep]:
 
                     This commit intentionally allows zero amount payment authorization for pilot partner traffic.
                     It is useful for AI Code Review because a reviewer should ask whether zero amount authorization can incorrectly mark an order as PAID.
+
+                    Before this change, zero and negative payment amounts were rejected together.
+                    After this change, negative amounts are rejected but amount == 0 is authorized and immediately updates order status to PAID.
+
+                    Review expectations:
+
+                    - Identify that amount == 0 is newly allowed.
+                    - Explain that PAID status can trigger fulfillment, sales reporting, and settlement workflows.
+                    - Recommend a separate settlement-pending state or explicit partner exception flow instead of marking the order PAID.
                     """,
                 },
             ),
@@ -1593,6 +1606,20 @@ def _commit_steps() -> list[CommitStep]:
 
                     This commit intentionally joins orders, shortage signals, and payments without grouping.
                     It can over-count dashboard metrics when multiple payments or shortage signals exist.
+
+                    Example:
+
+                    - 2 open orders
+                    - 3 unresolved shortage signals
+                    - 2 payment rows for one order
+
+                    The joined result can multiply rows and make open_orders, inventory_shortage, and payment_waiting look larger than the real operational counts.
+
+                    Review expectations:
+
+                    - Identify the missing join condition between shortage signals and orders/items.
+                    - Identify that count(o.order_id), count(s.signal_id), and count(p.payment_id) operate on the multiplied join result.
+                    - Recommend independent subqueries, grouped metrics, or count(distinct ...) depending on the intended business definition.
                     """,
                 },
             ),
@@ -1976,6 +2003,15 @@ def _commit_steps() -> list[CommitStep]:
                     Settlement export is planned but intentionally unassigned in the sample development plan.
                     The export should include authorized payments, canceled payment reversal rows, and operator download evidence.
                     This document exists so Risk Analysis can contrast a planned program with limited implementation evidence.
+
+                    Required source evidence for completion:
+
+                    - SettlementController must return a downloadable file or job id, not NOT_READY.
+                    - SettlementService must select authorized payment rows and reversal rows.
+                    - SettlementMapper must contain the export query.
+                    - Operator audit evidence must record who downloaded the settlement file and when.
+
+                    Until those artifacts exist, AI Progress should treat the program as partial or incomplete even if a controller stub exists.
                     """,
                 },
             ),
@@ -2005,6 +2041,14 @@ def _commit_steps() -> list[CommitStep]:
 
                     The endpoint exists but returns NOT_READY and has no mapper or file writer.
                     AI Progress should treat this as partial evidence, not complete implementation.
+
+                    This is intentionally designed as a contrast case:
+
+                    - Git history has a commit touching the settlement package.
+                    - The source file has a route-like endpoint.
+                    - The implementation still lacks business logic, persistence access, export file generation, and audit records.
+
+                    A useful local LLM answer should avoid calling this complete just because a controller class exists.
                     """,
                 },
             ),
@@ -2145,12 +2189,26 @@ def _commit_steps() -> list[CommitStep]:
                     Coupon discount now checks coupon expiration in the service layer.
                     Minimum order amount, duplicate use, and member-grade restrictions are still open.
                     This program remains useful for AI Progress partial implementation analysis.
+
+                    Completion evidence that is still missing:
+
+                    - minimum_order_amount from the coupon row must be compared with orderAmount.
+                    - duplicate use must be checked against issued coupon history.
+                    - member grade restriction must be enforced before returning a discount.
+
+                    Project Chat should cite this document together with CouponDiscountService when asked why coupon discount is not complete.
                     """,
                     "docs/review-targets/coupon-minimum-order-gap.md": """
                     # Review target: coupon minimum order gap
 
                     The coupon service validates expiration but does not check minimum order amount.
                     This should appear as a remaining implementation gap rather than a completed feature.
+
+                    AI Code Review can use this as a medium-risk selected commit:
+
+                    - The mapper returns coupon data but the service ignores minimum_order_amount.
+                    - A discount can be previewed for an order that is below the promotion threshold.
+                    - The fix should read the threshold from the coupon row and compare it with orderAmount.
                     """,
                 },
             ),
@@ -2203,6 +2261,38 @@ def _commit_steps() -> list[CommitStep]:
                     - 정산 내보내기는 왜 아직 완료로 보면 안 되나요?
                     - 쿠폰 할인에서 아직 남은 구현 gap은 무엇인가요?
                     - 대시보드의 stale payment warning은 어떤 조건으로 계산하나요?
+
+                    Evidence hints:
+
+                    - Payment amount validation is in PaymentService.authorize and the business rule document.
+                    - Inventory release is in InventoryService.release and InventoryMapper.insertReservationRelease.
+                    - Settlement export is intentionally split across requirement, controller stub, and operator audit evidence documents.
+                    - Coupon completion should compare CouponDiscountService with coupon-policy.md.
+                    - Dashboard stale payment warning is calculated in DashboardMapper.selectStalePaymentWaitingCount.
+                    """,
+                    "docs/business-rules/ai-evidence-index.md": """
+                    # AI evidence index
+
+                    This index tells reviewers which sample artifacts should be read together.
+
+                    ## AI Code Review targets
+
+                    - Payment zero amount risk: PaymentService.java and docs/review-targets/payment-zero-amount-risk.md.
+                    - Dashboard over-counting risk: DashboardMapper.xml and docs/review-targets/dashboard-overcount-risk.md.
+                    - Coupon minimum order gap: CouponDiscountService.java and docs/review-targets/coupon-minimum-order-gap.md.
+
+                    ## Project Chat and RAG targets
+
+                    - Payment amount validation: PaymentService.java, payment-inventory-rules.md, payment-limit-rules.md.
+                    - Inventory release evidence: InventoryService.java, InventoryMapper.xml, operations-smoke-test.md.
+                    - Settlement readiness: settlement-export.md, settlement-not-ready.md, operator-audit-evidence.md.
+                    - Coupon partial implementation: CouponDiscountService.java, coupon-policy.md.
+
+                    ## Risk and AI Progress contrast cases
+
+                    - Coupon has partial source and explicit remaining policy gaps.
+                    - Settlement has a controller stub but no service, mapper, export writer, or assignee.
+                    - Return request has backlog documentation but no implementation source.
                     """,
                 },
             ),
@@ -2246,6 +2336,14 @@ def _commit_steps() -> list[CommitStep]:
                     Payment amount validation, inventory release, dashboard summary, and sales report tax checks are verified together.
                     Coupon minimum order and settlement export remain documented limitations for the next release.
                     This note helps AI Progress separate completed evidence from known unfinished scope.
+
+                    Release readiness summary:
+
+                    - Ready: order creation, payment amount validation, payment audit logging, inventory release, dashboard summary, sales report tax calculation.
+                    - Watch: stale payment warning depends on operations monitoring thresholds.
+                    - Not ready: coupon minimum order policy, duplicate coupon use, settlement export file generation, settlement operator audit download evidence.
+
+                    PL Briefing should summarize both the ready evidence and the explicit not-ready items instead of presenting the sample as uniformly complete.
                     """,
                 },
             ),
@@ -2262,6 +2360,14 @@ def _commit_steps() -> list[CommitStep]:
                     Ask Project Chat where payment amount validation is performed.
                     Ask Project Chat how payment audit, inventory hold release, and settlement export readiness are tracked.
                     Run Risk Analysis after Mapping to show delayed coupon work and unassigned settlement export.
+
+                    Recommended live LLM flow:
+
+                    1. Run Mapping on all synced commits.
+                    2. Run Risk Analysis and AI Progress to show coupon partial completion and settlement missing assignment.
+                    3. Run AI Code Review on the payment zero amount commit or dashboard over-counting commit.
+                    4. Ask Project Chat one implementation question and one readiness question.
+                    5. Run PL Briefing so the model summarizes ready, watch, and not-ready evidence.
                     """,
                 },
             ),

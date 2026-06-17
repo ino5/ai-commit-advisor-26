@@ -85,7 +85,23 @@ def test_sample_target_repo_has_rich_demo_commit_history() -> None:
     assert "docs/business-rules/payment-limit-rules.md" in all_paths
     assert "docs/requirements/settlement-export.md" in all_paths
     assert "docs/business-rules/project-chat-demo-questions.md" in all_paths
+    assert "docs/business-rules/ai-evidence-index.md" in all_paths
     assert "docs/demo-guide.md" in all_paths
+
+
+def test_sample_target_repo_has_scenario_designed_ai_evidence() -> None:
+    file_texts = {
+        path: text
+        for step in _commit_steps()
+        for path, text in step.files.items()
+    }
+
+    assert "amount == 0 is newly allowed" in file_texts["docs/review-targets/payment-zero-amount-risk.md"]
+    assert "updates order status to PAID" in file_texts["docs/review-targets/payment-zero-amount-risk.md"]
+    assert "count(o.order_id)" in file_texts["docs/review-targets/dashboard-overcount-risk.md"]
+    assert "missing join condition" in file_texts["docs/review-targets/dashboard-overcount-risk.md"]
+    assert "controller stub but no service" in file_texts["docs/business-rules/ai-evidence-index.md"]
+    assert "not-ready items" in file_texts["docs/release-evidence/cross-module-release-notes.md"]
 
 
 def test_sample_target_repo_commit_dates_do_not_exceed_verification_date() -> None:
