@@ -398,6 +398,8 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
+| P2 | Docs / Screenshot UX | AI Code Review result preview screenshot | 현재 Application Preview의 AI Code Review 이미지는 리뷰 대상 선택만 보여줘 결과가 없는 기능처럼 보인다. 샘플 프로젝트의 bug-introducing payment commit 또는 dashboard cross-module commit으로 실제 finding/result가 저장된 상태를 캡처해야 기능 가치가 드러난다. |
+| P2 | Sample Data / Demo Quality | Scenario-designed sample evidence for rich AI outputs | 단순히 commit 수나 row 수를 늘리는 것으로는 기능 가치가 드러나지 않는다. AI Code Review가 풍부한 finding을 낼 수 있는 bug-introducing/refactoring/cross-module commit, Risk/AI Progress가 대비를 만들 plan/source gap, GraphRAG와 Project Chat이 설명할 수 있는 class/domain 관계처럼 기능별 LLM 판단 재료를 의도적으로 설계해야 한다. |
 
 ## P1 - AI 검증 Trace View
 

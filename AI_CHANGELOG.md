@@ -2,6 +2,14 @@
 
 ## 2026-06-17
 
+### AI Code Review 결과 screenshot과 샘플 보강 후보 기록
+
+- Application Preview의 AI Code Review screenshot이 리뷰 대상 선택만 보여줘 결과가 없는 기능처럼 보이는 문제를 `ROADMAP.md` Candidate Task로 기록했습니다.
+- 주요 화면이 더 그럴듯하게 보이도록 단순 데이터 증량이 아니라 AI Code Review, Risk/AI Progress, GraphRAG, PL Briefing별 LLM 판단 재료를 의도적으로 설계하는 후보로 정리했습니다.
+- AI Code Review용 commit은 LLM이 affected method, input condition, user impact, suggested fix를 구체적으로 낼 수 있는 diff와 commit message를 가져야 한다는 기준을 샘플 설계 문서에 추가했습니다.
+- 주요 파일: `ROADMAP.md`, `docs/sample-target-repo-demo-design.md`, `AI_CHANGELOG.md`.
+- 검증: 문서 변경 후 `git diff --check` 통과.
+
 ### Project Chat GraphRAG 노드 내부색 구분 보강
 
 - Project Chat `GraphRAG 관계도`의 `program`, `commit`, `file`, `class`, `domain` node 내부색을 더 구분되는 pastel tone으로 조정했습니다.

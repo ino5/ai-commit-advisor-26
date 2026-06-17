@@ -205,6 +205,13 @@ AI Code Review 추천 대상:
 - cross-module dashboard summary query change
 - low-risk refactoring-focused feedback이 나와야 하는 refactoring commit
 
+AI Code Review용 commit은 단순히 파일을 많이 바꾸는 commit이 아니라 LLM이 구체적으로 지적할 수 있는 증거를 가져야 합니다.
+
+- 변경 전후 diff만 보고도 결제 금액 검증 누락, 취소 주문 집계 포함, 권한 확인 위치 오류처럼 concrete risk를 설명할 수 있어야 합니다.
+- finding이 한 줄 경고로 끝나지 않도록 affected method, input condition, user impact, suggested fix가 모두 추론 가능한 코드와 commit message를 함께 둡니다.
+- high-risk bug-introducing commit, cross-module regression commit, low-risk refactoring commit을 분리해 AI Code Review가 severity 차이를 보여줄 수 있게 합니다.
+- 결과 screenshot용 프로젝트에는 추천 commit에 대한 저장된 review result가 있어야 하며, Application Preview는 대상 선택 화면보다 finding, 근거, 제안 수정이 보이는 상태를 우선 캡처합니다.
+
 Risk Analysis는 최소한 다음 case를 보여야 합니다.
 
 - Program has no related commits.
