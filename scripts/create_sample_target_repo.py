@@ -661,31 +661,31 @@ def _commit_steps() -> list[CommitStep]:
                 f"{BASE_PACKAGE_PATH}/payment/service/PaymentService.java": """
                 package com.example.market.payment.service;
 
-                import com.example.market.order.mapper.OrderMapper;
-                import com.example.market.payment.mapper.PaymentMapper;
-                import org.springframework.stereotype.Service;
-                import org.springframework.transaction.annotation.Transactional;
+                    import com.example.market.order.mapper.OrderMapper;
+                    import com.example.market.payment.mapper.PaymentMapper;
+                    import org.springframework.stereotype.Service;
+                    import org.springframework.transaction.annotation.Transactional;
 
-                @Service
-                public class PaymentService {
-                    private final PaymentMapper paymentMapper;
-                    private final OrderMapper orderMapper;
+                    @Service
+                    public class PaymentService {
+                        private final PaymentMapper paymentMapper;
+                        private final OrderMapper orderMapper;
 
-                    public PaymentService(PaymentMapper paymentMapper, OrderMapper orderMapper) {
-                        this.paymentMapper = paymentMapper;
-                        this.orderMapper = orderMapper;
-                    }
-
-                    @Transactional
-                    public String authorize(long orderId, int amount) {
-                        if (amount <= 0) {
-                            return "REJECTED";
+                        public PaymentService(PaymentMapper paymentMapper, OrderMapper orderMapper) {
+                            this.paymentMapper = paymentMapper;
+                            this.orderMapper = orderMapper;
                         }
-                        paymentMapper.insertPayment(orderId, amount, "AUTHORIZED");
-                        orderMapper.updateOrderStatus(orderId, "PAID");
-                        return "AUTHORIZED";
+
+                        @Transactional
+                        public String authorize(long orderId, int amount) {
+                            if (amount <= 0) {
+                                return "REJECTED";
+                            }
+                            paymentMapper.insertPayment(orderId, amount, "AUTHORIZED");
+                            orderMapper.updateOrderStatus(orderId, "PAID");
+                            return "AUTHORIZED";
+                        }
                     }
-                }
                 """,
                 f"{BASE_PACKAGE_PATH}/payment/mapper/PaymentMapper.java": """
                 package com.example.market.payment.mapper;
@@ -742,6 +742,11 @@ def _commit_steps() -> list[CommitStep]:
                         }
                         orderStatusMapper.updateStatus(orderId, status);
                         orderStatusMapper.insertStatusHistory(orderId, status);
+                    }
+
+                    @Transactional
+                    public void markPaid(long orderId) {
+                        changeStatus(orderId, "PAID");
                     }
                 }
                 """,
@@ -1109,7 +1114,7 @@ def _commit_steps() -> list[CommitStep]:
                     f"{BASE_PACKAGE_PATH}/payment/service/PaymentService.java": """
                     package com.example.market.payment.service;
 
-                    import com.example.market.order.mapper.OrderMapper;
+                    import com.example.market.order.service.OrderStatusService;
                     import com.example.market.payment.mapper.PaymentMapper;
                     import org.springframework.stereotype.Service;
                     import org.springframework.transaction.annotation.Transactional;
@@ -1117,11 +1122,11 @@ def _commit_steps() -> list[CommitStep]:
                     @Service
                     public class PaymentService {
                         private final PaymentMapper paymentMapper;
-                        private final OrderMapper orderMapper;
+                        private final OrderStatusService orderStatusService;
 
-                        public PaymentService(PaymentMapper paymentMapper, OrderMapper orderMapper) {
+                        public PaymentService(PaymentMapper paymentMapper, OrderStatusService orderStatusService) {
                             this.paymentMapper = paymentMapper;
-                            this.orderMapper = orderMapper;
+                            this.orderStatusService = orderStatusService;
                         }
 
                         @Transactional
@@ -1130,7 +1135,7 @@ def _commit_steps() -> list[CommitStep]:
                                 return "REJECTED";
                             }
                             paymentMapper.insertPayment(orderId, amount, "AUTHORIZED");
-                            orderMapper.updateOrderStatus(orderId, "PAID");
+                            orderStatusService.markPaid(orderId);
                             return "AUTHORIZED";
                         }
                     }
@@ -1160,7 +1165,7 @@ def _commit_steps() -> list[CommitStep]:
                     f"{BASE_PACKAGE_PATH}/payment/service/PaymentService.java": """
                     package com.example.market.payment.service;
 
-                    import com.example.market.order.mapper.OrderMapper;
+                    import com.example.market.order.service.OrderStatusService;
                     import com.example.market.payment.mapper.PaymentMapper;
                     import org.springframework.stereotype.Service;
                     import org.springframework.transaction.annotation.Transactional;
@@ -1168,11 +1173,11 @@ def _commit_steps() -> list[CommitStep]:
                     @Service
                     public class PaymentService {
                         private final PaymentMapper paymentMapper;
-                        private final OrderMapper orderMapper;
+                        private final OrderStatusService orderStatusService;
 
-                        public PaymentService(PaymentMapper paymentMapper, OrderMapper orderMapper) {
+                        public PaymentService(PaymentMapper paymentMapper, OrderStatusService orderStatusService) {
                             this.paymentMapper = paymentMapper;
-                            this.orderMapper = orderMapper;
+                            this.orderStatusService = orderStatusService;
                         }
 
                         @Transactional
@@ -1181,7 +1186,7 @@ def _commit_steps() -> list[CommitStep]:
                                 return "REJECTED";
                             }
                             paymentMapper.insertPayment(orderId, amount, "AUTHORIZED");
-                            orderMapper.updateOrderStatus(orderId, "PAID");
+                            orderStatusService.markPaid(orderId);
                             return "AUTHORIZED";
                         }
                     }
@@ -1236,6 +1241,11 @@ def _commit_steps() -> list[CommitStep]:
                             }
                             orderStatusMapper.updateStatus(orderId, nextStatus);
                             orderStatusMapper.insertStatusHistory(orderId, nextStatus);
+                        }
+
+                        @Transactional
+                        public void markPaid(long orderId) {
+                            changeStatus(orderId, "PAYMENT_WAITING", "PAID");
                         }
                     }
                     """,
@@ -1455,6 +1465,11 @@ def _commit_steps() -> list[CommitStep]:
                             }
                             orderStatusMapper.updateStatus(orderId, nextStatus);
                             orderStatusMapper.insertStatusHistory(orderId, nextStatus);
+                        }
+
+                        @Transactional
+                        public void markPaid(long orderId) {
+                            changeStatus(orderId, PAYMENT_WAITING, PAID);
                         }
                     }
                     """,
@@ -1814,7 +1829,7 @@ def _commit_steps() -> list[CommitStep]:
                     f"{BASE_PACKAGE_PATH}/payment/service/PaymentService.java": """
                     package com.example.market.payment.service;
 
-                    import com.example.market.order.mapper.OrderMapper;
+                    import com.example.market.order.service.OrderStatusService;
                     import com.example.market.payment.mapper.PaymentAuditMapper;
                     import com.example.market.payment.mapper.PaymentMapper;
                     import org.springframework.stereotype.Service;
@@ -1824,12 +1839,12 @@ def _commit_steps() -> list[CommitStep]:
                     public class PaymentService {
                         private final PaymentMapper paymentMapper;
                         private final PaymentAuditMapper paymentAuditMapper;
-                        private final OrderMapper orderMapper;
+                        private final OrderStatusService orderStatusService;
 
-                        public PaymentService(PaymentMapper paymentMapper, PaymentAuditMapper paymentAuditMapper, OrderMapper orderMapper) {
+                        public PaymentService(PaymentMapper paymentMapper, PaymentAuditMapper paymentAuditMapper, OrderStatusService orderStatusService) {
                             this.paymentMapper = paymentMapper;
                             this.paymentAuditMapper = paymentAuditMapper;
-                            this.orderMapper = orderMapper;
+                            this.orderStatusService = orderStatusService;
                         }
 
                         @Transactional
@@ -1840,7 +1855,7 @@ def _commit_steps() -> list[CommitStep]:
                             }
                             paymentMapper.insertPayment(orderId, amount, "AUTHORIZED");
                             paymentAuditMapper.insertAudit(orderId, "AUTHORIZED", "payment authorization completed");
-                            orderMapper.updateOrderStatus(orderId, "PAID");
+                            orderStatusService.markPaid(orderId);
                             return "AUTHORIZED";
                         }
                     }
@@ -1855,7 +1870,7 @@ def _commit_steps() -> list[CommitStep]:
                     f"{BASE_PACKAGE_PATH}/payment/service/PaymentService.java": """
                     package com.example.market.payment.service;
 
-                    import com.example.market.order.mapper.OrderMapper;
+                    import com.example.market.order.service.OrderStatusService;
                     import com.example.market.payment.mapper.PaymentAuditMapper;
                     import com.example.market.payment.mapper.PaymentMapper;
                     import org.springframework.stereotype.Service;
@@ -1866,12 +1881,12 @@ def _commit_steps() -> list[CommitStep]:
                         private static final int MAX_AUTHORIZATION_AMOUNT = 10_000_000;
                         private final PaymentMapper paymentMapper;
                         private final PaymentAuditMapper paymentAuditMapper;
-                        private final OrderMapper orderMapper;
+                        private final OrderStatusService orderStatusService;
 
-                        public PaymentService(PaymentMapper paymentMapper, PaymentAuditMapper paymentAuditMapper, OrderMapper orderMapper) {
+                        public PaymentService(PaymentMapper paymentMapper, PaymentAuditMapper paymentAuditMapper, OrderStatusService orderStatusService) {
                             this.paymentMapper = paymentMapper;
                             this.paymentAuditMapper = paymentAuditMapper;
-                            this.orderMapper = orderMapper;
+                            this.orderStatusService = orderStatusService;
                         }
 
                         @Transactional
@@ -1886,7 +1901,7 @@ def _commit_steps() -> list[CommitStep]:
                             }
                             paymentMapper.insertPayment(orderId, amount, "AUTHORIZED");
                             paymentAuditMapper.insertAudit(orderId, "AUTHORIZED", "payment authorization completed");
-                            orderMapper.updateOrderStatus(orderId, "PAID");
+                            orderStatusService.markPaid(orderId);
                             return "AUTHORIZED";
                         }
                     }

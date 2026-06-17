@@ -2,6 +2,18 @@
 
 ## 2026-06-17
 
+### GraphRAG 관계도와 샘플 결제 흐름 정리
+
+- Project Chat 기본 `GraphRAG 관계도`, 기본 관계 표, 복사용 Markdown에서 `impact_path`와 `domain_summary`를 제외하고 `class_import`만 먼저 보이도록 정리했습니다.
+- `impact_path`와 `domain_summary`는 답변 context와 원본 metadata에 남겨 검증 가능성은 유지하되, 기본 화면에서 업무 호출 흐름처럼 오해되지 않게 했습니다.
+- 샘플 프로젝트 최종 결제 승인 흐름을 `PaymentController -> PaymentService -> OrderStatusService -> OrderStatusMapper` 계층으로 바꿨습니다.
+- `OrderStatusService.markPaid(orderId)`를 추가하고, 최종 `PaymentService`는 `OrderMapper`를 직접 호출하지 않고 `OrderStatusService.markPaid(orderId)`를 호출하도록 했습니다.
+- Project 97 분석 데이터를 새 샘플 HEAD 기준으로 초기화 후 Git Sync, RAG chunk/vector, Neo4j graph를 다시 생성했습니다.
+- 실제 `local_openai / qwen2.5-coder-7b-instruct`로 `PaymentController, PaymentService, OrderStatusService는 결제 승인 요청부터 주문 상태를 PAID로 바꾸는 흐름에서 어떻게 이어지는지 한국어로 설명해줘.`를 실행해 `chat_session=359`, `fallback=False`, `used_sources=11`, `graph_evidence=8`, 첫 graph evidence `class_import PaymentService -> OrderStatusService`를 확인했습니다.
+- Application Preview Project Chat answer/GraphRAG screenshot을 새 service-layer 흐름 기준으로 갱신했습니다.
+- 주요 파일: `src/ui/project_chat_page.py`, `scripts/create_sample_target_repo.py`, `scripts/capture_feature_screenshot.py`, `tests/test_project_chat_page.py`, `tests/test_sample_data_generation.py`, `docs/application-preview.md`, `docs/sample-target-repo-demo-design.md`, `docs/sample-project-test-playbook.md`, `docs/sample-project-usage-verification.md`, `docs/failure-history.md`, `docs/engineering-decisions.md`, `docs/ai-technical-overview.md`, `docs/images/features/project-chat-answer.png`, `docs/images/features/project-chat-graph-evidence.png`, `docs/images/usage-verification/project-chat-repro-2026-06-17.png`, `docs/images/usage-verification/project-chat-graph-repro-2026-06-17.png`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile scripts\create_sample_target_repo.py scripts\capture_feature_screenshot.py src\ui\project_chat_page.py tests\test_project_chat_page.py tests\test_sample_data_generation.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_sample_data_generation.py tests\test_project_chat_page.py tests\test_documentation_images.py -q` 22개 통과; `.\.venv\Scripts\python.exe scripts\create_sample_target_repo.py --target-path C:\dev\ai-advisor-sample-shop --force` 성공; `git -C C:\dev\ai-advisor-sample-shop rev-list --count HEAD` 결과 48; Project 97 재구축 결과 `commits=48`, `files=106`, `chunks=270`, `source_chunks=79`, `vectors=270`, `graph freshness=latest`; 실제 Project Chat 재실행 결과 `session=359`, `provider=local_openai`, `fallback=False`, `insufficient=False`; `project-chat-answer`, `project-chat-graph-evidence` screenshot capture 통과, GraphRAG capture는 `domain_summary`, `OrderStatusMapper` 금지 조건 통과; `.\.venv\Scripts\python.exe -m pytest -q` 166개 통과; `git diff --check` 통과.
+
 ### Application Preview Project Chat screenshot 재현본 교체
 
 - Application Preview가 참조하는 Project Chat 대표 screenshot 두 장을 같은 질문 replay 검증을 통과한 이미지로 교체했습니다.

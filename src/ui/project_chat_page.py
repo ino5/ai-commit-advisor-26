@@ -599,34 +599,6 @@ def build_graph_evidence_display(
                 highlighted=_is_graph_seed_match(target_class, evidence),
             )
             _add_graph_edge(edges, source_id, target_id, "IMPORTS_CLASS")
-        elif evidence_type == "impact_path":
-            program_id = _add_graph_node(
-                nodes,
-                "program",
-                evidence.get("program") or evidence.get("program_id"),
-                highlighted=_is_graph_seed_match(evidence.get("program") or evidence.get("program_id"), evidence),
-            )
-            commit_value = evidence.get("commit") or evidence.get("commit_hash")
-            commit_id = _add_graph_node(nodes, "commit", commit_value, highlighted=_is_graph_seed_match(commit_value, evidence))
-            file_value = evidence.get("file_path")
-            file_id = _add_graph_node(nodes, "file", file_value, highlighted=_is_graph_seed_match(file_value, evidence))
-            class_value = evidence.get("class_name")
-            class_id = _add_graph_node(nodes, "class", class_value, highlighted=_is_graph_seed_match(class_value, evidence))
-            _add_graph_edge(edges, program_id, commit_id, "MAPPED_TO_COMMIT")
-            _add_graph_edge(edges, commit_id, file_id, "TOUCHES_FILE")
-            _add_graph_edge(edges, file_id, class_id, "CONTAINS_CLASS")
-        elif evidence_type == "domain_summary":
-            domain_id = _add_graph_node(
-                nodes,
-                "domain",
-                evidence.get("domain"),
-                highlighted=_is_graph_seed_match(evidence.get("domain"), evidence),
-            )
-            for key in ("program", "file_path", "class_name"):
-                value = evidence.get(key)
-                node_type = "program" if key == "program" else "file" if key == "file_path" else "class"
-                related_id = _add_graph_node(nodes, node_type, value, highlighted=_is_graph_seed_match(value, evidence))
-                _add_graph_edge(edges, domain_id, related_id, "GROUPS")
 
         if len(nodes) >= max_nodes and len(edges) >= max_edges:
             break
@@ -641,7 +613,7 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
         return
 
     st.markdown("#### GraphRAG 관계도")
-    st.caption("질문과 매칭된 class, program, commit, file, domain 관계를 작은 근거 그래프로 표시합니다.")
+    st.caption("질문과 매칭된 class import 관계만 먼저 표시합니다. 영향 경로와 domain 요약은 아래 표에서 확인하세요.")
     agraph_nodes = []
     single_type_graph = len({node.node_type for node in nodes}) == 1
     component_variant_indexes = _graph_component_variant_indexes(nodes, edges) if single_type_graph else {}
@@ -671,7 +643,7 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
                 shape=style["shape"],
                 size=style["size"] + (3 if node.highlighted else 0),
                 borderWidth=3 if node.highlighted else 2,
-                font={"color": "#111827", "face": "Inter, Arial", "size": 16},
+                font={"color": "#111827", "face": "Inter, Arial", "size": 14},
             )
         )
     agraph_edges = [
@@ -687,11 +659,11 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
         for edge in edges
     ]
     config = Config(
-        height=440,
+        height=480,
         width="100%",
         directed=True,
-        physics=True,
-        hierarchical=False,
+        physics=False,
+        hierarchical=True,
         nodeHighlightBehavior=True,
         highlightColor=GRAPH_HIGHLIGHT_COLOR,
         collapsible=False,
@@ -703,15 +675,19 @@ def _render_graph_evidence(graph_evidence: list[dict], message_index: int, key_p
     if not graph_evidence:
         return
 
-    rows = [_graph_evidence_row(evidence, rank) for rank, evidence in enumerate(graph_evidence, start=1)]
-    type_counts = Counter(str(evidence.get("evidence_type") or "-") for evidence in graph_evidence)
+    visible_graph_evidence = _visible_graph_evidence(graph_evidence)
+    rows = [_graph_evidence_row(evidence, rank) for rank, evidence in enumerate(visible_graph_evidence, start=1)]
+    type_counts = Counter(str(evidence.get("evidence_type") or "-") for evidence in visible_graph_evidence)
     type_summary = ", ".join(f"{evidence_type} {count}건" for evidence_type, count in type_counts.items())
     with st.expander("그래프 관계 근거 보기", expanded=False):
-        st.caption("Neo4j graph read model에서 조회한 program, commit, file, class, domain 관계 근거입니다.")
-        st.caption(f"관계 유형: {type_summary}")
-        _render_graph_evidence_visualization(graph_evidence)
+        st.caption("Neo4j graph read model에서 조회한 class import 관계 근거입니다.")
+        st.caption(f"관계 유형: {type_summary or 'class_import 0건'}")
+        _render_graph_evidence_visualization(visible_graph_evidence)
         st.markdown("#### 관계 근거 표")
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        if rows:
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        else:
+            st.caption("질문과 직접 맞는 class import 근거가 없습니다. 원본 메타데이터에서 추가 근거를 확인하세요.")
         show_metadata = st.checkbox(
             "원본 메타데이터 표시",
             value=False,
@@ -725,6 +701,30 @@ def _render_graph_evidence(graph_evidence: list[dict], message_index: int, key_p
                     evidence,
                     expanded=False,
                 )
+
+
+def _visible_graph_evidence(graph_evidence: list[dict]) -> list[dict]:
+    class_imports = [evidence for evidence in graph_evidence if evidence.get("evidence_type") == "class_import"]
+
+    def is_flow_class(value: str | None) -> bool:
+        label = _short_graph_label(str(value or ""))
+        return label.endswith(("Controller", "Service"))
+
+    flow_edges = [
+        evidence
+        for evidence in class_imports
+        if is_flow_class(evidence.get("source_class")) and is_flow_class(evidence.get("target_class"))
+    ]
+    if flow_edges:
+        return flow_edges
+
+    directly_matched = [
+        evidence
+        for evidence in class_imports
+        if _is_graph_seed_match(evidence.get("source_class"), evidence)
+        and _is_graph_seed_match(evidence.get("target_class"), evidence)
+    ]
+    return directly_matched or class_imports
 
 
 def _render_expansion_context(message: dict) -> None:
@@ -768,9 +768,11 @@ def _render_chat_history(messages: list[dict]) -> None:
                 _render_expansion_context(message)
                 _render_sources(message.get("sources") or [], index, used_source_count)
                 _render_graph_evidence(graph_evidence, index, "history")
+                export_message = dict(message)
+                export_message["graph_evidence"] = _visible_graph_evidence(graph_evidence)
                 st.text_area(
                     "근거 복사용 Markdown",
-                    value=format_message_citation_export(message),
+                    value=format_message_citation_export(export_message),
                     height=180,
                     key=f"project_chat_citation_export_{index}",
                 )
@@ -925,7 +927,7 @@ def render_project_chat_page() -> None:
                             "content": content,
                             "sources": answer.sources,
                             "used_source_count": answer.used_source_count,
-                            "graph_evidence": answer.graph_evidence,
+                            "graph_evidence": _visible_graph_evidence(answer.graph_evidence),
                         }
                     ),
                     height=180,

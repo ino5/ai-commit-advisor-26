@@ -57,7 +57,7 @@ def test_build_graph_evidence_display_renders_class_import_relationships() -> No
     ]
 
 
-def test_build_graph_evidence_display_renders_impact_path_chain() -> None:
+def test_build_graph_evidence_display_keeps_impact_path_out_of_default_graph() -> None:
     nodes, edges = build_graph_evidence_display(
         [
             {
@@ -71,10 +71,25 @@ def test_build_graph_evidence_display_renders_impact_path_chain() -> None:
         ]
     )
 
-    assert {"Payment Checkout", "abcdef1234567890", "PaymentService.java", "PaymentService"} <= {
-        node.label for node in nodes
-    }
-    assert [edge.label for edge in edges] == ["MAPPED_TO_COMMIT", "TOUCHES_FILE", "CONTAINS_CLASS"]
+    assert nodes == []
+    assert edges == []
+
+
+def test_build_graph_evidence_display_keeps_domain_summary_out_of_default_graph() -> None:
+    nodes, edges = build_graph_evidence_display(
+        [
+            {
+                "evidence_type": "domain_summary",
+                "domain": "Order",
+                "program": "Order status",
+                "class_name": "com.example.market.order.service.OrderStatusService",
+                "matched_seeds": ["order", "status"],
+            }
+        ]
+    )
+
+    assert nodes == []
+    assert edges == []
 
 
 def test_build_graph_evidence_display_deduplicates_and_limits_graph() -> None:

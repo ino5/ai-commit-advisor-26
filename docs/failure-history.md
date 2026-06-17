@@ -31,6 +31,70 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-06-17 - GraphRAG 기본 관계도에 주변 impact/domain 근거를 섞으면 질문 흐름이 흐려진다
+
+분류:
+
+- Project Chat GraphRAG UX
+- Sample project service-layer realism
+- Application Preview screenshot quality
+
+관련 기능 및 문서:
+
+- `src/ui/project_chat_page.py`
+- `scripts/create_sample_target_repo.py`
+- `docs/images/features/project-chat-graph-evidence.png`
+- `docs/sample-target-repo-demo-design.md`
+- `AI_CHANGELOG.md` 항목 `GraphRAG 관계도와 샘플 결제 흐름 정리`
+
+### 증상
+
+Project Chat에서 결제 승인 흐름과 주문 상태 업데이트를 묻는 질문을 실행했을 때, 기본 GraphRAG 관계도에 `OrderStatusService`, `Payment`, `Order` 같은 주변 노드가 함께 보였습니다. 특히 `Payment`/`Order` domain summary가 분리된 덩어리처럼 보이고, 실제 요청 entry point인 controller보다 `OrderStatusService` 같은 주변 경로가 더 먼저 보이는 것처럼 읽혀 질문 의도와 화면 해석이 어긋났습니다.
+
+### 직접 원인
+
+기본 관계도가 `class_import`, `impact_path`, `domain_summary`를 한 캔버스와 같은 표에 섞어 표시했습니다. `impact_path`는 `program -> commit -> file -> class` 영향 추적 경로이고, `domain_summary`는 domain 묶음 요약이므로 class 호출 흐름이나 업무 요청 흐름과 다른 성격의 근거입니다. 이 근거들이 기본 화면에 같이 나오면서 사용자는 관계도를 호출 흐름도로 오해할 수 있었습니다.
+
+샘플 프로젝트 최종 결제 흐름도 `PaymentService -> OrderMapper` 직접 호출 형태라 서비스 계층 기대와 맞지 않았습니다. `OrderStatusService`가 샘플에 존재하는데 결제 승인 경로에서는 쓰이지 않아, GraphRAG가 주변 `order/status` seed로 해당 서비스를 끌고 오면 더 혼란스러운 화면이 되었습니다.
+
+### 배경 또는 구조적 원인
+
+GraphRAG는 답변 근거를 최대한 많이 보여주기 위해 여러 evidence type을 보존하도록 설계됐습니다. 하지만 Application Preview와 Project Chat 기본 화면은 “무엇이 직접 관계인가”를 먼저 보여줘야 합니다. 검증 가능성을 위해 metadata를 보존하는 것과, 첫 화면에서 사용자가 읽을 관계를 선별하는 것은 별도 요구입니다.
+
+### 사전 검증에서 놓친 이유
+
+기존 screenshot 검증은 `class_import`, `PaymentService`, `OrderMapper` 같은 기대 문자열이 있는지 확인했지만, 기본 관계도에 주변 domain/impact 근거가 같이 보여 사용자가 흐름을 오해할 수 있는지는 검증하지 않았습니다. 샘플 프로젝트 소스도 “mapper 직접 호출이 실제로 더 자연스러운가”를 서비스 계층 관점에서 다시 검토하지 않았습니다.
+
+### 수정 내용
+
+- Project Chat 기본 `GraphRAG 관계도`, 기본 관계 표, 복사용 Markdown은 `class_import` evidence만 보여주도록 했습니다.
+- `impact_path`와 `domain_summary`는 답변 context와 원본 metadata에는 남기되, 기본 화면에는 표시하지 않게 했습니다.
+- 샘플 프로젝트 최종 결제 승인 흐름을 `PaymentController -> PaymentService -> OrderStatusService -> OrderStatusMapper` 계층으로 조정했습니다.
+- `OrderStatusService.markPaid(orderId)`를 추가하고, 최종 `PaymentService`는 `OrderMapper`를 직접 호출하지 않도록 바꿨습니다.
+- 새 샘플 repo를 재생성하고 Project 97의 Git/RAG/vector/Neo4j 데이터를 새 HEAD 기준으로 다시 만들었습니다.
+- 실제 local LLM으로 새 질문을 다시 실행해 session `359`를 저장하고 Application Preview screenshot을 갱신했습니다.
+
+### 재발 방지 규칙
+
+- Project Chat 기본 관계도는 질문에 직접 맞는 관계 type만 먼저 보여줍니다. 넓은 영향 경로나 domain 요약은 기본 관계도에 섞지 않습니다.
+- Application Preview GraphRAG screenshot은 `domain_summary` 같은 내부 evidence type이 기본 화면에 노출되지 않는지 금지 문자열로 확인합니다.
+- 샘플 프로젝트의 AI 질문 흐름은 서비스 계층과 업무 경계가 자연스럽게 보이는 source 구조를 우선합니다.
+- 내부 evidence type 이름은 검증용 metadata에는 남길 수 있지만, 사용자 기본 화면에서는 업무적으로 해석 가능한 라벨과 선별된 근거를 사용합니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+현재 기본 관계도는 `class_import` 중심입니다. 진짜 method-level call graph는 아직 별도 분석 모델이 아니므로, `calls`, `sets status` 같은 세밀한 edge는 verified source 답변과 복사용 근거에서 설명하고 graph에는 class import 관계로 표시합니다. 이후 call graph를 추가할 때는 `impact_path`와 섞지 말고 별도 view로 설계해야 합니다.
+
+### 검증 명령과 결과
+
+- `.\.venv\Scripts\python.exe -m pytest tests\test_sample_data_generation.py tests\test_project_chat_page.py -q`: 21개 통과.
+- `.\.venv\Scripts\python.exe scripts\create_sample_target_repo.py --target-path C:\dev\ai-advisor-sample-shop --force`: 48 commits 생성.
+- `git -C C:\dev\ai-advisor-sample-shop rev-list --count HEAD`: 48.
+- Project 97 재구축 결과: `commits=48`, `files=106`, `chunks=270`, `source_chunks=79`, `vectors=270`, `graph freshness=latest`.
+- 실제 Project Chat 재실행: `chat_session=359`, `provider=local_openai`, `model=qwen2.5-coder-7b-instruct`, `fallback=False`, `insufficient=False`, `used_sources=11`, `graph_evidence=8`, 첫 graph evidence `class_import PaymentService -> OrderStatusService`.
+- `project-chat-answer` screenshot capture 통과.
+- `project-chat-graph-evidence` screenshot capture 통과. 금지 조건에 `domain_summary`를 포함해 기본 화면에 domain summary가 보이지 않음을 확인했습니다.
+
 ## 2026-06-17 - Application Preview Project Chat 질문은 같은 질문 재실행으로 검증해야 한다
 
 분류:

@@ -21,6 +21,39 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-06-17 - Project Chat 기본 GraphRAG 화면은 직접 class 관계만 먼저 보여준다
+
+### 배경
+
+Project Chat의 graph evidence에는 class import, 영향 경로, domain 요약이 함께 저장됩니다. 이 정보들은 모두 검증에는 유용하지만, 기본 관계도에 한꺼번에 표시하면 사용자가 관계도를 업무 호출 흐름으로 오해할 수 있습니다.
+
+### 결정
+
+Project Chat 기본 `GraphRAG 관계도`, 기본 관계 표, 복사용 Markdown은 `class_import` evidence만 표시합니다. `impact_path`와 `domain_summary`는 답변 context와 원본 metadata에는 남기되, 기본 화면에는 노출하지 않습니다.
+
+### 이유
+
+- 질문에 대한 직접 class 관계를 먼저 보여줘야 화면 해석이 빠릅니다.
+- `impact_path`는 프로그램/커밋/파일/class 영향 추적 경로라 호출 흐름과 다릅니다.
+- `domain_summary`는 domain 묶음 요약이라 class 관계도에 섞이면 분리된 덩어리처럼 보일 수 있습니다.
+- 검증 가능성은 raw metadata로 유지하면서, 사용자 기본 화면은 더 선별된 관계만 보여주는 편이 제품 설명에 맞습니다.
+
+### 검토한 대안
+
+- 모든 evidence type을 기본 그래프에 계속 표시: 정보량은 많지만 질문 흐름을 흐리고 Application Preview에서 오해를 만듭니다.
+- `impact_path`/`domain_summary`를 완전히 삭제: 화면은 단순해지지만 GraphRAG 근거 추적과 debugging 정보가 줄어듭니다.
+- 탭을 즉시 추가: 장기적으로는 좋지만 이번 문제의 1차 해결보다 구현 범위가 커집니다.
+
+### 영향과 tradeoff
+
+기본 화면은 더 읽기 쉬워지지만, 프로그램/커밋 영향 경로를 한눈에 보고 싶은 사용자는 원본 metadata나 별도 Knowledge Graph 화면을 열어야 합니다. 이후 영향 경로 전용 view를 추가할 때도 class 관계도와 섞지 않는 기준을 유지합니다.
+
+### 관련 문서
+
+- [Failure History](failure-history.md#2026-06-17---graphrag-기본-관계도에-주변-impactdomain-근거를-섞으면-질문-흐름이-흐려진다)
+- [AI Technical Overview](ai-technical-overview.md#rag와-project-chat-안전장치)
+- `AI_CHANGELOG.md` 항목 `GraphRAG 관계도와 샘플 결제 흐름 정리`
+
 ## 2026-06-17 - Application Preview AI screenshot은 같은 질문 replay로 검증한다
 
 ### 배경

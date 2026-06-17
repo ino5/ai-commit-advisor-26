@@ -92,12 +92,14 @@
 
 샘플 용어는 생성된 Spring/MyBatis source에 이미 존재하는 code와 SQL identifier를 포괄해야 합니다.
 
+결제 승인 흐름은 데모 질문에서 자연스럽게 읽히도록 controller-service-service-mapper 계층을 사용합니다. 최종 샘플 HEAD 기준 흐름은 `PaymentController -> PaymentService -> OrderStatusService -> OrderStatusMapper`이며, `PaymentService`는 주문 도메인의 mapper를 직접 호출하지 않고 `OrderStatusService.markPaid(orderId)`를 호출합니다. 이렇게 해야 Project Chat과 GraphRAG 관계도가 `PaymentService -> OrderMapper` 같은 낮은 계층 직접 연결보다 업무 서비스 경계를 먼저 보여줄 수 있습니다.
+
 | Korean term | English term | Abbreviation | Demo linkage |
 |---|---|---|---|
 | 결제금액 | payment amount | pay amt | `amount`, `payments.amount`, `PaymentService` |
 | 결제승인 | payment authorization | pay auth | `authorize`, `PaymentController`, `PaymentMapper` |
 | 주문번호 | order number | ord no | `orderId`, `order_id` |
-| 주문상태 | order status | ord stat | `updateOrderStatus`, `status` |
+| 주문상태 | order status | ord stat | `markPaid`, `updateStatus`, `OrderStatusService`, `status` |
 | 쿠폰할인 | coupon discount | cpn dc | `CouponDiscountService`, `previewDiscount` |
 | 재고예약 | inventory reservation | inv rsv | `InventoryService.reserve` |
 | 정산내보내기 | settlement export | stl exp | settlement planning/risk scenario |

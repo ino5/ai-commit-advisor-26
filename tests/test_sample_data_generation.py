@@ -96,9 +96,11 @@ def test_sample_target_repo_has_scenario_designed_ai_evidence() -> None:
         for path, text in step.files.items()
     }
     all_text = "\n".join(text for step in _commit_steps() for text in step.files.values())
+    final_payment_service = file_texts["src/main/java/com/example/market/payment/service/PaymentService.java"]
 
     assert "amount < 0 ? \"REJECTED\" : \"AUTHORIZED\"" in all_text
-    assert "orderMapper.updateOrderStatus(orderId, \"PAID\")" in all_text
+    assert "orderStatusService.markPaid(orderId)" in final_payment_service
+    assert "orderMapper.updateOrderStatus(orderId, \"PAID\")" not in final_payment_service
     assert "count(o.order_id)" in all_text
     assert "count(s.signal_id)" in file_texts[
         "src/test/java/com/example/market/dashboard/DashboardSummaryJoinRiskTest.java"

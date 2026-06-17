@@ -13,7 +13,7 @@
 
 추천 질문:
 
-- `PaymentService와 OrderMapper는 어떤 클래스 import 관계로 연결돼 있고, 결제 승인 흐름에서 주문 상태 업데이트가 어떻게 이어지는지 한국어로 설명해줘.`
+- `PaymentController, PaymentService, OrderStatusService는 결제 승인 요청부터 주문 상태를 PAID로 바꾸는 흐름에서 어떻게 이어지는지 한국어로 설명해줘.`
 - `결제금액이 0원 이하일 때 어떤 검증 로직이 동작하나요? 관련 파일을 근거로 설명해줘.`
 - `쿠폰 할인은 왜 아직 완료로 보기 어렵나요? CouponDiscountService, CouponMapper, CouponPolicyStatus 기준으로 설명해줘.`
 - `정산 내보내기는 왜 아직 완료가 아닌가요? SettlementController와 SettlementReadiness 근거로 설명해줘.`
@@ -22,8 +22,8 @@
 좋은 답변 신호:
 
 - `Provider: local_openai`, `fallback=False`가 화면에 표시됩니다.
-- 답변 근거에 `PaymentService.java`, `OrderMapper.java`, `DashboardMapper.xml`, `CouponPolicyStatus.java`, `SettlementReadiness.java` 같은 source file이 포함됩니다.
-- GraphRAG 질문에서는 `class_import PaymentService -> OrderMapper`처럼 관계 유형과 node 이름이 함께 보입니다.
+- 답변 근거에 `PaymentController.java`, `PaymentService.java`, `OrderStatusService.java`, `DashboardMapper.xml`, `CouponPolicyStatus.java`, `SettlementReadiness.java` 같은 source file이 포함됩니다.
+- GraphRAG 질문에서는 `class_import PaymentController -> PaymentService`, `class_import PaymentService -> OrderStatusService`처럼 관계 유형과 node 이름이 함께 보입니다.
 
 나쁜 답변 신호:
 
@@ -36,7 +36,7 @@
 좋게 나와야 하는 high-risk 리뷰:
 
 - `Relax partner payment validation for pilot channel`
-- 기대 finding: `amount == 0`이 새로 허용되고 `orderMapper.updateOrderStatus(orderId, "PAID")`가 실행되어 주문이 결제완료처럼 흘러갈 수 있다는 지적.
+- 기대 finding: `amount == 0`이 새로 허용되고 `orderStatusService.markPaid(orderId)`가 실행되어 주문이 결제완료처럼 흘러갈 수 있다는 지적.
 
 좋게 나와야 하는 cross-module 리뷰:
 
