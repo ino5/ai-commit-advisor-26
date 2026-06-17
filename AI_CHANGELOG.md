@@ -1,5 +1,19 @@
 # AI 변경 이력
 
+## 2026-06-17
+
+### Project Chat GraphRAG 노드 내부색 구분 보강
+
+- Project Chat `GraphRAG 관계도`의 `program`, `commit`, `file`, `class`, `domain` node 내부색을 더 구분되는 pastel tone으로 조정했습니다.
+- node 선택, hover, highlight 상태에서도 타입별 내부색 계열이 유지되도록 `streamlit-agraph` node color 설정에 타입별 highlight/hover 배경색을 추가했습니다.
+- 화면에 한 node type만 표시되는 `class_import` 중심 관계도에서는 연결 component별 pastel variant를 적용했습니다.
+- 색상 legend는 현재 compact graph에서 설명 부담이 커져 제거하고, 실제 관계 의미는 아래 `관계 근거 표`에서 확인하도록 유지했습니다.
+- Seed matching 강조는 내부색을 덮지 않고 파란색 계열 테두리 강조로 유지해 경고 색처럼 보이지 않게 했습니다.
+- 관계도 edge label은 그래프 안에 항상 표시하지 않고 hover title로 옮겼으며, 선 색상과 두께를 보강해 관계가 글자보다 선/화살표로 먼저 읽히게 했습니다.
+- Application Preview의 `project-chat-graph-evidence.png` screenshot을 새 pastel node 색상 기준으로 갱신했습니다.
+- 주요 파일: `src/ui/project_chat_page.py`, `docs/images/features/project-chat-graph-evidence.png`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m py_compile src\ui\project_chat_page.py tests\test_project_chat_page.py` 통과; `.\.venv\Scripts\python.exe -m pytest tests\test_project_chat_page.py -q` 6개 테스트 통과; `.\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url "http://localhost:8501/?project_id=97" --feature project-chat-graph-evidence --surface local --height 1500 --expect-text "GraphRAG 관계도" --expect-text "PaymentService" --expect-text "OrderMapper" --expect-text "관계 근거 표" --expect-text "원본 메타데이터 표시" --forbid-text "StreamlitAPIException" --forbid-text "Traceback"` 통과; Browser로 `http://localhost:8501/?project_id=97` 앱 로드와 console error 0건 확인.
+
 ## 2026-06-15
 
 ### Project Chat GraphRAG graph color polish

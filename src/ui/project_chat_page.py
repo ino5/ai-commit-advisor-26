@@ -88,16 +88,56 @@ GRAPH_STATUS_LABELS = {
 }
 
 GRAPH_NODE_STYLE = {
-    "program": {"color": "#D8E7FF", "border": "#7EA6E0", "shape": "box", "size": 28},
-    "commit": {"color": "#E8DDFF", "border": "#A78BFA", "shape": "diamond", "size": 24},
-    "file": {"color": "#D7F8E4", "border": "#69C58F", "shape": "box", "size": 24},
-    "class": {"color": "#FFE8C7", "border": "#F2A65A", "shape": "dot", "size": 30},
-    "domain": {"color": "#D2F7F1", "border": "#4DBFB6", "shape": "hexagon", "size": 26},
+    "program": {
+        "color": "#DCEBFF",
+        "highlight": "#C8DDFF",
+        "border": "#6EA1E8",
+        "shape": "box",
+        "size": 28,
+    },
+    "commit": {
+        "color": "#EADFFF",
+        "highlight": "#DCCBFF",
+        "border": "#9B7BE8",
+        "shape": "diamond",
+        "size": 24,
+    },
+    "file": {
+        "color": "#D8F7DF",
+        "highlight": "#C5EDCF",
+        "border": "#62B879",
+        "shape": "box",
+        "size": 24,
+    },
+    "class": {
+        "color": "#FFE6BF",
+        "highlight": "#FFD8A3",
+        "border": "#E89A3C",
+        "shape": "dot",
+        "size": 30,
+    },
+    "domain": {
+        "color": "#CFF5EF",
+        "highlight": "#B8ECE4",
+        "border": "#43ADA4",
+        "shape": "hexagon",
+        "size": 26,
+    },
 }
-GRAPH_HIGHLIGHT_COLOR = "#F59CB0"
-GRAPH_HIGHLIGHT_BORDER_COLOR = "#E8798F"
-GRAPH_EDGE_COLOR = "#CBD5E1"
-GRAPH_EDGE_HIGHLIGHT_COLOR = "#94A3B8"
+GRAPH_NODE_VARIANT_STYLES = (
+    {"color": "#DCEBFF", "highlight": "#C8DDFF", "border": "#6EA1E8"},
+    {"color": "#EADFFF", "highlight": "#DCCBFF", "border": "#9B7BE8"},
+    {"color": "#D8F7DF", "highlight": "#C5EDCF", "border": "#62B879"},
+    {"color": "#FFE6BF", "highlight": "#FFD8A3", "border": "#E89A3C"},
+    {"color": "#CFF5EF", "highlight": "#B8ECE4", "border": "#43ADA4"},
+    {"color": "#FDE2F3", "highlight": "#FBCBE8", "border": "#E879C1"},
+    {"color": "#E0F2FE", "highlight": "#BAE6FD", "border": "#38A6D9"},
+    {"color": "#ECFCCB", "highlight": "#D9F99D", "border": "#84B93F"},
+)
+GRAPH_HIGHLIGHT_COLOR = "#60A5FA"
+GRAPH_HIGHLIGHT_BORDER_COLOR = "#2563EB"
+GRAPH_EDGE_COLOR = "#94A3B8"
+GRAPH_EDGE_HIGHLIGHT_COLOR = "#64748B"
 
 GRAPH_HIGHLIGHT_SEED_STOPWORDS = {
     "src",
@@ -126,6 +166,39 @@ class GraphDisplayEdge:
     source: str
     target: str
     label: str
+
+
+def _graph_component_variant_indexes(
+    nodes: list[GraphDisplayNode],
+    edges: list[GraphDisplayEdge],
+) -> dict[str, int]:
+    adjacency: dict[str, set[str]] = {node.id: set() for node in nodes}
+    for edge in edges:
+        if edge.source in adjacency and edge.target in adjacency:
+            adjacency[edge.source].add(edge.target)
+            adjacency[edge.target].add(edge.source)
+
+    component_indexes: dict[str, int] = {}
+    visited: set[str] = set()
+    component_count = 0
+    for node in nodes:
+        if node.id in visited:
+            continue
+        stack = [node.id]
+        component: list[str] = []
+        visited.add(node.id)
+        while stack:
+            current = stack.pop()
+            component.append(current)
+            for neighbor in adjacency[current]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+        variant_index = component_count % len(GRAPH_NODE_VARIANT_STYLES)
+        component_count += 1
+        for node_id in component:
+            component_indexes[node_id] = variant_index
+    return component_indexes
 
 
 def _chat_key(project_id: int) -> str:
@@ -569,13 +642,20 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
     st.markdown("#### GraphRAG 관계도")
     st.caption("질문과 매칭된 class, program, commit, file, domain 관계를 작은 근거 그래프로 표시합니다.")
     agraph_nodes = []
+    single_type_graph = len({node.node_type for node in nodes}) == 1
+    component_variant_indexes = _graph_component_variant_indexes(nodes, edges) if single_type_graph else {}
     for node in nodes:
         style = GRAPH_NODE_STYLE.get(
             node.node_type,
-            {"color": "#F3F4F6", "border": "#D1D5DB", "shape": "dot", "size": 22},
+            {"color": "#F3F4F6", "highlight": "#E5E7EB", "border": "#D1D5DB", "shape": "dot", "size": 22},
         )
-        background = style["color"]
-        border = GRAPH_HIGHLIGHT_COLOR if node.highlighted else style["border"]
+        color_style = (
+            GRAPH_NODE_VARIANT_STYLES[component_variant_indexes.get(node.id, 0)] if single_type_graph else style
+        )
+        background = color_style["color"]
+        highlight_background = color_style["highlight"]
+        border = GRAPH_HIGHLIGHT_COLOR if node.highlighted else color_style["border"]
+        highlight_border = GRAPH_HIGHLIGHT_BORDER_COLOR if node.highlighted else color_style["border"]
         agraph_nodes.append(
             Node(
                 id=node.id,
@@ -584,7 +664,8 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
                 color={
                     "background": background,
                     "border": border,
-                    "highlight": {"background": "#FFE4E6", "border": GRAPH_HIGHLIGHT_BORDER_COLOR},
+                    "highlight": {"background": highlight_background, "border": highlight_border},
+                    "hover": {"background": highlight_background, "border": highlight_border},
                 },
                 shape=style["shape"],
                 size=style["size"] + (3 if node.highlighted else 0),
@@ -596,11 +677,11 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
         Edge(
             source=edge.source,
             target=edge.target,
-            label=edge.label,
+            label="",
+            title=edge.label,
             color={"color": GRAPH_EDGE_COLOR, "highlight": GRAPH_EDGE_HIGHLIGHT_COLOR},
-            font={"color": "#475569", "size": 11, "align": "middle"},
             smooth={"type": "dynamic"},
-            width=1.8,
+            width=2.4,
         )
         for edge in edges
     ]
@@ -611,18 +692,10 @@ def _render_graph_evidence_visualization(graph_evidence: list[dict]) -> None:
         physics=True,
         hierarchical=False,
         nodeHighlightBehavior=True,
-        highlightColor="#FFE4E6",
+        highlightColor=GRAPH_HIGHLIGHT_COLOR,
         collapsible=False,
     )
     agraph(nodes=agraph_nodes, edges=agraph_edges, config=config)
-
-    legend_cols = st.columns(6)
-    for col, (node_type, style) in zip(legend_cols[:5], GRAPH_NODE_STYLE.items()):
-        col.markdown(f"<span style='color:{style['color']}'>●</span> `{node_type}`", unsafe_allow_html=True)
-    legend_cols[5].markdown(
-        f"<span style='color:{GRAPH_HIGHLIGHT_COLOR}'>◉</span> `matched`",
-        unsafe_allow_html=True,
-    )
 
 
 def _render_graph_evidence(graph_evidence: list[dict], message_index: int, key_prefix: str) -> None:
