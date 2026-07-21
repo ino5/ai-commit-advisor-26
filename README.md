@@ -25,23 +25,40 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-Docker만으로 PostgreSQL, Neo4j, 앱을 함께 실행하려면 LM Studio를 `12345` port에 먼저 띄운 뒤 다음 명령을 사용합니다.
+### 검증된 시연 서버 재기동
+
+현재 저장된 시연 결과를 그대로 사용할 때는 아래 한 명령을 기준으로 합니다.
 
 ```powershell
-docker compose up -d --build
+.\scripts\demo_start.ps1
 ```
 
-Docker 앱은 `http://localhost:8501`에서 열립니다. 로컬 Python 실행과 Docker 앱 실행을 동시에 켜면 같은 port를 사용할 수 있으므로 한 방식만 선택하세요.
+스크립트는 현재 상태를 먼저 읽고 필요한 서비스만 시작합니다. LM Studio port `12345`, Chat model context length `8192`, embedding model, Docker 8501 health, project `2716`, preflight를 확인합니다. 실행 중인 Quick Tunnel이 있으면 `ai_commit_advisor_demo_tunnel`과 기존 이름 `ai_commit_advisor_quick_tunnel`을 모두 찾아 현재 URL을 재사용하며, 기본 실행만으로 새 Tunnel을 만들지 않습니다.
+
+상황별 옵션은 다음과 같습니다.
+
+```powershell
+# 어떤 서비스도 시작하지 않고 현재 상태만 검증
+.\scripts\demo_start.ps1 -CheckOnly
+
+# 앱 source나 Docker image가 바뀐 경우에만 rebuild
+.\scripts\demo_start.ps1 -Build
+
+# 실행 중인 Tunnel이 없고 새 외부 URL이 필요한 경우에만 생성
+.\scripts\demo_start.ps1 -StartTunnel
+```
+
+일반 재기동은 image를 다시 만들지 않는 `docker compose up -d app`과 같습니다. `docker compose down`이나 `docker compose down -v`는 기존 DB와 Tunnel network를 불필요하게 건드리므로 시연 재기동에 사용하지 않습니다. Docker 앱은 `http://127.0.0.1:8501/?project_id=2716`에서 열며 local 8502를 동시에 실행하지 않습니다.
 
 Docker에서 AI 호출 없이 화면과 DB 연결만 확인하려면 실행 전에 `.env`에 `DOCKER_LLM_PROVIDER=mock`, `DOCKER_EMBEDDING_PROVIDER=mock`, `DOCKER_PGVECTOR_DIMENSION=768`을 명시합니다. 실제 분석 결과를 확인할 때는 이 override를 제거합니다. host의 `127.0.0.1`은 컨테이너 자신을 가리키므로 Docker LM Studio 주소는 기본값 `http://host.docker.internal:12345/v1`을 유지하세요.
 
-도메인이나 공유기 port forwarding 없이 하루 동안 샘플 화면을 외부에 보여줘야 한다면 저장소에 포함된 Quick Tunnel 스크립트를 사용할 수 있습니다. 다른 개발 세션이 같은 Docker 앱을 사용 중이지 않은지 먼저 확인하세요.
+Quick Tunnel만 따로 확인할 때는 상태 명령부터 실행합니다.
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\quick_tunnel.py start --build
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py status
 ```
 
-스크립트는 Docker 앱을 확인한 뒤 Cloudflare 공식 `cloudflared` container를 같은 Compose network에 연결하고, 발급된 `https://...trycloudflare.com` 주소와 외부 health 결과를 출력합니다. Quick Tunnel 주소에는 자체 로그인이 없고 가동 시간도 보장되지 않으므로 샘플 데이터 기반의 짧은 시연에만 사용하세요. 상태 확인, 종료, 장애 대응은 [하루 시연용 Cloudflare Quick Tunnel](docs/setup-and-operations.md#하루-시연용-cloudflare-quick-tunnel)을 따릅니다.
+상태가 정상이면 출력된 URL을 그대로 사용합니다. 새 URL이 필요할 때만 `start`를 실행합니다. Quick Tunnel 주소에는 자체 로그인이 없고 가동 시간도 보장되지 않으므로 샘플 데이터 기반의 짧은 시연에만 사용하세요. 전체 순서와 장애 대응은 [시연 Runbook](docs/demo-runbook.md#기동-절차)과 [하루 시연용 Cloudflare Quick Tunnel](docs/setup-and-operations.md#하루-시연용-cloudflare-quick-tunnel)을 따릅니다.
 
 로컬 Python Quick Start도 기본적으로 Neo4j를 함께 켭니다. Neo4j는 첫 image pull 때만 시간이 더 걸릴 수 있고, 이후에는 기존 Docker volume/image를 재사용합니다. 아주 가볍게 PostgreSQL만 켜고 싶다면 `docker compose up -d postgres`만 실행하고 `.env`에서 `NEO4J_ENABLED=false`로 바꾸세요. 이 경우 `Knowledge Graph` 화면은 PostgreSQL 데이터를 기준으로 preview만 보여주며, Neo4j 저장 동기화는 건너뜁니다.
 

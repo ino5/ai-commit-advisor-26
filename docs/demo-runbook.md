@@ -239,54 +239,70 @@ $demoProjectId = 2716  # 프로젝트/Git 설정 화면에서 확인한 실제 I
 
 ## 기동 절차
 
-발표 전날 한 번 재부팅한 뒤 아래 순서로 기동해 봅니다. 목요일 당일에는 정상 동작 중인 서비스를 불필요하게 재시작하지 않습니다.
+시연 전날 한 번 재부팅한 뒤 통합 script로 전체 조건을 확인합니다. 당일에는 정상 동작 중인 서비스와 Quick Tunnel을 불필요하게 재시작하지 않습니다.
 
-### 1. Docker 앱, PostgreSQL, Neo4j
+### 1. 기준 명령
 
 ```powershell
-docker desktop start --timeout 60
-docker compose up -d app postgres neo4j
+.\scripts\demo_start.ps1
+```
+
+이 명령은 다음 순서를 지킵니다.
+
+1. Docker daemon이 없을 때만 Docker Desktop을 시작합니다.
+2. LM Studio port `12345`를 확인하고, 필요한 경우 Chat model과 embedding model만 로드합니다.
+3. Chat model의 `contextLength=8192`를 확인합니다. 다른 값으로 이미 로드돼 있으면 임의로 unload하지 않고 오류로 알려줍니다.
+4. Docker app이 꺼져 있을 때 `docker compose up -d app`으로 기본 DB `ai_commit_advisor`, Neo4j, 8501 앱을 기동합니다.
+5. 기존 `ai_commit_advisor_demo_tunnel` 또는 legacy `ai_commit_advisor_quick_tunnel`을 먼저 찾아 주소를 재사용합니다.
+6. local health와 `demo_preflight.ps1 -ProjectId 2716`을 실행합니다.
+
+코드나 Docker image가 바뀐 경우에만 `-Build`, 실행 중인 Tunnel이 없고 외부 주소가 필요한 경우에만 `-StartTunnel`을 사용합니다.
+
+```powershell
+.\scripts\demo_start.ps1 -Build
+.\scripts\demo_start.ps1 -StartTunnel
+```
+
+현재 상태만 확인하려면 어떤 서비스도 시작하지 않는 check-only 모드를 사용합니다.
+
+```powershell
+.\scripts\demo_start.ps1 -CheckOnly
+```
+
+### 2. 수동 확인이 필요할 때
+
+이 PC에서는 Windows 제외 포트 범위에 `1234`가 포함돼 있어 LM Studio server가 `EACCES`로 시작되지 않습니다. 시연 환경은 `12345` 하나만 사용합니다. 먼저 `ps`로 현재 상태를 확인하고, 없는 항목만 시작하거나 로드합니다.
+
+```powershell
+$lms = "$env:USERPROFILE\.lmstudio\bin\lms.exe"
+& $lms ps --port 12345 --json
+& $lms server start --port 12345
+& $lms load "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/qwen2.5-coder-7b-instruct-q4_k_m.gguf" --port 12345 --identifier qwen2.5-coder-7b-instruct --context-length 8192 --yes
+& $lms load "nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf" --port 12345 --identifier text-embedding-nomic-embed-text-v1.5 --yes
+docker compose up -d app
 docker compose ps
 ```
 
-`ai_commit_advisor_app`과 `ai_commit_advisor_postgres`가 `healthy`, `ai_commit_advisor_neo4j`가 `Up`인지 확인합니다. Docker 앱은 기본 DB `ai_commit_advisor`, 실제 local LLM/embedding, 768차원을 사용합니다. 별도 override가 필요할 때만 `.env`에 `DOCKER_LLM_*`, `DOCKER_EMBEDDING_*`, `DOCKER_PGVECTOR_DIMENSION`을 둡니다.
-
-### 2. LM Studio model과 server
-
-이 PC에서는 Windows 제외 포트 범위에 `1234`가 포함돼 있어 LM Studio server가 `EACCES`로 시작되지 않습니다. 시연 환경은 `12345`를 사용합니다.
-
-```powershell
-& "$env:USERPROFILE\.lmstudio\bin\lms.exe" server start --port 12345
-& "$env:USERPROFILE\.lmstudio\bin\lms.exe" load "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/qwen2.5-coder-7b-instruct-q4_k_m.gguf" --port 12345 --identifier qwen2.5-coder-7b-instruct --context-length 8192 --yes
-& "$env:USERPROFILE\.lmstudio\bin\lms.exe" load "nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf" --port 12345 --identifier text-embedding-nomic-embed-text-v1.5 --yes
-& "$env:USERPROFILE\.lmstudio\bin\lms.exe" ps --port 12345 --json
-```
-
-이미 model이나 server가 실행 중이면 중복 실행하지 않습니다. `lms ps`에서 Chat model의 `contextLength`가 8192인지 확인합니다. host script용 `.env`의 `LLM_BASE_URL`과 `EMBEDDING_BASE_URL`은 `http://127.0.0.1:12345/v1`입니다. Docker는 `docker-compose.yml` 기본값인 `http://host.docker.internal:12345/v1`을 사용하므로 host용 URL을 Docker에 그대로 넣지 않습니다.
+이미 실행 중인 model과 server에는 해당 start/load 명령을 반복하지 않습니다. host script용 `.env`는 `http://127.0.0.1:12345/v1`, Docker는 `http://host.docker.internal:12345/v1`을 사용합니다.
 
 ### 3. Streamlit과 외부 URL
 
 ```powershell
 Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8501/_stcore/health
-docker start ai_commit_advisor_quick_tunnel
-docker logs --tail 30 ai_commit_advisor_quick_tunnel
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py status
 ```
 
-로컬에서는 `http://127.0.0.1:8501/?project_id=2716`을 엽니다. 원격에서 브라우저 화면을 직접 공유할 때는 Chrome 원격 데스크톱만으로 충분합니다. quick tunnel을 함께 사용할 경우 log의 새 `https://...trycloudflare.com` 주소 뒤에 `/?project_id=2716`을 붙입니다. quick tunnel URL은 재시작할 때 바뀝니다.
+로컬 주소는 `http://127.0.0.1:8501/?project_id=2716`입니다. `status`가 정상 URL을 출력하면 그대로 사용하고 Tunnel을 다시 시작하지 않습니다. 실행 중인 Tunnel이 없을 때만 `demo_start.ps1 -StartTunnel`을 사용합니다. Tunnel process를 새로 만들면 quick tunnel URL도 바뀝니다.
 
-### 4. 사전 점검
+### 4. 사전 점검 결과
 
-```powershell
-.\scripts\demo_preflight.ps1 -ProjectId 2716
-```
-
-정상 기준은 `FAIL=0`입니다. 저장 분석 HEAD와 현재 샘플 저장소 HEAD가 `221eb9ac9c83`으로 일치해야 합니다. 불일치 경고가 나오면 원인을 확인하기 전까지 `Git 동기화`와 `Mapping 실행`을 누르지 않습니다.
+통합 script가 실행하는 preflight의 정상 기준은 `FAIL=0`입니다. 저장 분석 HEAD와 현재 샘플 저장소 HEAD가 `221eb9ac9c83`으로 일치해야 합니다. 불일치 경고가 나오면 원인을 확인하기 전까지 `Git 동기화`와 `Mapping 실행`을 누르지 않습니다. `-SkipPreflight`는 문제 원인을 이미 알고 별도로 검증할 때만 사용합니다.
 
 ## 당일 체크리스트
 
 ### 수요일 최종 리허설
 
-- [ ] `demo_preflight.ps1`가 `FAIL=0`으로 끝난다.
+- [ ] `demo_start.ps1 -CheckOnly`가 끝까지 통과하고 내부 preflight가 `FAIL=0`으로 끝난다.
 - [ ] Chrome 원격 데스크톱으로 다른 기기에서 한 번 접속하고 끊은 뒤 재접속한다.
 - [ ] 기본 시나리오를 소리 내어 12분 안에 한 번 끝낸다.
 - [ ] 5분 압축 시나리오도 한 번 실행한다.
@@ -298,7 +314,7 @@ docker logs --tail 30 ai_commit_advisor_quick_tunnel
 - [ ] 전원 어댑터를 연결한다.
 - [ ] Windows 자동 절전과 화면 꺼짐을 시연 시간 동안 사용하지 않도록 설정한다.
 - [ ] Docker Desktop, PostgreSQL, Neo4j, LM Studio, Streamlit을 확인한다.
-- [ ] `demo_preflight.ps1`를 실행한다.
+- [ ] `demo_start.ps1 -CheckOnly`를 실행한다.
 - [ ] Windows Update, 재부팅 예약, 대용량 download를 멈춘다.
 
 ### T-20분

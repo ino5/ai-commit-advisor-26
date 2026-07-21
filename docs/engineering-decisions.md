@@ -21,6 +21,44 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-21 - 시연 재기동은 상태 우선 통합 script를 단일 기준으로 사용한다
+
+### 배경
+
+README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, Docker rebuild 여부를 서로 다르게 안내했습니다. 현재 실행 중인 Quick Tunnel은 과거 이름 `ai_commit_advisor_quick_tunnel`을 사용하지만 새 스크립트는 `ai_commit_advisor_demo_tunnel`만 알고 있어, 문서의 시작 명령을 그대로 실행하면 두 번째 Tunnel과 새 URL이 생길 수 있었습니다. 새 Agent 세션은 이전 대화의 실행 조건을 자동으로 이어받지 않으므로 저장소 안에 실행 가능한 기준이 필요했습니다.
+
+### 결정
+
+- `scripts/demo_start.ps1`을 시연 환경의 단일 기동 진입점으로 사용하고, `AGENTS.md`가 새 Agent 세션에도 같은 원칙을 적용하게 합니다.
+- 스크립트는 현재 Docker daemon, LM Studio, model, Docker 8501, Quick Tunnel 상태를 먼저 읽고 필요한 항목만 시작합니다.
+- 정상 재기동은 `docker compose up -d app`, image 변경 시에만 `-Build`, 실행 중인 Tunnel이 없고 외부 주소가 필요할 때만 `-StartTunnel`을 사용합니다.
+- 기준값은 project `2716`, LM Studio port `12345`, `qwen2.5-coder-7b-instruct` context length `8192`, `text-embedding-nomic-embed-text-v1.5`, `PGVECTOR_DIMENSION=768`로 고정합니다.
+- `scripts/quick_tunnel.py`는 canonical 이름과 legacy 이름을 모두 찾습니다. legacy container는 URL 확인과 재사용만 허용하고 ownership label이 없으므로 자동 제거하지 않습니다. 두 이름이 동시에 실행 중이면 주소를 임의로 고르지 않고 중단합니다.
+- 통합 script는 `docker compose down`, `docker compose down -v`, DB 삭제, volume 삭제를 실행하지 않습니다. `-CheckOnly`는 어떤 서비스도 시작하지 않습니다.
+
+### 이유
+
+대화 설명보다 실행 가능한 script를 기준으로 두면 새 세션과 다른 운영자가 같은 검사를 반복할 수 있습니다. 상태를 먼저 확인하면 저장 DB와 현재 외부 URL을 보존하고, rebuild와 model reload처럼 시간이 들거나 기존 상태를 바꾸는 작업을 필요한 경우에만 수행할 수 있습니다.
+
+### 검토한 대안
+
+- README에 수동 명령만 나열: 조건 분기와 실제 runtime 상태가 달라질 때 운영자가 매번 판단해야 하므로 제외했습니다.
+- 매번 `docker compose up -d --build app` 실행: source 변경이 없는 재기동에도 image를 다시 만들 수 있어 기본 동작으로 사용하지 않습니다.
+- 기동할 때마다 Quick Tunnel 재생성: 주소가 바뀌고 기존 접속 경로가 끊기므로 제외했습니다.
+- legacy container를 새 script가 강제로 제거하거나 이름을 바꿈: 현재 정상 URL을 끊고 ownership이 불분명한 runtime을 변경하므로 제외했습니다.
+
+### 영향, tradeoff, 남은 한계
+
+정상 재기동과 상태 확인은 한 명령으로 통일됐습니다. 이미 다른 context length로 로드된 Chat model은 script가 임의로 unload하지 않고 오류로 알려주므로 운영자가 model 사용 상황을 확인한 뒤 다시 로드해야 합니다. Quick Tunnel은 임시 주소이므로 container 자체가 재시작되면 주소가 바뀔 수 있으며 영구 배포를 대신하지 않습니다.
+
+### 관련 문서
+
+- `README.md`
+- `docs/setup-and-operations.md`
+- `docs/demo-runbook.md`
+- `docs/failure-history.md`의 `서버 기동 문서가 서로 다른 port와 Tunnel identity를 안내했다`
+- `AI_CHANGELOG.md`의 `시연 서버 상태 우선 재기동과 legacy Tunnel 재사용`
+
 ## 2026-07-21 - 시연 기준은 기본 DB와 Docker 8501 하나로 통일한다
 
 ### 배경

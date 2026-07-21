@@ -150,6 +150,29 @@
 | P1 | Demo Readiness | Internal demo rehearsal and preflight hardening | Done | 내부 시연 리허설과 사전 점검 안정화 |
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
 | P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
+| P0 | Demo Operations | Canonical demo startup contract and legacy Tunnel reuse | Done | 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용 |
+
+## P0 - Canonical Demo Startup Contract And Legacy Tunnel Reuse
+
+Status: Done
+
+Goal:
+새 Agent 세션이나 운영자가 대화 맥락을 다시 설명하지 않아도 저장소의 한 가지 기동 절차만으로 LM Studio, Docker 8501, 기본 DB, 기존 Quick Tunnel과 project `2716`을 안전하게 확인하고 필요한 서비스만 시작할 수 있게 한다.
+
+Rationale:
+README, setup 가이드, 시연 Runbook의 LM Studio port와 기동 순서가 달랐고, 현재 실행 중인 legacy Tunnel container와 저장소 스크립트가 관리하는 container 이름도 달랐다. 상태를 먼저 확인하지 않고 문서의 명령을 그대로 실행하면 불필요한 image rebuild, 잘못된 port 사용, 두 번째 Quick Tunnel 생성과 URL 변경이 생길 수 있다.
+
+Checklist:
+
+- [x] 정상 재기동, image rebuild, 외부 Tunnel 신규 생성 조건을 분리한다.
+- [x] LM Studio port `12345`, Chat context length `8192`, embedding 768차원 기준을 환경 예시와 문서에서 통일한다.
+- [x] 기존 `ai_commit_advisor_quick_tunnel`을 read-only로 감지하고 외부 URL을 재사용한다.
+- [x] 한 명령으로 상태 확인·필요 서비스 기동·health·preflight를 수행하는 안전한 startup script를 추가한다.
+- [x] 새 Agent 세션이 같은 startup contract를 자동으로 적용하도록 `AGENTS.md`에 운영 원칙을 기록한다.
+- [x] Docker/LM Studio/Cloudflare를 호출하지 않는 focused test와 실제 환경의 비파괴 check-only 검증을 수행한다.
+- [x] README, setup, Runbook, engineering decision, failure history와 `AI_CHANGELOG.md`를 갱신한다.
+
+Related changelog: `시연 서버 상태 우선 재기동과 legacy Tunnel 재사용`
 
 ## P0 - Canonical Demo Database And Docker 8501 Recovery
 

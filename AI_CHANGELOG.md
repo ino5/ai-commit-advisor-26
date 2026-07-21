@@ -2,6 +2,15 @@
 
 ## 2026-07-21
 
+### 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용
+
+- 새 Agent 세션이나 운영자가 저장소 문서만 보고 같은 환경을 재기동할 수 있도록 `scripts/demo_start.ps1`을 추가하고 `AGENTS.md`에 자동 적용할 기동 원칙을 기록했습니다. 기본 실행은 Docker daemon, LM Studio port `12345`, Chat model context length `8192`, embedding model, Docker 8501, project `2716`, preflight를 순서대로 확인하고 필요한 서비스만 시작합니다.
+- 정상 재기동, image rebuild, 새 외부 URL 생성을 각각 기본 실행, `-Build`, `-StartTunnel`로 분리했습니다. `-CheckOnly`는 서비스를 시작하지 않으며 `docker compose down`, DB·volume 삭제 명령은 startup script에서 사용하지 않습니다.
+- `scripts/quick_tunnel.py`가 `ai_commit_advisor_demo_tunnel`과 legacy `ai_commit_advisor_quick_tunnel`을 함께 찾도록 수정했습니다. 기존 URL을 read-only로 재사용하고, ownership label이 없는 legacy container는 자동 제거하지 않으며, 두 Tunnel이 동시에 실행 중이면 임의로 주소를 선택하지 않습니다.
+- `.env.local-llm.example`, README, setup 가이드, 시연 Runbook의 기준을 LM Studio port `12345`, context length `8192`, embedding 768차원, Docker 8501, project `2716`으로 통일했습니다. 정상 재기동에는 rebuild나 Tunnel 재생성이 필요 없다는 조건도 명시했습니다.
+- 주요 파일: `AGENTS.md`, `scripts/demo_start.ps1`, `scripts/quick_tunnel.py`, `tests/test_demo_start_script.py`, `tests/test_quick_tunnel_script.py`, `.env.local-llm.example`, `README.md`, `docs/setup-and-operations.md`, `docs/demo-runbook.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`.
+- 검증: startup/Quick Tunnel focused test `18 passed`, PostgreSQL 768차원·mock provider를 명시한 전체 test `192 passed`, `scripts/quick_tunnel.py` compileall, `scripts/demo_start.ps1` PowerShell parse, `docker compose --project-name ai-commit-advisor config -q`, `git diff --check`가 통과했습니다. 실제 `demo_start.ps1 -CheckOnly -SkipPreflight`가 현재 Docker·LM Studio·8501과 legacy Tunnel의 기존 URL을 변경 없이 확인했고, 별도 전체 `demo_preflight.ps1 -ProjectId 2716`은 실제 Chat/embedding 호출을 포함해 `FAIL=0, WARN=0`으로 끝났습니다. 변경한 사용자 문서에서 특정 직급 표현, 남은 port `1234` 안내, 과장형·번역체 표현을 별도로 검색했으며 의도적으로 port 제외 사유를 설명한 Runbook 한 곳 외에는 충돌하는 안내가 없었습니다.
+
 ### 기본 DB와 Docker 8501 시연 환경 통합
 
 - 기본 PostgreSQL DB `ai_commit_advisor`와 격리 E2E DB를 OneDrive에 각각 custom dump로 백업하고 임시 restore에서 프로젝트 수를 조회한 뒤, 기본 DB의 중복 Sample Shop project `4`, `97`, `197`만 정리했습니다. 동일 샘플 저장소를 project `2716`에 연결해 Git 48건/변경 파일 106건, 프로그램 8건, Mapping 48/48, 구현상태 8건, Risk 32건, source/vector 79/79, Knowledge Graph 213/591을 다시 만들었습니다.

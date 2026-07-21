@@ -238,6 +238,18 @@ If one screenshot cannot clearly show the workflow, split it into sequential scr
 
 Avoid README screenshots that mainly show a blank form, empty/default project, idle button, or pre-execution state unless that state is the feature being documented.
 
+## Demo Runtime Startup
+
+When asked to start, restart, or check the prepared demo runtime, use the repository startup contract instead of reconstructing commands from chat history:
+
+- Read `README.md` `검증된 시연 서버 재기동` and `docs/demo-runbook.md` `기동 절차` before changing runtime state.
+- Use `scripts/demo_start.ps1` as the default startup entry point. Use `-CheckOnly` for a read-only status check.
+- Do not rebuild the app image unless the user asks for current source changes to be included or `-Build` is otherwise justified.
+- Do not create a new Quick Tunnel unless no Tunnel is running and the user needs an external URL. Check and reuse the current URL first.
+- Do not use `docker compose down`, `docker compose down -v`, delete volumes, reset the database, or start a second local Streamlit port as part of normal demo startup.
+- Treat Docker containers and host ports as shared across branches, worktrees, terminals, and Agent sessions.
+- The prepared demo contract is Docker `8501`, project `2716`, LM Studio `12345`, Chat context length `8192`, and embedding dimension `768`. If the repository docs or runtime disagree, stop and report the mismatch instead of silently choosing a different setup.
+
 ## Verification Surface Selection
 
 Choose the cheapest verification surface that still exercises the behavior being changed.

@@ -31,6 +31,70 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-21 - 서버 기동 문서가 서로 다른 port와 Tunnel identity를 안내했다
+
+분류:
+
+- Demo startup
+- Documentation drift
+- Quick Tunnel ownership
+
+관련 기능 및 문서:
+
+- `README.md`
+- `.env.local-llm.example`
+- `docs/setup-and-operations.md`
+- `docs/demo-runbook.md`
+- `scripts/quick_tunnel.py`
+- `AGENTS.md`
+
+증상:
+
+- 새 Agent 세션이나 운영자가 README와 Runbook만 보고는 LM Studio를 port `1234`와 `12345` 중 어디에 열어야 하는지, Docker 앱을 매번 rebuild해야 하는지 판단하기 어려웠습니다.
+- 현재 정상 동작 중인 Tunnel은 `ai_commit_advisor_quick_tunnel`인데 저장소 script는 `ai_commit_advisor_demo_tunnel`만 찾아, `start`를 다시 실행하면 두 번째 Tunnel과 다른 외부 URL이 생길 수 있었습니다.
+- README, setup 가이드, Runbook의 LM Studio와 Docker 기동 순서가 달라 대화에서 확정한 조건을 매번 다시 전달해야 했습니다.
+
+직접 원인:
+
+- `.env.local-llm.example`과 일부 설치 문서는 예전 port `1234`를 유지했고, 실제 Docker와 preflight는 Windows 제외 port 문제를 피해 `12345`를 사용했습니다.
+- Quick Tunnel 자동화가 추가되기 전에 만든 legacy container 이름을 호환 목록에 반영하지 않았습니다.
+- 정상 재기동, image rebuild, 새 외부 URL 생성 명령을 하나의 Quick Start 블록에서 구분하지 않았습니다.
+
+배경 또는 구조적 원인:
+
+- DB 복구, Project Chat 수정, 외부 Tunnel 준비가 서로 다른 작업에서 진행되면서 최종 runtime 기준을 한 실행 파일로 묶지 않았습니다.
+- 문서 검증은 명령과 link 존재 여부에 집중했고, 각 문서의 port, model, container 이름과 현재 runtime의 일치 여부를 교차 확인하지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 이미 열린 서버를 이용한 화면 검증은 통과했지만 완전히 꺼진 상태를 새 문서만 보고 재기동하는 흐름은 검증하지 않았습니다.
+- canonical container에 대한 unit test는 있었지만 legacy container가 계속 실행 중인 전환 상태는 test fixture에 없었습니다.
+
+수정 내용:
+
+- 상태 확인, 필요한 서비스 기동, health, preflight를 한 번에 수행하는 `scripts/demo_start.ps1`을 추가했습니다.
+- 새 Agent 세션이 대화 이력 없이도 같은 기준을 적용하도록 `AGENTS.md`에 상태 우선 기동 원칙을 추가했습니다.
+- LM Studio 기준을 port `12345`, Chat context length `8192`, embedding 768차원으로 통일했습니다.
+- `scripts/quick_tunnel.py`가 canonical·legacy 이름을 함께 확인하고 legacy URL은 재사용하되 자동 제거하지 않도록 수정했습니다.
+- README, setup 가이드, Runbook에서 정상 시작, `-Build`, `-StartTunnel`, `-CheckOnly` 조건을 분리했습니다.
+
+재발 방지 규칙:
+
+- 시연 기동 조건은 설명 문서 여러 곳의 수동 명령이 아니라 `scripts/demo_start.ps1`을 단일 실행 기준으로 둡니다.
+- runtime port, project ID, model context, embedding dimension, container identity가 바뀌면 환경 예시·Runbook·preflight·startup test를 같은 변경에서 확인합니다.
+- Quick Tunnel은 `status`를 먼저 실행하고, 기존 Tunnel이 없을 때만 새 주소를 만듭니다.
+- ownership label이 없는 container는 자동 삭제하지 않습니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- Quick Tunnel은 임시 서비스라 container가 실제로 재시작되면 URL이 달라집니다.
+- LM Studio model이 다른 context length로 이미 사용 중이면 통합 script는 자동 unload하지 않으며 운영자 확인이 필요합니다.
+
+검증 명령과 결과:
+
+- `scripts/demo_start.ps1 -CheckOnly -SkipPreflight`: Docker, LM Studio port `12345`, Chat context `8192`, embedding model, Docker 8501, legacy Tunnel과 기존 외부 URL을 변경 없이 확인했습니다.
+- focused startup/Quick Tunnel test와 전체 test 결과는 같은 날짜의 `AI_CHANGELOG.md`에 기록했습니다.
+
 ## 2026-07-21 - 포트별 DB와 provider가 달라 같은 앱이 다른 결과를 표시했다
 
 분류:
