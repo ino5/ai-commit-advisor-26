@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy.orm import Session, joinedload
 
 from src.db.models import CodeReviewResult, GitCommit, Program, ProgramCommitMapping, ResourceMetricSnapshot, RiskFinding
-from src.services.progress_service import normalize_implementation_status
+from src.services.progress_service import normalize_implementation_status, resolve_ai_progress
 
 
 DIFFICULTY_LABELS = {
@@ -46,8 +46,12 @@ class ProgramResourceMetric:
     program_name: str
     developer: str
     plan_progress_rate: float
-    ai_progress_rate: float
-    progress_gap: float
+    ai_progress_rate: float | None
+    ai_progress_state: str
+    ai_progress_state_label: str
+    progress_gap: float | None
+    mapping_ai_progress_rate: float
+    mapping_progress_gap: float
     related_commit_count: int
     touched_file_count: int
     diff_line_count: int
@@ -180,10 +184,12 @@ def _ai_progress_for_mappings(mappings: list[ProgramCommitMapping]) -> tuple[flo
     return 0.0, "판단불가" if statuses else "매핑없음"
 
 
-def _is_unfinished(program: Program, ai_progress_rate: float) -> bool:
+def _is_unfinished(program: Program, ai_progress_rate: float | None) -> bool:
     status = (program.status or "").strip().lower()
     if status in {"완료", "done", "completed", "complete", "finished"}:
         return False
+    if ai_progress_rate is None:
+        return True
     return ai_progress_rate < 100
 
 
@@ -215,12 +221,14 @@ def _score_level(score: float) -> str:
 
 def _forecast_completion(
     program: Program,
-    ai_progress_rate: float,
+    ai_progress_rate: float | None,
     related_commit_count: int,
     today: date | None = None,
 ) -> tuple[date | None, int | None, str, str]:
     today = today or date.today()
     planned_end = program.planned_end_date
+    if ai_progress_rate is None:
+        return None, None, "UNKNOWN", "LOW"
     if ai_progress_rate >= 100:
         return today, 0 if planned_end else None, "COMPLETED", "HIGH" if related_commit_count else "MEDIUM"
     if planned_end is None:
@@ -285,8 +293,9 @@ def _workload_score(
     return round(min(score, 100.0), 1)
 
 
-def _round_average(values: list[float]) -> float:
-    return round(sum(values) / len(values), 1) if values else 0.0
+def _round_average(values: list[float | None]) -> float:
+    numeric_values = [value for value in values if value is not None]
+    return round(sum(numeric_values) / len(numeric_values), 1) if numeric_values else 0.0
 
 
 def _related_commit_counts_by_commit(programs: list[Program]) -> Counter:
@@ -304,9 +313,11 @@ def _program_metric(
     related_mapping_counts_by_commit: Counter,
 ) -> ProgramResourceMetric:
     related_mappings = [mapping for mapping in (program.mappings or []) if mapping.is_related is True]
-    ai_progress_rate, _ = _ai_progress_for_mappings(related_mappings)
+    progress = resolve_ai_progress(list(program.mappings or []), program.implementation_status_result)
+    ai_progress_rate = progress.ai_progress_rate
     plan_progress_rate = float(program.progress_rate or 0)
-    progress_gap = plan_progress_rate - ai_progress_rate
+    progress_gap = plan_progress_rate - ai_progress_rate if ai_progress_rate is not None else None
+    mapping_progress_gap = plan_progress_rate - progress.mapping_ai_progress_rate
 
     files = []
     commit_ids = set()
@@ -342,7 +353,7 @@ def _program_metric(
         10
         + (15 if unfinished else 0)
         + unresolved_risk_count * 15
-        + max(progress_gap, 0) * 0.5
+        + max(progress_gap or 0, 0) * 0.5
         + difficulty_score * 0.25
     )
 
@@ -353,7 +364,11 @@ def _program_metric(
         developer=_developer_name(program),
         plan_progress_rate=plan_progress_rate,
         ai_progress_rate=ai_progress_rate,
-        progress_gap=round(progress_gap, 1),
+        ai_progress_state=progress.ai_progress_state,
+        ai_progress_state_label=progress.ai_progress_state_label,
+        progress_gap=round(progress_gap, 1) if progress_gap is not None else None,
+        mapping_ai_progress_rate=progress.mapping_ai_progress_rate,
+        mapping_progress_gap=round(mapping_progress_gap, 1),
         related_commit_count=len(commit_ids),
         touched_file_count=len(touched_files),
         diff_line_count=diff_lines,
@@ -374,6 +389,8 @@ def _program_metric(
             "metric_basis": "program_assignments_commits_diffs_risks",
             "unfinished": unfinished,
             "forecast_basis": "planned_dates_ai_progress_related_commit_activity",
+            "ai_progress_state": progress.ai_progress_state,
+            "mapping_ai_progress_rate": progress.mapping_ai_progress_rate,
             "touched_areas": sorted(touched_areas),
         },
     )
@@ -386,7 +403,7 @@ def _developer_metrics(program_metrics: list[ProgramResourceMetric]) -> list[Dev
 
     developer_rows = []
     for developer, rows in by_developer.items():
-        unfinished_program_count = sum(1 for row in rows if row.ai_progress_rate < 100)
+        unfinished_program_count = sum(1 for row in rows if row.ai_progress_rate is None or row.ai_progress_rate < 100)
         risk_program_count = sum(1 for row in rows if row.unresolved_risk_count > 0)
         avg_plan = _round_average([row.plan_progress_rate for row in rows])
         avg_ai = _round_average([row.ai_progress_rate for row in rows])
@@ -458,6 +475,7 @@ def get_resource_metrics_summary(db: Session, project_id: int) -> ResourceMetric
         .options(
             joinedload(Program.assigned_developer),
             joinedload(Program.mappings).joinedload(ProgramCommitMapping.commit).joinedload(GitCommit.files),
+            joinedload(Program.implementation_status_result),
         )
         .filter(Program.project_id == project_id)
         .order_by(Program.program_id, Program.program_name)

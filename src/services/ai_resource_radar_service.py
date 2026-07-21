@@ -98,6 +98,14 @@ def _priority_level(score: float) -> str:
     return "LOW"
 
 
+def _format_progress(value: float | None, fallback: str) -> str:
+    return f"{value:.1f}%" if value is not None else fallback
+
+
+def _format_gap(value: float | None, fallback: str) -> str:
+    return f"{value:.1f}p" if value is not None else fallback
+
+
 def _risk_findings_by_program(db: Session, project_id: int) -> dict[int, list[RiskFinding]]:
     findings = (
         db.query(RiskFinding)
@@ -136,9 +144,11 @@ def _related_commit_messages(db: Session, program_ids: list[int], limit_per_prog
 
 
 def _recommended_action(metric: ProgramResourceMetric, high_risk_count: int) -> str:
+    if metric.ai_progress_rate is None:
+        return "구현상태 분석을 먼저 실행하거나 갱신해 AI 진척도를 확정하세요."
     if high_risk_count > 0 or metric.forecast_level == "DELAY_EXPECTED":
         return "담당자와 범위/일정 조정 필요 여부를 먼저 확인하세요."
-    if metric.progress_gap >= 30:
+    if metric.progress_gap is not None and metric.progress_gap >= 30:
         return "Program Detail에서 관련 commit과 구현상태 분석 근거를 검토하세요."
     if metric.difficulty_level == "HIGH" or metric.cross_program_commit_count > 0:
         return "AI Code Review와 Commit Impact로 변경 영향 범위를 확인하세요."
@@ -152,11 +162,18 @@ def _score_metric(metric: ProgramResourceMetric, high_risk_count: int) -> tuple[
     reasons: list[str] = []
     evidence = [
         RadarEvidence("담당자", metric.developer),
-        RadarEvidence("계획/AI 진척도", f"{metric.plan_progress_rate:.1f}% / {metric.ai_progress_rate:.1f}%"),
-        RadarEvidence("진척도 차이", f"{metric.progress_gap:.1f}p"),
+        RadarEvidence(
+            "계획/AI 진척도",
+            f"{metric.plan_progress_rate:.1f}% / {_format_progress(metric.ai_progress_rate, metric.ai_progress_state_label)}",
+        ),
+        RadarEvidence("진척도 차이", _format_gap(metric.progress_gap, metric.ai_progress_state_label)),
         RadarEvidence("난이도", f"{metric.difficulty_label} ({metric.difficulty_score:.1f})"),
         RadarEvidence("미해결 리스크", str(metric.unresolved_risk_count)),
     ]
+
+    if metric.ai_progress_rate is None:
+        score += 18
+        reasons.append(metric.ai_progress_state_label)
 
     if high_risk_count:
         score += 30 + min(high_risk_count * 8, 16)
@@ -172,7 +189,7 @@ def _score_metric(metric: ProgramResourceMetric, high_risk_count: int) -> tuple[
         score += 16
         reasons.append("예상 종료일 주의")
 
-    if metric.progress_gap > 0:
+    if metric.progress_gap is not None and metric.progress_gap > 0:
         score += min(metric.progress_gap * 0.45, 22)
         if metric.progress_gap >= 20:
             reasons.append(f"계획 대비 AI 진척도 차이 {metric.progress_gap:.1f}p")
@@ -187,7 +204,7 @@ def _score_metric(metric: ProgramResourceMetric, high_risk_count: int) -> tuple[
         score += min(metric.cross_program_commit_count * 8, 16)
         reasons.append(f"여러 프로그램에 걸친 commit {metric.cross_program_commit_count}건")
 
-    if metric.related_commit_count == 0 and metric.ai_progress_rate < 100:
+    if metric.related_commit_count == 0 and (metric.ai_progress_rate is None or metric.ai_progress_rate < 100):
         score += 18
         reasons.append("관련 commit 근거 없음")
 

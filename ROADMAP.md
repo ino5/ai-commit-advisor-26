@@ -25,6 +25,7 @@
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 |
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 |
 | P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 |
+| P1 | AI Progress / Semantics | Program-level AI Progress basis | Done | AI Progress 프로그램 단위 구현상태 기준 적용 |
 | P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 |
 | P1 | Mapping / Ops | Commit-based mapping fallback and verified screenshots | Done | Commit-based mapping fallback and verified screenshots |
 | P1 | CI | Git default branch deterministic tests | Done | CI Git default branch test fix |
@@ -146,6 +147,69 @@
 | P3 | Project Chat UX | Graph-aware question templates | Done | Graph-aware Project Chat question templates |
 | P3 | Reporting | Graph-aware weekly report | Done | Graph-aware weekly report |
 | P3 | Product UX | First-run and empty-state polish | Done | First-run and empty-state preparation guide |
+| P1 | Demo Readiness | Internal demo rehearsal and preflight hardening | Done | 내부 시연 리허설과 사전 점검 안정화 |
+| P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
+
+## P1 - Fresh End-To-End Demo Project Rebuild And Evidence
+
+Status: Done
+
+Goal:
+기존 시연 데이터를 안전한 예비본으로 유지하면서, 동일한 샘플 Git 저장소를 새 프로젝트에 연결해 수집부터 AI 분석까지 전 과정을 다시 실행하고 단계별 화면 증적과 설명을 별도 문서로 남긴다.
+
+Rationale:
+저장된 결과만 확인하면 신규 프로젝트에서 실제 수집·분석 흐름이 끝까지 이어지는지 증명하기 어렵다. 시연 전에 현재 로컬 실행 환경과 실제 local LLM/embedding을 사용해 전체 경로를 재현하고, 각 단계의 입력·결과·한계를 함께 기록하면 당일 진행 순서와 장애 지점을 빠르게 확인할 수 있다.
+
+Checklist:
+
+- [x] 기존 프로젝트와 샘플 Git 저장소를 변경하지 않고 새 프로젝트를 등록한다.
+- [x] Git 전체 수집과 개발자·프로그램·개발계획·표준용어 자료 등록을 완료한다.
+- [x] Mapping, 구현상태, Risk, RAG/embedding, Knowledge Graph 분석을 완료한다.
+- [x] Project Chat과 AI Code Review 대표 결과를 실제 local LLM으로 생성한다.
+- [x] 단계별 화면을 전용 폴더에 캡처하고 별도 한국어 증적 문서에 설명을 작성한다.
+- [x] 문서 표현 점검, `AI_CHANGELOG.md` 갱신, 최종 검증을 완료한다.
+
+Related AI Change Log: `새 프로젝트 전체 시연 재현과 단계별 증적`
+
+## P1 - Internal Demo Rehearsal And Preflight Hardening
+
+Status: Done
+
+Goal:
+목요일 팀 내부 시연 전에 샘플 프로젝트의 핵심 화면과 local LLM/embedding 연결을 실제로 리허설하고, 준비 상태 오판과 로컬 실행 환경 문제를 발표 전에 확인할 수 있는 실행 기준을 정리한다.
+
+Rationale:
+검증 데이터와 발표자료가 이미 있어도, Windows 예약 포트 때문에 LM Studio API가 시작되지 않거나 Mapping 결과 행 수를 분석 완료 commit 수로 잘못 비교하면 시연 직전 Home이 불완전 상태처럼 보일 수 있다. 시연에서는 데이터를 다시 만드는 것보다 저장된 결과를 안정적으로 보여주고, 필요한 경우에만 대표 AI 호출을 실행하는 편이 안전하다.
+
+Checklist:
+
+- [x] PostgreSQL, Neo4j, local LLM, embedding, Streamlit 기동과 핵심 연결을 확인한다.
+- [x] Mapping 준비 상태가 분석 완료 commit 기준으로 계산되도록 수정하고 회귀 테스트를 추가한다.
+- [x] 샘플 프로젝트의 Home, Risk, AI Progress, Project Chat, GraphRAG, AI Code Review 핵심 흐름을 리허설한다.
+- [x] 내부 시연용 대본, 예상 질문, 장애 대응, 당일 체크리스트를 문서화한다.
+- [x] 실패 이력, engineering decision, `AI_CHANGELOG.md`를 갱신하고 전체 검증을 완료한다.
+
+Related AI Change Log: `내부 시연 리허설과 사전 점검 안정화`
+
+## P1 - Program-Level AI Progress Basis
+
+Status: Done
+
+Goal:
+`AI Progress` 숫자를 커밋별 매핑 상태의 최고값이 아니라 프로그램 단위 `Program Implementation Status` 기준으로 표시한다. 분석 결과가 없거나 현재 관련 커밋 묶음과 맞지 않으면 확정 숫자 대신 `분석 필요` 또는 `재분석 필요`로 표시하고, 기존 Mapping 기반 0/50/100 값은 임시 참고값으로만 보여준다.
+
+Rationale:
+작은 커밋 여러 개가 합쳐져 프로그램이 완료되는 흐름에서는 커밋별 최고 상태 방식이 계속 50%에 머물 수 있다. 반대로 단일 커밋이 `구현완료`로 잘못 판단되면 전체 프로그램이 100%처럼 보일 수 있다. 관련 커밋 전체를 보는 구현상태 분석을 기준으로 삼아 AI Progress의 의미를 요구사항 단위 구현상태 신호에 맞춘다.
+
+Checklist:
+
+- [x] `ROADMAP.md` candidate를 active task로 승격한다.
+- [x] `Program Implementation Status` 최신 여부와 AI Progress 산식을 공통 helper로 정리한다.
+- [x] AI Progress/Home/Dashboard 표시에서 분석 필요 상태와 Mapping 참고값을 분리한다.
+- [x] Risk/Resource Metrics가 오래된 mapping 숫자를 확정 AI 진척도로 쓰지 않도록 조정한다.
+- [x] focused tests를 추가하거나 갱신한다.
+- [x] `docs/ai-technical-overview.md`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`를 갱신한다.
+- [x] compile/test와 문구 점검을 실행한다.
 
 ## P1 - Project Chat GraphRAG Context Injection
 
@@ -416,6 +480,7 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
+| P1 | Data Model / Git Sync | Make Git commit uniqueness project-scoped | 현재 `commit_hash` 전역 unique와 Git Sync 소유권 이동 때문에 같은 저장소를 여러 프로젝트가 독립 분석할 수 없다. migration, 기존 데이터 변환, cascade 관계, 두 프로젝트 동시 수집 회귀 test를 함께 설계해야 한다. |
 | P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
 | P2 | Test / Runtime Reliability | pgvector dimension preflight and failure-safe DB test cleanup | 기존 DB column 차원과 현재 `PGVECTOR_DIMENSION`이 다르면 DB-backed test와 RAG 실행이 늦게 실패한다. 구현을 시작할 때 read-only preflight 범위와 transaction 실패 후에도 임시 행을 정리하는 test fixture를 함께 설계한다. |
 

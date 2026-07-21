@@ -71,6 +71,116 @@
 - `docs/failure-history.md`의 `같은 저장소의 동시 세션이 Docker demo runtime을 공유했다`
 - `AI_CHANGELOG.md` 항목 `Cloudflare Quick Tunnel 하루 시연 절차 자동화`
 
+## 2026-07-21 - 동일 저장소의 새 프로젝트 검증은 격리 DB에서 수행한다
+
+### 배경
+
+새 프로젝트의 전체 수집·분석 흐름을 검증하려면 실제 Sample Shop 저장소를 처음부터 다시 읽어야 합니다. 그러나 현재 `git_commits.commit_hash`는 전역 unique이고 Git Sync가 같은 hash의 기존 행을 현재 project로 재지정하므로, 운영 DB에서 새 프로젝트를 만들면 기존 프로젝트의 분석 근거가 이동할 수 있습니다.
+
+### 결정
+
+- 기존 프로젝트의 fallback 데이터를 유지해야 하는 전체 재현은 별도 PostgreSQL DB와 별도 Streamlit 포트에서 수행합니다.
+- Git 저장소와 local LLM/embedding/Neo4j provider는 실제 시연 환경과 동일하게 사용합니다.
+- 공유 Neo4j에서 검증 project의 node를 기존 project와 구분할 수 있도록 충돌하지 않는 명시적 project ID를 사용합니다.
+- 검증 종료 후 격리 DB를 바로 삭제하지 않고 증적 문서의 수치와 화면을 다시 열 수 있는 기간 동안 보존합니다.
+- 운영 DB에서는 저장된 검증 프로젝트를 예비 동선으로 사용하고, 동일 저장소의 신규 전체 수집을 실행하지 않습니다.
+
+### 이유
+
+- 새 프로젝트 흐름을 실제 provider로 검증하면서도 기존 분석 결과를 변경하지 않습니다.
+- mock 데이터나 복사된 화면이 아니라 프로젝트 등록부터 저장된 결과까지 같은 서비스 경로를 확인할 수 있습니다.
+- 실패 시 격리 DB만 다시 만들면 되므로 복구 범위가 명확합니다.
+
+### 검토한 대안
+
+- 운영 DB에 새 프로젝트를 만들고 같은 저장소를 수집하는 방법은 기존 `GitCommit.project_id` 이동 위험 때문에 제외했습니다.
+- 기존 project 197을 초기화하고 다시 실행하는 방법은 예비 결과를 잃고 당일 fallback을 약화하므로 제외했습니다.
+- 샘플 저장소를 새 commit history로 복제하는 방법은 “동일한 저장소” 검증 조건을 바꾸므로 사용하지 않았습니다.
+
+### 영향, tradeoff, 남은 한계
+
+- DB 이름, Streamlit 포트, project ID를 별도로 관리해야 하며 검증 환경 정리도 수동입니다.
+- Neo4j가 공유 상태이므로 project ID 충돌을 피해야 합니다.
+- 이 결정은 안전한 검증 절차일 뿐 근본 수정이 아닙니다. project-scoped commit identity는 별도 schema/migration 작업이 필요합니다.
+
+### 관련 문서
+
+- `docs/end-to-end-demo-evidence-2026-07-21.md`
+- `docs/failure-history.md`의 `동일 저장소를 새 프로젝트로 수집하면 기존 GitCommit 소유가 이동할 수 있다`
+- `AI_CHANGELOG.md`의 `새 프로젝트 전체 시연 재현과 단계별 증적`
+- `ROADMAP.md` Candidate Task `Make Git commit uniqueness project-scoped`
+## 2026-07-21 - 소규모 시연은 저장된 검증 결과를 기본으로 하고 읽기 전용 preflight로 현재성을 확인한다
+
+### 배경
+
+소규모 참석자가 보는 local 시연은 대규모 발표가 아니어도 실행 환경의 영향을 그대로 받습니다. PostgreSQL, Neo4j, local LLM, embedding, Streamlit, Chrome 원격 데스크톱 중 하나만 준비되지 않아도 흐름이 끊깁니다. Git Sync, Mapping, source reindex, graph sync 같은 batch 작업은 데이터를 최신화하지만, 시연 직전에 실행하면 기존 분석 결과가 stale 상태로 바뀌거나 local model 응답을 기다리는 시간이 길어질 수 있습니다.
+
+### 결정
+
+- 기본 시연은 사전에 실제 provider로 검증해 저장한 Project Chat, GraphRAG, AI Code Review, PL Briefing 결과를 사용합니다.
+- 새 Project Chat이나 Code Review 호출은 `demo_preflight.ps1`가 `FAIL=0`을 반환하고 질문을 받은 경우에만 선택적으로 실행합니다.
+- preflight는 service를 시작하거나 데이터를 고치지 않습니다. Docker/DB/Neo4j/LM Studio/Streamlit/Chrome 원격 데스크톱 연결, model identifier, embedding dimension, 샘플 repo, 프로젝트 저장 결과, fallback 여부를 읽기 전용으로 확인합니다.
+- Mapping 준비 상태는 생성된 관계 행 수가 아니라 `GitCommit.mapping_analyzed_at`이 있는 분석 완료 commit 수로 판단합니다.
+- 저장 분석 HEAD와 현재 repo HEAD가 다르면 경고하고, 시연 중 Git Sync와 Mapping 재실행을 금지합니다. 최신성이 꼭 필요한 source 검색과 특정 commit Code Review는 별도로 현재 repo 기준 검증 결과를 준비합니다.
+- 시연 화면, 대본, 대체 자료의 pass condition을 문서에 숫자와 label로 고정합니다.
+
+### 이유
+
+- 시연의 목적은 batch 처리 시간을 보여주는 것이 아니라 계획-Git-source-관계-리뷰로 이어지는 제품 흐름을 설명하는 것입니다.
+- 실제 provider 결과를 저장해 두면 mock 결과를 보여주는 문제를 피하면서 local model의 일시적인 응답 지연과 문장 변동을 줄일 수 있습니다.
+- read-only preflight는 정상 데이터를 시연 직전에 바꾸지 않으면서 환경 누락을 빠르게 발견합니다.
+- 관계 행 수는 commit당 0개 또는 여러 개가 될 수 있어 분석 완료 여부를 나타내지 못합니다.
+
+### 검토한 대안
+
+- 시연 직전에 모든 데이터를 처음부터 재생성: 가장 최신 상태를 만들 수 있지만 LLM/embedding 실행 시간, model 변동, 중간 실패 위험이 큽니다.
+- 화면을 모두 PPT screenshot으로만 설명: 가장 안정적이지만 실제 앱의 근거 확장과 저장 이력 탐색을 보여주기 어렵습니다.
+- 모든 AI action을 live로 실행: 즉석성은 높지만 small local model 응답 시간과 출력 변동 때문에 핵심 흐름이 흐려질 수 있습니다.
+- health endpoint만 확인: 앱 process는 확인할 수 있지만 model identifier, vector dimension, stale source, graph readback, 저장 결과 품질은 놓칩니다.
+
+### 영향과 tradeoff
+
+시연 시작 전 확인할 항목과 문서가 늘어나지만, 실패 원인을 발표 중에 찾는 시간을 줄입니다. 저장 결과를 기본으로 사용하므로 live 실행의 즉흥성은 줄어듭니다. 또한 저장 분석 HEAD가 현재 repo HEAD와 다른 상태를 허용하는 것은 일반 운영 기준이 아니라 이번 검증 snapshot을 보존하기 위한 제한된 선택입니다. 실제 pilot에서는 Git Sync 이후 Mapping, 구현상태, Risk, source, graph를 같은 HEAD로 다시 생성해야 합니다.
+
+### 관련 문서
+
+- [내부 시연 Runbook](demo-runbook.md)
+- [사용 가이드 검증 결과](sample-project-usage-verification.md#2026-07-21-내부-시연-리허설)
+- [Failure History](failure-history.md#2026-07-21---내부-시연-리허설에서-실행-환경과-저장-근거의-불일치가-확인됐다)
+- `AI_CHANGELOG.md` 항목 `내부 시연 리허설과 사전 점검 안정화`
+## 2026-06-29 - AI Progress는 커밋별 최고 상태가 아니라 프로그램 단위 구현상태 신호로 다룬다
+
+### 배경
+
+현재 `AI Progress` 숫자는 관련 commit mapping의 구현상태 중 가장 높은 값을 `0/50/100`으로 변환합니다. 이 방식은 Mapping 결과를 빠르게 보여주기에는 단순하지만, 작은 커밋 여러 개가 합쳐져 하나의 프로그램을 완성하는 실제 개발 흐름과 맞지 않을 수 있습니다. 모든 관련 커밋이 각각 `일부구현`이면 프로그램 전체가 완료되어도 숫자는 50%에 머물 수 있고, 반대로 단일 커밋이 `구현완료`로 잘못 판단되면 프로그램 전체가 100%처럼 보일 수 있습니다.
+
+### 결정
+
+제품 언어에서 `AI Progress`는 커밋별 활동 점수가 아니라 프로그램 또는 요구사항 단위의 보수적 구현상태 신호로 정의합니다. 관련 커밋 전체를 함께 평가하는 `Program Implementation Status`를 AI Progress 판단 기준으로 승격하고, 커밋별 Mapping은 관련 근거와 설명을 제공하는 evidence layer로 유지합니다.
+
+`Program Implementation Status`가 없거나 저장된 `commit_hash_signature`가 현재 관련 commit 묶음과 맞지 않으면 AI Progress 숫자를 확정하지 않습니다. 이 상태는 `분석 필요` 또는 `재분석 필요`로 표시하고, 기존 Mapping 기반 0/50/100 값은 `Mapping 참고 진척도`로만 보여줍니다.
+
+### 이유
+
+- 사용자는 `AI Progress 80%`, `100%` 같은 숫자를 자연스럽게 요구사항 완료 판단으로 해석합니다.
+- 완료 여부는 커밋 하나보다 프로그램 범위, 관련 커밋 묶음, 변경 파일, 미확인 항목을 함께 봐야 더 보수적으로 판단할 수 있습니다.
+- Mapping은 프로그램과 Git 이력을 연결하는 데 강점이 있고, 완료 판단은 관련 근거 묶음을 보는 별도 단계가 더 적합합니다.
+
+### 검토한 대안
+
+- 기존 커밋별 최고 상태 방식을 유지: 구현이 단순하고 Risk/Dashboard 산식 변화가 작지만, 작은 커밋 누적 완료를 표현하지 못합니다.
+- 커밋 수나 관련도 점수를 누적해 퍼센트를 계산: 숫자는 부드러워지지만 커밋 크기와 난이도가 제각각이라 완료율처럼 보이기 어렵습니다.
+- 프로그램 단위 구현상태를 별도 요약으로만 표시: 이미 현재 구조가 이 방식에 가깝지만, 숫자형 AI Progress와 의미가 갈라져 사용자가 혼동할 수 있습니다.
+
+### 영향과 tradeoff
+
+`progress_service.py`, `risk_service.py`, `resource_metrics_service.py`, Dashboard/Risk 산식, 테스트, AI 기술 문서를 함께 조정했습니다. 기존 `program_commit_mappings` 데이터는 버리지 않고 근거로 유지합니다. 다만 분석이 필요한 프로그램은 forecast delay 같은 숫자 기반 판단에서 `UNKNOWN`으로 보류되므로, 운영자는 Mapping 이후 구현상태 분석을 실행해야 Dashboard와 Risk가 완전한 신호를 낼 수 있습니다.
+
+### 관련 문서
+
+- [Domain Language](../CONTEXT.md)
+- [Roadmap Candidate Tasks](../ROADMAP.md#candidate-tasks)
+- `AI_CHANGELOG.md` 항목 `AI Progress 의미와 후속 개선 방향 문서화`
 ## 2026-06-17 - Project Chat 기본 GraphRAG 화면은 코드 관계와 영향 경로를 함께 보여주고 약한 domain 요약은 숨긴다
 
 ### 배경

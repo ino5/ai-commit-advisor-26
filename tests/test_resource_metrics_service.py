@@ -14,10 +14,12 @@ from src.db.models import (
     PLBriefingHistory,
     Program,
     ProgramCommitMapping,
+    ProgramImplementationStatus,
     Project,
     ResourceMetricSnapshot,
     RiskFinding,
 )
+from src.services.progress_service import implementation_analysis_signature
 from src.services.resource_metrics_service import (
     get_resource_metric_snapshots,
     get_resource_metrics_summary,
@@ -169,6 +171,24 @@ def test_resource_metrics_summary_aggregates_workload_difficulty_and_value_kpis(
         )
         db.commit()
 
+        db.add_all(
+            [
+                ProgramImplementationStatus(
+                    program_id=program_a.id,
+                    status="IN_PROGRESS",
+                    summary="관련 커밋 기준 진행중",
+                    commit_hash_signature=implementation_analysis_signature(list(program_a.mappings or [])),
+                ),
+                ProgramImplementationStatus(
+                    program_id=program_b.id,
+                    status="COMPLETED",
+                    summary="관련 커밋 기준 완료",
+                    commit_hash_signature=implementation_analysis_signature(list(program_b.mappings or [])),
+                ),
+            ]
+        )
+        db.commit()
+
         try:
             summary = get_resource_metrics_summary(db, project.id)
 
@@ -291,6 +311,23 @@ def test_ai_resource_radar_ranks_risky_program_and_generates_briefing():
             ]
         )
         db.commit()
+        db.add_all(
+            [
+                ProgramImplementationStatus(
+                    program_id=risky_program.id,
+                    status="IN_PROGRESS",
+                    summary="관련 커밋 기준 진행중",
+                    commit_hash_signature=implementation_analysis_signature(list(risky_program.mappings or [])),
+                ),
+                ProgramImplementationStatus(
+                    program_id=normal_program.id,
+                    status="COMPLETED",
+                    summary="완료 프로그램",
+                    commit_hash_signature=implementation_analysis_signature(list(normal_program.mappings or [])),
+                ),
+            ]
+        )
+        db.commit()
 
         try:
             summary = get_resource_metrics_summary(db, project.id)
@@ -362,6 +399,15 @@ def test_pl_briefing_uses_configured_llm_when_available():
                 risk_level="HIGH",
                 title="no commits",
                 resolved_yn="N",
+            )
+        )
+        db.commit()
+        db.add(
+            ProgramImplementationStatus(
+                program_id=program.id,
+                status="IN_PROGRESS",
+                summary="관련 커밋 기준 진행중",
+                commit_hash_signature=implementation_analysis_signature(list(program.mappings or [])),
             )
         )
         db.commit()
@@ -448,6 +494,15 @@ def test_pl_briefing_repairs_invalid_structured_response_before_fallback():
                 risk_level="HIGH",
                 title="repair risk",
                 resolved_yn="N",
+            )
+        )
+        db.commit()
+        db.add(
+            ProgramImplementationStatus(
+                program_id=program.id,
+                status="IN_PROGRESS",
+                summary="관련 커밋 기준 진행중",
+                commit_hash_signature=implementation_analysis_signature(list(program.mappings or [])),
             )
         )
         db.commit()
@@ -583,6 +638,16 @@ def test_resource_metric_snapshots_persist_current_kpis_in_chronological_order()
             ]
         )
         db.commit()
+        db.add(
+            ProgramImplementationStatus(
+                program_id=program.id,
+                status="IN_PROGRESS",
+                summary="부분 구현",
+                commit_hash_signature=implementation_analysis_signature(list(program.mappings or [])),
+                analyzed_at=datetime.now(timezone.utc),
+            )
+        )
+        db.commit()
 
         try:
             first = save_resource_metric_snapshot(db, project.id, "baseline")
@@ -661,6 +726,16 @@ def test_risk_analysis_records_forecast_delay_risk():
                     reason="partial",
                 ),
             ]
+        )
+        db.commit()
+        db.add(
+            ProgramImplementationStatus(
+                program_id=program.id,
+                status="IN_PROGRESS",
+                summary="부분 구현",
+                commit_hash_signature=implementation_analysis_signature(list(program.mappings or [])),
+                analyzed_at=datetime.now(timezone.utc),
+            )
         )
         db.commit()
 
