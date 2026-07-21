@@ -53,6 +53,7 @@
 | P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 |
 | P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup |
 | P2 | Ops | Application Dockerfile and deployment guide | Done | Application Dockerfile and deployment guide |
+| P2 | Demo Ops | Quick Tunnel demo runbook and script | Done | Cloudflare Quick Tunnel 하루 시연 절차 자동화 |
 | P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log |
 | P2 | Ops | Feature screenshot capture automation | Done | Feature screenshot capture automation |
 | P2 | Docs | Architecture document path cleanup | Done | Architecture document path cleanup |
@@ -416,6 +417,7 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
 | P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
+| P2 | Test / Runtime Reliability | pgvector dimension preflight and failure-safe DB test cleanup | 기존 DB column 차원과 현재 `PGVECTOR_DIMENSION`이 다르면 DB-backed test와 RAG 실행이 늦게 실패한다. 구현을 시작할 때 read-only preflight 범위와 transaction 실패 후에도 임시 행을 정리하는 test fixture를 함께 설계한다. |
 
 ## P2 - Source-First Sample Project And Demo Verification Guide
 
@@ -2133,6 +2135,24 @@ Checklist:
 - [x] Document migration startup behavior.
 - [x] Add deployment smoke check.
 - [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Quick Tunnel Demo Runbook And Script
+
+Status: Done
+
+Goal:
+Allow an operator to start, inspect, and stop a one-day Cloudflare Quick Tunnel demo without remembering Docker network details or relying on an agent session.
+
+Checklist:
+
+- [x] Add a repository-local start/status/stop script that preserves DB volumes and limits destructive actions to the dedicated Quick Tunnel container.
+- [x] Verify local and public Streamlit health and print the generated `trycloudflare.com` URL.
+- [x] Document prerequisites, security boundaries, troubleshooting, and shutdown steps in Korean.
+- [x] Record the reusable operations decision and rationale.
+- [x] Add focused automated tests and run static/runtime-safe verification.
+- [x] Update `AI_CHANGELOG.md`.
+
+Related changelog: `Cloudflare Quick Tunnel 하루 시연 절차 자동화`
 
 ## P2 - Engineering Decisions Log
 

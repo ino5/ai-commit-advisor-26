@@ -479,6 +479,149 @@ Invoke-WebRequest http://localhost:8501/_stcore/health -UseBasicParsing
 
 정상이라면 Streamlit health endpoint가 HTTP 200 응답을 반환합니다. 이후 브라우저에서 `http://localhost:8501`을 열어 Home 화면이 표시되는지 확인합니다.
 
+## 하루 시연용 Cloudflare Quick Tunnel
+
+### 도입 목적과 사용 범위
+
+외부 참석자에게 샘플 화면을 하루 정도 보여줘야 하지만 도메인, 공인 IP, 공유기 port forwarding을 준비하기 어려울 수 있습니다. Cloudflare Quick Tunnel은 앱 서버의 `cloudflared`가 Cloudflare로 outbound 연결을 먼저 만들고, Cloudflare가 발급한 임시 `trycloudflare.com` 주소의 요청을 그 연결로 전달합니다. 따라서 건물 공유기나 CGNAT 환경에서도 outbound 연결만 허용되면 사용할 수 있습니다.
+
+이 절차는 다음 조건에 맞는 짧은 시연용입니다.
+
+- 실제 업무 데이터가 아니라 공개해도 되는 샘플 데이터만 사용합니다.
+- 실행할 때마다 주소가 바뀌어도 참석자에게 새 주소를 전달할 수 있습니다.
+- Quick Tunnel의 가동 시간 보장이 없고 중간에 다시 열어야 할 수 있음을 받아들입니다.
+- RAG나 Project Chat을 시연한다면 현재 DB의 pgvector column과 `PGVECTOR_DIMENSION`이 같은지 미리 확인합니다. Quick Tunnel은 embedding 설정 불일치를 보정하지 않습니다.
+- 고정 주소, 로그인, 장기 운영이 필요하면 Quick Tunnel 대신 Cloudflare Access를 적용한 Named Tunnel이나 사내 reverse proxy를 사용합니다.
+
+Cloudflare가 공개한 Quick Tunnel 제한은 동시 처리 중인 request 200개와 Server-Sent Events 미지원입니다. Streamlit은 WebSocket을 사용하므로 기본 화면 연결은 가능하지만, Cloudflare나 로컬 네트워크 연결이 끊기면 브라우저가 다시 연결될 수 있습니다. 최신 제한은 [Cloudflare Quick Tunnels 문서](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/)를 확인하세요.
+
+### 저장소의 실행 스크립트를 사용하는 이유
+
+`scripts/quick_tunnel.py`는 운영자가 Docker network 이름이나 `cloudflared` 실행 옵션을 외우지 않아도 다음 작업을 같은 절차로 수행하도록 추가했습니다.
+
+1. Docker daemon을 확인합니다.
+2. `app` service와 의존 service를 기동하고 로컬 `/_stcore/health`가 `200 ok`인지 기다립니다.
+3. Cloudflare 공식 `cloudflare/cloudflared` image를 별도 container로 실행하고 앱의 Compose network에 연결합니다.
+4. Tunnel 로그에서 임시 URL을 찾아 외부 `/_stcore/health`까지 검증합니다.
+5. 상태와 URL을 다시 조회하거나 전용 Tunnel container만 종료합니다.
+
+호스트 OS에 `cloudflared`를 별도로 설치하지 않으며 `.cloudflared/config.yaml`도 사용하지 않습니다. 스크립트는 `ai_commit_advisor_demo_tunnel` container만 Tunnel 대상으로 소유합니다. `docker compose down`, volume 삭제, PostgreSQL/Neo4j 초기화는 실행하지 않습니다.
+
+### 다른 개발 세션과 함께 사용할 때
+
+Git branch나 worktree가 달라도 Docker runtime은 자동으로 분리되지 않습니다. 이 스크립트는 항상 Compose project `ai-commit-advisor`와 `ai_commit_advisor_app`, `ai_commit_advisor_demo_tunnel` container 이름을 사용합니다. 다른 터미널이나 Agent 세션이 같은 앱 container를 빌드·실행 중이라면 Quick Tunnel 시작 또는 `--stop-app`이 그 세션에도 영향을 줍니다.
+
+시작 전에는 다음을 확인하세요.
+
+- 다른 세션이 Docker 앱을 재빌드하거나 port `8501`을 사용하고 있지 않습니다.
+- 로컬 Python Streamlit과 Docker Streamlit을 동시에 실행하지 않습니다.
+- 다른 세션이 실행 중이라면 파일용 worktree만 새로 만들지 말고 Docker 실행 시점도 서로 합의합니다.
+
+`status`는 container와 health를 읽기만 하므로 먼저 실행해도 됩니다.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py status
+```
+
+### 처음 시작하거나 현재 소스를 다시 빌드할 때
+
+Docker Desktop을 실행한 뒤 저장소 root에서 다음 명령을 실행합니다.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py start --build
+```
+
+`--build`는 현재 source로 app image를 다시 만듭니다. PostgreSQL과 Neo4j volume은 유지합니다. 최초 image build와 `cloudflare/cloudflared` image pull에는 시간이 걸릴 수 있습니다.
+
+정상 출력에는 다음 정보가 포함됩니다.
+
+```text
+Quick Tunnel 준비가 완료됐습니다.
+외부 URL: https://example-random-words.trycloudflare.com
+외부 health: 200 ok
+```
+
+외부 참석자에게는 출력된 root URL을 전달합니다. 시연 전에는 같은 Wi-Fi가 아닌 휴대전화 데이터망에서 URL을 열어 Home 화면과 주요 시연 동선을 확인하세요.
+
+### 기존 app image로 다시 시작할 때
+
+source 변경 없이 같은 image를 재사용한다면 `--build`를 생략합니다.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py start
+```
+
+전용 Tunnel container가 이미 실행 중이면 기존 주소를 재사용하고 외부 health를 다시 확인합니다. Container가 중지된 상태라면 해당 container만 제거한 뒤 새 Quick Tunnel을 만들므로 새 주소가 발급됩니다.
+
+다른 `cloudflared` image를 검증해야 할 때는 `--image`를 명시하거나 `CLOUDFLARED_IMAGE` 환경 변수를 사용합니다.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py start --image cloudflare/cloudflared:latest
+```
+
+### 상태 확인
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py status
+```
+
+상태 명령은 다음 항목을 표시합니다.
+
+- app container 실행 여부
+- 로컬 Streamlit health
+- Tunnel container 실행 여부
+- 현재 외부 URL
+- 외부 Streamlit health
+
+앱이나 Tunnel이 중지됐거나 health가 실패하면 종료 code `1`을 반환합니다.
+
+### 시연 종료
+
+Tunnel만 닫고 Docker 앱과 DB를 유지하려면 다음 명령을 사용합니다.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py stop
+```
+
+Tunnel과 app container를 함께 중지하려면 `--stop-app`을 명시합니다.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py stop --stop-app
+```
+
+`--stop-app`도 PostgreSQL, Neo4j, Docker volume은 중지하거나 삭제하지 않습니다. 시연이 끝나면 임시 URL을 더 이상 사용할 수 없도록 최소한 Tunnel은 종료하세요.
+
+### 보안과 공용 네트워크 주의사항
+
+랜덤 URL은 인증 수단이 아닙니다. 주소를 아는 사용자는 앱의 조회뿐 아니라 화면에 제공되는 저장·동기화·삭제 action도 실행할 수 있습니다. 실제 업무 저장소, 실제 사용자 정보, credential, 민감한 diff는 Quick Tunnel에 노출하지 않습니다.
+
+현재 기본 Compose port mapping은 host interface에 앱 `8501`, PostgreSQL `5432`, Neo4j `7474/7687`을 publish합니다. Quick Tunnel 스크립트는 앱 `8501`이 `0.0.0.0` 또는 `::`에 열려 있으면 경고하지만 Compose나 Windows Firewall을 자동 변경하지 않습니다. 원룸 공용망이나 신뢰할 수 없는 네트워크에서는 host firewall로 inbound 접근을 막거나 port mapping을 loopback으로 제한하는 별도 배포 설정이 필요합니다. LM Studio를 사용할 때도 model server를 공용 network interface에 열지 않습니다.
+
+### 문제 해결
+
+`Docker daemon version을 확인하지 못했습니다`가 표시되면 Docker Desktop을 실행하고 다음 명령이 성공하는지 확인합니다.
+
+```powershell
+docker version
+```
+
+로컬 health가 실패하면 앱 로그에서 DB 연결, migration, port 충돌을 확인합니다.
+
+```powershell
+docker compose --project-name ai-commit-advisor ps
+docker compose --project-name ai-commit-advisor logs --tail 100 app
+```
+
+Tunnel URL 발급이나 외부 health가 실패하면 Tunnel 로그의 DNS, UDP, TCP precheck를 확인합니다.
+
+```powershell
+docker logs ai_commit_advisor_demo_tunnel
+```
+
+Cloudflare Tunnel은 outbound `7844/UDP`의 QUIC을 우선 사용하고, 사용할 수 없으면 `7844/TCP`의 HTTP/2를 시도합니다. 두 protocol이 모두 차단된 건물망에서는 공유기 port forwarding과 무관하게 Tunnel을 열 수 없습니다. 연결 요구사항은 [Cloudflare connectivity pre-checks](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/troubleshoot-tunnels/connectivity-prechecks/)에서 확인합니다.
+
+외부 주소에서 `502` 또는 origin 연결 오류가 표시되면 app container와 로컬 health를 먼저 확인합니다. Tunnel container를 재시작해야 한다면 `stop` 후 `start`를 실행하고 새 URL을 참석자에게 전달합니다.
+
 ## LLM 설정
 
 기본 `.env.example`은 mock입니다. 실제 LLM 호출 없이 동작 확인용 fallback 결과를 생성합니다.
