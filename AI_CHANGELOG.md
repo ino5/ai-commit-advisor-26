@@ -2,6 +2,15 @@
 
 ## 2026-07-22
 
+### 샘플 Project Chat 한글 대화 복구
+
+- 제목과 첫 질문이 실제 `?` 문자로 저장된 Project Chat 세션 `#1`만 삭제하고, 기존 프로젝트·Mapping·embedding·Knowledge Graph 데이터는 유지했습니다. 삭제 전 PostgreSQL custom dump를 `C:\dev\ai-commit-advisor-backups\20260722-utf8-chat-recovery\pre-chat-session-1-recreate.dump`에 저장했으며 SHA-256은 `B7BC37840B5817B7280376C393C0361E19ED5CD4ED94E562807DB872ABD4A80C`입니다.
+- 실제 브라우저 UI에서 기준 한글 질문을 입력해 세션 `#32`를 새로 만들었습니다. 저장된 사용자 질문은 입력 원문과 완전히 같고 `?` 문자는 0개입니다.
+- 새 답변은 `local_openai / qwen2.5-coder-7b-instruct`가 생성한 초안을 현재 소스 근거로 보정한 `deterministic_repair` 결과입니다. source 6건과 graph 4건을 사용했으며 `insufficient_evidence=false`입니다.
+- 현재 저장 대화 ID와 검증 상태를 Runbook과 처음 시작 가이드에 반영하고, 질문 입력의 저장 왕복을 별도로 검증해야 한다는 재발 방지 기준을 실패 이력에 기록했습니다.
+- 주요 파일: `ROADMAP.md`, `docs/demo-runbook.md`, `docs/sample-project-first-run-guide.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: DB 원문 완전 일치, 한글 질문의 `?` 0개, 실제 Java source 행과 직접 호출·금액 검증 조건 대조를 통과했습니다. `scripts/demo_preflight.ps1 -ProjectId 1`은 `FAIL=0`, `WARN=0`이며 program 8, commit 48, Mapping 관계 38, source/vector 79/79, Knowledge Graph 213 nodes/590 edges가 유지됐습니다.
+
 ### Quick Tunnel 자동 복구와 현재 URL 판별
 
 - Docker daemon 재시작 때 앱과 DB는 복구됐지만 restart policy가 `no`인 legacy Quick Tunnel만 종료 상태로 남는 원인을 확인했습니다. 현재 `ai_commit_advisor_quick_tunnel`에 `restart=unless-stopped`를 적용하고 다시 시작했습니다.

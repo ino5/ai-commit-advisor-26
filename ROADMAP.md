@@ -14,6 +14,7 @@
 
 | Priority | Area | Task | Status | Related AI Change Log |
 |---|---|---|---|---|
+| P0 | Project Chat / Demo Data | Restore UTF-8 sample Project Chat evidence | Done | 샘플 Project Chat 한글 대화 복구 |
 | P0 | Project Chat / Performance | Project Chat initial render latency reduction | Done | Project Chat 초기 화면 지연 개선 |
 | P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 |
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 |
@@ -162,6 +163,22 @@
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
 | P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
 | P0 | Demo Operations | Canonical demo startup contract and legacy Tunnel reuse | Done | 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용 |
+
+## P0 - Restore UTF-8 Sample Project Chat Evidence
+
+Status: Done
+
+Goal: 손상된 Project Chat 세션 `#1`만 제거하고 실제 브라우저 UI에서 기준 한글 질문을 다시 입력해, 질문·답변·근거가 UTF-8로 정상 저장되는지 검증한다.
+
+Rationale: 새로 만든 샘플 프로젝트의 첫 대화가 저장소 문제가 아니라 실행 경계에서 이미 `?`로 변환된 입력을 받았다. 기존 매핑·임베딩·그래프 데이터는 유지하면서 잘못된 대화 증거만 교체하고, 답변 검증뿐 아니라 사용자 입력의 저장 왕복도 확인할 필요가 있다.
+
+- [x] 손상 범위와 DB UTF-8 설정 확인
+- [x] 삭제 전 복구용 백업 생성 및 대상 세션 재확인
+- [x] DB에서 프로젝트 `1`의 세션 `#1`만 조건부 삭제
+- [x] 브라우저 UI에서 기준 한글 질문으로 새 대화 생성
+- [x] UI·DB 질문 원문과 답변 근거 검증
+- [x] 프로젝트·매핑·임베딩·그래프 데이터 불변 확인
+- [x] 운영 문서, 실패 이력, `AI_CHANGELOG.md` 갱신
 
 ## P1 - Quick Tunnel Restart Persistence And Active URL Detection
 
