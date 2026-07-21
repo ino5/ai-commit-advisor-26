@@ -85,9 +85,23 @@ def _container_state(container_name: str) -> dict[str, Any] | None:
     return state if isinstance(state, dict) else None
 
 
-def _container_logs(container_name: str) -> str:
-    result = _run(["docker", "logs", container_name], check=False)
+def _container_logs(container_name: str, *, since: str | None = None) -> str:
+    command = ["docker", "logs"]
+    if since:
+        command.extend(["--since", since])
+    command.append(container_name)
+    result = _run(command, check=False)
     return "\n".join(part for part in (result.stdout, result.stderr) if part).strip()
+
+
+def _current_run_logs(container_name: str) -> str:
+    """Return logs produced since the container's current process started."""
+
+    state = _container_state(container_name) or {}
+    started_at = state.get("StartedAt")
+    if started_at:
+        return _container_logs(container_name, since=str(started_at))
+    return _container_logs(container_name)
 
 
 def _container_labels(container_name: str) -> dict[str, str]:
@@ -241,16 +255,16 @@ def _wait_for_health(url: str, *, timeout_seconds: int) -> tuple[bool, str]:
 def _wait_for_tunnel_url(*, timeout_seconds: int, container_name: str = TUNNEL_CONTAINER_NAME) -> str:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        tunnel_url = extract_quick_tunnel_url(_container_logs(container_name))
+        tunnel_url = extract_quick_tunnel_url(_current_run_logs(container_name))
         if tunnel_url:
             return tunnel_url
         state = _container_state(container_name)
         if state is not None and not bool(state.get("Running")):
-            logs = _container_logs(container_name)
+            logs = _current_run_logs(container_name)
             raise QuickTunnelError(f"Quick Tunnel container가 URL 발급 전에 종료됐습니다.\n{logs}")
         time.sleep(1)
 
-    logs = _container_logs(container_name)
+    logs = _current_run_logs(container_name)
     raise QuickTunnelError(f"Quick Tunnel URL을 {timeout_seconds}초 안에 찾지 못했습니다.\n{logs}")
 
 
@@ -315,6 +329,8 @@ def start_tunnel(*, build: bool, timeout_seconds: int, image: str) -> int:
             "docker",
             "run",
             "--detach",
+            "--restart",
+            "unless-stopped",
             "--name",
             TUNNEL_CONTAINER_NAME,
             "--network",
@@ -364,9 +380,13 @@ def show_status(*, timeout_seconds: int) -> int:
         _assert_owned_tunnel_container()
     else:
         print("Tunnel 유형: legacy container를 read-only로 재사용 중")
-    tunnel_url = extract_quick_tunnel_url(_container_logs(tunnel_name))
-    if not tunnel_url:
-        print("외부 URL: Tunnel 로그에서 찾지 못했습니다.")
+    try:
+        tunnel_url = _wait_for_tunnel_url(
+            timeout_seconds=timeout_seconds,
+            container_name=tunnel_name,
+        )
+    except QuickTunnelError as exc:
+        print(f"외부 URL: 현재 실행 로그에서 찾지 못했습니다. ({exc})")
         return 1
 
     print(f"외부 URL: {tunnel_url}")

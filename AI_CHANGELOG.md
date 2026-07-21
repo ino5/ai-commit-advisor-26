@@ -2,6 +2,15 @@
 
 ## 2026-07-22
 
+### Quick Tunnel 자동 복구와 현재 URL 판별
+
+- Docker daemon 재시작 때 앱과 DB는 복구됐지만 restart policy가 `no`인 legacy Quick Tunnel만 종료 상태로 남는 원인을 확인했습니다. 현재 `ai_commit_advisor_quick_tunnel`에 `restart=unless-stopped`를 적용하고 다시 시작했습니다.
+- `scripts/quick_tunnel.py`가 새 전용 container를 `--restart unless-stopped`로 만들도록 바꿨습니다. 사용자가 외부 공개 종료를 명시하지 않으면 Tunnel을 유지하며, 명시적인 `stop` 또는 `docker stop` 뒤에는 자동으로 되살리지 않습니다.
+- 재시작한 container의 전체 로그에서 과거 URL을 잘못 읽지 않도록 현재 `StartedAt` 이후 로그만 조회합니다. `status`는 현재 실행의 URL이 발급될 때까지 기다린 뒤 외부 health를 확인합니다.
+- 운영 정책과 원인, 임시 URL 변경 한계를 README, setup 가이드, Runbook, Agent 정책, engineering decision, failure history에 기록했습니다.
+- 주요 파일: `scripts/quick_tunnel.py`, `tests/test_quick_tunnel_script.py`, `README.md`, `docs/setup-and-operations.md`, `docs/demo-runbook.md`, `AGENTS.md`, `ROADMAP.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: Quick Tunnel/startup focused test 19개와 전체 test 208개가 통과했고 `scripts/quick_tunnel.py` compileall, `git diff --check`, conflict marker와 사용자 문구 점검이 통과했습니다. 실제 legacy container는 `restart=unless-stopped`, 현재 URL `https://bringing-intermediate-mysterious-excessive.trycloudflare.com`, local/external health `200 ok`입니다. 첫 전체 test에서는 기존 자원지표 snapshot 정렬 test 1개가 같은 시각 row 순서로 실패했지만 단독 재실행이 통과했고, 이어서 전체 208개가 통과했습니다.
+
 ### 관리형 Git URL 프로젝트 등록
 
 - `프로젝트/Git 설정`에 `Git URL에서 가져오기`와 `서버에 이미 있는 저장소 사용`을 분리했습니다. 관리형 모드에서는 사용자가 서버 경로를 입력하지 않고 프로젝트명, 공개 HTTPS Git URL, branch만 입력하면 `project-<ID>` 전용 경로를 자동 배정하고 clone/fetch합니다.

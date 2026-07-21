@@ -31,6 +31,63 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-22 - Docker 재시작 뒤 Quick Tunnel만 복구되지 않았다
+
+분류:
+
+- Demo runtime
+- Quick Tunnel availability
+- Docker restart policy
+
+관련 기능 및 문서:
+
+- `scripts/quick_tunnel.py`
+- `scripts/demo_start.ps1`
+- `docs/setup-and-operations.md`
+
+증상:
+
+- 앱과 DB는 실행 중이었지만 `ai_commit_advisor_quick_tunnel`만 `Exited (255)`여서 외부 링크가 열리지 않았습니다.
+- 같은 legacy container를 다시 시작한 직후 `status`가 새 URL 발급을 기다리지 않고 이전 실행의 만료된 URL을 읽어 외부 health 실패를 보고했습니다.
+
+직접 원인:
+
+- Docker daemon이 2026-07-22 06:09 KST 무렵 재시작됐고 Tunnel container의 restart policy만 `no`였습니다. PostgreSQL과 Neo4지는 같은 시각 `restart=unless-stopped`로 다시 시작됐습니다.
+- Docker container 로그에는 재시작 전후의 Quick Tunnel URL이 함께 남지만 상태 확인은 전체 로그를 읽었습니다.
+
+배경 또는 구조적 원인:
+
+- 초기 Quick Tunnel 자동화는 새 주소 생성과 안전한 종료 범위에 집중했고 Docker daemon 재시작을 정상 운영 시나리오에 포함하지 않았습니다.
+- URL 추출 테스트는 한 문자열 안의 마지막 URL을 검증했지만, 재시작 직후 새 URL이 아직 나오지 않은 상태에서 과거 로그가 먼저 보이는 시간 순서를 다루지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 기존 검증은 실행 중 Tunnel 재사용과 명시적 stop만 확인했고 container restart policy와 Docker daemon 재시작 뒤 복구를 확인하지 않았습니다.
+- `status` 실행 당시 container가 오래 실행됐다는 전제만 사용해 `StartedAt` 이후 로그 범위를 검증하지 않았습니다.
+
+수정 내용:
+
+- 현재 legacy container에 `restart=unless-stopped`를 적용하고 다시 시작했습니다.
+- 새 전용 Tunnel 생성 명령에 `--restart unless-stopped`를 추가했습니다.
+- URL 조회는 현재 container process의 `StartedAt` 이후 로그만 사용하고, `status`도 현재 실행의 URL 발급을 기다리도록 바꿨습니다.
+
+재발 방지 규칙:
+
+- 사용자가 외부 접속 종료를 명시하지 않으면 Tunnel을 중지하거나 제거하지 않습니다.
+- Docker daemon 재시작 뒤에는 과거 URL을 전달하지 않고 `status`로 현재 URL과 외부 health를 다시 확인합니다.
+- 자동 복구가 필요한 독립 운영 container는 앱·DB와 restart policy가 일치하는지 함께 점검합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- Quick Tunnel은 재시작 때 URL이 바뀔 수 있고 uptime과 인증을 보장하지 않습니다.
+- legacy container는 ownership label이 없어 저장소 script가 restart policy를 자동 변경하지 않습니다. 이번 변경은 사용자 요청에 따라 현재 container에 직접 적용했습니다.
+
+검증 명령과 결과:
+
+- `docker inspect ai_commit_advisor_quick_tunnel`: `restart=unless-stopped`, `status=running`, OOM 아님.
+- `scripts/quick_tunnel.py status --timeout 30`: 현재 URL `https://bringing-intermediate-mysterious-excessive.trycloudflare.com`, local/external health 모두 `200 ok`.
+- focused test 결과와 전체 회귀 결과는 같은 날짜의 `AI_CHANGELOG.md`에 기록합니다.
+
 ## 2026-07-21 - Project Chat 메뉴 진입이 전체 source file 검증을 반복했다
 
 분류:
