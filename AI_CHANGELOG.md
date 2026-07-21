@@ -1,5 +1,18 @@
 # AI 변경 이력
 
+## 2026-06-29
+
+### AI Progress 프로그램 단위 구현상태 기준 적용
+
+- `AI Progress`를 커밋별 활동 점수가 아니라 프로그램 단위 보수적 구현상태 신호로 다루도록 산식과 표시를 바꿨습니다.
+- `Program Implementation Status`가 최신 `commit_hash_signature`와 일치할 때만 AI Progress 숫자를 확정하고, 분석 결과가 없거나 stale이면 `분석 필요` 또는 `재분석 필요`로 표시합니다.
+- 기존 Mapping 기반 0/50/100 값은 `Mapping 참고 진척도`로 남겨 관련 commit evidence 점검에만 쓰게 했습니다.
+- AI Progress, Home, Dashboard, Risk Analysis, Resource Metrics, AI Resource Radar, 주간 AI 점검 보고서가 최신 분석값과 Mapping 참고값을 구분하도록 조정했습니다.
+- `CONTEXT.md`를 추가해 `Program`, `Plan Progress`, `AI Progress`, `Related Commit`, `Implementation Evidence`, `Program Implementation Status`의 도메인 언어를 정리했습니다.
+- 반복될 설계 판단이므로 `docs/engineering-decisions.md`에 현재 구조의 한계, 선택한 방향, 대안, tradeoff를 기록했고, `docs/ai-technical-overview.md`의 AI Progress 설명을 현재 동작에 맞게 갱신했습니다.
+- 주요 파일: `src/services/progress_service.py`, `src/services/risk_service.py`, `src/services/resource_metrics_service.py`, `src/services/ai_resource_radar_service.py`, `src/services/ai_evidence_service.py`, `src/ui/ai_progress_page.py`, `src/ui/home_page.py`, `src/ui/dashboard_page.py`, `src/ui/risk_page.py`, `src/ui/program_detail_page.py`, `tests/test_progress_service.py`, `tests/test_resource_metrics_service.py`, `CONTEXT.md`, `ROADMAP.md`, `docs/engineering-decisions.md`, `docs/ai-technical-overview.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m pytest tests\test_progress_service.py -q` 4개 통과. `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py -q` 9개 통과. `.\.venv\Scripts\python.exe -m pytest -q` 171개 통과. `.\.venv\Scripts\python.exe -m compileall src app.py` 통과. `git diff --check` 통과(Windows line-ending 경고만 표시). PostgreSQL host 연결이 처음에는 `server closed the connection unexpectedly`로 끊겼으나 `docker compose restart postgres` 후 DB 연결과 테스트가 통과했습니다. CI workflow에는 PostgreSQL service, `DATABASE_URL`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 설정이 있음을 확인했습니다. 사용자-facing 문서 문구 점검으로 `rg -n "혁신적인|강력한|원활한|향상된 사용자 경험|AI 기반으로 자동화|이를 통해|최첨단|놀라운|완벽한" CONTEXT.md docs\ai-technical-overview.md docs\engineering-decisions.md ROADMAP.md AI_CHANGELOG.md`를 실행했으며, 이번 변경분의 과장형 AI 문구는 확인되지 않았습니다.
+
 ## 2026-06-17
 
 ### AI Code Review 메타데이터 표시 compact화

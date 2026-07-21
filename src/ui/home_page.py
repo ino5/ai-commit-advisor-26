@@ -14,6 +14,10 @@ def _format_datetime(value) -> str:
     return value.strftime("%Y-%m-%d %H:%M") if value else "-"
 
 
+def _format_progress(value, fallback: str = "분석 필요") -> str:
+    return f"{float(value):.1f}%" if value is not None and not pd.isna(value) else fallback
+
+
 def _collect_overview(context: ProjectContext) -> dict:
     init_db()
     with SessionLocal() as db:
@@ -68,6 +72,8 @@ def _collect_overview(context: ProjectContext) -> dict:
         "plan_average": plan_average,
         "ai_average": ai_average,
         "progress_gap_average": progress_gap_average,
+        "ai_progress_ready_count": summary.ai_progress_ready_count,
+        "ai_progress_needs_analysis_count": summary.ai_progress_needs_analysis_count,
         "risk_count": risk_count,
         "done_count": done_count,
         "in_progress_count": in_progress_count,
@@ -141,11 +147,19 @@ def _render_kpis(overview: dict) -> None:
     cols[0].metric("전체 프로젝트", overview["project_count"])
     cols[1].metric("개발자 수", overview["developer_count"])
     cols[2].metric("계획 진척도", f"{overview['plan_average']}%")
-    cols[3].metric("추정 진척도", f"{overview['ai_average']}%")
+    cols[3].metric(
+        "추정 진척도",
+        f"{overview['ai_average']}%" if overview["ai_progress_ready_count"] else "분석 필요",
+    )
 
     cols = st.columns(2)
-    cols[0].metric("진척도 차이", f"{overview['progress_gap_average']}%")
+    cols[0].metric(
+        "진척도 차이",
+        f"{overview['progress_gap_average']}%" if overview["ai_progress_ready_count"] else "분석 필요",
+    )
     cols[1].metric("마지막 Git 동기화", _format_datetime(overview["last_synced_at"]))
+    if overview["ai_progress_needs_analysis_count"]:
+        st.warning(f"AI 진척도 재확인이 필요한 프로그램 {overview['ai_progress_needs_analysis_count']}건이 있습니다.")
 
 
 def _render_charts(overview: dict) -> None:
@@ -163,7 +177,9 @@ def _render_charts(overview: dict) -> None:
                 "status": row.status,
                 "plan_progress_rate": row.plan_progress_rate,
                 "ai_progress_rate": row.ai_progress_rate,
+                "ai_progress_label": _format_progress(row.ai_progress_rate, row.ai_progress_state_label),
                 "progress_gap": row.progress_gap,
+                "progress_gap_label": _format_progress(row.progress_gap, row.ai_progress_state_label),
                 "is_risk": row.is_risk,
                 "risk_reasons": ", ".join(row.risk_reasons),
             }
@@ -179,12 +195,16 @@ def _render_charts(overview: dict) -> None:
 
     with chart2:
         st.subheader("계획 vs 추정 진척도")
+        ready_df = df.dropna(subset=["ai_progress_rate"])
+        ai_value = round(float(ready_df["ai_progress_rate"].mean()), 1) if not ready_df.empty else None
         avg_df = pd.DataFrame(
             [
                 {"type": "계획 진척도", "value": round(float(df["plan_progress_rate"].mean()), 1)},
-                {"type": "추정 진척도", "value": round(float(df["ai_progress_rate"].mean()), 1)},
+                {"type": "추정 진척도", "value": ai_value},
             ]
-        )
+        ).dropna(subset=["value"])
+        if len(avg_df) == 1:
+            st.info("최신 구현상태 분석이 있는 프로그램이 없어 추정 진척도 평균을 그리지 않았습니다.")
         st.plotly_chart(px.bar(avg_df, x="type", y="value", text="value", range_y=[0, 100]), use_container_width=True)
 
     st.subheader("상위 리스크 프로그램")
@@ -200,8 +220,8 @@ def _render_charts(overview: dict) -> None:
                     "developer",
                     "status",
                     "plan_progress_rate",
-                    "ai_progress_rate",
-                    "progress_gap",
+                    "ai_progress_label",
+                    "progress_gap_label",
                     "risk_reasons",
                 ]
             ],

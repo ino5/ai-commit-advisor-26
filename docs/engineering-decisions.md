@@ -21,6 +21,40 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+
+## 2026-06-29 - AI Progress는 커밋별 최고 상태가 아니라 프로그램 단위 구현상태 신호로 다룬다
+
+### 배경
+
+현재 `AI Progress` 숫자는 관련 commit mapping의 구현상태 중 가장 높은 값을 `0/50/100`으로 변환합니다. 이 방식은 Mapping 결과를 빠르게 보여주기에는 단순하지만, 작은 커밋 여러 개가 합쳐져 하나의 프로그램을 완성하는 실제 개발 흐름과 맞지 않을 수 있습니다. 모든 관련 커밋이 각각 `일부구현`이면 프로그램 전체가 완료되어도 숫자는 50%에 머물 수 있고, 반대로 단일 커밋이 `구현완료`로 잘못 판단되면 프로그램 전체가 100%처럼 보일 수 있습니다.
+
+### 결정
+
+제품 언어에서 `AI Progress`는 커밋별 활동 점수가 아니라 프로그램 또는 요구사항 단위의 보수적 구현상태 신호로 정의합니다. 관련 커밋 전체를 함께 평가하는 `Program Implementation Status`를 AI Progress 판단 기준으로 승격하고, 커밋별 Mapping은 관련 근거와 설명을 제공하는 evidence layer로 유지합니다.
+
+`Program Implementation Status`가 없거나 저장된 `commit_hash_signature`가 현재 관련 commit 묶음과 맞지 않으면 AI Progress 숫자를 확정하지 않습니다. 이 상태는 `분석 필요` 또는 `재분석 필요`로 표시하고, 기존 Mapping 기반 0/50/100 값은 `Mapping 참고 진척도`로만 보여줍니다.
+
+### 이유
+
+- 사용자는 `AI Progress 80%`, `100%` 같은 숫자를 자연스럽게 요구사항 완료 판단으로 해석합니다.
+- 완료 여부는 커밋 하나보다 프로그램 범위, 관련 커밋 묶음, 변경 파일, 미확인 항목을 함께 봐야 더 보수적으로 판단할 수 있습니다.
+- Mapping은 프로그램과 Git 이력을 연결하는 데 강점이 있고, 완료 판단은 관련 근거 묶음을 보는 별도 단계가 더 적합합니다.
+
+### 검토한 대안
+
+- 기존 커밋별 최고 상태 방식을 유지: 구현이 단순하고 Risk/Dashboard 산식 변화가 작지만, 작은 커밋 누적 완료를 표현하지 못합니다.
+- 커밋 수나 관련도 점수를 누적해 퍼센트를 계산: 숫자는 부드러워지지만 커밋 크기와 난이도가 제각각이라 완료율처럼 보이기 어렵습니다.
+- 프로그램 단위 구현상태를 별도 요약으로만 표시: 이미 현재 구조가 이 방식에 가깝지만, 숫자형 AI Progress와 의미가 갈라져 사용자가 혼동할 수 있습니다.
+
+### 영향과 tradeoff
+
+`progress_service.py`, `risk_service.py`, `resource_metrics_service.py`, Dashboard/Risk 산식, 테스트, AI 기술 문서를 함께 조정했습니다. 기존 `program_commit_mappings` 데이터는 버리지 않고 근거로 유지합니다. 다만 분석이 필요한 프로그램은 forecast delay 같은 숫자 기반 판단에서 `UNKNOWN`으로 보류되므로, 운영자는 Mapping 이후 구현상태 분석을 실행해야 Dashboard와 Risk가 완전한 신호를 낼 수 있습니다.
+
+### 관련 문서
+
+- [Domain Language](../CONTEXT.md)
+- [Roadmap Candidate Tasks](../ROADMAP.md#candidate-tasks)
+- `AI_CHANGELOG.md` 항목 `AI Progress 의미와 후속 개선 방향 문서화`
 ## 2026-06-17 - Project Chat 기본 GraphRAG 화면은 코드 관계와 영향 경로를 함께 보여주고 약한 domain 요약은 숨긴다
 
 ### 배경

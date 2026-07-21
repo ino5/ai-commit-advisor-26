@@ -25,6 +25,7 @@
 | P1 | Program Detail | Implementation status result display improvement | Done | Program Detail 구현상태 분석 결과 표시 개선 |
 | P1 | AI Analysis | Conservative implementation status prompt and fallback | Done | 구현상태 분석 프롬프트와 fallback 보수화 |
 | P1 | AI Progress | Show implementation status analysis results | Done | AI Progress 구현상태 분석 결과 표시 |
+| P1 | AI Progress / Semantics | Program-level AI Progress basis | Done | AI Progress 프로그램 단위 구현상태 기준 적용 |
 | P1 | Mapping | Mapping feedback analytics and review queue | Done | Mapping 피드백 리뷰 큐와 품질 지표 추가 |
 | P1 | Mapping / Ops | Commit-based mapping fallback and verified screenshots | Done | Commit-based mapping fallback and verified screenshots |
 | P1 | CI | Git default branch deterministic tests | Done | CI Git default branch test fix |
@@ -145,6 +146,26 @@
 | P3 | Project Chat UX | Graph-aware question templates | Done | Graph-aware Project Chat question templates |
 | P3 | Reporting | Graph-aware weekly report | Done | Graph-aware weekly report |
 | P3 | Product UX | First-run and empty-state polish | Done | First-run and empty-state preparation guide |
+
+## P1 - Program-Level AI Progress Basis
+
+Status: Done
+
+Goal:
+`AI Progress` 숫자를 커밋별 매핑 상태의 최고값이 아니라 프로그램 단위 `Program Implementation Status` 기준으로 표시한다. 분석 결과가 없거나 현재 관련 커밋 묶음과 맞지 않으면 확정 숫자 대신 `분석 필요` 또는 `재분석 필요`로 표시하고, 기존 Mapping 기반 0/50/100 값은 임시 참고값으로만 보여준다.
+
+Rationale:
+작은 커밋 여러 개가 합쳐져 프로그램이 완료되는 흐름에서는 커밋별 최고 상태 방식이 계속 50%에 머물 수 있다. 반대로 단일 커밋이 `구현완료`로 잘못 판단되면 전체 프로그램이 100%처럼 보일 수 있다. 관련 커밋 전체를 보는 구현상태 분석을 기준으로 삼아 AI Progress의 의미를 요구사항 단위 구현상태 신호에 맞춘다.
+
+Checklist:
+
+- [x] `ROADMAP.md` candidate를 active task로 승격한다.
+- [x] `Program Implementation Status` 최신 여부와 AI Progress 산식을 공통 helper로 정리한다.
+- [x] AI Progress/Home/Dashboard 표시에서 분석 필요 상태와 Mapping 참고값을 분리한다.
+- [x] Risk/Resource Metrics가 오래된 mapping 숫자를 확정 AI 진척도로 쓰지 않도록 조정한다.
+- [x] focused tests를 추가하거나 갱신한다.
+- [x] `docs/ai-technical-overview.md`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`를 갱신한다.
+- [x] compile/test와 문구 점검을 실행한다.
 
 ## P1 - Project Chat GraphRAG Context Injection
 
