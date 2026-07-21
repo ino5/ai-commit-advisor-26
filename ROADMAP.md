@@ -130,6 +130,7 @@
 | P1 | Code Review Quality | Grounded Korean AI Code Review suggestions | Done | AI Code Review grounded suggestion 보정 |
 | P2 | Code Review UX | Compact AI Code Review metadata display | Done | AI Code Review 메타데이터 표시 compact화 |
 | P1 | Code Review UX | AI Code Review commit list selection | Done | AI Code Review 커밋 목록 선택 |
+| P1 | Code Review Reliability | AI Code Review Korean response repair with visible fallback | Done | AI Code Review 한국어 보정과 영어 원문 fallback |
 | P2 | Sample Data / Demo Quality | Source-first sample project and demo verification guide | Done | Source-first sample project and demo verification guide |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
@@ -177,6 +178,21 @@ Rationale: 현재 `특정 커밋` 흐름은 hash 또는 rev를 알고 있어야 
 - [x] AI Code Review 화면에서 commit 정보가 보이는 선택 목록과 직접 rev 입력 fallback을 제공한다.
 - [x] 목록 조회와 표시 형식의 회귀 test를 추가한다.
 - [x] 사용자 가이드와 `AI_CHANGELOG.md`를 갱신하고 사용자 문구를 점검한다.
+- [x] focused test, compileall, 전체 test를 실행한다.
+
+## P1 - AI Code Review Korean Response Repair With Visible Fallback
+
+Status: Done
+
+Goal: AI Code Review의 사용자 설명 필드가 영어 위주로 생성되면 한국어 보정을 한 번 시도하고, 보정에 실패해도 유효한 원문 리뷰는 화면과 저장 결과에 그대로 제공하면서 언어 검증 실패는 운영 log와 telemetry에만 남긴다.
+
+Rationale: 현재 Structured Output은 JSON shape만 보장하며 설명 언어를 검증하지 않는다. 영어 응답은 사용성 문제지만 리뷰 내용 자체가 틀렸다는 뜻은 아니므로 사용자 결과를 실패 처리하거나 버리지 않는다. 대신 한국어 보정을 우선 시도하고, 끝까지 영어여도 완료 결과로 제공하되 운영자가 반복 빈도와 provider/model 품질을 추적할 수 있어야 한다.
+
+- [x] 코드 식별자와 enum을 제외한 사용자 설명 필드의 한국어 여부를 검증한다.
+- [x] 한국어 검증 실패 시 설명 필드만 보정하는 LLM 호출을 한 번 수행한다.
+- [x] 보정 성공 결과를 저장하고, 보정 실패 시 최초 원문을 완료 결과로 저장·표시한다.
+- [x] `language_repaired`와 `language_invalid`를 raw metadata, telemetry, application log에 기록한다.
+- [x] 회귀 test와 AI/user-facing 문서, engineering decision, failure history, `AI_CHANGELOG.md`를 갱신한다.
 - [x] focused test, compileall, 전체 test를 실행한다.
 
 ## P0 - Restore UTF-8 Sample Project Chat Evidence

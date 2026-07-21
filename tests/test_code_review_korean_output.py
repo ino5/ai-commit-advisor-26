@@ -1,6 +1,17 @@
 from types import SimpleNamespace
 
-from src.services.code_review_service import ReviewTarget, _build_review_prompt, _postprocess_review_payload
+import json
+from unittest.mock import patch
+
+from src.services.code_review_service import (
+    ReviewTarget,
+    _build_korean_repair_prompt,
+    _build_review_prompt,
+    _postprocess_review_payload,
+    _repair_review_language,
+    _review_language_metrics,
+)
+from src.services.llm_client import LLMResponse
 from src.ui.code_review_page import (
     _commit_analysis_display_rows,
     _review_metadata_display_rows,
@@ -132,3 +143,104 @@ def test_postprocess_removes_ungrounded_amount_boundary_refactoring() -> None:
             "benefit": "가독성",
         }
     ]
+
+
+def _english_review_payload() -> dict:
+    return {
+        "summary": "This change relaxes payment validation.",
+        "commit_analysis": {
+            "change_intent": "Allow zero amount payments in the pilot channel.",
+            "impact_scope": "module",
+            "risk_level": "medium",
+        },
+        "bug_findings": [
+            {
+                "severity": "medium",
+                "file": "PaymentService.java",
+                "line": 18,
+                "issue": "A zero amount payment can be approved.",
+                "recommendation": "Reject amount == 0 before approval.",
+            }
+        ],
+        "refactoring_suggestions": [],
+    }
+
+
+class _QueuedReviewLLM:
+    provider = "local_openai"
+    model = "test-model"
+
+    def __init__(self, payloads: list[dict]) -> None:
+        self.payloads = list(payloads)
+        self.prompts: list[str] = []
+
+    def generate(self, prompt: str) -> LLMResponse:
+        self.prompts.append(prompt)
+        payload = self.payloads.pop(0)
+        text = json.dumps(payload, ensure_ascii=False)
+        return LLMResponse(text=text, raw={"provider": self.provider, "model": self.model})
+
+
+def test_review_language_metrics_allow_korean_sentences_with_code_identifiers() -> None:
+    payload = _english_review_payload()
+    payload["summary"] = "PaymentService의 결제 검증 조건을 수정했습니다."
+    payload["commit_analysis"]["change_intent"] = "pilot channel에서 amount == 0을 허용합니다."
+    payload["bug_findings"][0]["issue"] = "amount == 0 결제가 승인될 수 있습니다."
+    payload["bug_findings"][0]["recommendation"] = "승인 전에 amount == 0을 거부하세요."
+
+    metrics = _review_language_metrics(payload)
+
+    assert metrics["is_korean"] is True
+    assert metrics["hangul_char_count"] >= 3
+
+
+def test_review_language_repair_translates_descriptions_and_preserves_structure() -> None:
+    original = _english_review_payload()
+    repaired = {
+        "summary": "결제 검증 조건을 완화한 변경입니다.",
+        "commit_analysis": {
+            "change_intent": "pilot channel에서 0원 결제를 허용합니다.",
+            "impact_scope": "module",
+            "risk_level": "medium",
+        },
+        "bug_findings": [
+            {
+                "severity": "medium",
+                "file": "PaymentService.java",
+                "line": 18,
+                "issue": "amount == 0인 결제가 승인될 수 있습니다.",
+                "recommendation": "승인 전에 amount == 0을 거부하세요.",
+            }
+        ],
+        "refactoring_suggestions": [],
+    }
+    llm = _QueuedReviewLLM([repaired])
+    target = ReviewTarget("commit", "abc123", "커밋 abc123", "+ amount == 0")
+
+    result = _repair_review_language(llm, target, original)
+
+    assert result.validation_status == "language_repaired"
+    assert result.repair_attempted is True
+    assert result.fallback_used is True
+    assert result.payload == repaired
+    assert result.final_metrics["structure_preserved"] is True
+    assert "사용자 설명 필드만 자연스러운 한국어" in llm.prompts[0]
+    assert "PaymentService.java" in _build_korean_repair_prompt(original)
+
+
+def test_review_language_repair_failure_preserves_english_result_and_logs_warning() -> None:
+    original = _english_review_payload()
+    changed_structure = _english_review_payload()
+    changed_structure["bug_findings"] = []
+    llm = _QueuedReviewLLM([changed_structure])
+    target = ReviewTarget("commit", "abc123", "커밋 abc123", "+ amount == 0")
+
+    with patch("src.services.code_review_service.logger.warning") as warning:
+        result = _repair_review_language(llm, target, original)
+
+    assert result.validation_status == "language_invalid"
+    assert result.repair_attempted is True
+    assert result.fallback_used is True
+    assert result.payload == original
+    warning.assert_called_once()
+    assert "preserving original review" in warning.call_args.args[0]

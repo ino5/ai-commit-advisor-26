@@ -2,6 +2,15 @@
 
 ## 2026-07-22
 
+### AI Code Review 한국어 보정과 영어 원문 fallback
+
+- AI Code Review의 사용자 설명 필드에서 한글 문자 수와 비율을 검사하고, 영어 위주 결과에는 동일한 JSON Schema를 사용하는 한국어 보정 호출을 한 번 추가했습니다. 보정본은 finding/suggestion 수와 순서, file, line, severity, impact scope, risk level이 최초 결과와 같을 때만 채택합니다.
+- 한국어 보정이 실패하거나 리뷰 구조를 바꾸면 최초 영어 결과를 버리지 않고 `CodeReviewResult.status=completed`로 저장해 기존 결과 화면과 리뷰 기록에 그대로 보여줍니다. 사용자가 유효한 bug finding을 잃지 않도록 화면에는 별도의 실행 실패를 표시하지 않습니다.
+- 최초 한국어 결과는 `parsed`, 보정 성공은 `language_repaired`, 끝까지 영어인 결과는 `language_invalid`로 기록합니다. 보정 시도·문자 비율·구조 보존·실패 이유는 `raw_response.language_validation`과 `ai_invocation_logs.raw_metadata`에 남기고, 실패 시 application warning log를 기록합니다.
+- prompt 존재만 확인하던 test를 실제 영어 payload, 한국어 보정 성공, 구조 변경 거부, 영어 원문 표시·저장, `completed` telemetry까지 검증하도록 확장했습니다. 사용자 가이드와 AI 기술 설명에는 영어가 내용 오류를 의미하지 않으며 언어 검증과 리뷰 실행 상태를 분리한다는 이유와 한계를 반영했습니다.
+- 주요 파일: `src/services/code_review_service.py`, `tests/test_code_review_korean_output.py`, `tests/test_code_review_language_fallback.py`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: Code Review focused test 11개와 `compileall`이 통과했습니다. 첫 전체 test는 process-global logging capture에 의존한 새 `caplog` assertion 1개가 focused 실행과 달리 기록을 받지 못해 실패했고, product logger call을 직접 mock하는 격리된 assertion으로 바꿨습니다. 재실행한 전체 test는 `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock`에서 215개가 통과했습니다. Docker app만 재빌드한 뒤 app `running/healthy`, 기존 Quick Tunnel URL의 local/external health `200 ok`를 확인했습니다. 전체 preflight는 사용자가 새로 실행한 최신 저장 리뷰 `95562a1f033c`가 bug finding 0건이라 대표 `2325182` 조건을 가린 기존 known limitation으로 `FAIL=1`이었으며, 저장 결과를 임의로 되돌리지 않았습니다.
+
 ### AI Code Review 커밋 목록 선택
 
 - `AI Code Review`의 `특정 커밋` hash 직접 입력 흐름을 `커밋 목록에서 선택`으로 바꿨습니다. 현재 branch의 최근 50개 commit을 실제 앱 서버 Git 저장소에서 읽어 짧은 hash, commit 시각, 작성자, 메시지와 함께 보여주며, 선택한 전체 hash를 리뷰 대상으로 전달합니다.
