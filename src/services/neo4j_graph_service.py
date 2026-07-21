@@ -883,12 +883,17 @@ def _record_graph_sync_attempt(
     db.commit()
 
 
-def get_project_graph_freshness(db: Session, project_id: int) -> Neo4jGraphFreshness:
+def get_project_graph_freshness(
+    db: Session,
+    project_id: int,
+    *,
+    repo_head_hash: str | None = None,
+) -> Neo4jGraphFreshness:
     project = db.get(Project, project_id)
     if project is None:
         return Neo4jGraphFreshness("failed", "프로젝트를 찾을 수 없습니다.")
 
-    repo_head = _project_repo_head(project)
+    repo_head = repo_head_hash if repo_head_hash is not None else _project_repo_head(project)
     db_sync_head = project.last_synced_commit_hash
     state = _get_graph_sync_state(db, project_id)
     if not settings.neo4j_enabled:

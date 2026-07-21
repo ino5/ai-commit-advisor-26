@@ -1,9 +1,140 @@
+from dataclasses import replace
+from datetime import datetime, timezone
+
+from src.db.models import Project
+from src.rag.source_index_service import SourceIndexStatus, SourceIndexSummary
 from src.services.neo4j_graph_service import Neo4jGraphFreshness
+from src.ui import project_chat_page
 from src.ui.project_chat_page import (
     GRAPH_AWARE_QUESTION_TEMPLATES,
+    _cache_source_verification,
+    _get_cached_source_verification,
     _graph_template_status,
+    _load_initial_source_summary,
+    _run_source_file_verification,
+    build_source_verification_cache_key,
     build_graph_evidence_display,
 )
+
+
+def _summary(**overrides) -> SourceIndexSummary:
+    values = {
+        "repo_path": "C:/repo",
+        "current_head_hash": "head-a",
+        "latest_indexed_head_hash": "head-a",
+        "indexed_head_hashes": ["head-a"],
+        "source_chunk_count": 3,
+        "source_vector_count": 3,
+        "missing_embedding_count": 0,
+        "head_mismatch_chunk_count": 0,
+        "needs_refresh": False,
+        "head_matches_index": True,
+        "last_indexed_at": datetime(2026, 7, 21, tzinfo=timezone.utc),
+        "checked_at": datetime(2026, 7, 21, tzinfo=timezone.utc),
+        "index_signature": "3:9:2026-07-21T00:00:00+00:00",
+        "errors": [],
+    }
+    values.update(overrides)
+    return SourceIndexSummary(**values)
+
+
+def _verified_status() -> SourceIndexStatus:
+    return SourceIndexStatus(
+        repo_path="C:/repo",
+        current_head_hash="head-a",
+        latest_indexed_head_hash="head-a",
+        indexed_head_hashes=["head-a"],
+        source_chunk_count=3,
+        source_vector_count=3,
+        missing_embedding_count=0,
+        head_mismatch_chunk_count=0,
+        stale_chunk_count=0,
+        invalid_chunk_count=0,
+        needs_reindex=False,
+        errors=[],
+    )
+
+
+def test_initial_project_chat_status_uses_summary_without_expensive_file_verification(monkeypatch) -> None:
+    expected = _summary()
+    monkeypatch.setattr(project_chat_page, "get_source_index_summary", lambda db, project: expected)
+    monkeypatch.setattr(
+        project_chat_page,
+        "get_source_index_status",
+        lambda db, project: (_ for _ in ()).throw(AssertionError("full source verification must not run")),
+    )
+
+    assert _load_initial_source_summary(object(), Project(id=1, name="project")) is expected
+
+
+def test_explicit_project_chat_status_refresh_runs_file_verification(monkeypatch) -> None:
+    expected = _verified_status()
+    calls = []
+    monkeypatch.setattr(
+        project_chat_page,
+        "get_source_index_status",
+        lambda db, project: calls.append((db, project.id)) or expected,
+    )
+
+    db = object()
+    assert _run_source_file_verification(db, Project(id=1, name="project")) is expected
+    assert calls == [(db, 1)]
+
+
+def test_source_verification_cache_isolated_by_project_head_model_and_index_signature() -> None:
+    project = Project(id=1, name="project", last_synced_commit_hash="sync-a")
+    summary = _summary()
+    base_key = build_source_verification_cache_key(
+        project,
+        summary,
+        embedding_provider="local_openai",
+        embedding_model="model-a",
+        embedding_dimension=768,
+    )
+    state = {}
+    cached = _cache_source_verification(base_key, _verified_status(), state)
+
+    assert _get_cached_source_verification(base_key, state) is cached
+    assert _get_cached_source_verification(
+        build_source_verification_cache_key(
+            Project(id=2, name="other", last_synced_commit_hash="sync-a"),
+            summary,
+            embedding_provider="local_openai",
+            embedding_model="model-a",
+            embedding_dimension=768,
+        ),
+        state,
+    ) is None
+    assert _get_cached_source_verification(
+        build_source_verification_cache_key(
+            project,
+            replace(summary, current_head_hash="head-b"),
+            embedding_provider="local_openai",
+            embedding_model="model-a",
+            embedding_dimension=768,
+        ),
+        state,
+    ) is None
+    assert _get_cached_source_verification(
+        build_source_verification_cache_key(
+            project,
+            summary,
+            embedding_provider="local_openai",
+            embedding_model="model-b",
+            embedding_dimension=768,
+        ),
+        state,
+    ) is None
+    assert _get_cached_source_verification(
+        build_source_verification_cache_key(
+            project,
+            replace(summary, index_signature="4:10:2026-07-21T01:00:00+00:00"),
+            embedding_provider="local_openai",
+            embedding_model="model-a",
+            embedding_dimension=768,
+        ),
+        state,
+    ) is None
 
 
 def test_graph_question_templates_cover_project_commit_class_domain_relationships() -> None:
