@@ -71,7 +71,7 @@ def test_review_metadata_rows_are_compact_key_values() -> None:
     assert _review_metadata_display_rows(review) == [
         ("상태", "완료"),
         ("Provider", "local_openai / qwen2.5-coder-7b-instruct"),
-        ("대상", "특정 커밋"),
+        ("대상", "커밋 목록에서 선택"),
         ("참조", "2325182ecf5c"),
     ]
 
