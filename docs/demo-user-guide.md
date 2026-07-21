@@ -4,6 +4,8 @@
 
 샘플 프로젝트는 실제 고객 코드 없이도 개발계획, Git 변경 이력, AI 매핑, 리스크, 소스 기반 질의응답, 코드 리뷰 흐름을 한 번에 확인할 수 있도록 준비된 예제 데이터입니다.
 
+처음 사용하는 경우에는 이 문서 전체를 읽기 전에 [샘플 프로젝트 처음 시작 가이드](sample-project-first-run-guide.md)의 버튼 순서부터 따라가세요. 현재 준비된 샘플에서 바로 채팅하는 방법과 빈 DB에서 다시 만드는 방법을 나누어 설명합니다.
+
 ## 사용 목표
 
 이 가이드는 다음 질문에 답하는 것을 목표로 합니다.
@@ -55,7 +57,8 @@ C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_standard_terms.xlsx
 
 | 항목 | 값 |
 |---|---|
-| 프로젝트명 | `AAA Sample Shop Demo` |
+| 저장소 등록 방식 | `서버에 이미 있는 저장소 사용` |
+| 프로젝트명 | `Sample Shop Demo` |
 | 설명 | `AI Commit Advisor 샘플 프로젝트` |
 | 앱 서버 Git 저장소 경로 | `C:\dev\ai-advisor-sample-shop` |
 
@@ -66,6 +69,8 @@ C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_standard_terms.xlsx
 - 앱은 GitHub API를 직접 읽는 것이 아니라 앱 서버에서 접근 가능한 Git 저장소를 읽습니다.
 - 로컬 실행에서는 내 PC의 샘플 프로젝트 경로가 앱 서버 Git 저장소 경로입니다.
 - 사내 서버 실행에서는 서버에 clone된 저장소 경로를 등록해야 합니다.
+
+외부 링크에서 자신의 공개 저장소를 새로 등록할 때는 `Git URL에서 가져오기`를 선택합니다. 프로젝트명, 공개 HTTPS Git URL, branch를 입력하고 `저장소 준비 및 프로젝트 저장`을 누르면 서버가 관리형 경로를 자동 배정해 clone합니다. 현재 기본 허용 host는 `github.com`, `gitlab.com`, `bitbucket.org`이며, private repository와 사용자 PC의 로컬 폴더 직접 등록은 지원하지 않습니다.
 
 ## 2. Git 동기화
 
@@ -405,7 +410,7 @@ Extract shared order status constants
 
 ### GitHub와 직접 연결하나요?
 
-앱은 GitHub API credential이나 Git password를 저장하지 않습니다. 운영자나 사용자가 앱 서버에서 접근 가능한 위치에 Git 저장소를 미리 clone해 둘 수 있고, 프로젝트/Git 설정의 `Git remote URL`과 branch를 저장해 앱 서버가 clone/fetch/reset을 실행하게 할 수도 있습니다. private repository는 서버 OS의 SSH key나 credential helper처럼 앱 밖의 인증 설정을 사용합니다.
+앱은 GitHub API credential이나 Git password를 저장하지 않습니다. 외부 사용자는 `Git URL에서 가져오기`에서 허용된 host의 공개 HTTPS URL과 branch를 입력할 수 있고, 서버는 전용 관리형 폴더에 clone/fetch합니다. 운영자가 미리 준비한 저장소는 `서버에 이미 있는 저장소 사용`으로 연결합니다. private repository는 관리형 등록 대상이 아니며, 기존 서버 경로 방식에서 서버 OS의 SSH key나 credential helper처럼 앱 밖의 인증 설정을 사용해야 합니다.
 
 ### mock 모드와 실제 LLM 모드는 무엇이 다른가요?
 
@@ -434,6 +439,7 @@ AI 진척도는 Git commit과 매핑 결과를 바탕으로 한 보조 지표입
 ## 관련 문서
 
 - [README](../README.md): 프로젝트 소개와 빠른 시작.
+- [샘플 프로젝트 처음 시작 가이드](sample-project-first-run-guide.md): 처음 사용할 때 필요한 메뉴와 버튼만 정리한 짧은 절차.
 - [설치와 운영](setup-and-operations.md): 로컬 실행, Docker 실행, LLM/embedding 설정.
 - [기능 가이드](feature-guide.md): 화면별 기능 설명.
 - [사용 가이드 검증 결과](sample-project-usage-verification.md): local LLM/embedding 환경에서 이 가이드를 실제 실행한 결과와 화면 증거.

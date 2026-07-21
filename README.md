@@ -14,7 +14,7 @@ AI Commit Advisor는 앱 서버에서 접근 가능한 Git 저장소의 커밋, 
 
 가볍게 앱 흐름만 확인하려면 mock 설정을 사용합니다.
 
-로컬 Python으로 실행할 때는 내 PC가 앱 서버입니다. 따라서 프로젝트/Git 설정에 입력하는 Git 저장소 경로도 내 PC에서 접근 가능한 경로입니다. 같은 앱을 사내 서버에서 실행하면 사내 서버에 clone된 저장소 경로를 입력해야 합니다.
+로컬 Python으로 실행할 때는 내 PC가 앱 서버입니다. 따라서 기존 경로 방식에 입력하는 Git 저장소 경로도 내 PC에서 접근 가능한 경로입니다. Docker 앱이나 외부 링크에서는 `Git URL에서 가져오기`를 선택하면 서버가 전용 경로를 자동 배정하고 공개 HTTPS 저장소를 clone합니다.
 
 ```powershell
 Copy-Item .env.example .env
@@ -68,7 +68,7 @@ Quick Tunnel만 따로 확인할 때는 상태 명령부터 실행합니다.
 Copy-Item .env.local-llm.example .env
 ```
 
-local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼저 로드해야 합니다. RAG/Project Chat 사용 전에는 현재 embedding 모델 기준으로 source_file embedding을 생성하세요.
+local LLM 모드의 현재 기본 조합은 `qwen2.5-coder-7b-instruct`와 768차원 `text-embedding-nomic-embed-text-v2-moe`입니다. LM Studio에서 두 모델을 먼저 로드하고, RAG/Project Chat 사용 전에는 새 embedding model key 기준으로 source_file embedding을 생성하세요.
 
 가상환경 활성화 명령은 터미널마다 다릅니다. PowerShell은 `.\.venv\Scripts\Activate.ps1`, cmd.exe는 `.venv\Scripts\activate`, Git Bash는 `source .venv/Scripts/activate`를 사용합니다. 위 Quick Start는 터미널 차이와 PowerShell 실행 정책에 덜 영향을 받도록 가상환경 활성화 없이 실행합니다.
 
@@ -95,6 +95,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 ## 주요 기능
 
 - 앱 서버 Git 저장소 커밋, 변경 파일, diff 수집과 증분 동기화
+- 기존 서버 경로 read-only 분석과 공개 HTTPS Git URL 관리형 clone을 분리한 프로젝트 등록
 - 개발자, 프로그램 목록, 개발계획 Excel 업로드와 화면 기반 직접 관리
 - LLM 기반 프로그램-커밋 Mapping과 사용자 피드백 보정
 - Commit Impact, Program Detail, AI Progress 기반 구현 현황 추적
@@ -113,7 +114,7 @@ local LLM 모드에서는 LM Studio에서 chat 모델과 embedding 모델을 먼
 
 AI Commit Advisor는 브라우저 사용자 PC의 Git 저장소를 직접 읽지 않습니다. 앱이 실행 중인 서버에서 접근 가능한 Git 저장소 경로를 기준으로 커밋, 변경 파일, diff, 현재 소스 파일을 분석합니다.
 
-사내 서버에서 앱을 실행한다면 분석 대상 저장소는 사내 서버의 `/srv/ai-commit-advisor/repos/...` 같은 경로에 준비되어 있어야 합니다. 운영자가 미리 clone해 둘 수도 있고, 프로젝트/Git 설정에 `Git remote URL`과 branch를 저장한 뒤 앱의 `서버 저장소 clone/fetch`로 서버 경로를 준비할 수도 있습니다. 팀원들은 브라우저로 앱에 접속해 서버가 수집한 Git 이력과 분석 결과를 함께 사용합니다.
+프로젝트 등록 방식은 두 가지입니다. 운영자가 미리 준비한 저장소는 `서버에 이미 있는 저장소 사용`으로 연결하고 read-only 분석 경로로 유지할 수 있습니다. 외부 사용자가 공개 GitHub·GitLab·Bitbucket 저장소를 등록할 때는 `Git URL에서 가져오기`를 선택하고 URL과 branch만 입력합니다. 서버는 별도의 쓰기 가능한 관리형 폴더를 자동 배정해 clone/fetch합니다. private repository 인증과 브라우저 사용자 PC의 폴더 직접 등록은 이 흐름에서 지원하지 않습니다.
 
 자세한 사내 서버 운영 방식과 경로 제한 정책은 [Git 저장소 운영 모델](docs/git-repository-operating-model.md)을 참고하세요.
 
@@ -166,6 +167,7 @@ flowchart TB
 
 ## 문서
 
+- [샘플 프로젝트 처음 시작 가이드](docs/sample-project-first-run-guide.md): 현재 준비된 프로젝트에서 바로 질문하는 방법과 빈 DB에서 눌러야 할 메뉴·버튼 순서를 짧게 정리했습니다.
 - [Application Preview](docs/application-preview.md): 샘플 프로젝트 기준 주요 화면과 기능 상태를 미리 확인할 수 있습니다.
 - [사용 가이드](docs/demo-user-guide.md): 샘플 프로젝트를 예시로 AI Commit Advisor의 주요 화면과 분석 흐름을 따라가는 사용자용 가이드입니다.
 - [기능 가이드](docs/feature-guide.md): 사이드바 메뉴 구조, 주요 화면, 기능 흐름, 분석 결과가 무엇을 의미하는지 설명합니다.
@@ -208,7 +210,7 @@ requirements.txt
 
 ## 참고 사항
 
-- RAG/embedding은 mock과 OpenAI-compatible 서버를 모두 지원합니다. 실제 검색 품질 평가는 embedding 모델과 `PGVECTOR_DIMENSION` 설정이 맞아야 합니다.
+- RAG/embedding은 mock과 OpenAI-compatible 서버를 모두 지원합니다. 실제 검색 품질 평가는 embedding 모델과 `PGVECTOR_DIMENSION` 설정이 맞아야 하며, Nomic model은 애플리케이션이 query/document task profile을 구분합니다.
 - Project Chat은 현재 소스 검증을 통과한 `source_file` chunk만 기본 답변 근거로 사용하며, Neo4j graph가 준비된 경우 관계 근거를 보조로 붙이고 프로젝트별 대화 이력과 답변 근거를 저장합니다. Graph 관계 질문 템플릿은 Knowledge Graph가 최신일 때만 실행되며, 답변의 graph evidence는 작은 node-edge 관계도와 표로 나누어 표시됩니다.
 - Git Sync 이후에는 `Git 동기화` 화면의 `동기화 후 다음 작업`에서 현재 소스 근거, 검색 준비, Mapping, Risk Analysis, Knowledge Graph 갱신 순서를 확인하세요.
 - 현재 소스 파일을 수정하거나 브랜치/HEAD가 바뀐 뒤에는 RAG 또는 Project Chat 화면의 인덱스 상태를 확인하고 필요 시 현재 소스를 다시 인덱싱하세요.

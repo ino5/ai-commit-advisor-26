@@ -21,6 +21,91 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-22 - 기존 Git 경로와 관리형 clone 저장공간의 쓰기 권한을 분리한다
+
+### 배경
+
+프로젝트/Git 설정에는 remote URL 기반 clone/fetch 기능이 있었지만, Docker 시연 환경은 `C:\dev` 전체를 `/host-dev:ro`로 mount했습니다. 기존 샘플과 다른 개발 저장소를 안전하게 읽는 데는 적합했지만, 외부 사용자가 Git URL만 입력해 새 프로젝트를 준비할 수는 없었습니다. 반대로 `C:\dev` 전체를 read-write로 바꾸면 앱의 fetch/reset 권한이 분석 대상이 아닌 개발 폴더까지 넓어집니다.
+
+### 결정
+
+- `서버에 이미 있는 저장소 사용`은 기존 host path mapping과 read-only mount를 유지합니다.
+- `Git URL에서 가져오기`는 `MANAGED_REPO_STORAGE_ROOT` 아래의 `project-<ID>` 경로를 앱이 자동 배정합니다.
+- Docker는 관리형 root만 `/managed-repos:rw`로 별도 mount하고, 경로 해석은 더 구체적인 관리형 mapping을 기존 `C:\dev -> /host-dev` mapping보다 먼저 적용합니다.
+- 관리형 등록은 `MANAGED_GIT_ALLOWED_HOSTS`에 명시된 host의 인증정보 없는 공개 HTTPS URL만 허용합니다. Git credential prompt를 끄고 작업 timeout을 적용합니다.
+- 기존 서버 경로 방식의 SSH/private repository 운영은 유지하되, 외부 관리형 등록과 섞지 않습니다.
+
+### 이유
+
+- 외부 사용자는 서버 파일 경로를 알 필요 없이 Git URL과 branch만 입력할 수 있습니다.
+- 앱의 쓰기 권한을 전용 폴더로 한정해 기존 샘플과 다른 `C:\dev` 저장소를 보호합니다.
+- DB에는 host 기준 경로를 유지하므로 같은 PostgreSQL을 쓰는 로컬 Python과 Docker 실행이 같은 프로젝트를 해석할 수 있습니다.
+- 공개 URL 등록과 기존 운영자 준비 경로의 인증·권한 경계를 UI에서 분명하게 설명할 수 있습니다.
+
+### 검토한 대안
+
+- `C:\dev` 전체를 read-write mount: 구현은 가장 짧지만 앱이 기존 저장소의 working tree와 다른 개발 폴더까지 변경할 수 있어 제외했습니다.
+- 외부 등록을 지원하지 않고 운영자 pre-clone만 유지: 안전하지만 외부 링크 사용자가 자신의 공개 프로젝트를 등록할 수 없다는 문제를 해결하지 못합니다.
+- 브라우저에서 Git 폴더나 ZIP 업로드: 대용량 전송, `.git` history 보존, 압축 해제 경로 검증과 용량 제한을 별도로 설계해야 하므로 이번 범위에서 제외했습니다.
+- private repository credential 입력: token과 SSH key 보관, 사용자별 권한과 secret rotation이 필요하므로 관리형 등록에서는 제외했습니다.
+
+### 영향, tradeoff와 남은 한계
+
+- 관리형 저장소는 clone/fetch할 수 있지만, 사용자는 별도로 Git 동기화를 실행해 commit/diff를 DB에 수집해야 합니다.
+- 프로젝트 삭제는 DB 데이터만 삭제하고 관리형 clone 폴더는 자동 삭제하지 않습니다. 저장공간 정리 정책은 후속 운영 과제입니다.
+- 사용자 로그인, 프로젝트 소유권, 저장공간 quota가 없으므로 인증 없는 공개 tunnel을 불특정 다수에게 상시 개방하는 용도는 아닙니다.
+- private repository와 사내 Git은 운영자가 기존 서버 경로 방식으로 준비하거나 별도 인증 설계 후 확장해야 합니다.
+
+### 관련 문서
+
+- [Git 저장소 운영 모델](git-repository-operating-model.md)
+- [설치와 운영](setup-and-operations.md)
+- [Failure History](failure-history.md)
+- `AI_CHANGELOG.md`의 `관리형 Git URL 프로젝트 등록`
+
+## 2026-07-21 - 8GB local AI 기준은 Qwen2.5 7B와 Nomic Embed Text v2 MoE로 유지한다
+
+### 배경
+
+RTX 3060 Ti 8GB와 RAM 32GB인 현재 장비에서 chat model을 키우면 일부 판단 품질은 좋아질 수 있지만, embedding model을 함께 상주시킬 GPU 여유와 긴 입력 안정성이 줄어듭니다. 기존 `nomic-embed-text-v1.5`는 한국어 질문과 영문 Java 파일을 직접 연결하는 진단에서 정답 파일 순위가 낮았고, 애플리케이션도 Nomic이 구분하는 query/document task prefix를 전달하지 않았습니다. JSON을 요구하는 기능은 prompt 문구만으로 형식을 요청해 작은 local model의 malformed output 가능성도 남아 있었습니다.
+
+### 결정
+
+- 운영 chat 기본값은 `qwen2.5-coder-7b-instruct Q4_K_M`, context length 8192, parallel 1, GPU offload 최대를 유지합니다.
+- 운영 embedding 기본값은 `nomic-embed-text-v2-moe Q8_0`, context length 512, 768차원으로 바꿉니다.
+- Nomic 문서는 `search_document:`, 검색 질의는 `search_query:` prefix를 애플리케이션이 붙입니다. 이 정책은 `embedding_model` key의 `retrieval-v1` suffix로 구분해 이전 raw vector가 새 검색에 섞이지 않게 합니다.
+- embedding 재생성은 OpenAI-compatible 배열 입력 32개 단위로 처리하고, batch 요청이 실패하면 단건 호출로 되돌아가 실패 chunk를 분리합니다.
+- Mapping, 프로그램 구현상태, AI Code Review, PL Briefing은 `/v1/chat/completions`의 JSON Schema Structured Output을 사용합니다. Project Chat은 자연어 답변과 source/graph 검증·deterministic repair가 핵심이므로 schema 대상으로 바꾸지 않습니다.
+- Qwen3 계열을 후보로 실행할 때는 `reasoning_effort=none`을 보냅니다. 현재 LM Studio에서는 `chat_template_kwargs`보다 이 OpenAI-compatible parameter가 실제 reasoning token을 0으로 만드는 것을 확인했습니다.
+
+### 이유
+
+- 같은 79개 샘플 source chunk와 한국어 질문 5개에서 기대 파일 MRR은 v1.5 raw profile `0.0197`에서 v2 task-prefix profile `0.3801`로 개선됐고, 결제 서비스는 56위에서 1위, 주문 상태 서비스는 31위에서 2위로 올랐습니다.
+- Qwen2.5와 Qwen3 8B의 소규모 구조화 문제에서는 JSON이 모두 3/3 유효했고 기대 판단은 각각 1/3, 2/3이었습니다. Qwen3의 품질 신호는 있었지만 총 지연은 5.50초에서 6.03초로 늘었고, 동시 로드 VRAM 여유가 Qwen2.5 약 1.2GB에서 Qwen3 268MB로 줄었습니다. 3문제 결과만으로 장기 검증 이력과 안정성 여유를 뒤집지 않습니다.
+- 768차원을 유지하므로 pgvector column migration 없이 model profile만 분리해 전체 재생성할 수 있습니다.
+
+### 검토한 대안
+
+- `nomic-embed-text-v1.5` 유지: VRAM 사용은 작지만 한국어-영문 코드 retrieval 결과와 prefix 누락 문제를 그대로 남겨 제외했습니다.
+- Qwen3 8B를 즉시 기본값으로 전환: 일부 판단은 나았지만 VRAM 여유와 기존 실제 기능 검증량이 부족해 후보로만 유지했습니다.
+- `Huihui-Qwen3.5-9B-abliterated Q4_K_M` 다운로드 및 전환: model card의 Q4_K_M이 약 5.7GB이고 `abliterated`, `uncensored`로 표시된 별도 finetune입니다. 5.03GB인 더 작은 Qwen3 8B도 embedding 동시 상주 시 여유가 268MB였으므로, 현재 장비의 우선 운영 후보로 진행하지 않았습니다. 향후 CPU offload와 변형 모델의 응답 경계를 감수한 별도 품질 평가가 필요할 때 다시 검토합니다.
+- 모든 LLM 답변을 JSON Schema로 강제: Project Chat은 citation과 직접 호출 관계를 자연어에서 검증하는 별도 안전장치가 있어 대상에서 제외했습니다.
+
+### 영향, tradeoff, 남은 한계
+
+- 이전 embedding vector는 복구와 비교를 위해 남지만 새 model key 검색에는 사용되지 않습니다. model 또는 prefix profile을 바꾸면 새 key 기준으로 다시 embedding해야 합니다.
+- Nomic v2의 입력 context는 512 token입니다. 긴 minified CSS/JavaScript는 LM Studio가 잘라 처리하지만 검색 가치가 낮은 외부 압축 자산을 source index에서 제외하는 정책은 별도 검토가 필요합니다.
+- Qwen2.5/Qwen3 비교는 3개 진단 문제로 일반 품질 순위를 증명하지 않습니다. 실제 프로젝트 feature별 평가 집합을 넓힌 뒤에만 기본 chat model을 바꿉니다.
+- `(chunk_id, embedding_model)` DB unique constraint가 없어 concurrent re-embedding은 중복 row를 만들 수 있습니다. schema 보강은 `ROADMAP.md` Candidate Task로 남깁니다.
+
+### 관련 문서
+
+- `docs/ai-technical-overview.md`
+- `docs/source-indexing-and-embedding-plan.md`
+- `docs/failure-history.md`의 local embedding profile 및 재임베딩 운영 실패 항목
+- `AI_CHANGELOG.md`의 `Local AI 모델 및 다국어 RAG 최적화`
+- `ROADMAP.md`의 `Local AI Model And Multilingual RAG Optimization`
+
 ## 2026-07-21 - Project Chat 초기 render는 HEAD 요약과 파일 검증을 분리한다
 
 ### 배경
@@ -97,6 +182,8 @@ README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, 
 
 ## 2026-07-21 - 시연 기준은 기본 DB와 Docker 8501 하나로 통일한다
 
+> 이 항목의 Docker surface와 DB 기준은 유지합니다. embedding 기본값 `nomic-embed-text-v1.5` 부분은 위의 `8GB local AI 기준은 Qwen2.5 7B와 Nomic Embed Text v2 MoE로 유지한다` 결정으로 대체됐습니다.
+
 ### 배경
 
 전체 재현을 위해 격리 DB와 local 8502를 사용한 뒤 Docker 8501을 다시 열자, 포트마다 프로젝트 목록과 provider가 달랐습니다. Docker는 기본 DB의 과거 프로젝트와 mock provider를, local 8502는 격리 DB의 새 결과를 보여줘 사용자가 어느 프로젝트를 선택해야 하는지 판단할 수 없었습니다.
@@ -162,55 +249,6 @@ README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, 
 - `docs/ai-technical-overview.md`
 - `docs/failure-history.md`의 `Project Chat이 직접 호출과 간접 관계를 섞어 답했다`
 - `AI_CHANGELOG.md`의 `Project Chat 직접 호출 근거 검증과 안전한 답변 복구`
-## 2026-07-21 - 하루 외부 시연은 저장소 스크립트와 별도 cloudflared container로 연다
-
-### 배경
-
-도메인이나 공유기 port forwarding을 준비하지 못한 환경에서도 샘플 데이터를 외부 참석자에게 하루 동안 보여줄 수 있어야 했습니다. Cloudflare Quick Tunnel 명령을 한 번 실행하는 것만으로도 외부 URL은 만들 수 있지만, 운영자가 Docker 앱 기동 순서, Compose network 이름, URL 추출, 외부 health 확인, 종료 범위를 기억해야 하면 Agent가 없는 다음 시연에서 같은 절차를 재현하기 어렵습니다.
-
-같은 저장소를 여러 터미널이나 Git worktree에서 다루는 경우 파일은 분리할 수 있어도 `ai_commit_advisor_app` 같은 Docker container와 port `8501`은 공유됩니다. 한 세션이 시연을 위해 앱을 다시 만들거나 중지하면 다른 개발 세션에 영향을 줄 수 있으므로 실행 명령뿐 아니라 runtime 소유 범위를 함께 정해야 했습니다.
-
-### 결정
-
-- `scripts/quick_tunnel.py`에 `start`, `status`, `stop` action을 제공하고 저장소 root에서 같은 명령으로 실행합니다.
-- Quick Tunnel은 호스트에 binary를 설치하지 않고 Cloudflare 공식 `cloudflare/cloudflared` Docker image를 별도 container로 실행합니다.
-- Tunnel container는 기존 app container의 Compose network에 연결하고 `http://app:8501`만 origin으로 사용합니다.
-- 스크립트는 Compose project 이름을 `ai-commit-advisor`로 고정해 저장소 directory나 worktree 이름에 따라 다른 volume/network가 만들어지지 않게 합니다.
-- 기본 `stop`은 `ai_commit_advisor_demo_tunnel`만 제거합니다. App 중지는 `--stop-app`을 명시한 경우에만 실행하며 PostgreSQL, Neo4j, volume은 건드리지 않습니다.
-- 시작 성공 기준은 local `/_stcore/health`와 발급된 `trycloudflare.com` 주소의 public `/_stcore/health`가 모두 `200 ok`인 상태입니다.
-- 여러 Git 세션은 Docker runtime을 공유한다는 사실을 운영 문서에 명시하고, 다른 세션과 실행 시점을 합의하지 않은 상태에서는 `start`나 `--stop-app`을 실행하지 않습니다.
-
-### 이유
-
-- Python 표준 라이브러리 기반 실행 스크립트는 Windows PowerShell에서 긴 Docker 명령을 다시 조합하는 실수를 줄이고 자동 테스트가 가능합니다.
-- 별도 `cloudflared` container는 host 설치, PATH, local `.cloudflared/config.yaml` 상태에 의존하지 않습니다.
-- Quick Tunnel을 기본 Compose service에 넣지 않으면 일반 개발용 `docker compose up`이 의도치 않게 앱을 인터넷에 공개하지 않습니다.
-- local health만 확인하면 Tunnel route나 Cloudflare 연결 실패를 놓칠 수 있으므로 public health까지 성공 조건으로 포함해야 합니다.
-- `docker compose down`을 사용하지 않고 전용 container만 제거하면 기존 분석 DB와 Neo4j read model을 유지할 수 있습니다.
-
-### 검토한 대안
-
-- `cloudflared`를 Windows host에 설치하고 터미널에서 직접 실행: 명령은 짧지만 설치 상태, PATH, config file, 터미널 종료 여부를 운영자가 관리해야 합니다.
-- Quick Tunnel을 `docker-compose.yml`의 상시 service로 추가: 시작은 쉬워지지만 평상시 Compose 실행만으로 공개 URL이 열릴 수 있고, 재시작 때 바뀐 URL을 찾기 어렵습니다.
-- 자체 도메인과 Named Tunnel 사용: 고정 주소와 Cloudflare Access가 필요한 장기 운영에는 맞지만, 주소 변경을 허용하는 하루 샘플 시연에는 준비 범위가 큽니다.
-- Worker와 Workers VPC로 `workers.dev` 주소 사용: 도메인 구매 없이 고정 주소를 만들 수 있지만 Beta 구성과 별도 Worker 운영이 추가됩니다.
-- 문서에 수동 명령만 기록: 구현은 없지만 network 탐색, URL parsing, health 확인, 안전한 종료를 매번 사람이 수행해야 합니다.
-
-### 영향, tradeoff, 남은 한계
-
-- Quick Tunnel은 주소, 가동 시간, 인증을 보장하지 않으므로 샘플 데이터 기반 단기 시연으로 범위를 제한합니다.
-- 기본 image는 `cloudflare/cloudflared:latest`이며 `--image` 또는 `CLOUDFLARED_IMAGE`로 검증한 version을 고정할 수 있습니다. 기본 사용은 간단하지만 완전한 image 재현성보다 최신 connector 사용을 우선합니다.
-- Compose 기본 port mapping은 계속 host interface에 publish됩니다. 스크립트는 경고만 표시하고 firewall이나 Compose를 자동 변경하지 않습니다.
-- Git worktree는 Docker runtime을 분리하지 않습니다. 동시에 독립된 앱을 실행하려면 Compose project, container name, host port, volume 전략을 별도로 설계해야 합니다.
-- 앱 서버, Docker Desktop, 인터넷 연결이 중지되면 Tunnel도 사용할 수 없습니다.
-
-### 관련 문서
-
-- `scripts/quick_tunnel.py`
-- `tests/test_quick_tunnel_script.py`
-- `docs/setup-and-operations.md`
-- `docs/failure-history.md`의 `같은 저장소의 동시 세션이 Docker demo runtime을 공유했다`
-- `AI_CHANGELOG.md` 항목 `Cloudflare Quick Tunnel 하루 시연 절차 자동화`
 
 ## 2026-07-21 - 동일 저장소의 새 프로젝트 검증은 격리 DB에서 수행한다
 
@@ -252,6 +290,7 @@ README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, 
 - `docs/failure-history.md`의 `동일 저장소를 새 프로젝트로 수집하면 기존 GitCommit 소유가 이동할 수 있다`
 - `AI_CHANGELOG.md`의 `새 프로젝트 전체 시연 재현과 단계별 증적`
 - `ROADMAP.md` Candidate Task `Make Git commit uniqueness project-scoped`
+
 ## 2026-07-21 - 소규모 시연은 저장된 검증 결과를 기본으로 하고 읽기 전용 preflight로 현재성을 확인한다
 
 ### 배경
@@ -291,6 +330,7 @@ README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, 
 - [사용 가이드 검증 결과](sample-project-usage-verification.md#2026-07-21-내부-시연-리허설)
 - [Failure History](failure-history.md#2026-07-21---내부-시연-리허설에서-실행-환경과-저장-근거의-불일치가-확인됐다)
 - `AI_CHANGELOG.md` 항목 `내부 시연 리허설과 사전 점검 안정화`
+
 ## 2026-06-29 - AI Progress는 커밋별 최고 상태가 아니라 프로그램 단위 구현상태 신호로 다룬다
 
 ### 배경
@@ -324,6 +364,38 @@ README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, 
 - [Domain Language](../CONTEXT.md)
 - [Roadmap Candidate Tasks](../ROADMAP.md#candidate-tasks)
 - `AI_CHANGELOG.md` 항목 `AI Progress 의미와 후속 개선 방향 문서화`
+
+## 2026-06-21 - 사용자-facing 산출물은 AI스러운 문구를 종료 전 필수 점검한다
+
+### 배경
+
+이 프로젝트는 README, 기능 가이드, Application Preview, 샘플 가이드, 결과서 PPT처럼 사용자가 직접 읽는 산출물이 많습니다. 기존 `AGENTS.md`에는 자연스러운 한국어 문서화와 AI-sounding wording 회피 기준이 있었지만, 작업 종료 전 반드시 확인해야 한다는 검문 지점은 약했습니다. 특히 발표자료나 결과서처럼 평가자가 보는 문서는 추상적인 AI 홍보 문구보다 실제 사용자가 어떤 근거를 보고 어떤 action을 할 수 있는지가 더 중요합니다.
+
+### 결정
+
+`AGENTS.md`에 `AI-Sounding Wording Review`를 추가해 사용자-facing 문서, UI copy, screenshot caption, 보고서, PPT/PPTX 같은 발표자료를 변경할 때는 마무리 전에 AI스러운 문구가 남아 있는지 반드시 확인하게 합니다. 변경 diff를 직접 읽고, 필요하면 `rg`로 모호하거나 번역체처럼 보이는 표현을 검색합니다. 발견한 문구는 actor, workflow, evidence, action, limitation이 드러나는 구체적인 제품 문장으로 고칩니다.
+
+### 이유
+
+- 사용자-facing 문서의 품질은 기능 구현만큼 제품 신뢰도에 영향을 줍니다.
+- AI Use Case 설명은 과장된 AI 표현보다 추적 가능한 근거와 사용자의 다음 행동을 보여줘야 설득력이 있습니다.
+- agent가 매번 문체 기준을 떠올리는 방식보다 종료 전 검문 지점으로 두는 편이 누락을 줄입니다.
+
+### 검토한 대안
+
+- 기존 `Natural Korean Documentation Wording`만 유지: 방향은 이미 있지만 필수 검증 행동이 약합니다.
+- 금지어 목록을 엄격하게 만들기: 자동 검출은 쉽지만 `AI Use Case`, `AI Progress` 같은 의도적 product label까지 흔들 수 있습니다.
+- 별도 lint script 추가: 반복 자동화에는 좋지만 한국어 문맥 판단이 필요해 지금은 agent review와 `rg` 보조 검색이 더 현실적입니다.
+
+### 영향과 tradeoff
+
+문서나 발표자료 작업 후 확인 단계가 하나 늘어납니다. 대신 추상적 마케팅 문구, 번역체, AI가 단정하는 듯한 문장이 최종 산출물에 남을 가능성이 줄어듭니다. product label, file path, command, API/model name, historical entry는 안정성을 위해 그대로 둘 수 있습니다.
+
+### 관련 문서
+
+- [AI-Sounding Wording Review](../AGENTS.md#ai-sounding-wording-review)
+- `AI_CHANGELOG.md` 항목 `AI스러운 문구 필수 점검 agent policy 추가`
+
 ## 2026-06-17 - Project Chat 기본 GraphRAG 화면은 코드 관계와 영향 경로를 함께 보여주고 약한 domain 요약은 숨긴다
 
 ### 배경

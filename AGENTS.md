@@ -170,6 +170,23 @@ Use technical wording only when it is a file name, code identifier, historical t
 
 When a technical file name still contains older internal wording, keep the file path unchanged if renaming would create churn, but make the surrounding link label and explanatory sentence natural.
 
+## AI-Sounding Wording Review
+
+Before finishing work that changes user-facing prose, UI copy, README sections, feature guides, setup/operations guides, Application Preview captions, sample/demo guides, reports, PPT/PPTX decks, or other presentation material, explicitly check whether the changed text still contains AI-sounding wording.
+
+Treat this as a required finishing check, not a nice-to-have style pass. Review the changed diff and, when practical, use `rg` against the touched user-facing files for vague, generic, or translation-like expressions. Replace them with concrete product wording that names the actor, workflow, evidence, action, or limitation.
+
+Examples of wording to challenge:
+
+- generic claims such as "혁신적인", "강력한", "원활한", "향상된 사용자 경험", "AI 기반으로 자동화" when the sentence does not say what actually changes for the user
+- literal translations of internal mechanics, repository roles, data-generation steps, or implementation details when a reader-facing product phrase would be clearer
+- broad AI claims that imply certainty, autonomous judgment, or business value without traceable evidence, boundary, or user action
+- repeated template-like phrasing such as "이를 통해 ... 할 수 있습니다" when a shorter direct sentence would read more naturally
+
+Do not rewrite stable product labels, code identifiers, API/model names, file paths, commands, historical changelog entries, or user-quoted wording solely because they look technical. When a term such as `AI Use Case`, `AI Progress`, `Project Chat`, or `PL Briefing` is an intentional product label, keep it and make the surrounding sentence natural.
+
+In the final response, changelog entry, or work notes, mention that this wording review was performed when the change includes meaningful user-facing prose or presentation copy.
+
 ## Korean Text And Encoding
 
 This repository contains Korean Markdown and UTF-8 text. On Windows, PowerShell output can look corrupted when a command uses the console default encoding instead of UTF-8.

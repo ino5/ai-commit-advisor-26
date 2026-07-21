@@ -55,6 +55,8 @@ Embedding generation은 missing vector 기준입니다.
 - `src/rag/vector_store.py::embed_missing_chunks`
 - 선택된 `chunk_id + embedding_model` 조합의 `VectorItem`이 이미 있는지 확인합니다.
 - 해당 embedding model 기준 vector가 없는 chunk에 대해서만 vector를 생성합니다.
+- Nomic model은 문서에 `search_document:`, 질의에 `search_query:`를 붙이고 storage key에 `retrieval-v1` profile을 포함합니다.
+- OpenAI-compatible provider는 기본 32개 배열 입력으로 생성하고 batch 실패 시 단건 호출로 전환합니다.
 
 이 방식은 같은 model에서 변경되지 않은 chunk의 embedding을 반복 호출하지 않게 합니다.
 
@@ -163,6 +165,8 @@ Cloud 배포에서 embedding은 self-hosted embedding model을 쓰지 않는 한
 
 Embedding model 또는 vector dimension을 변경하면 의도적인 re-embedding 계획이 필요합니다. 다른 model로 만든 old vector를 search에 조용히 재사용하면 안 됩니다.
 
+현재 local 기준은 `nomic-embed-text-v2-moe`, 768차원, `retrieval-v1` task profile입니다. 차원이 같더라도 model 이름이나 query/document prefix 정책이 달라지면 별도 model key로 전체 missing vector를 생성합니다. 완료 후에는 model key별 `count(*)`, `count(distinct chunk_id)`, missing count를 함께 확인합니다. 현재 DB에는 `(chunk_id, embedding_model)` unique constraint가 없으므로 같은 profile의 재생성 worker를 동시에 실행하지 않습니다.
+
 ## 제안 로드맵
 
 ### Phase 1 - 현재 동작 문서화와 노출
@@ -269,6 +273,7 @@ Project Chat과 RAG 화면은 다음 상태를 보여야 합니다.
 - 새 chunk metadata는 `embedding_status=pending`으로 저장합니다.
 - `embed_after_refresh` 기본값은 `False`입니다. 즉 증분 인덱싱 버튼은 embedding API를 자동 호출하지 않습니다.
 - embedding은 `RAG 검색 > 검색 준비`에서 현재 embedding model 기준 missing vector만 제한 수량으로 생성합니다.
+- 선택된 수량 안에서는 embedding API 호출을 32개씩 묶고, batch가 실패한 경우에만 해당 묶음을 단건으로 재시도합니다.
 
 이 MVP는 Git sync 직후 자동으로 실행되지 않습니다. Cloud embedding 비용과 local LM Studio CPU/GPU 부하를 사용자가 통제할 수 있도록 수동 action으로 둡니다. 이후 자동 모드를 추가하더라도 opt-in, batch limit, 예상 runtime 안내가 필요합니다.
 

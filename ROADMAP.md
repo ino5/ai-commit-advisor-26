@@ -54,6 +54,12 @@
 | P2 | Docs | README documentation hub restructure | Done | README 문서 허브 개편 |
 | P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 |
 | P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup |
+| P2 | Docs / Agent Policy | Mandatory AI-sounding wording review | Done | AI스러운 문구 필수 점검 agent policy 추가 |
+| P2 | Docs / Presentation | Text-brief-based final report rewrite | Done | 텍스트 계획서 기준 결과서 PPT 재작성 |
+| P2 | Docs / Presentation | AI Use Case technical master deck rewrite | Done | AI Use Case 기술 상세 마스터덱 전면 재작성 |
+| P2 | Docs / Presentation | AI Use Case internal share deck | Done | AI Use Case 내부 공유용 PPT 작성 |
+| P2 | Docs / Presentation | AI Use Case internal share deck quality rewrite | Done | AI Use Case 내부 공유용 PPT 전면 보완 |
+| P2 | Docs / Presentation | AI Use Case internal share deck aspect and polish pass | Done | AI Use Case 내부 공유용 PPT 이미지 비율과 품질 보정 |
 | P2 | Ops | Application Dockerfile and deployment guide | Done | Application Dockerfile and deployment guide |
 | P2 | Demo Ops | Quick Tunnel demo runbook and script | Done | Cloudflare Quick Tunnel 하루 시연 절차 자동화 |
 | P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log |
@@ -75,6 +81,7 @@
 | P2 | Docs | Git History Application Preview screenshot | Done | Git History Application Preview screenshot |
 | P2 | Git Ops | Server repository status display | Done | Server repository status display |
 | P2 | Docs | Demo user guide | Done | Demo user guide |
+| P2 | Docs / Onboarding | Sample project first-run button guide | Done | 샘플 프로젝트 처음 시작 버튼 가이드 |
 | P2 | Docs / Verification | Sample project usage guide verification evidence | Done | 샘플 프로젝트 사용 가이드 실제 검증 결과 추가 |
 | P2 | Data UX | Project delete and reset safety | Done | Project delete and reset safety |
 | P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 |
@@ -125,6 +132,7 @@
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
 | P3 | Git Ops | Server-managed clone/fetch workflow | Done | Server-managed clone/fetch workflow |
+| P2 | Git UX / Ops | Managed Git URL project onboarding | Done | 관리형 Git URL 프로젝트 등록 |
 | P1 | AX / AI 검증 | AI evidence trace view | Done | AX AI 검증과 telemetry 구현 |
 | P1 | Readiness | AI readiness cockpit | Done | AX AI 검증과 telemetry 구현 |
 | P1 | AI Quality | Sample project AI evaluation scorecard | Done | AX AI 검증과 telemetry 구현 |
@@ -142,6 +150,7 @@
 | P2 | Graph UX | Knowledge Graph exploration UI | Done | Knowledge Graph exploration UI |
 | P2 | AI Quality | Project-level AI quality scorecard | Done | Project-level AI quality scorecard |
 | P2 | AI Verification | Local LLM verification routine | Done | Local LLM verification routine |
+| P1 | AI Ops / RAG | Local AI model and multilingual RAG optimization | Done | Local AI 모델 및 다국어 RAG 최적화 |
 | P2 | Workflow | Git Sync follow-up action orchestrator | Done | Git Sync follow-up action orchestrator |
 | P2 | Graph Ops | Neo4j production hardening | Done | Neo4j production hardening |
 | P3 | Source Analysis | Source parser accuracy expansion | Done | Source parser accuracy expansion |
@@ -197,6 +206,30 @@ Checklist:
 - [x] README, setup, Runbook, engineering decision, failure history와 `AI_CHANGELOG.md`를 갱신한다.
 
 Related changelog: `시연 서버 상태 우선 재기동과 legacy Tunnel 재사용`
+
+## P1 - Local AI Model And Multilingual RAG Optimization
+
+Status: Done
+
+Goal:
+현재 PC의 RTX 3060 Ti 8GB와 32GB RAM 범위에서 local chat model의 안정성을 유지하면서, 한국어 질문이 영문·Java 소스 근거를 제대로 찾도록 embedding과 structured output 경로를 개선한다.
+
+Rationale:
+실제 Mapping 호출은 `qwen2.5-coder-7b-instruct`에서 빠르고 안정적이었지만, 현재 `nomic-embed-text-v1.5`는 한국어 질문으로 샘플 Java 소스를 찾는 소규모 진단에서 정답 파일을 상위 근거로 올리지 못했다. 문서와 질문을 같은 방식으로 embedding하고 Nomic이 요구하는 task prefix를 전달하지 않는 구현도 확인됐다. chat model을 무조건 키우기보다 LM Studio runtime, context, multilingual embedding, JSON schema 강제를 실제 프로젝트 지표로 나눠 검증해야 한다.
+
+Checklist:
+
+- [x] 현재 hardware, LM Studio, loaded model, context, VRAM, 실제 AI invocation 지표를 확인한다.
+- [x] LM Studio를 최신 안정판으로 업그레이드하고 OpenAI-compatible endpoint와 기존 model load를 확인한다.
+- [x] `qwen2.5-coder-7b-instruct`를 8192 context로 유지하고 GPU memory와 실제 호출을 검증한다.
+- [x] 768 dimension을 유지하는 multilingual embedding model을 설치하고 query/document task prefix를 구현한다.
+- [x] Mapping, 구현상태, Code Review, PL Briefing처럼 JSON을 요구하는 경로에 Structured Output을 적용한다.
+- [x] 현재 프로젝트의 기존 embedding을 새 model로 재생성하고 한국어 검색 품질을 다시 측정한다.
+- [x] 기존 Qwen2.5 기준과 후보 chat model을 같은 실제 프로젝트 평가 기준으로 비교할 수 있는 A/B 검증 경로를 준비한다.
+- [x] 관련 사용자 문서, AI 기술 설명, engineering decision, failure history, `AI_CHANGELOG.md`를 갱신한다.
+- [x] compile, focused/full tests, live LM Studio 연결, RAG 검색, LLM JSON 결과, diff hygiene을 검증한다.
+
+Related AI Change Log: `Local AI 모델 및 다국어 RAG 최적화`
 
 ## P0 - Canonical Demo Database And Docker 8501 Recovery
 
@@ -261,6 +294,119 @@ Checklist:
 - [x] 실패 이력, engineering decision, `AI_CHANGELOG.md`를 갱신하고 전체 검증을 완료한다.
 
 Related AI Change Log: `내부 시연 리허설과 사전 점검 안정화`
+
+## P2 - Mandatory AI-Sounding Wording Review
+
+Status: Done
+
+Goal:
+사용자-facing 문서, UI 문구, 결과서, 발표자료를 마무리하기 전에 AI가 쓴 것처럼 보이는 추상적·번역체 문구가 남아 있는지 반드시 확인하도록 `AGENTS.md` agent policy를 강화한다.
+
+Checklist:
+
+- [x] `AGENTS.md`에 AI스러운 문구 최종 점검 규칙을 추가한다.
+- [x] 반복 가능한 agent-policy 결정으로 `docs/engineering-decisions.md`에 배경과 tradeoff를 기록한다.
+- [x] `AI_CHANGELOG.md`에 변경과 검증 결과를 남긴다.
+- [x] `rg`와 `git diff --check`로 정책 반영과 diff hygiene을 확인한다.
+
+## P2 - Text-Brief-Based Final Report Rewrite
+
+Status: Done
+
+Goal:
+회사 제출용 AI Use Case 결과서를 기존 PPT 구조가 아니라 텍스트 계획서와 현재 앱 근거 기준으로 다시 작성한다.
+
+Rationale:
+이전 결과서는 새 화면과 내부 발표용 역할명을 앞세워 사용자가 보여주려던 "AI Use Case"와 "실제 SI 프로젝트에서 개발 리더가 관리 판단에 참고하는 지표" 관점을 흐렸습니다. 결과서는 기능을 더 만들기보다, 이미 구현된 산출물·Git 수집, Mapping, Risk Analysis, AI Progress, 자원관리 지표, AI Code Review, RAG/Project Chat/Knowledge Graph 근거를 제출 맥락에 맞게 설명해야 합니다.
+
+Checklist:
+
+- [x] 기존 8장 PPT를 자료원으로 쓰지 않고 텍스트 계획서와 현재 앱 evidence만 사용한다.
+- [x] 초기 요약본으로 고객 Pain Point, Use Case 목표, 운영 흐름, 핵심 기능, PoC 결과, 적용 기준과 한계를 정리했고, 이후 기술 상세 마스터덱으로 대체한다.
+- [x] `PL`, `Cockpit`, `action queue`, `개발자 집중관리`, `프로그램 액션 큐` 같은 전면 문구가 PPT에 남지 않도록 inspect로 확인한다.
+- [x] 자원관리 가치는 개인 평가가 아니라 운영 참고 신호라는 경계를 포함한다.
+- [x] `AI_CHANGELOG.md`와 `docs/failure-history.md`를 갱신한다.
+- [x] PPT preview, inspect, 슬라이드 수, 문구 검색, documentation image test, diff hygiene을 검증한다.
+
+## P2 - AI Use Case Technical Master Deck Rewrite
+
+Status: Done
+
+Goal:
+AI Use Case성과 실제 기술 적용 구조가 충분히 드러나도록 결과서 PPT를 기술 상세 마스터덱으로 전면 재작성한다.
+
+Rationale:
+13장 요약본은 제출용 요약에는 가깝지만, 이 프로젝트가 가진 LLM Mapping, RAG/pgvector, source verification, Neo4j GraphRAG, AI telemetry, Resource Metrics 같은 AI 적용 구조를 충분히 보여주지 못했습니다. 사용자가 나중에 제출본을 골라낼 수 있도록 먼저 넓은 기술 상세덱을 만들고, 화면 근거와 아키텍처를 함께 보여주는 편이 더 안전합니다.
+
+Checklist:
+
+- [x] 13장 요약본을 전면 대체하고 47장 기술 상세 마스터덱으로 재작성한다.
+- [x] Use Case 정의, 고객 Pain Point, end-to-end architecture, 데이터 흐름, 저장소/AI provider 구조를 포함한다.
+- [x] LLM Mapping, 구현상태 분석, AI Progress, Risk Analysis, Resource Metrics, AI Code Review, RAG, Project Chat, GraphRAG, Knowledge Graph, AI telemetry를 각각 설명한다.
+- [x] 자원관리 지표는 실제 Dashboard 하단 screenshot crop을 사용한다.
+- [x] `PL`, `Cockpit`, `action queue`, `개발자 집중관리`, `프로그램 액션 큐` 같은 전면 문구가 PPT에 남지 않도록 inspect/layout으로 확인한다.
+- [x] `AI_CHANGELOG.md`와 `docs/failure-history.md`를 갱신한다.
+- [x] PPT preview, 슬라이드 수, AI 기술 키워드 coverage, 문구 검색, QA 검색, documentation image test, diff hygiene을 검증한다.
+
+## P2 - AI Use Case Internal Share Deck
+
+Status: Done
+
+Goal:
+팀 내부 공유용으로 `AI 커밋 분석 기반 프로젝트 자원 관리 서비스`를 짧게 설명하는 PPT를 만든다. 상위 폴더의 Use Case 텍스트를 기준으로 하되, 실제 앱 화면과 Application Preview의 좋은 screenshot을 함께 사용한다.
+
+Rationale:
+기존 47장 기술 상세덱은 제출·설명용으로는 충분하지만, 팀 내부에서 "이번에 어떤 AI Use Case를 만들었는지" 빠르게 공유하기에는 무겁다. 내부 공유용 덱은 Pain Point, 아키텍처, 실제 화면, 적용 AI 범위, 기대효과와 한계를 짧게 보여주는 쪽이 적합하다.
+
+Checklist:
+
+- [x] 상위 폴더 Use Case 텍스트와 Application Preview screenshot을 확인한다.
+- [x] 내부 공유용 슬라이드 구조를 9장+부록 1장으로 정리한다.
+- [x] PPTX를 생성하고 모든 슬라이드 preview를 렌더링한다.
+- [x] 겹침, 잘림, 문구 톤, AI-sounding wording을 점검한다.
+- [x] `AI_CHANGELOG.md`에 산출물과 검증 결과를 기록한다.
+
+## P2 - AI Use Case Internal Share Deck Quality Rewrite
+
+Status: Done
+
+Goal:
+`AX Use Case` 내부 공유용 PPT를 전면 보완한다. 새 덱은 실제 운영 전환 제안서가 아니라 "AI를 이용한 프로젝트 과제를 수행했고, 이런 화면과 결과가 나왔다"는 보고용 산출물로 구성한다.
+
+Rationale:
+초기 내부 공유용 덱은 짧게 요약하는 데 치우쳐 `AX Use Case` 과제를 수행했다는 인상이 약했다. 보완판은 고객 Pain Point, AI 적용 지점, 실제 화면 결과를 일반적인 Use Case PPT 흐름으로 보여주되, Project Chat 질문/답변, GraphRAG 근거, AI Code Review 결과 같은 화면 캡처를 발표 근거로 사용해야 한다. 한계 설명이나 세부 산식은 본문 중심이 아니다.
+
+Checklist:
+
+- [x] 기존 `outputs/ai-use-case-team-share.pptx`를 `outputs/backups/`에 백업한다.
+- [x] 상위 폴더 Use Case 텍스트를 `docs/ai-use-case-brief-reference.md` 참고문서로 고정한다.
+- [x] 발표 성격을 내부 `AX Use Case` 과제 결과 공유로 명확히 기록한다.
+- [x] 기존 Application Preview, 47장 기술 상세덱, Use Case 참고문서에서 재사용할 근거를 고른다.
+- [x] Project Chat 질문/답변과 GraphRAG 근거가 한 장 이상에서 명확히 보이게 구성한다.
+- [x] AI Progress는 고객 Pain Point인 진척도 관리 불확실성을 줄이는 화면 근거로 설명하고, 세부 산식은 필요할 때만 보조 설명으로 둔다.
+- [x] AI Code Review와 Risk/Resource 관점이 단순 스크린샷이 아니라 use case 흐름으로 이어지게 재배치한다.
+- [x] PPTX를 다시 생성하고 PowerPoint preview/export로 전체 슬라이드를 검증한다.
+- [x] `AI_CHANGELOG.md`, `docs/failure-history.md`, 필요 시 `CONTEXT.md`를 갱신한다.
+- [x] AI-sounding wording과 diff hygiene을 점검한다.
+
+## P2 - AI Use Case Internal Share Deck Aspect And Polish Pass
+
+Status: Done
+
+Goal:
+`AX Use Case` 내부 공유용 PPT의 screenshot 비율과 발표자료 완성도를 보완한다. 특히 6페이지와 7페이지의 화면 캡처가 강제 배치로 납작해 보이는 문제를 수정하고, 추가로 어색한 슬라이드 문구·배치·이미지 crop을 점검한다.
+
+Rationale:
+전면 보완판은 흐름과 내용은 맞아졌지만, 일부 screenshot crop이 원본 비율과 다른 PPT frame에 강제로 맞춰지며 화면이 가로로 늘어나 보였다. 내부 공유용 과제 결과물은 기능 내용뿐 아니라 화면 품질도 "만든 티"를 좌우하므로, screenshot은 원본 비율을 보존하거나 target frame과 같은 비율로 crop한 뒤 삽입해야 한다.
+
+Checklist:
+
+- [x] 현재 `outputs/ai-use-case-team-share.pptx`를 `outputs/backups/`에 백업한다.
+- [x] 6페이지와 7페이지 screenshot의 원본 crop 비율과 PPT 배치 비율을 맞춘다.
+- [x] 전체 slide preview를 다시 보고 추가 개선점을 반영한다.
+- [x] PowerPoint 열기와 전체 slide PNG export로 렌더링을 검증한다.
+- [x] `AI_CHANGELOG.md`, `docs/failure-history.md`, `ROADMAP.md`를 갱신한다.
+- [x] AI-sounding wording과 diff hygiene을 점검한다.
 
 ## P1 - Program-Level AI Progress Basis
 
@@ -543,6 +689,25 @@ Checklist:
 - [x] 사용자-facing/architecture/engineering decision documentation과 `AI_CHANGELOG.md`를 갱신한다.
 - [x] Compile/test/UI verification을 실행한다.
 
+## P2 - Sample Project First-Run Button Guide
+
+Status: Done
+
+Goal:
+기능과 옵션을 처음 접하는 사용자가 샘플 프로젝트 준비부터 Project Chat 실행까지 필요한 메뉴와 버튼만 순서대로 따라갈 수 있는 짧은 가이드를 제공한다.
+
+Rationale:
+기존 사용 가이드는 각 기능의 의미와 전체 제품 흐름을 설명하지만, 설정과 분석 옵션이 늘어나면서 처음 사용하는 사람은 지금 눌러야 할 버튼과 건너뛰어도 되는 옵션을 구분하기 어렵다. 현재 준비된 샘플을 바로 사용하는 경로와 빈 DB에서 다시 만드는 경로를 분리하고, 각 단계의 완료 숫자를 함께 제시해야 시행착오를 줄일 수 있다.
+
+Checklist:
+
+- [x] 현재 준비된 `Sample Shop Demo`에서 Project Chat을 바로 사용하는 최소 경로를 적는다.
+- [x] 빈 DB에서 프로젝트 등록, Git 수집, 산출물 업로드, Mapping, Risk, RAG, Knowledge Graph를 준비하는 메뉴와 버튼명을 확인한다.
+- [x] 각 단계의 기대 건수와 필수/선택 옵션을 구분한다.
+- [x] README와 기존 사용 가이드에서 새 문서로 연결한다.
+- [x] `AI_CHANGELOG.md`를 갱신한다.
+- [x] 링크, 현재 상태 수치, 사용자-facing 문구와 whitespace를 검증한다.
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -552,6 +717,8 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
 | P1 | Data Model / Git Sync | Make Git commit uniqueness project-scoped | 현재 `commit_hash` 전역 unique와 Git Sync 소유권 이동 때문에 같은 저장소를 여러 프로젝트가 독립 분석할 수 없다. migration, 기존 데이터 변환, cascade 관계, 두 프로젝트 동시 수집 회귀 test를 함께 설계해야 한다. |
+| P1 | Data Model / RAG | Enforce vector uniqueness per embedding profile | 현재 `vector_items`에는 `(chunk_id, embedding_model)` unique constraint가 없어 같은 profile의 re-embedding worker가 겹치면 중복 검색 row가 생길 수 있다. Alembic migration, 기존 duplicate 정리, conflict-safe insert, concurrent 회귀 test를 함께 설계해야 한다. |
+| P2 | AI Verification | Add non-mutating local AI verification mode | 현재 `run_local_ai_verification.py`의 PL Briefing, Project Chat, Code Review, Mapping은 정상 결과를 저장하므로 연결/schema만 점검해도 최신 시연 결과가 바뀔 수 있다. rollback 가능한 probe와 저장형 검증을 명시적으로 분리해야 한다. |
 | P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
 | P2 | Test / Runtime Reliability | pgvector dimension preflight and failure-safe DB test cleanup | 기존 DB column 차원과 현재 `PGVECTOR_DIMENSION`이 다르면 DB-backed test와 RAG 실행이 늦게 실패한다. 구현을 시작할 때 read-only preflight 범위와 transaction 실패 후에도 임시 행을 정리하는 test fixture를 함께 설계한다. |
 
@@ -957,6 +1124,28 @@ Checklist:
 - [x] Update operating model, runbook, setup, architecture, DB migration, and engineering decision docs.
 - [x] Update `AI_CHANGELOG.md`.
 - [x] Run compile/tests and documentation diff verification.
+
+## P2 - Managed Git URL Project Onboarding
+
+Status: Done
+
+Goal:
+기존 앱 서버 Git 경로 등록 방식은 읽기 전용 분석 경로로 유지하면서, 외부 사용자가 공개 HTTPS Git URL과 branch만 입력하면 앱이 별도의 쓰기 가능한 관리형 저장소 경로를 자동 배정하고 clone/fetch할 수 있게 한다.
+
+Rationale:
+현재 프로젝트 등록 화면은 서버 경로와 remote URL을 모두 받지만, Docker는 `C:\dev`를 읽기 전용으로 mount하므로 외부 사용자가 새 저장소를 clone할 수 없다. 반대로 전체 `C:\dev`를 쓰기 가능하게 열면 분석 대상 저장소와 다른 개발 폴더까지 앱이 수정할 수 있다. 기존 경로 분석과 외부 URL 등록을 함께 제공하려면 읽기 전용 기존 경로와 쓰기 가능한 관리형 clone 영역을 분리해야 한다.
+
+Checklist:
+
+- [x] 기존 서버 경로와 관리형 Git URL 등록 방식을 프로젝트 설정 화면에서 구분한다.
+- [x] 관리형 프로젝트 경로를 사용자 입력 없이 프로젝트별 전용 폴더로 생성한다.
+- [x] Docker에 기존 `C:\dev` read-only mount와 별도 managed repository read-write mount를 구성한다.
+- [x] 관리형 clone은 인증정보 없는 허용된 공개 HTTPS Git host로 제한한다.
+- [x] 기존 경로 매핑과 관리형 경로 매핑을 함께 검증하는 테스트를 추가한다.
+- [x] 사용자 가이드, 운영·아키텍처·engineering decision, `AI_CHANGELOG.md`를 갱신한다.
+- [x] compile, focused/full tests, Docker config와 문서 diff를 검증한다.
+
+Related AI Change Log: `관리형 Git URL 프로젝트 등록`
 
 ## P2 - Project Reset Action After Delete Flow
 
