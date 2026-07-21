@@ -2,6 +2,15 @@
 
 ## 2026-07-21
 
+### 새 프로젝트 전체 시연 재현과 단계별 증적
+
+- 기존 project 197과 Sample Shop 저장소를 보존하면서 동일한 Git 저장소를 검증용 새 프로젝트에 연결해 프로젝트 등록부터 Git 수집, 산출물 등록, Mapping, 구현상태, Risk, RAG/embedding, Knowledge Graph, Project Chat, AI Code Review, Dashboard까지 전체 흐름을 재현했습니다.
+- `git_commits.commit_hash`가 전역 유일값이고 동일 hash를 다시 수집할 때 기존 `GitCommit.project_id`가 새 프로젝트로 이동하는 현재 구조를 확인했습니다. 기존 데이터 손상을 막기 위해 PostgreSQL DB와 Streamlit 인스턴스를 격리하고, 검증 project ID `202607210`에 실제 local LLM/embedding 결과를 저장했습니다.
+- Git commit 48건과 변경 파일/diff 106건, Mapping 48/48, risk 32건, source/vector 79/79, Knowledge Graph node 213개와 edge 590개를 확인했습니다. 실제 AI 호출은 commit mapping 48건, Project Chat 1건, AI Code Review 1건, PL Briefing 1건으로 총 51건이며 failed 0, fallback 0입니다.
+- 입력 전·후와 분석 전·후를 포함한 화면 37개를 `docs/images/usage-verification/end-to-end-demo-2026-07-21/`에 저장하고, 각 화면의 확인 항목과 수치, 데이터 보호 확인, 관찰 사항, 재검증 명령을 `docs/end-to-end-demo-evidence-2026-07-21.md`에 정리했습니다.
+- 주요 파일: `docs/end-to-end-demo-evidence-2026-07-21.md`, `docs/images/usage-verification/end-to-end-demo-2026-07-21/`, `ROADMAP.md`, `docs/failure-history.md`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
+- 검증: 증적 PNG 37개를 모두 열어 최소 `1440x1000`과 최소 파일 크기 `76,810 bytes`를 확인했습니다. 보고서 image link 37개 존재 여부, 직급 표현·과장형 문구 검색, `git diff --check`가 통과했습니다. `.\.venv\Scripts\python.exe -m pytest -q`는 172개 test가 통과했습니다. 샘플 저장소는 commit 48건, HEAD `221eb9ac9c83364f4450bdf4970196b51cb1f9e1`, working tree clean이며, 기존 project 197의 commit 48건·프로그램 8건·Mapping 관계 47건도 유지됐습니다.
+
 ### 내부 시연 리허설과 사전 점검 안정화
 
 - 2026년 7월 23일 팀 내부 시연을 앞두고 project 197의 Home, Dashboard, AI Progress, Risk Analysis, Project Chat GraphRAG, AI Code Review 흐름을 실제 local provider와 현재 샘플 저장소에서 다시 검증했습니다.

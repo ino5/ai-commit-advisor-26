@@ -147,6 +147,28 @@
 | P3 | Reporting | Graph-aware weekly report | Done | Graph-aware weekly report |
 | P3 | Product UX | First-run and empty-state polish | Done | First-run and empty-state preparation guide |
 | P1 | Demo Readiness | Internal demo rehearsal and preflight hardening | Done | 내부 시연 리허설과 사전 점검 안정화 |
+| P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
+
+## P1 - Fresh End-To-End Demo Project Rebuild And Evidence
+
+Status: Done
+
+Goal:
+기존 시연 데이터를 안전한 예비본으로 유지하면서, 동일한 샘플 Git 저장소를 새 프로젝트에 연결해 수집부터 AI 분석까지 전 과정을 다시 실행하고 단계별 화면 증적과 설명을 별도 문서로 남긴다.
+
+Rationale:
+저장된 결과만 확인하면 신규 프로젝트에서 실제 수집·분석 흐름이 끝까지 이어지는지 증명하기 어렵다. 시연 전에 현재 로컬 실행 환경과 실제 local LLM/embedding을 사용해 전체 경로를 재현하고, 각 단계의 입력·결과·한계를 함께 기록하면 당일 진행 순서와 장애 지점을 빠르게 확인할 수 있다.
+
+Checklist:
+
+- [x] 기존 프로젝트와 샘플 Git 저장소를 변경하지 않고 새 프로젝트를 등록한다.
+- [x] Git 전체 수집과 개발자·프로그램·개발계획·표준용어 자료 등록을 완료한다.
+- [x] Mapping, 구현상태, Risk, RAG/embedding, Knowledge Graph 분석을 완료한다.
+- [x] Project Chat과 AI Code Review 대표 결과를 실제 local LLM으로 생성한다.
+- [x] 단계별 화면을 전용 폴더에 캡처하고 별도 한국어 증적 문서에 설명을 작성한다.
+- [x] 문서 표현 점검, `AI_CHANGELOG.md` 갱신, 최종 검증을 완료한다.
+
+Related AI Change Log: `새 프로젝트 전체 시연 재현과 단계별 증적`
 
 ## P1 - Internal Demo Rehearsal And Preflight Hardening
 
@@ -457,6 +479,7 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
+| P1 | Data Model / Git Sync | Make Git commit uniqueness project-scoped | 현재 `commit_hash` 전역 unique와 Git Sync 소유권 이동 때문에 같은 저장소를 여러 프로젝트가 독립 분석할 수 없다. migration, 기존 데이터 변환, cascade 관계, 두 프로젝트 동시 수집 회귀 test를 함께 설계해야 한다. |
 | P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
 
 ## P2 - Source-First Sample Project And Demo Verification Guide

@@ -32,6 +32,63 @@
 - 검증 명령과 결과
 
 
+
+## 2026-07-21 - 동일 저장소를 새 프로젝트로 수집하면 기존 GitCommit 소유가 이동할 수 있다
+
+분류:
+
+- Git Sync data ownership
+- Multi-project isolation
+- Demo verification safety
+
+관련 기능 및 문서:
+
+- `src/services/git_sync_service.py`
+- `src/db/models.py`
+- `docs/end-to-end-demo-evidence-2026-07-21.md`
+- `ROADMAP.md` Candidate Task `Make Git commit uniqueness project-scoped`
+
+증상:
+
+- 동일한 Git 저장소를 새 프로젝트로 등록한 뒤 전체 수집하면, 기존 프로젝트에서 같은 commit이 사라질 수 있습니다.
+- 저장소 자체나 commit 내용은 바뀌지 않지만 기존 프로젝트의 commit, Mapping, 후속 분석 연결이 새 프로젝트 쪽으로 이동할 수 있습니다.
+
+직접 원인:
+
+- `git_commits.commit_hash`가 project와 무관한 전역 unique constraint를 사용합니다.
+- Git Sync는 같은 hash를 찾으면 새 행을 만들지 않고 기존 `GitCommit.project_id`를 현재 프로젝트 ID로 다시 지정합니다.
+
+배경 또는 구조적 원인:
+
+- 초기 데이터 모델은 같은 Git commit hash를 전체 서비스에서 하나의 행으로 공유하는 전제를 두었지만, 후속 기능은 commit이 한 프로젝트에만 속하는 구조로 Mapping, Risk, Dashboard 관계를 만들었습니다.
+- 동일 저장소를 여러 프로젝트에서 서로 다른 시점이나 설정으로 분석하는 사용 사례가 schema와 sync 정책에 반영되지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 기존 검증은 대체로 프로젝트 하나에서 incremental sync를 반복했습니다.
+- 같은 물리 저장소를 두 프로젝트에 연결하고 첫 번째 프로젝트의 행 수와 소유권이 유지되는지 확인하는 회귀 test가 없었습니다.
+
+수정 내용:
+
+- 이번 전체 재현은 별도 PostgreSQL DB와 Streamlit 인스턴스에서 수행해 기존 project 197을 변경하지 않았습니다.
+- 검증 후 기존 project 197의 commit 48건, 프로그램 8건, Mapping 관계 47건이 유지되는지 다시 확인했습니다.
+
+재발 방지 규칙:
+
+- schema와 sync 로직이 수정되기 전에는 동일 저장소의 새 프로젝트 전체 수집을 운영 DB에서 실행하지 않습니다.
+- 신규 프로젝트 전체 흐름 검증은 DB snapshot 복원본 또는 명시적인 격리 DB에서 수행합니다.
+- 향후 수정에는 project-scoped uniqueness, 기존 데이터 migration, cascade 관계, 두 프로젝트 동시 수집 회귀 test를 한 변경 세트로 포함합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- 이번 작업은 데이터 보호를 위한 운영 우회이며 schema를 수정하지 않았습니다.
+- 같은 저장소를 여러 프로젝트가 독립적으로 분석하는 기능은 `ROADMAP.md` Candidate Task로 남겼습니다.
+
+검증 명령과 결과:
+
+- 샘플 저장소: `git rev-list --count HEAD` 48, `git rev-parse HEAD` = `221eb9ac9c83364f4450bdf4970196b51cb1f9e1`, working tree clean.
+- 격리 project `202607210`: commit 48건, 변경 파일/diff 106건, Mapping 48/48 완료.
+- 기존 project 197: commit 48건, 프로그램 8건, Mapping 관계 47건 유지.
 ## 2026-07-21 - 내부 시연 리허설에서 실행 환경과 저장 근거의 불일치가 확인됐다
 
 분류:

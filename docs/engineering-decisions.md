@@ -23,6 +23,45 @@
 
 
 
+
+## 2026-07-21 - 동일 저장소의 새 프로젝트 검증은 격리 DB에서 수행한다
+
+### 배경
+
+새 프로젝트의 전체 수집·분석 흐름을 검증하려면 실제 Sample Shop 저장소를 처음부터 다시 읽어야 합니다. 그러나 현재 `git_commits.commit_hash`는 전역 unique이고 Git Sync가 같은 hash의 기존 행을 현재 project로 재지정하므로, 운영 DB에서 새 프로젝트를 만들면 기존 프로젝트의 분석 근거가 이동할 수 있습니다.
+
+### 결정
+
+- 기존 프로젝트의 fallback 데이터를 유지해야 하는 전체 재현은 별도 PostgreSQL DB와 별도 Streamlit 포트에서 수행합니다.
+- Git 저장소와 local LLM/embedding/Neo4j provider는 실제 시연 환경과 동일하게 사용합니다.
+- 공유 Neo4j에서 검증 project의 node를 기존 project와 구분할 수 있도록 충돌하지 않는 명시적 project ID를 사용합니다.
+- 검증 종료 후 격리 DB를 바로 삭제하지 않고 증적 문서의 수치와 화면을 다시 열 수 있는 기간 동안 보존합니다.
+- 운영 DB에서는 저장된 검증 프로젝트를 예비 동선으로 사용하고, 동일 저장소의 신규 전체 수집을 실행하지 않습니다.
+
+### 이유
+
+- 새 프로젝트 흐름을 실제 provider로 검증하면서도 기존 분석 결과를 변경하지 않습니다.
+- mock 데이터나 복사된 화면이 아니라 프로젝트 등록부터 저장된 결과까지 같은 서비스 경로를 확인할 수 있습니다.
+- 실패 시 격리 DB만 다시 만들면 되므로 복구 범위가 명확합니다.
+
+### 검토한 대안
+
+- 운영 DB에 새 프로젝트를 만들고 같은 저장소를 수집하는 방법은 기존 `GitCommit.project_id` 이동 위험 때문에 제외했습니다.
+- 기존 project 197을 초기화하고 다시 실행하는 방법은 예비 결과를 잃고 당일 fallback을 약화하므로 제외했습니다.
+- 샘플 저장소를 새 commit history로 복제하는 방법은 “동일한 저장소” 검증 조건을 바꾸므로 사용하지 않았습니다.
+
+### 영향, tradeoff, 남은 한계
+
+- DB 이름, Streamlit 포트, project ID를 별도로 관리해야 하며 검증 환경 정리도 수동입니다.
+- Neo4j가 공유 상태이므로 project ID 충돌을 피해야 합니다.
+- 이 결정은 안전한 검증 절차일 뿐 근본 수정이 아닙니다. project-scoped commit identity는 별도 schema/migration 작업이 필요합니다.
+
+### 관련 문서
+
+- `docs/end-to-end-demo-evidence-2026-07-21.md`
+- `docs/failure-history.md`의 `동일 저장소를 새 프로젝트로 수집하면 기존 GitCommit 소유가 이동할 수 있다`
+- `AI_CHANGELOG.md`의 `새 프로젝트 전체 시연 재현과 단계별 증적`
+- `ROADMAP.md` Candidate Task `Make Git commit uniqueness project-scoped`
 ## 2026-07-21 - 소규모 시연은 저장된 검증 결과를 기본으로 하고 읽기 전용 preflight로 현재성을 확인한다
 
 ### 배경
