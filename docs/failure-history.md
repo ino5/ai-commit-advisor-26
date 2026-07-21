@@ -156,6 +156,116 @@
 - `python -m pytest -q tests/test_project_chat_service.py tests/test_neo4j_graph_service.py tests/test_project_chat_history_service.py tests/test_project_chat_page.py`: 37 passed.
 - 실제 local LLM 질문: source 6, graph 4, `deterministic_repair`, 한글·직접 호출 5단계·조건 2개·파일 인용 확인.
 - Docker 8501과 Cloudflare에서 저장 session `#429`를 다시 열어 동일 답변 확인.
+## 2026-07-21 - 같은 저장소의 동시 세션이 Docker demo runtime을 공유했다
+
+분류:
+
+- Demo operations
+- Concurrent agent session
+- Docker runtime ownership
+
+관련 기능 및 문서:
+
+- `scripts/quick_tunnel.py`
+- `docs/setup-and-operations.md`의 `하루 시연용 Cloudflare Quick Tunnel`
+- `docs/engineering-decisions.md`의 `하루 외부 시연은 저장소 스크립트와 별도 cloudflared container로 연다`
+- `ROADMAP.md`의 `P2 - Quick Tunnel Demo Runbook And Script`
+
+### 증상
+
+한 세션에서 외부 접속 확인을 위해 Docker 앱과 Quick Tunnel을 실행한 뒤, 사용자가 다른 세션에서 같은 작업 공간의 소스를 개발 중이라 앱 서버를 일부러 꺼 둔 상태였다고 알렸습니다. 파일 변경은 서로 다른 작업으로 취급할 수 있었지만 `ai_commit_advisor_app`, host port `8501`, Compose network 같은 Docker 실행 자원은 두 세션이 함께 사용하고 있었습니다. 사용자는 개발 세션에 영향을 주지 않도록 앱과 Tunnel을 다시 중지해야 했습니다.
+
+### 직접 원인
+
+Quick Tunnel 실행 요청의 범위만 확인하고, 같은 저장소를 사용하는 다른 세션이 Docker 앱을 중지된 상태로 유지해야 하는지는 시작 전에 확인하지 못했습니다. Docker container 이름과 host port는 현재 대화 세션에 귀속된다고 볼 수 없는데도, 기술적인 사전 점검이 통과했다는 이유로 실행해도 안전하다고 판단했습니다.
+
+### 배경 또는 구조적 원인
+
+Git branch와 worktree는 파일 및 commit 작업을 분리하지만 Docker daemon, 명시적인 `container_name`, host port, Compose project, volume은 자동으로 분리하지 않습니다. 이 프로젝트는 `ai_commit_advisor_app`처럼 고정된 container 이름과 host port `8501`을 사용하므로 같은 PC의 모든 터미널과 Agent 세션이 동일한 runtime에 영향을 줄 수 있습니다.
+
+### 사전 검증에서 놓친 이유
+
+실행 전 기존 container와 port 상태는 확인했지만, 다른 세션이 앱을 의도적으로 중지해 두었는지까지 보여주는 기술적 신호는 없었습니다. 로컬 health, Cloudflare 연결 precheck, 공개 URL health가 모두 성공했기 때문에 Tunnel 자체의 동작 검증만으로는 세션 간 운영 충돌을 발견할 수 없었습니다. 당시에는 동시 세션이 있는 경우 먼저 runtime 사용 여부를 확인하는 runbook도 없었습니다.
+
+### 수정 내용
+
+- 이후 파일 변경은 원래 작업 공간의 branch를 바꾸지 않고 별도 Git worktree와 `ops/quick-tunnel-demo` branch에서 진행했습니다.
+- `scripts/quick_tunnel.py`에 read-only `status`, 명시적인 `start`, 안전 범위를 제한한 `stop` 명령을 추가했습니다.
+- 기본 종료는 전용 label이 붙은 `ai_commit_advisor_demo_tunnel` container만 제거하고, 앱은 `--stop-app`을 명시할 때만 중지하게 했습니다. PostgreSQL, Neo4j, volume은 종료 대상에 포함하지 않았습니다.
+- 운영 문서에 Git worktree도 Docker runtime을 분리하지 않는다는 사실과 다른 세션과 실행 시점을 먼저 합의해야 한다는 절차를 추가했습니다.
+- 다른 개발 세션이 계속 작업 중인 동안에는 새 스크립트로 Docker 앱이나 Tunnel을 다시 시작하지 않고 정적·자동 테스트만 수행하도록 검증 범위를 제한했습니다.
+
+### 재발 방지 규칙
+
+- 같은 저장소가 다른 터미널이나 Agent 세션에서 사용 중일 가능성이 있으면 Docker 앱 build/start/stop 전에 runtime 사용 여부를 확인합니다.
+- 파일 충돌은 Git worktree로 피하고, Docker 충돌은 별도의 Compose project, container 이름, host port, network, volume 전략으로 분리합니다. Worktree 생성만으로 runtime까지 격리됐다고 판단하지 않습니다.
+- 병렬 runtime 분리가 설계되지 않은 프로젝트에서는 먼저 `status` 같은 read-only 점검을 실행하고, 소유 관계가 불분명한 container를 자동 제거하지 않습니다.
+- 사용자가 앱을 중지한 이유를 알 수 없는 상태에서는 외부 시연 준비를 위해 임의로 다시 시작하지 않습니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+스크립트는 다른 사람이나 Agent 세션의 의도를 자동으로 감지할 수 없습니다. Compose project와 container 이름을 고정한 것은 동일한 demo data와 volume을 재사용하기 위한 결정이므로, 동시에 완전히 독립된 두 앱을 실행하려면 별도의 runtime 격리 설계가 필요합니다. 실제 시연 전에는 다른 세션과 실행 시간을 합의한 뒤 `start --build`부터 공개 health까지 한 번 더 확인해야 합니다.
+
+### 검증 명령과 결과
+
+- 수동 등가 절차에서 로컬 Streamlit `/_stcore/health`, Quick Tunnel 공개 `/_stcore/health`, 공개 Home 응답이 모두 HTTP 200임을 확인한 뒤 앱과 Tunnel을 중지했습니다.
+- `C:\dev\ai-commit-advisor\.venv\Scripts\python.exe -m pytest tests\test_quick_tunnel_script.py -q`로 start/status/stop 명령 구성과 전용 container 외 자원 보존을 검증했습니다.
+- 다른 개발 세션이 실행 중인 동안에는 `scripts/quick_tunnel.py start`를 다시 실행하지 않았습니다.
+
+## 2026-07-21 - 로컬 전체 테스트가 pgvector column과 설정 차원 불일치로 실패했다
+
+분류:
+
+- Local DB-backed test
+- pgvector configuration drift
+- Verification environment
+
+관련 기능 및 문서:
+
+- `tests/test_incremental_source_index_service.py`
+- `src/utils/config.py`
+- `.github/workflows/ci.yml`
+- `docs/setup-and-operations.md`의 `PostgreSQL / pgvector 차원 변경`
+
+### 증상
+
+Quick Tunnel 변경의 전체 회귀 검증으로 기본 환경에서 `pytest -q`를 실행했을 때 178개 중 `test_incremental_modified_file_replaces_old_chunks_and_vectors`, `test_incremental_deleted_file_removes_chunks_and_vectors` 2개가 실패했습니다. PostgreSQL은 `expected 768 dimensions, not 1536`을 반환했고, 나머지 176개 테스트는 통과했습니다.
+
+### 직접 원인
+
+현재 shell에는 `.env`가 없어 애플리케이션 설정이 기본 `PGVECTOR_DIMENSION=1536`을 사용했지만, 기존 PostgreSQL volume의 `vector_items.embedding` column은 768차원으로 생성되어 있었습니다. 테스트가 `settings.pgvector_dimension` 길이의 vector를 만들면서 1536차원 값을 768차원 column에 저장하려 했습니다.
+
+### 배경 또는 구조적 원인
+
+pgvector column 차원은 DB schema를 만들 때 고정되며, 이후 환경 변수만 바꿔도 기존 column이 자동 변경되지 않습니다. 반대로 애플리케이션의 ORM mapping과 mock embedding 길이는 process 시작 시 환경 변수를 읽습니다. 공유 개발 DB를 여러 embedding 설정으로 사용하면 schema와 process 설정이 서로 달라질 수 있습니다.
+
+### 사전 검증에서 놓친 이유
+
+Quick Tunnel focused test는 Docker 명령 구성을 mock으로 확인하므로 PostgreSQL에 접근하지 않았습니다. `docker compose config -q`도 YAML 유효성만 검사하며 이미 생성된 DB column 차원을 비교하지 않습니다. 전체 테스트를 기본 환경으로 실행하기 전에는 현재 shell 설정과 기존 DB schema가 같은지 확인하지 않았습니다.
+
+### 수정 내용
+
+- 실패가 남긴 임시 project ID `2734`, `2735`가 `pytest-837` 임시 경로와 `incremental-index-test-*` 이름인지 확인한 뒤 해당 두 행만 삭제했습니다.
+- CI workflow와 기존 DB에 맞춰 `DATABASE_URL`, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock`을 명시하고 전체 테스트를 다시 실행했습니다.
+- Quick Tunnel 가이드에 RAG나 Project Chat 시연 전 DB column과 `PGVECTOR_DIMENSION`을 맞춰야 하며 Tunnel은 이 불일치를 보정하지 않는다고 명시했습니다.
+- 자동 preflight와 transaction 실패 후 test cleanup 보강은 `ROADMAP.md` Candidate Task로 남겼습니다.
+
+### 재발 방지 규칙
+
+- 기존 PostgreSQL volume을 사용하는 DB-backed test는 CI와 같은 명시적 환경 변수를 사용하고, process 설정과 실제 pgvector column 차원을 먼저 맞춥니다.
+- `PGVECTOR_DIMENSION` 변경은 단순한 shell 설정 변경으로 끝내지 않고 새 DB volume 또는 schema migration 여부를 함께 결정합니다.
+- DB commit이 실패할 수 있는 test cleanup은 먼저 rollback한 뒤 test가 만든 정확한 row만 제거할 수 있게 fixture 보강을 검토합니다.
+- 전체 테스트 실패 후에는 test prefix와 임시 경로를 기준으로 잔여 데이터가 없는지 확인합니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+현재 `docker-compose.yml` 기본값은 1536이지만 이 검증에 사용한 기존 DB column은 768입니다. 이번 Quick Tunnel 작업에서 기존 embedding 운영 설정을 바꾸지는 않았습니다. RAG를 포함한 Docker 시연 환경을 새로 만들 때는 선택한 embedding model, Compose 환경 변수, DB schema 차원을 하나의 운영 설정으로 맞춰야 합니다.
+
+### 검증 명령과 결과
+
+- 기본 설정의 `C:\dev\ai-commit-advisor\.venv\Scripts\python.exe -m pytest -q`: 2개 실패, 176개 통과. 두 실패 모두 `expected 768 dimensions, not 1536`으로 원인을 확인했습니다.
+- CI와 같은 `DATABASE_URL`, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock`을 설정한 뒤 같은 명령 재실행: 178개 통과.
+- `SELECT count(*) FROM projects WHERE id IN (2734, 2735)`: `0`, 실패가 남긴 두 임시 project 정리 확인.
 
 ## 2026-07-21 - 동일 저장소를 새 프로젝트로 수집하면 기존 GitCommit 소유가 이동할 수 있다
 
