@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from src.db.models import DocumentChunk, GitCommit, Program, ProgramCommitMapping, Project, VectorItem
+from src.db.models import DocumentChunk, GitCommit, Program, Project, VectorItem
 from src.rag.chunker import SOURCE_FILE_TYPE
 from src.services.neo4j_graph_service import get_project_graph_freshness
 
@@ -62,10 +62,9 @@ def get_first_run_actions(db: Session, project_id: int | None) -> list[FirstRunA
 
     program_count = db.query(Program).filter(Program.project_id == project_id).count()
     commit_count = db.query(GitCommit).filter(GitCommit.project_id == project_id).count()
-    mapping_count = (
-        db.query(ProgramCommitMapping)
-        .join(Program, ProgramCommitMapping.program_id == Program.id)
-        .filter(Program.project_id == project_id)
+    mapping_analyzed_commit_count = (
+        db.query(GitCommit)
+        .filter(GitCommit.project_id == project_id, GitCommit.mapping_analyzed_at.isnot(None))
         .count()
     )
     source_chunk_count = (
@@ -118,7 +117,7 @@ def get_first_run_actions(db: Session, project_id: int | None) -> list[FirstRunA
                 "Git 저장소 경로가 먼저 등록되어야 commit 수집을 실행할 수 있습니다.",
             )
         )
-    if commit_count > 0 and mapping_count == 0:
+    if commit_count > 0 and mapping_analyzed_commit_count == 0:
         actions.append(
             _action(
                 "Mapping",
@@ -130,12 +129,12 @@ def get_first_run_actions(db: Session, project_id: int | None) -> list[FirstRunA
                 "Mapping이 있어야 AI Progress, Risk Analysis, Commit Impact가 더 의미 있는 근거를 갖습니다.",
             )
         )
-    elif commit_count > 0 and mapping_count < commit_count:
+    elif commit_count > 0 and mapping_analyzed_commit_count < commit_count:
         actions.append(
             _action(
                 "Mapping",
                 "권장",
-                f"{mapping_count}/{commit_count}건",
+                f"{mapping_analyzed_commit_count}/{commit_count}건",
                 "Mapping에서 남은 미분석 commit을 순차적으로 처리하세요.",
                 "분석 실행",
                 "Mapping",

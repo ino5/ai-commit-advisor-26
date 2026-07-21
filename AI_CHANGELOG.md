@@ -1,5 +1,43 @@
 # AI 변경 이력
 
+## 2026-07-21
+
+### 새 프로젝트 전체 시연 재현과 단계별 증적
+
+- 기존 project 197과 Sample Shop 저장소를 보존하면서 동일한 Git 저장소를 검증용 새 프로젝트에 연결해 프로젝트 등록부터 Git 수집, 산출물 등록, Mapping, 구현상태, Risk, RAG/embedding, Knowledge Graph, Project Chat, AI Code Review, Dashboard까지 전체 흐름을 재현했습니다.
+- `git_commits.commit_hash`가 전역 유일값이고 동일 hash를 다시 수집할 때 기존 `GitCommit.project_id`가 새 프로젝트로 이동하는 현재 구조를 확인했습니다. 기존 데이터 손상을 막기 위해 PostgreSQL DB와 Streamlit 인스턴스를 격리하고, 검증 project ID `202607210`에 실제 local LLM/embedding 결과를 저장했습니다.
+- Git commit 48건과 변경 파일/diff 106건, Mapping 48/48, risk 32건, source/vector 79/79, Knowledge Graph node 213개와 edge 590개를 확인했습니다. 실제 AI 호출은 commit mapping 48건, Project Chat 1건, AI Code Review 1건, PL Briefing 1건으로 총 51건이며 failed 0, fallback 0입니다.
+- 입력 전·후와 분석 전·후를 포함한 화면 37개를 `docs/images/usage-verification/end-to-end-demo-2026-07-21/`에 저장하고, 각 화면의 확인 항목과 수치, 데이터 보호 확인, 관찰 사항, 재검증 명령을 `docs/end-to-end-demo-evidence-2026-07-21.md`에 정리했습니다.
+- 주요 파일: `docs/end-to-end-demo-evidence-2026-07-21.md`, `docs/images/usage-verification/end-to-end-demo-2026-07-21/`, `ROADMAP.md`, `docs/failure-history.md`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
+- 검증: 증적 PNG 37개를 모두 열어 최소 `1440x1000`과 최소 파일 크기 `76,810 bytes`를 확인했습니다. 보고서 image link 37개 존재 여부, 직급 표현·과장형 문구 검색, `git diff --check`가 통과했습니다. `.\.venv\Scripts\python.exe -m pytest -q`는 172개 test가 통과했습니다. 샘플 저장소는 commit 48건, HEAD `221eb9ac9c83364f4450bdf4970196b51cb1f9e1`, working tree clean이며, 기존 project 197의 commit 48건·프로그램 8건·Mapping 관계 47건도 유지됐습니다.
+
+### 내부 시연 리허설과 사전 점검 안정화
+
+- 2026년 7월 23일 팀 내부 시연을 앞두고 project 197의 Home, Dashboard, AI Progress, Risk Analysis, Project Chat GraphRAG, AI Code Review 흐름을 실제 local provider와 현재 샘플 저장소에서 다시 검증했습니다.
+- Home의 Mapping 준비 상태가 `ProgramCommitMapping` 관계 행 수 47개를 commit 48개와 비교해 미완료로 오판하던 문제를 수정했습니다. 이제 `GitCommit.mapping_analyzed_at`이 있는 분석 완료 commit 수를 사용하며, commit 2개와 mapping 관계 1개가 있는 회귀 test를 추가했습니다.
+- AI Progress와 Risk Analysis의 상단 설명이 현재 프로그램 단위 구현상태 기준과 다르게 예전 Mapping 기반 문구를 표시하던 부분을 화면, `docs/feature-guide.md`, screenshot assertion에서 함께 바로잡았습니다.
+- 현재 저장소에 없는 과거 Project Chat source chunk 21건을 제거하고 source 79건과 vector 79건을 다시 생성했습니다. Knowledge Graph를 234 nodes와 645 edges로 동기화한 뒤 새 Project Chat session `#400`을 source 10건, graph evidence 8건, `fallback=False`로 저장했습니다.
+- `2325182 Relax partner payment validation for pilot channel`을 `local_openai / qwen2.5-coder-7b-instruct`로 다시 리뷰해 `amount == 0`이 새로 허용되는 bug finding 1건을 최신 결과 `#443`으로 저장했습니다.
+- Windows 제외 포트 범위 때문에 LM Studio가 `1234`에서 `EACCES`로 시작되지 않는 환경을 확인하고 local endpoint를 `12345`로 옮겼습니다. runtime, model identifier, embedding dimension, project data, 저장 Project Chat/Code Review, Chrome 원격 데스크톱을 읽기 전용으로 확인하는 `scripts/demo_preflight.ps1`를 추가했습니다.
+- 10~12분 기본 시나리오, 5분 압축 동선, 화면별 말할 내용, 예상 질문 22개, 장애별 대체 동선, 기동 순서, 수요일/목요일 체크리스트를 `docs/demo-runbook.md`에 정리했습니다. 특정 직급이나 참석자를 전제하지 않도록 관련 문서와 이력의 표현도 `내부 시연`으로 통일했습니다. 실제 검증 환경과 새 화면 6개는 `docs/sample-project-usage-verification.md`에 기록했습니다.
+- 기존 project 197을 fallback으로 보존하면서 같은 샘플 저장소 또는 다른 저장소를 새 프로젝트로 등록하는 절차, 다시 준비해야 할 Git Sync·산출물·Mapping·embedding·Risk·Knowledge Graph·대표 AI 결과 순서, 새 project ID용 preflight 명령을 Runbook에 추가했습니다.
+- 준비 상태 오판, stale source 재사용, Windows excluded port, 화면 문구 누락의 원인과 예방 규칙을 `docs/failure-history.md`에 남겼고, 저장 결과 우선·읽기 전용 preflight 방식을 `docs/engineering-decisions.md`에 기록했습니다.
+- 주요 파일: `src/services/first_run_service.py`, `src/ui/ai_progress_page.py`, `src/ui/risk_page.py`, `tests/test_first_run_service.py`, `scripts/demo_preflight.ps1`, `scripts/capture_feature_screenshot.py`, `docs/demo-runbook.md`, `docs/feature-guide.md`, `docs/sample-project-usage-verification.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`, `docs/images/usage-verification/demo-rehearsal-*-2026-07-21.png`.
+- 검증: `.\scripts\demo_preflight.ps1` 통과(`FAIL=0`, 저장 분석 HEAD와 현재 repo HEAD 차이에 대한 예상 `WARN=1`). `.\.venv\Scripts\python.exe -m compileall src app.py scripts` 통과. `.\.venv\Scripts\python.exe -m pytest -q` 172개 통과. Home, Dashboard, AI Progress, Risk Analysis, Project Chat GraphRAG, AI Code Review screenshot capture와 기대/금지 문구 검증 통과. 사용자-facing 문구는 변경 diff와 과장형 표현 검색으로 별도 점검했습니다.
+
+## 2026-06-29
+
+### AI Progress 프로그램 단위 구현상태 기준 적용
+
+- `AI Progress`를 커밋별 활동 점수가 아니라 프로그램 단위 보수적 구현상태 신호로 다루도록 산식과 표시를 바꿨습니다.
+- `Program Implementation Status`가 최신 `commit_hash_signature`와 일치할 때만 AI Progress 숫자를 확정하고, 분석 결과가 없거나 stale이면 `분석 필요` 또는 `재분석 필요`로 표시합니다.
+- 기존 Mapping 기반 0/50/100 값은 `Mapping 참고 진척도`로 남겨 관련 commit evidence 점검에만 쓰게 했습니다.
+- AI Progress, Home, Dashboard, Risk Analysis, Resource Metrics, AI Resource Radar, 주간 AI 점검 보고서가 최신 분석값과 Mapping 참고값을 구분하도록 조정했습니다.
+- `CONTEXT.md`를 추가해 `Program`, `Plan Progress`, `AI Progress`, `Related Commit`, `Implementation Evidence`, `Program Implementation Status`의 도메인 언어를 정리했습니다.
+- 반복될 설계 판단이므로 `docs/engineering-decisions.md`에 현재 구조의 한계, 선택한 방향, 대안, tradeoff를 기록했고, `docs/ai-technical-overview.md`의 AI Progress 설명을 현재 동작에 맞게 갱신했습니다.
+- 주요 파일: `src/services/progress_service.py`, `src/services/risk_service.py`, `src/services/resource_metrics_service.py`, `src/services/ai_resource_radar_service.py`, `src/services/ai_evidence_service.py`, `src/ui/ai_progress_page.py`, `src/ui/home_page.py`, `src/ui/dashboard_page.py`, `src/ui/risk_page.py`, `src/ui/program_detail_page.py`, `tests/test_progress_service.py`, `tests/test_resource_metrics_service.py`, `CONTEXT.md`, `ROADMAP.md`, `docs/engineering-decisions.md`, `docs/ai-technical-overview.md`, `AI_CHANGELOG.md`.
+- 검증: `.\.venv\Scripts\python.exe -m pytest tests\test_progress_service.py -q` 4개 통과. `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py -q` 9개 통과. `.\.venv\Scripts\python.exe -m pytest -q` 171개 통과. `.\.venv\Scripts\python.exe -m compileall src app.py` 통과. `git diff --check` 통과(Windows line-ending 경고만 표시). PostgreSQL host 연결이 처음에는 `server closed the connection unexpectedly`로 끊겼으나 `docker compose restart postgres` 후 DB 연결과 테스트가 통과했습니다. CI workflow에는 PostgreSQL service, `DATABASE_URL`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 설정이 있음을 확인했습니다. 사용자-facing 문서 문구 점검으로 `rg -n "혁신적인|강력한|원활한|향상된 사용자 경험|AI 기반으로 자동화|이를 통해|최첨단|놀라운|완벽한" CONTEXT.md docs\ai-technical-overview.md docs\engineering-decisions.md ROADMAP.md AI_CHANGELOG.md`를 실행했으며, 이번 변경분의 과장형 AI 문구는 확인되지 않았습니다.
+
 ## 2026-06-17
 
 ### AI Code Review 메타데이터 표시 compact화

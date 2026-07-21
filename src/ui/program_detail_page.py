@@ -45,10 +45,14 @@ def _risk_type_label(value: str | None) -> str:
         "ASSIGNEE_MISSING": "담당자 없음",
         "FORECAST_DELAY": "예상 지연",
         "NO_RELATED_COMMIT": "관련 커밋 없음",
+        "NO_RELATED_COMMITS": "관련 커밋 없음",
         "OVERDUE_AI_INCOMPLETE": "계획 종료 후 AI 진척 미완료",
         "PROGRESS_GAP": "계획 대비 AI 진척 차이",
         "RECENT_ACTIVITY_MISSING": "최근 활동 없음",
+        "NO_RECENT_COMMITS_14D": "최근 활동 없음",
         "UNKNOWN_IMPLEMENTATION": "구현상태 판단불가",
+        "ALL_UNKNOWN": "구현상태 판단불가",
+        "IMPLEMENTATION_ANALYSIS_REQUIRED": "구현상태 분석 필요",
     }
     return labels.get(str(value or "").upper(), value or "-")
 
@@ -146,7 +150,7 @@ def _render_basic_info(analysis) -> None:
 def _render_kpis(analysis) -> None:
     st.subheader("KPI")
     cols = st.columns(5)
-    cols[0].metric("AI 진척도", f"{analysis.ai_progress_rate:.1f}%")
+    cols[0].metric("Mapping 참고 진척도", f"{analysis.ai_progress_rate:.1f}%")
     cols[1].metric("관련 커밋 수", analysis.related_commit_count)
     cols[2].metric("구현됨", analysis.implemented_count)
     cols[3].metric("일부구현", analysis.partial_count)

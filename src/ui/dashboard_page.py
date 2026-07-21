@@ -37,6 +37,10 @@ RESOURCE_VALUE_HELP = {
 }
 
 
+def _format_progress(value, fallback: str = "분석 필요") -> str:
+    return f"{float(value):.1f}%" if value is not None and not pd.isna(value) else fallback
+
+
 def _program_df(summary) -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -47,7 +51,9 @@ def _program_df(summary) -> pd.DataFrame:
                 "status": row.status,
                 "plan_progress_rate": row.plan_progress_rate,
                 "ai_progress_rate": row.ai_progress_rate,
+                "ai_progress_label": _format_progress(row.ai_progress_rate, row.ai_progress_state_label),
                 "progress_gap": row.progress_gap,
+                "progress_gap_label": _format_progress(row.progress_gap, row.ai_progress_state_label),
                 "is_risk": row.is_risk,
                 "risk_reasons": ", ".join(row.risk_reasons),
             }
@@ -76,9 +82,11 @@ def _render_project_summary(project_id: int) -> None:
     cols[0].metric("프로그램", len(summary.rows))
     cols[1].metric("커밋", commit_count)
     cols[2].metric("계획 진척도", f"{summary.plan_average}%")
-    cols[3].metric("AI 진척도", f"{summary.ai_average}%")
+    cols[3].metric("AI 진척도", f"{summary.ai_average}%" if summary.ai_progress_ready_count else "분석 필요")
     cols[4].metric("리스크", summary.risk_count)
     st.caption(f"마지막 Git 동기화: {project.last_synced_at.strftime('%Y-%m-%d %H:%M') if project.last_synced_at else '-'}")
+    if summary.ai_progress_needs_analysis_count:
+        st.warning(f"AI 진척도 재확인이 필요한 프로그램 {summary.ai_progress_needs_analysis_count}건이 있습니다.")
     st.progress(min(max(summary.plan_average / 100, 0), 1), text=f"전체 계획 진척도 {summary.plan_average}%")
 
     if summary.rows:
@@ -91,18 +99,13 @@ def _render_project_summary(project_id: int) -> None:
 
         with chart2:
             st.subheader("개발자별 진행률")
-            developer_df = (
-                df.groupby("developer", dropna=False)[["plan_progress_rate", "ai_progress_rate"]]
-                .mean()
-                .round(1)
-                .reset_index()
-            )
+            developer_df = df.groupby("developer", dropna=False)[["plan_progress_rate", "ai_progress_rate"]].mean().round(1).reset_index()
             melted = developer_df.melt(
                 id_vars=["developer"],
                 value_vars=["plan_progress_rate", "ai_progress_rate"],
                 var_name="progress_type",
                 value_name="progress_rate",
-            )
+            ).dropna(subset=["progress_rate"])
             st.plotly_chart(
                 px.bar(melted, x="developer", y="progress_rate", color="progress_type", barmode="group"),
                 use_container_width=True,
@@ -121,8 +124,8 @@ def _render_project_summary(project_id: int) -> None:
                         "developer",
                         "status",
                         "plan_progress_rate",
-                        "ai_progress_rate",
-                        "progress_gap",
+                        "ai_progress_label",
+                        "progress_gap_label",
                         "risk_reasons",
                     ]
                 ],

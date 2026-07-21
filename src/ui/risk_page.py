@@ -13,10 +13,14 @@ RISK_TYPE_LABELS = {
     "ASSIGNEE_MISSING": "담당자 없음",
     "FORECAST_DELAY": "예상 지연",
     "NO_RELATED_COMMIT": "관련 커밋 없음",
+    "NO_RELATED_COMMITS": "관련 커밋 없음",
     "OVERDUE_AI_INCOMPLETE": "계획 종료 후 AI 진척 미완료",
     "PROGRESS_GAP": "계획 대비 AI 진척 차이",
     "RECENT_ACTIVITY_MISSING": "최근 활동 없음",
+    "NO_RECENT_COMMITS_14D": "최근 활동 없음",
     "UNKNOWN_IMPLEMENTATION": "구현상태 판단불가",
+    "ALL_UNKNOWN": "구현상태 판단불가",
+    "IMPLEMENTATION_ANALYSIS_REQUIRED": "구현상태 분석 필요",
 }
 
 
@@ -44,6 +48,8 @@ def _findings_dataframe(findings) -> pd.DataFrame:
                 "description": finding.description,
                 "plan_progress_rate": (finding.evidence or {}).get("plan_progress_rate"),
                 "ai_progress_rate": (finding.evidence or {}).get("ai_progress_rate"),
+                "ai_progress_state_label": (finding.evidence or {}).get("ai_progress_state_label"),
+                "mapping_ai_progress_rate": (finding.evidence or {}).get("mapping_ai_progress_rate"),
                 "progress_gap": (finding.evidence or {}).get("progress_gap"),
                 "related_commit_count": (finding.evidence or {}).get("related_commit_count"),
                 "detected_at": finding.detected_at,
@@ -151,6 +157,8 @@ def _render_findings(project_id: int, findings) -> None:
             "description",
             "plan_progress_rate",
             "ai_progress_rate",
+            "ai_progress_state_label",
+            "mapping_ai_progress_rate",
             "progress_gap",
             "related_commit_count",
             "detected_at",
@@ -167,6 +175,8 @@ def _render_findings(project_id: int, findings) -> None:
             "description": "설명",
             "plan_progress_rate": "계획 진척도",
             "ai_progress_rate": "AI 진척도",
+            "ai_progress_state_label": "AI 진척도 상태",
+            "mapping_ai_progress_rate": "Mapping 참고 진척도",
             "progress_gap": "진척도 차이",
             "related_commit_count": "관련 커밋",
             "detected_at": "탐지 시각",
@@ -194,7 +204,7 @@ def _render_findings(project_id: int, findings) -> None:
 
 def render_risk_page() -> None:
     st.title("Risk Analysis")
-    st.caption("프로그램 목록, 개발계획, Git 커밋, LLM 매핑 결과를 기반으로 누락/위험 프로그램을 규칙 기반으로 탐지합니다.")
+    st.caption("프로그램 목록, 개발계획, Git 변경, 최신 프로그램 단위 구현상태를 비교해 점검할 위험 신호를 규칙으로 찾습니다.")
 
     context = require_project_context("먼저 프로젝트를 등록해 주세요.")
     if context is None:

@@ -1246,8 +1246,12 @@ def generate_weekly_ai_report(db: Session, project_id: int) -> str:
     )
     progress_gaps = [
         metric
-        for metric in sorted(resource_summary.program_metrics, key=lambda row: row.progress_gap, reverse=True)
-        if metric.progress_gap > 0
+        for metric in sorted(
+            resource_summary.program_metrics,
+            key=lambda row: row.progress_gap if row.progress_gap is not None else -1,
+            reverse=True,
+        )
+        if metric.progress_gap is not None and metric.progress_gap > 0
     ][:10]
 
     lines = [

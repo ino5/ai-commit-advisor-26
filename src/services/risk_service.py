@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy.orm import Session, joinedload
 
 from src.db.models import GitCommit, Program, ProgramCommitMapping, RiskFinding
+from src.services.progress_service import resolve_ai_progress
 from src.services.resource_metrics_service import get_resource_metrics_summary
 
 
@@ -17,6 +18,7 @@ RISK_ALL_UNKNOWN = "ALL_UNKNOWN"
 RISK_NO_RECENT_COMMITS = "NO_RECENT_COMMITS_14D"
 RISK_ASSIGNEE_MISSING = "ASSIGNEE_MISSING"
 RISK_FORECAST_DELAY = "FORECAST_DELAY"
+RISK_IMPLEMENTATION_ANALYSIS_REQUIRED = "IMPLEMENTATION_ANALYSIS_REQUIRED"
 
 
 @dataclass
@@ -84,22 +86,29 @@ def _mapping_commits(mappings: list[ProgramCommitMapping]) -> list[GitCommit]:
 
 
 def _base_evidence(program: Program, mappings: list[ProgramCommitMapping]) -> dict:
-    statuses = [normalize_implementation_status(mapping.implementation_status) for mapping in mappings]
-    commits = _mapping_commits(mappings)
-    ai_progress = _ai_progress(statuses)
+    related_mappings = [mapping for mapping in mappings if mapping.is_related is True]
+    statuses = [normalize_implementation_status(mapping.implementation_status) for mapping in related_mappings]
+    commits = _mapping_commits(related_mappings)
+    progress = resolve_ai_progress(mappings, program.implementation_status_result)
     plan_progress = float(program.progress_rate or 0)
     last_commit_at = max((commit.committed_at for commit in commits if commit.committed_at), default=None)
+    progress_gap = plan_progress - progress.ai_progress_rate if progress.ai_progress_rate is not None else None
     return {
         "program_id": program.program_id,
         "program_name": program.program_name,
         "developer": _developer_name(program),
         "planned_end_date": program.planned_end_date.isoformat() if program.planned_end_date else None,
         "plan_progress_rate": plan_progress,
-        "ai_progress_rate": ai_progress,
-        "progress_gap": plan_progress - ai_progress,
-        "mapping_count": len(mappings),
+        "ai_progress_rate": progress.ai_progress_rate,
+        "ai_progress_state": progress.ai_progress_state,
+        "ai_progress_state_label": progress.ai_progress_state_label,
+        "mapping_ai_progress_rate": progress.mapping_ai_progress_rate,
+        "progress_gap": progress_gap,
+        "mapping_progress_gap": plan_progress - progress.mapping_ai_progress_rate,
+        "mapping_count": len(related_mappings),
         "related_commit_count": len(commits),
         "implementation_statuses": statuses,
+        "implementation_analysis_status": progress.implementation_analysis_status,
         "last_related_commit_at": last_commit_at.isoformat() if last_commit_at else None,
         "assignee_missing": _assignee_missing(program),
     }
@@ -133,6 +142,7 @@ def detect_project_risks(db: Session, project_id: int) -> list[DetectedRisk]:
         .options(
             joinedload(Program.assigned_developer),
             joinedload(Program.mappings).joinedload(ProgramCommitMapping.commit),
+            joinedload(Program.implementation_status_result),
         )
         .filter(Program.project_id == project_id)
         .order_by(Program.program_id, Program.program_name)
@@ -143,15 +153,17 @@ def detect_project_risks(db: Session, project_id: int) -> list[DetectedRisk]:
     risks: list[DetectedRisk] = []
 
     for program in programs:
-        mappings = [mapping for mapping in (program.mappings or []) if mapping.is_related is True]
-        statuses = [normalize_implementation_status(mapping.implementation_status) for mapping in mappings]
-        related_commits = _mapping_commits(mappings)
+        mappings = list(program.mappings or [])
+        related_mappings = [mapping for mapping in mappings if mapping.is_related is True]
+        statuses = [normalize_implementation_status(mapping.implementation_status) for mapping in related_mappings]
+        related_commits = _mapping_commits(related_mappings)
         evidence = _base_evidence(program, mappings)
-        ai_progress = float(evidence["ai_progress_rate"])
-        progress_gap = float(evidence["progress_gap"])
+        ai_progress = evidence["ai_progress_rate"]
+        progress_gap = evidence["progress_gap"]
         overdue = bool(program.planned_end_date and program.planned_end_date < today)
         no_related_commits = len(related_commits) == 0
         assignee_missing = bool(evidence["assignee_missing"])
+        analysis_required = evidence["ai_progress_state"] != "current_analysis"
 
         if no_related_commits:
             level = "HIGH" if overdue or assignee_missing else "MEDIUM"
@@ -166,7 +178,20 @@ def detect_project_risks(db: Session, project_id: int) -> list[DetectedRisk]:
                 )
             )
 
-        if overdue and ai_progress < 100:
+        if analysis_required:
+            level = "HIGH" if overdue else "MEDIUM"
+            risks.append(
+                _risk(
+                    program,
+                    RISK_IMPLEMENTATION_ANALYSIS_REQUIRED,
+                    level,
+                    "구현상태 분석 필요",
+                    "AI 진척도를 확정하려면 관련 커밋 전체 기준의 구현상태 분석을 실행하거나 갱신해야 합니다.",
+                    evidence,
+                )
+            )
+
+        if ai_progress is not None and overdue and ai_progress < 100:
             level = "HIGH" if ai_progress < 50 else "MEDIUM"
             risks.append(
                 _risk(
@@ -179,7 +204,7 @@ def detect_project_risks(db: Session, project_id: int) -> list[DetectedRisk]:
                 )
             )
 
-        if progress_gap >= 30:
+        if progress_gap is not None and progress_gap >= 30:
             risks.append(
                 _risk(
                     program,
@@ -191,7 +216,7 @@ def detect_project_risks(db: Session, project_id: int) -> list[DetectedRisk]:
                 )
             )
 
-        if mappings and all(status == "판단불가" for status in statuses):
+        if related_mappings and all(status == "판단불가" for status in statuses):
             risks.append(
                 _risk(
                     program,
@@ -246,6 +271,10 @@ def detect_project_risks(db: Session, project_id: int) -> list[DetectedRisk]:
             "forecast_confidence": metric.forecast_confidence,
             "forecast_confidence_label": metric.forecast_confidence_label,
             "ai_progress_rate": metric.ai_progress_rate,
+            "ai_progress_state": metric.ai_progress_state,
+            "ai_progress_state_label": metric.ai_progress_state_label,
+            "mapping_ai_progress_rate": metric.mapping_ai_progress_rate,
+            "mapping_progress_gap": metric.mapping_progress_gap,
             "plan_progress_rate": metric.plan_progress_rate,
             "related_commit_count": metric.related_commit_count,
         }

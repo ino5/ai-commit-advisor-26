@@ -109,6 +109,7 @@ def test_first_run_actions_return_operational_check_when_ready(monkeypatch) -> N
             message="ready",
             author_name="tester",
             committed_at=datetime(2026, 6, 15, tzinfo=timezone.utc),
+            mapping_analyzed_at=datetime(2026, 6, 15, tzinfo=timezone.utc),
         )
         db.add_all([program, commit])
         db.flush()
@@ -144,6 +145,69 @@ def test_first_run_actions_return_operational_check_when_ready(monkeypatch) -> N
             assert actions[0].area == "운영 점검"
             assert actions[0].status == "확인됨"
             assert actions[0].target_page == "AI 운영 현황"
+        finally:
+            db.delete(project)
+            db.commit()
+
+
+def test_first_run_actions_use_analyzed_commits_instead_of_mapping_row_count(monkeypatch) -> None:
+    init_db()
+    monkeypatch.setattr(
+        first_run_service,
+        "get_project_graph_freshness",
+        lambda db, project_id: Neo4jGraphFreshness("latest", "graph 최신"),
+    )
+
+    with SessionLocal() as db:
+        project = Project(name=_unique("first-run-mapping-count"), git_repo_path="C:/repo/demo")
+        db.add(project)
+        db.flush()
+        program = Program(project_id=project.id, program_id=_unique("PRG"), program_name="Analyzed Program")
+        analyzed_at = datetime(2026, 6, 15, tzinfo=timezone.utc)
+        commits = [
+            GitCommit(
+                project_id=project.id,
+                commit_hash=uuid.uuid4().hex,
+                message=f"analyzed-{index}",
+                author_name="tester",
+                committed_at=analyzed_at,
+                mapping_analyzed_at=analyzed_at,
+            )
+            for index in range(2)
+        ]
+        db.add_all([program, *commits])
+        db.flush()
+        chunk = DocumentChunk(
+            project_id=project.id,
+            source_type="source_file",
+            source_id="src/Analyzed.java",
+            chunk_index=0,
+            chunk_text="analyzed",
+            raw_metadata={"file_path": "src/Analyzed.java"},
+        )
+        db.add_all(
+            [
+                ProgramCommitMapping(
+                    program_id=program.id,
+                    commit_id=commits[0].id,
+                    relevance_score=90,
+                    is_related=True,
+                    implementation_status="구현완료",
+                    reason="one related mapping for two analyzed commits",
+                ),
+                chunk,
+            ]
+        )
+        db.flush()
+        db.add(VectorItem(chunk_id=chunk.id, embedding_model="mock", embedding=None))
+        db.commit()
+
+        try:
+            actions = get_first_run_actions(db, project.id)
+
+            assert all(action.area != "Mapping" for action in actions)
+            assert len(actions) == 1
+            assert actions[0].area == "운영 점검"
         finally:
             db.delete(project)
             db.commit()

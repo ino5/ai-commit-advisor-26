@@ -13,6 +13,10 @@ def _format_date(value) -> str:
     return value.strftime("%Y-%m-%d") if value else "-"
 
 
+def _format_progress(value, fallback: str = "분석 필요") -> str:
+    return f"{float(value):.1f}%" if value is not None and not pd.isna(value) else fallback
+
+
 def _rows_to_dataframe(rows) -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -26,7 +30,12 @@ def _rows_to_dataframe(rows) -> pd.DataFrame:
                 "status": row.status,
                 "plan_progress_rate": row.plan_progress_rate,
                 "ai_progress_rate": row.ai_progress_rate,
+                "ai_progress_label": _format_progress(row.ai_progress_rate, row.ai_progress_state_label),
+                "ai_progress_state_label": row.ai_progress_state_label,
                 "progress_gap": row.progress_gap,
+                "progress_gap_label": _format_progress(row.progress_gap, row.ai_progress_state_label),
+                "mapping_ai_progress_rate": row.mapping_ai_progress_rate,
+                "mapping_progress_gap": row.mapping_progress_gap,
                 "implementation_status": row.best_implementation_status,
                 "mapping_count": row.mapping_count,
                 "related_commit_count": row.related_commit_count,
@@ -47,16 +56,27 @@ def _rows_to_dataframe(rows) -> pd.DataFrame:
 def _render_summary(summary) -> None:
     cols = st.columns(4)
     cols[0].metric("계획 진척도 평균", f"{summary.plan_average}%")
-    cols[1].metric("AI 진척도 평균", f"{summary.ai_average}%")
-    cols[2].metric("진척도 차이", f"{summary.progress_gap_average}%")
+    cols[1].metric(
+        "AI 진척도 평균",
+        f"{summary.ai_average}%" if summary.ai_progress_ready_count else "분석 필요",
+    )
+    cols[2].metric(
+        "진척도 차이",
+        f"{summary.progress_gap_average}%" if summary.ai_progress_ready_count else "분석 필요",
+    )
     cols[3].metric("리스크 프로그램", summary.risk_count)
 
-    gap_ratio = min(max(summary.progress_gap_average / 100, 0), 1)
-    st.progress(gap_ratio, text=f"계획 대비 AI 진척도 차이 {summary.progress_gap_average}%")
+    if summary.ai_progress_ready_count:
+        gap_ratio = min(max(summary.progress_gap_average / 100, 0), 1)
+        st.progress(gap_ratio, text=f"계획 대비 AI 진척도 차이 {summary.progress_gap_average}%")
+    else:
+        st.info("최신 프로그램 단위 구현상태 분석이 없어 AI 진척도 평균을 확정하지 않았습니다.")
     st.info(
-        "AI 진척도는 프로그램-커밋 매핑 결과의 구현상태를 수치화한 값입니다. "
-        "구현상태 분석은 프로그램 단위로 관련 커밋과 계획 정보를 요약한 저장된 AI 분석 결과입니다."
+        "AI 진척도는 프로그램 단위 구현상태 분석이 최신일 때만 확정값으로 표시합니다. "
+        "분석이 없거나 관련 커밋 묶음이 바뀐 경우 Mapping 기반 0/50/100 값은 임시 참고값으로만 보여줍니다."
     )
+    if summary.ai_progress_needs_analysis_count:
+        st.warning(f"AI 진척도 재확인이 필요한 프로그램 {summary.ai_progress_needs_analysis_count}건이 있습니다.")
 
 
 def _render_saved_high_risks(project_id: int) -> None:
@@ -105,8 +125,10 @@ def _render_risk_top10(df: pd.DataFrame) -> None:
                 "planned_end_date",
                 "status",
                 "plan_progress_rate",
-                "ai_progress_rate",
-                "progress_gap",
+                "ai_progress_label",
+                "progress_gap_label",
+                "ai_progress_state_label",
+                "mapping_ai_progress_rate",
                 "implementation_status",
                 "related_commit_count",
                 "risk_reasons",
@@ -127,21 +149,35 @@ def _render_charts(df: pd.DataFrame) -> None:
 
     with chart_right:
         st.subheader("개발자별 AI 진척도")
-        developer_df = (
-            df.groupby("developer", dropna=False)["ai_progress_rate"]
-            .mean()
-            .round(1)
-            .reset_index(name="avg_ai_progress_rate")
-            .sort_values("avg_ai_progress_rate", ascending=False)
-        )
-        st.plotly_chart(
-            px.bar(developer_df, x="developer", y="avg_ai_progress_rate", text="avg_ai_progress_rate", range_y=[0, 100]),
-            use_container_width=True,
-        )
+        ready_df = df.dropna(subset=["ai_progress_rate"])
+        if ready_df.empty:
+            st.info("최신 구현상태 분석이 있는 프로그램이 없어 개발자별 AI 진척도를 그리지 않았습니다.")
+        else:
+            developer_df = (
+                ready_df.groupby("developer", dropna=False)["ai_progress_rate"]
+                .mean()
+                .round(1)
+                .reset_index(name="avg_ai_progress_rate")
+                .sort_values("avg_ai_progress_rate", ascending=False)
+            )
+            st.plotly_chart(
+                px.bar(
+                    developer_df,
+                    x="developer",
+                    y="avg_ai_progress_rate",
+                    text="avg_ai_progress_rate",
+                    range_y=[0, 100],
+                ),
+                use_container_width=True,
+            )
 
     st.subheader("계획 진척도 vs AI 진척도")
     compare_df = df[["program_id", "program_name", "plan_progress_rate", "ai_progress_rate", "is_risk"]].copy()
     compare_df["label"] = compare_df["program_id"].fillna(compare_df["program_name"])
+    compare_df = compare_df.dropna(subset=["ai_progress_rate"])
+    if compare_df.empty:
+        st.info("최신 구현상태 분석이 있는 프로그램이 없어 계획 대비 AI 진척도 차트를 그리지 않았습니다.")
+        return
     melted = compare_df.melt(
         id_vars=["label", "program_name", "is_risk"],
         value_vars=["plan_progress_rate", "ai_progress_rate"],
@@ -184,7 +220,8 @@ def _render_program_table(project_id: int, df: pd.DataFrame) -> None:
         key=project_scoped_key(project_id, "ai_progress_min_gap"),
     )
 
-    filtered = df[df["developer"].isin(selected_developers) & (df["progress_gap"] >= min_gap)].copy()
+    gap_matches = df["progress_gap"].isna() | (df["progress_gap"] >= min_gap)
+    filtered = df[df["developer"].isin(selected_developers) & gap_matches].copy()
     if risk_only:
         filtered = filtered[filtered["is_risk"]]
 
@@ -197,9 +234,12 @@ def _render_program_table(project_id: int, df: pd.DataFrame) -> None:
             "planned_end_date",
             "status",
             "plan_progress_rate",
-            "ai_progress_rate",
-            "progress_gap",
+            "ai_progress_label",
+            "progress_gap_label",
+            "ai_progress_state_label",
             "implementation_status",
+            "mapping_ai_progress_rate",
+            "mapping_progress_gap",
             "implementation_analysis_status_label",
             "implementation_analysis_summary",
             "implementation_analyzed_at_label",
@@ -214,6 +254,11 @@ def _render_program_table(project_id: int, df: pd.DataFrame) -> None:
             "implementation_analysis_summary": "구현상태 요약",
             "implementation_analyzed_at_label": "분석 일시",
             "implementation_evidence_count": "근거 커밋 수",
+            "ai_progress_state_label": "AI 진척도 상태",
+            "mapping_ai_progress_rate": "Mapping 참고 진척도",
+            "mapping_progress_gap": "Mapping 참고 차이",
+            "ai_progress_label": "AI 진척도",
+            "progress_gap_label": "진척도 차이",
         }
     )
     st.dataframe(display_df, use_container_width=True, hide_index=True)
@@ -222,7 +267,10 @@ def _render_program_table(project_id: int, df: pd.DataFrame) -> None:
 def _render_program_detail(project_id: int, df: pd.DataFrame) -> None:
     st.subheader("관련 커밋 상세")
     labels = {
-        f"{row.program_id or '-'} | {row.program_name} | gap {row.progress_gap}% | {row.risk_reasons or '정상'}": row.program_db_id
+        (
+            f"{row.program_id or '-'} | {row.program_name} | "
+            f"AI {row.ai_progress_label} | gap {row.progress_gap_label} | {row.risk_reasons or '정상'}"
+        ): row.program_db_id
         for row in df.itertuples()
     }
     selected_label = st.selectbox(
@@ -235,9 +283,13 @@ def _render_program_detail(project_id: int, df: pd.DataFrame) -> None:
 
     cols = st.columns(4)
     cols[0].metric("계획 진척도", f"{selected.plan_progress_rate}%")
-    cols[1].metric("AI 진척도", f"{selected.ai_progress_rate}%")
-    cols[2].metric("차이", f"{selected.progress_gap}%")
+    cols[1].metric("AI 진척도", selected.ai_progress_label)
+    cols[2].metric("차이", selected.progress_gap_label)
     cols[3].metric("관련 커밋", int(selected.related_commit_count))
+    st.caption(
+        f"AI 진척도 상태: {selected.ai_progress_state_label} / "
+        f"Mapping 참고 진척도: {selected.mapping_ai_progress_rate:.1f}%"
+    )
 
     st.markdown("#### 프로그램 단위 구현상태 분석")
     analysis_cols = st.columns(3)
@@ -293,7 +345,7 @@ def _render_program_detail(project_id: int, df: pd.DataFrame) -> None:
 
 def render_ai_progress_page() -> None:
     st.title("AI Progress")
-    st.caption("계획 진척도와 LLM 매핑 결과 기반 AI 진척도를 비교하고 리스크를 추적합니다.")
+    st.caption("계획 진척도와 최신 프로그램 단위 구현상태 분석을 비교하고 리스크를 추적합니다.")
 
     context = require_project_context("먼저 프로젝트를 등록해 주세요.")
     if context is None:
