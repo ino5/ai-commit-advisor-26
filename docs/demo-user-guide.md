@@ -329,6 +329,7 @@ dashboard summary query
 - 결제금액 검증은 어디에서 수행되나요?
 - 재고가 부족하면 어떤 일이 발생하나요?
 - 결제승인 후 주문상태는 어떻게 이동하나요?
+- PaymentController.java, PaymentService.java, OrderStatusService.java, OrderStatusMapper.java 기준으로 결제 금액 검증 조건과 승인 후 주문이 PAID가 되는 직접 호출 흐름을 설명해줘. 직접 호출과 간접 연결을 구분해줘.
 - dashboard summary를 만드는 query는 무엇인가요?
 - 의도적으로 incomplete 또는 risky하게 만든 샘플 program은 무엇인가요?
 
@@ -338,6 +339,8 @@ dashboard summary query
 - 현재 소스 근거
 - 파일 경로와 line range
 - 이력/참고 근거
+- 그래프 관계 근거
+- provider/model과 답변 근거 검증 상태
 - 근거 복사용 Markdown
 
 이 화면에서 강조할 점:
@@ -345,6 +348,8 @@ dashboard summary query
 - Project Chat은 현재 소스와 일치한다고 검증된 `source_file` chunk를 우선 사용합니다.
 - 검증된 근거가 부족하면 추측성 답변을 만들지 않고 근거 부족을 안내합니다.
 - 표준용어/표준단어를 업로드하면 한글 질문이 코드 식별자 검색으로 확장됩니다.
+- Java 파일을 지정한 관계 질문은 직접 호출, 조건식, 파일·행 인용을 현재 소스로 다시 검증합니다.
+- `deterministic_repair`는 mock 답변이 아니라, 첫 모델 문장이 검증을 통과하지 못해 확인된 현재 소스 사실로 재구성됐다는 표시입니다.
 
 ## 12. AI Code Review
 

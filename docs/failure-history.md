@@ -31,6 +31,195 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-21 - 서버 기동 문서가 서로 다른 port와 Tunnel identity를 안내했다
+
+분류:
+
+- Demo startup
+- Documentation drift
+- Quick Tunnel ownership
+
+관련 기능 및 문서:
+
+- `README.md`
+- `.env.local-llm.example`
+- `docs/setup-and-operations.md`
+- `docs/demo-runbook.md`
+- `scripts/quick_tunnel.py`
+- `AGENTS.md`
+
+증상:
+
+- 새 Agent 세션이나 운영자가 README와 Runbook만 보고는 LM Studio를 port `1234`와 `12345` 중 어디에 열어야 하는지, Docker 앱을 매번 rebuild해야 하는지 판단하기 어려웠습니다.
+- 현재 정상 동작 중인 Tunnel은 `ai_commit_advisor_quick_tunnel`인데 저장소 script는 `ai_commit_advisor_demo_tunnel`만 찾아, `start`를 다시 실행하면 두 번째 Tunnel과 다른 외부 URL이 생길 수 있었습니다.
+- README, setup 가이드, Runbook의 LM Studio와 Docker 기동 순서가 달라 대화에서 확정한 조건을 매번 다시 전달해야 했습니다.
+
+직접 원인:
+
+- `.env.local-llm.example`과 일부 설치 문서는 예전 port `1234`를 유지했고, 실제 Docker와 preflight는 Windows 제외 port 문제를 피해 `12345`를 사용했습니다.
+- Quick Tunnel 자동화가 추가되기 전에 만든 legacy container 이름을 호환 목록에 반영하지 않았습니다.
+- 정상 재기동, image rebuild, 새 외부 URL 생성 명령을 하나의 Quick Start 블록에서 구분하지 않았습니다.
+
+배경 또는 구조적 원인:
+
+- DB 복구, Project Chat 수정, 외부 Tunnel 준비가 서로 다른 작업에서 진행되면서 최종 runtime 기준을 한 실행 파일로 묶지 않았습니다.
+- 문서 검증은 명령과 link 존재 여부에 집중했고, 각 문서의 port, model, container 이름과 현재 runtime의 일치 여부를 교차 확인하지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 이미 열린 서버를 이용한 화면 검증은 통과했지만 완전히 꺼진 상태를 새 문서만 보고 재기동하는 흐름은 검증하지 않았습니다.
+- canonical container에 대한 unit test는 있었지만 legacy container가 계속 실행 중인 전환 상태는 test fixture에 없었습니다.
+
+수정 내용:
+
+- 상태 확인, 필요한 서비스 기동, health, preflight를 한 번에 수행하는 `scripts/demo_start.ps1`을 추가했습니다.
+- 새 Agent 세션이 대화 이력 없이도 같은 기준을 적용하도록 `AGENTS.md`에 상태 우선 기동 원칙을 추가했습니다.
+- LM Studio 기준을 port `12345`, Chat context length `8192`, embedding 768차원으로 통일했습니다.
+- `scripts/quick_tunnel.py`가 canonical·legacy 이름을 함께 확인하고 legacy URL은 재사용하되 자동 제거하지 않도록 수정했습니다.
+- README, setup 가이드, Runbook에서 정상 시작, `-Build`, `-StartTunnel`, `-CheckOnly` 조건을 분리했습니다.
+
+재발 방지 규칙:
+
+- 시연 기동 조건은 설명 문서 여러 곳의 수동 명령이 아니라 `scripts/demo_start.ps1`을 단일 실행 기준으로 둡니다.
+- runtime port, project ID, model context, embedding dimension, container identity가 바뀌면 환경 예시·Runbook·preflight·startup test를 같은 변경에서 확인합니다.
+- Quick Tunnel은 `status`를 먼저 실행하고, 기존 Tunnel이 없을 때만 새 주소를 만듭니다.
+- ownership label이 없는 container는 자동 삭제하지 않습니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- Quick Tunnel은 임시 서비스라 container가 실제로 재시작되면 URL이 달라집니다.
+- LM Studio model이 다른 context length로 이미 사용 중이면 통합 script는 자동 unload하지 않으며 운영자 확인이 필요합니다.
+
+검증 명령과 결과:
+
+- `scripts/demo_start.ps1 -CheckOnly -SkipPreflight`: Docker, LM Studio port `12345`, Chat context `8192`, embedding model, Docker 8501, legacy Tunnel과 기존 외부 URL을 변경 없이 확인했습니다.
+- focused startup/Quick Tunnel test와 전체 test 결과는 같은 날짜의 `AI_CHANGELOG.md`에 기록했습니다.
+
+## 2026-07-21 - 포트별 DB와 provider가 달라 같은 앱이 다른 결과를 표시했다
+
+분류:
+
+- Demo runtime
+- Database identity
+- Docker configuration
+
+관련 기능 및 문서:
+
+- `docker-compose.yml`
+- `scripts/demo_preflight.ps1`
+- `docs/end-to-end-demo-evidence-2026-07-21.md`
+
+증상:
+
+- local 8502에는 새 검증 프로젝트가 보였지만 Docker 8501에는 과거 프로젝트 목록이 보였습니다.
+- Docker 8501은 mock provider를 사용했고, 기본 DB에 남아 있던 과거 Project Chat의 깨진 `???` 메시지도 다시 노출했습니다.
+- 사용자는 같은 앱인데 어떤 프로젝트를 선택해야 하는지, `.env`의 어느 값을 바꿔야 하는지 판단할 수 없었습니다.
+
+직접 원인:
+
+- 전체 재현은 격리 DB와 local 8502에서 실행했지만 Docker 8501은 기본 DB `ai_commit_advisor`를 계속 사용했습니다.
+- `docker-compose.yml`이 `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock`, `PGVECTOR_DIMENSION=1536`, port 1234를 고정했습니다.
+
+배경 또는 구조적 원인:
+
+- 데이터 보호를 위해 실행 환경을 분리한 결정이 최종 시연 surface 통합 절차까지 포함하지 않았습니다.
+- preflight는 한 surface의 개별 상태를 확인했지만 localhost 8501, 임시 8502, Docker 환경 변수, 외부 tunnel이 같은 DB/project/provider를 보는지 교차 확인하지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- local 전체 흐름과 Docker 기동을 서로 다른 시점에 검증했습니다.
+- 프로젝트명과 project ID를 URL·DB·컨테이너에서 함께 비교하는 pass condition이 없었습니다.
+
+수정 내용:
+
+- 변경 전에 기본 DB와 격리 DB를 각각 OneDrive에 dump하고 임시 restore로 읽기 가능한지 확인했습니다.
+- 기본 DB의 중복 Sample Shop project `4`, `97`, `197`만 제거하고 project `2716`에서 전체 흐름을 다시 실행했습니다.
+- Docker 기본값을 실제 `local_openai`, host port 12345, embedding 768차원으로 맞췄습니다.
+- Docker 8501과 Cloudflare 경로에서 project `2716`과 저장 답변이 같은지 확인한 뒤 local 8502를 종료하고 격리 DB를 삭제했습니다.
+
+재발 방지 규칙:
+
+- 시연 전에는 DB 이름, project ID, provider/model, vector dimension, repo HEAD를 모든 runtime surface에서 같은 값으로 확인합니다.
+- 최종 시연 surface는 Docker 8501 하나만 유지합니다.
+- Docker override는 host용 `.env`와 혼동하지 않도록 `DOCKER_*` 변수로만 설정합니다.
+- DB 삭제나 프로젝트 정리 전에는 dump 생성뿐 아니라 임시 restore 조회까지 완료합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- 동일 저장소를 여러 프로젝트에서 동시에 쓰는 근본 문제는 project-scoped commit identity migration이 필요합니다.
+- Cloudflare quick tunnel URL은 재시작할 때 바뀌며 uptime을 보장하지 않습니다.
+
+검증 명령과 결과:
+
+- `docker compose config --format json`: 기본 DB, `local_openai`, port 12345, dimension 768 확인.
+- `docker compose up -d --build app`: app `healthy`.
+- Docker 내부 chat completion 성공, embedding dimension 768.
+- localhost 8501과 Cloudflare에서 project `2716`, program 8, commit 48, 저장 Chat 답변 일치.
+- 최종 port 상태: 8501 수신, 8502 미수신.
+
+## 2026-07-21 - Project Chat이 직접 호출과 간접 관계를 섞어 답했다
+
+분류:
+
+- Project Chat
+- RAG/source verification
+- Local LLM output validation
+
+관련 기능 및 문서:
+
+- `src/rag/chat_service.py`
+- `src/rag/chat_history_service.py`
+- `src/services/neo4j_graph_service.py`
+- `src/ui/project_chat_page.py`
+- `docs/ai-technical-overview.md`
+
+증상:
+
+- 여러 Java 파일을 지정해 결제 조건과 `PAID` 전환의 직접 호출 흐름을 물으면 local LLM이 중간 단계를 합치거나 import 관계를 직접 호출처럼 설명할 수 있었습니다.
+- UI가 검색된 전체 근거 수를 답변에 사용된 수처럼 보여 실제 prompt 범위를 알기 어려웠습니다.
+- 과거 프로젝트의 질문은 한글이 `???`로 저장돼 브라우저 글꼴 문제처럼 보였습니다.
+
+직접 원인:
+
+- prompt의 source chunk에 나타난 호출 표현을 소유 method와 연결하지 않고 평탄화했습니다.
+- `.java` 확장자를 일반 identifier로 포함해 파일명보다 `java`가 검색과 graph seed에서 과도하게 일치했습니다.
+- 답변 후처리는 citation 누락만 보완했고 직접 호출 순서, 조건식, 결과, 인용 행을 검증하지 않았습니다.
+- `???`는 화면 렌더링 문제가 아니라 삭제된 과거 DB message content 자체가 이미 깨진 상태였습니다.
+
+배경 또는 구조적 원인:
+
+- vector retrieval과 graph 관계가 관련 파일을 찾는 데는 도움이 되지만 method-level call ownership을 증명하지는 않습니다.
+- 모델에게 관계 구분을 지시하는 것과 앱이 결과를 검증하는 것이 분리되어 있지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 기존 테스트는 근거 유무와 citation 중심이었고 `A → B`, `B → C`를 `A → C`로 합치지 않는지 확인하지 않았습니다.
+- 저장 message의 한글 값과 브라우저 표시를 구분해 점검하지 않았습니다.
+
+수정 내용:
+
+- 정확한 Java 파일명/stem을 retrieval에서 우선하고 일반 경로 토큰을 graph seed에서 제외했습니다.
+- 현재 파일과 verified chunk coverage를 비교해 method별 직접 호출, 조건식, return 결과를 추출합니다.
+- 답변이 직접 호출 ledger와 인용 규칙을 통과하지 못하면 추가 LLM 호출 없이 검증된 근거로 deterministic repair를 만듭니다.
+- 실제 prompt에 전달된 current source 최대 6건과 graph evidence 최대 4건을 UI에 표시하고 validation/repair metadata를 저장합니다.
+
+재발 방지 규칙:
+
+- 관계 답변은 import, 직접 호출, 간접 연결을 구분해 검증합니다.
+- source/graph 사용 건수는 retrieval 전체가 아니라 실제 prompt 입력 기준으로 표시합니다.
+- fallback은 실패로 숨기지 않고 원인과 validation 상태를 UI와 telemetry에 남깁니다.
+- 한글 깨짐은 브라우저를 의심하기 전에 DB 저장값과 UTF-8 입출력을 먼저 확인합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- method 추출은 Java 경량 분석이며 compiler type resolution과 runtime dispatch는 지원하지 않습니다.
+- 근거 coverage가 부족하면 deterministic repair 대신 insufficient evidence가 필요합니다.
+
+검증 명령과 결과:
+
+- `python -m pytest -q tests/test_project_chat_service.py tests/test_neo4j_graph_service.py tests/test_project_chat_history_service.py tests/test_project_chat_page.py`: 37 passed.
+- 실제 local LLM 질문: source 6, graph 4, `deterministic_repair`, 한글·직접 호출 5단계·조건 2개·파일 인용 확인.
+- Docker 8501과 Cloudflare에서 저장 session `#429`를 다시 열어 동일 답변 확인.
 ## 2026-07-21 - 같은 저장소의 동시 세션이 Docker demo runtime을 공유했다
 
 분류:
@@ -143,6 +332,8 @@ Quick Tunnel focused test는 Docker 명령 구성을 mock으로 확인하므로 
 - `SELECT count(*) FROM projects WHERE id IN (2734, 2735)`: `0`, 실패가 남긴 두 임시 project 정리 확인.
 
 ## 2026-07-21 - 동일 저장소를 새 프로젝트로 수집하면 기존 GitCommit 소유가 이동할 수 있다
+
+> 아래 격리 DB 조치는 전체 재현 중 기존 데이터를 보호한 당시 기록입니다. 최종적으로는 두 DB를 백업·복구 검증한 뒤 중복 Sample Shop 프로젝트를 정리하고, 기본 DB의 project `2716` 하나를 시연 기준으로 다시 만들었습니다. 근본 schema 한계는 그대로 남아 있습니다.
 
 분류:
 

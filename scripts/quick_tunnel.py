@@ -25,6 +25,7 @@ COMPOSE_PROJECT_NAME = "ai-commit-advisor"
 APP_CONTAINER_NAME = "ai_commit_advisor_app"
 TUNNEL_CONTAINER_NAME = "ai_commit_advisor_demo_tunnel"
 TUNNEL_CONTAINER_LABEL = "com.ai-commit-advisor.purpose=quick-tunnel-demo"
+LEGACY_TUNNEL_CONTAINER_NAMES = ("ai_commit_advisor_quick_tunnel",)
 DEFAULT_CLOUDFLARED_IMAGE = os.environ.get("CLOUDFLARED_IMAGE", "cloudflare/cloudflared:latest")
 LOCAL_HEALTH_URL = "http://127.0.0.1:8501/_stcore/health"
 TUNNEL_ORIGIN_URL = "http://app:8501"
@@ -112,6 +113,23 @@ def _assert_owned_tunnel_container() -> None:
             f"{TUNNEL_CONTAINER_NAME} 이름을 다른 container가 사용 중입니다. "
             "안전을 위해 자동으로 재사용하거나 제거하지 않습니다."
         )
+
+
+def _select_running_tunnel_container() -> str | None:
+    """Return one active canonical or legacy Tunnel without mutating either."""
+
+    running_names = [
+        name
+        for name in (TUNNEL_CONTAINER_NAME, *LEGACY_TUNNEL_CONTAINER_NAMES)
+        if bool((_container_state(name) or {}).get("Running"))
+    ]
+    if len(running_names) > 1:
+        names = ", ".join(running_names)
+        raise QuickTunnelError(
+            f"실행 중인 Quick Tunnel container가 여러 개입니다: {names}. "
+            "주소를 임의로 선택하지 않고 운영자가 하나만 남길 때까지 중단합니다."
+        )
+    return running_names[0] if running_names else None
 
 
 def extract_quick_tunnel_url(log_text: str) -> str | None:
@@ -220,25 +238,26 @@ def _wait_for_health(url: str, *, timeout_seconds: int) -> tuple[bool, str]:
     return False, last_detail
 
 
-def _wait_for_tunnel_url(*, timeout_seconds: int) -> str:
+def _wait_for_tunnel_url(*, timeout_seconds: int, container_name: str = TUNNEL_CONTAINER_NAME) -> str:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        tunnel_url = extract_quick_tunnel_url(_container_logs(TUNNEL_CONTAINER_NAME))
+        tunnel_url = extract_quick_tunnel_url(_container_logs(container_name))
         if tunnel_url:
             return tunnel_url
-        state = _container_state(TUNNEL_CONTAINER_NAME)
+        state = _container_state(container_name)
         if state is not None and not bool(state.get("Running")):
-            logs = _container_logs(TUNNEL_CONTAINER_NAME)
+            logs = _container_logs(container_name)
             raise QuickTunnelError(f"Quick Tunnel container가 URL 발급 전에 종료됐습니다.\n{logs}")
         time.sleep(1)
 
-    logs = _container_logs(TUNNEL_CONTAINER_NAME)
+    logs = _container_logs(container_name)
     raise QuickTunnelError(f"Quick Tunnel URL을 {timeout_seconds}초 안에 찾지 못했습니다.\n{logs}")
 
 
-def _print_tunnel_result(tunnel_url: str, public_health: str) -> None:
+def _print_tunnel_result(tunnel_url: str, public_health: str, container_name: str) -> None:
     print()
     print("Quick Tunnel 준비가 완료됐습니다.")
+    print(f"Tunnel container: {container_name}")
     print(f"외부 URL: {tunnel_url}")
     print(f"외부 health: {public_health}")
     print(f"상태 확인: {sys.executable} scripts/quick_tunnel.py status")
@@ -265,19 +284,27 @@ def start_tunnel(*, build: bool, timeout_seconds: int, image: str) -> int:
     print(f"[3/4] 로컬 앱 확인: {detail}")
     _warn_if_app_is_publicly_bound()
 
-    network_name = _app_network()
-    tunnel_state = _container_state(TUNNEL_CONTAINER_NAME)
-    if tunnel_state is not None and bool(tunnel_state.get("Running")):
-        _assert_owned_tunnel_container()
-        tunnel_url = _wait_for_tunnel_url(timeout_seconds=timeout_seconds)
+    active_tunnel_name = _select_running_tunnel_container()
+    if active_tunnel_name is not None:
+        if active_tunnel_name == TUNNEL_CONTAINER_NAME:
+            _assert_owned_tunnel_container()
+        else:
+            print(f"[4/4] 기존 legacy Quick Tunnel을 재사용합니다: {active_tunnel_name}")
+        tunnel_url = _wait_for_tunnel_url(
+            timeout_seconds=timeout_seconds,
+            container_name=active_tunnel_name,
+        )
         public_url = f"{tunnel_url}/_stcore/health"
         public_ok, public_detail = _wait_for_health(public_url, timeout_seconds=timeout_seconds)
         if not public_ok:
             raise QuickTunnelError(f"기존 Quick Tunnel 외부 health 확인 실패: {public_detail}")
-        print("[4/4] 기존 Quick Tunnel을 재사용합니다.")
-        _print_tunnel_result(tunnel_url, public_detail)
+        if active_tunnel_name == TUNNEL_CONTAINER_NAME:
+            print("[4/4] 기존 Quick Tunnel을 재사용합니다.")
+        _print_tunnel_result(tunnel_url, public_detail, active_tunnel_name)
         return 0
 
+    network_name = _app_network()
+    tunnel_state = _container_state(TUNNEL_CONTAINER_NAME)
     if tunnel_state is not None:
         _assert_owned_tunnel_container()
         _run(["docker", "rm", TUNNEL_CONTAINER_NAME])
@@ -311,14 +338,14 @@ def start_tunnel(*, build: bool, timeout_seconds: int, image: str) -> int:
             f"Tunnel 로그: docker logs {TUNNEL_CONTAINER_NAME}"
         )
 
-    _print_tunnel_result(tunnel_url, public_detail)
+    _print_tunnel_result(tunnel_url, public_detail, TUNNEL_CONTAINER_NAME)
     return 0
 
 
 def show_status(*, timeout_seconds: int) -> int:
     _ensure_docker_available()
     app_state = _container_state(APP_CONTAINER_NAME)
-    tunnel_state = _container_state(TUNNEL_CONTAINER_NAME)
+    tunnel_name = _select_running_tunnel_container()
 
     app_running = bool(app_state and app_state.get("Running"))
     print(f"앱 container: {'running' if app_running else 'stopped'}")
@@ -327,13 +354,17 @@ def show_status(*, timeout_seconds: int) -> int:
         local_ok, local_detail = _wait_for_health(LOCAL_HEALTH_URL, timeout_seconds=timeout_seconds)
         print(f"로컬 health: {'정상' if local_ok else '실패'} ({local_detail})")
 
-    tunnel_running = bool(tunnel_state and tunnel_state.get("Running"))
-    print(f"Tunnel container: {'running' if tunnel_running else 'stopped'}")
-    if not tunnel_running:
+    if tunnel_name is None:
+        checked_names = ", ".join((TUNNEL_CONTAINER_NAME, *LEGACY_TUNNEL_CONTAINER_NAMES))
+        print(f"Tunnel container: stopped (확인한 이름: {checked_names})")
         return 1
 
-    _assert_owned_tunnel_container()
-    tunnel_url = extract_quick_tunnel_url(_container_logs(TUNNEL_CONTAINER_NAME))
+    print(f"Tunnel container: running ({tunnel_name})")
+    if tunnel_name == TUNNEL_CONTAINER_NAME:
+        _assert_owned_tunnel_container()
+    else:
+        print("Tunnel 유형: legacy container를 read-only로 재사용 중")
+    tunnel_url = extract_quick_tunnel_url(_container_logs(tunnel_name))
     if not tunnel_url:
         print("외부 URL: Tunnel 로그에서 찾지 못했습니다.")
         return 1
@@ -349,8 +380,16 @@ def show_status(*, timeout_seconds: int) -> int:
 
 def stop_tunnel(*, stop_app: bool) -> int:
     _ensure_docker_available()
+    active_tunnel_name = _select_running_tunnel_container()
     tunnel_state = _container_state(TUNNEL_CONTAINER_NAME)
-    if tunnel_state is None:
+    result_code = 0
+    if active_tunnel_name in LEGACY_TUNNEL_CONTAINER_NAMES:
+        print(
+            f"Legacy Quick Tunnel {active_tunnel_name}은 ownership label이 없어 자동으로 제거하지 않습니다."
+        )
+        print(f"운영자가 주소 종료를 확인한 뒤 직접 중지하세요: docker stop {active_tunnel_name}")
+        result_code = 1
+    elif tunnel_state is None:
         print("Quick Tunnel container는 이미 없습니다.")
     else:
         _assert_owned_tunnel_container()
@@ -362,7 +401,7 @@ def stop_tunnel(*, stop_app: bool) -> int:
         print("app container도 중지했습니다. PostgreSQL, Neo4j, volume은 유지됩니다.")
     else:
         print("app, PostgreSQL, Neo4j container는 변경하지 않았습니다.")
-    return 0
+    return result_code
 
 
 def parse_args() -> argparse.Namespace:

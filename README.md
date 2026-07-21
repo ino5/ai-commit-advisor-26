@@ -2,7 +2,7 @@
 
 AI Commit Advisor는 앱 서버에서 접근 가능한 Git 저장소의 커밋, 변경 파일, diff, 개발계획 데이터를 연결해 프로그램-커밋 매핑, 영향도 분석, 리스크 탐지, RAG 검색, Project Chat, AI 코드리뷰를 지원하는 Streamlit 기반 분석 도구입니다.
 
-기본값은 mock 분석이며, LM Studio 같은 OpenAI-compatible 로컬 LLM/embedding 서버를 연결하면 Mapping, AI Code Review, Project Chat, RAG 검색에서 실제 AI 기반 분석을 실행할 수 있습니다.
+로컬 Python용 `.env.example`은 가벼운 mock 설정입니다. Docker 앱은 현재 검증된 시연 환경과 같게 LM Studio의 실제 OpenAI-compatible LLM/embedding을 기본으로 사용하며, Mapping, AI Code Review, Project Chat, RAG 검색 결과를 기본 DB 하나에 저장합니다.
 
 ![AI Commit Advisor dashboard](docs/images/features/home.png)
 
@@ -25,21 +25,40 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-Docker만으로 PostgreSQL, Neo4j, 앱을 함께 실행하려면 다음 명령을 사용합니다.
+### 검증된 시연 서버 재기동
+
+현재 저장된 시연 결과를 그대로 사용할 때는 아래 한 명령을 기준으로 합니다.
 
 ```powershell
-docker compose up -d --build
+.\scripts\demo_start.ps1
 ```
 
-Docker 앱은 `http://localhost:8501`에서 열립니다. 로컬 Python 실행과 Docker 앱 실행을 동시에 켜면 같은 port를 사용할 수 있으므로 한 방식만 선택하세요.
+스크립트는 현재 상태를 먼저 읽고 필요한 서비스만 시작합니다. LM Studio port `12345`, Chat model context length `8192`, embedding model, Docker 8501 health, project `2716`, preflight를 확인합니다. 실행 중인 Quick Tunnel이 있으면 `ai_commit_advisor_demo_tunnel`과 기존 이름 `ai_commit_advisor_quick_tunnel`을 모두 찾아 현재 URL을 재사용하며, 기본 실행만으로 새 Tunnel을 만들지 않습니다.
 
-도메인이나 공유기 port forwarding 없이 하루 동안 샘플 화면을 외부에 보여줘야 한다면 저장소에 포함된 Quick Tunnel 스크립트를 사용할 수 있습니다. 다른 개발 세션이 같은 Docker 앱을 사용 중이지 않은지 먼저 확인하세요.
+상황별 옵션은 다음과 같습니다.
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\quick_tunnel.py start --build
+# 어떤 서비스도 시작하지 않고 현재 상태만 검증
+.\scripts\demo_start.ps1 -CheckOnly
+
+# 앱 source나 Docker image가 바뀐 경우에만 rebuild
+.\scripts\demo_start.ps1 -Build
+
+# 실행 중인 Tunnel이 없고 새 외부 URL이 필요한 경우에만 생성
+.\scripts\demo_start.ps1 -StartTunnel
 ```
 
-스크립트는 Docker 앱을 확인한 뒤 Cloudflare 공식 `cloudflared` container를 같은 Compose network에 연결하고, 발급된 `https://...trycloudflare.com` 주소와 외부 health 결과를 출력합니다. Quick Tunnel 주소에는 자체 로그인이 없고 가동 시간도 보장되지 않으므로 샘플 데이터 기반의 짧은 시연에만 사용하세요. 상태 확인, 종료, 장애 대응은 [하루 시연용 Cloudflare Quick Tunnel](docs/setup-and-operations.md#하루-시연용-cloudflare-quick-tunnel)을 따릅니다.
+일반 재기동은 image를 다시 만들지 않는 `docker compose up -d app`과 같습니다. `docker compose down`이나 `docker compose down -v`는 기존 DB와 Tunnel network를 불필요하게 건드리므로 시연 재기동에 사용하지 않습니다. Docker 앱은 `http://127.0.0.1:8501/?project_id=2716`에서 열며 local 8502를 동시에 실행하지 않습니다.
+
+Docker에서 AI 호출 없이 화면과 DB 연결만 확인하려면 실행 전에 `.env`에 `DOCKER_LLM_PROVIDER=mock`, `DOCKER_EMBEDDING_PROVIDER=mock`, `DOCKER_PGVECTOR_DIMENSION=768`을 명시합니다. 실제 분석 결과를 확인할 때는 이 override를 제거합니다. host의 `127.0.0.1`은 컨테이너 자신을 가리키므로 Docker LM Studio 주소는 기본값 `http://host.docker.internal:12345/v1`을 유지하세요.
+
+Quick Tunnel만 따로 확인할 때는 상태 명령부터 실행합니다.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py status
+```
+
+상태가 정상이면 출력된 URL을 그대로 사용합니다. 새 URL이 필요할 때만 `start`를 실행합니다. Quick Tunnel 주소에는 자체 로그인이 없고 가동 시간도 보장되지 않으므로 샘플 데이터 기반의 짧은 시연에만 사용하세요. 전체 순서와 장애 대응은 [시연 Runbook](docs/demo-runbook.md#기동-절차)과 [하루 시연용 Cloudflare Quick Tunnel](docs/setup-and-operations.md#하루-시연용-cloudflare-quick-tunnel)을 따릅니다.
 
 로컬 Python Quick Start도 기본적으로 Neo4j를 함께 켭니다. Neo4j는 첫 image pull 때만 시간이 더 걸릴 수 있고, 이후에는 기존 Docker volume/image를 재사용합니다. 아주 가볍게 PostgreSQL만 켜고 싶다면 `docker compose up -d postgres`만 실행하고 `.env`에서 `NEO4J_ENABLED=false`로 바꾸세요. 이 경우 `Knowledge Graph` 화면은 PostgreSQL 데이터를 기준으로 preview만 보여주며, Neo4j 저장 동기화는 건너뜁니다.
 
@@ -154,6 +173,8 @@ flowchart TB
 - [Git 저장소 운영 모델](docs/git-repository-operating-model.md): 앱 서버 기준 Git 저장소 접근 방식, 사내 서버 운영 구조, 경로 제한 정책을 설명합니다.
 - [서버 Git 저장소 갱신 Runbook](docs/server-repository-update-runbook.md): 사내 서버에 준비된 Git 저장소를 fetch/reset한 뒤 앱 Git 동기화를 실행하는 절차입니다.
 - [사용 가이드 검증 결과](docs/sample-project-usage-verification.md): local LLM/embedding 환경에서 사용 가이드를 실제 실행한 결과와 화면 증거입니다.
+- [전체 시연 E2E 증적](docs/end-to-end-demo-evidence-2026-07-21.md): 기본 DB에서 수집부터 Docker 8501·외부 접속 확인까지 재현한 40개 화면과 검증 수치입니다.
+- [시연 Runbook](docs/demo-runbook.md): 권장 동선, 예상 질문, 장애 대체 동선, 당일 점검 절차입니다.
 - [Local LLM Verification](docs/local-llm-verification.md): mock이 아닌 local OpenAI-compatible LLM/embedding으로 주요 AI 기능을 실행하고 증거를 확인하는 절차입니다.
 - [샘플 프로젝트 검증 가이드](docs/rich-sample-demo-walkthrough.md): 샘플 프로젝트로 주요 기능을 확인할 때 참고하는 권장 실행 흐름입니다.
 - [샘플 프로젝트 설계](docs/sample-target-repo-demo-design.md): 데모용 샘플 프로젝트의 구성, commit 시나리오, 기능별 확인 포인트입니다.

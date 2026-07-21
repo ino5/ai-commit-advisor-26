@@ -21,6 +21,111 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-21 - 시연 재기동은 상태 우선 통합 script를 단일 기준으로 사용한다
+
+### 배경
+
+README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, Docker rebuild 여부를 서로 다르게 안내했습니다. 현재 실행 중인 Quick Tunnel은 과거 이름 `ai_commit_advisor_quick_tunnel`을 사용하지만 새 스크립트는 `ai_commit_advisor_demo_tunnel`만 알고 있어, 문서의 시작 명령을 그대로 실행하면 두 번째 Tunnel과 새 URL이 생길 수 있었습니다. 새 Agent 세션은 이전 대화의 실행 조건을 자동으로 이어받지 않으므로 저장소 안에 실행 가능한 기준이 필요했습니다.
+
+### 결정
+
+- `scripts/demo_start.ps1`을 시연 환경의 단일 기동 진입점으로 사용하고, `AGENTS.md`가 새 Agent 세션에도 같은 원칙을 적용하게 합니다.
+- 스크립트는 현재 Docker daemon, LM Studio, model, Docker 8501, Quick Tunnel 상태를 먼저 읽고 필요한 항목만 시작합니다.
+- 정상 재기동은 `docker compose up -d app`, image 변경 시에만 `-Build`, 실행 중인 Tunnel이 없고 외부 주소가 필요할 때만 `-StartTunnel`을 사용합니다.
+- 기준값은 project `2716`, LM Studio port `12345`, `qwen2.5-coder-7b-instruct` context length `8192`, `text-embedding-nomic-embed-text-v1.5`, `PGVECTOR_DIMENSION=768`로 고정합니다.
+- `scripts/quick_tunnel.py`는 canonical 이름과 legacy 이름을 모두 찾습니다. legacy container는 URL 확인과 재사용만 허용하고 ownership label이 없으므로 자동 제거하지 않습니다. 두 이름이 동시에 실행 중이면 주소를 임의로 고르지 않고 중단합니다.
+- 통합 script는 `docker compose down`, `docker compose down -v`, DB 삭제, volume 삭제를 실행하지 않습니다. `-CheckOnly`는 어떤 서비스도 시작하지 않습니다.
+
+### 이유
+
+대화 설명보다 실행 가능한 script를 기준으로 두면 새 세션과 다른 운영자가 같은 검사를 반복할 수 있습니다. 상태를 먼저 확인하면 저장 DB와 현재 외부 URL을 보존하고, rebuild와 model reload처럼 시간이 들거나 기존 상태를 바꾸는 작업을 필요한 경우에만 수행할 수 있습니다.
+
+### 검토한 대안
+
+- README에 수동 명령만 나열: 조건 분기와 실제 runtime 상태가 달라질 때 운영자가 매번 판단해야 하므로 제외했습니다.
+- 매번 `docker compose up -d --build app` 실행: source 변경이 없는 재기동에도 image를 다시 만들 수 있어 기본 동작으로 사용하지 않습니다.
+- 기동할 때마다 Quick Tunnel 재생성: 주소가 바뀌고 기존 접속 경로가 끊기므로 제외했습니다.
+- legacy container를 새 script가 강제로 제거하거나 이름을 바꿈: 현재 정상 URL을 끊고 ownership이 불분명한 runtime을 변경하므로 제외했습니다.
+
+### 영향, tradeoff, 남은 한계
+
+정상 재기동과 상태 확인은 한 명령으로 통일됐습니다. 이미 다른 context length로 로드된 Chat model은 script가 임의로 unload하지 않고 오류로 알려주므로 운영자가 model 사용 상황을 확인한 뒤 다시 로드해야 합니다. Quick Tunnel은 임시 주소이므로 container 자체가 재시작되면 주소가 바뀔 수 있으며 영구 배포를 대신하지 않습니다.
+
+### 관련 문서
+
+- `README.md`
+- `docs/setup-and-operations.md`
+- `docs/demo-runbook.md`
+- `docs/failure-history.md`의 `서버 기동 문서가 서로 다른 port와 Tunnel identity를 안내했다`
+- `AI_CHANGELOG.md`의 `시연 서버 상태 우선 재기동과 legacy Tunnel 재사용`
+
+## 2026-07-21 - 시연 기준은 기본 DB와 Docker 8501 하나로 통일한다
+
+### 배경
+
+전체 재현을 위해 격리 DB와 local 8502를 사용한 뒤 Docker 8501을 다시 열자, 포트마다 프로젝트 목록과 provider가 달랐습니다. Docker는 기본 DB의 과거 프로젝트와 mock provider를, local 8502는 격리 DB의 새 결과를 보여줘 사용자가 어느 프로젝트를 선택해야 하는지 판단할 수 없었습니다.
+
+### 결정
+
+- 시연 데이터의 기준은 PostgreSQL `ai_commit_advisor` 하나로 둡니다.
+- 같은 Sample Shop 저장소의 기준 프로젝트는 `Sample Shop 전체 시연 검증 2026-07-21` (`project_id=2716`) 하나만 유지합니다.
+- 최종 앱 surface는 Docker 8501로 고정하고, local 8502는 재구축 중에만 임시로 사용한 뒤 종료합니다.
+- Docker 앱은 기본 DB, `local_openai`, LM Studio host port 12345, `text-embedding-nomic-embed-text-v1.5`, 768차원을 기본값으로 사용합니다. 다른 설정은 `DOCKER_*` override로만 명시합니다.
+- 데이터 정리 전에는 기준 DB와 임시 DB를 각각 dump하고 임시 restore로 읽기 가능한지 확인합니다.
+
+### 이유
+
+같은 UI가 실행 방법에 따라 다른 프로젝트와 AI 결과를 보이면 기능 오류와 환경 혼선을 구분하기 어렵습니다. DB, project ID, provider, port를 하나의 기준으로 고정하면 Chrome 원격 데스크톱, localhost, Cloudflare 경로가 모두 같은 저장 결과를 보여주는지 직접 비교할 수 있습니다.
+
+### 검토한 대안
+
+- 격리 DB와 local 8502를 계속 시연 기준으로 유지: Docker 8501과 데이터가 달라 운영자가 매번 환경 변수를 바꿔야 하므로 제외했습니다.
+- Docker 기본을 mock으로 유지하고 저장 결과만 표시: live provider 연결을 확인할 수 없고 포트별 AI 동작 차이가 남아 제외했습니다.
+- 같은 저장소의 여러 프로젝트를 기본 DB에 함께 유지: `git_commits.commit_hash` 전역 unique 문제가 해결되지 않아 제외했습니다.
+
+### 영향, tradeoff, 남은 한계
+
+최종 동선은 단순해졌지만, 동일 저장소를 여러 프로젝트에서 동시에 분석하려면 project-scoped commit identity migration이 여전히 필요합니다. quick tunnel URL은 재시작할 때 바뀌므로 영구 배포 주소로 취급하지 않습니다.
+
+### 관련 문서
+
+- `docs/end-to-end-demo-evidence-2026-07-21.md`
+- `docs/demo-runbook.md`
+- `docs/failure-history.md`의 `포트별 DB와 provider가 달라 같은 앱이 다른 결과를 표시했다`
+- `AI_CHANGELOG.md`의 `기본 DB와 Docker 8501 시연 환경 통합`
+
+## 2026-07-21 - 직접 호출 답변은 모델 문장보다 현재 소스 검증 결과를 우선한다
+
+### 배경
+
+작은 local model은 관련 파일을 모두 받아도 `A → B → C`를 `A → C`의 직접 호출로 축약하거나, import 관계를 method call처럼 설명할 수 있습니다. 일반적인 citation 추가만으로는 문장 안의 잘못된 호출 소유권을 고치지 못합니다.
+
+### 결정
+
+- Java 파일명이 명시된 질문은 현재 파일과 verified chunk 행 범위를 함께 확인해 method별 직접 호출과 조건 결과를 추출합니다.
+- 답변이 직접 호출 순서, 조건식, 결과, 파일·행 인용을 통과하지 못하면 검증된 ledger로 deterministic repair를 만듭니다.
+- repair는 숨기지 않고 `validation_status`, `fallback_used`, `repair_attempted`를 DB와 UI에 표시합니다.
+- prompt와 UI의 source/graph 수는 실제로 모델에 전달된 제한 수를 기준으로 표시합니다.
+
+### 이유
+
+모델을 한 번 더 호출해 문장을 고치는 방식은 같은 오류를 반복할 수 있고 응답 시간도 늘립니다. 이미 확인한 현재 소스 사실만 조립하면 직접 호출을 간접 관계와 섞지 않으면서 결과를 재현할 수 있습니다.
+
+### 검토한 대안
+
+- prompt 지시만 강화: 실제 시연 질문에서 형식과 호출 소유권 오류가 남았습니다.
+- 두 번째 LLM repair 호출: 지연과 변동성이 늘고 검증 책임을 다시 모델에 맡기므로 제외했습니다.
+- 근거가 있어도 전체 답변 거부: 안전하지만 검증된 사실까지 보여주지 못해 사용자 가치가 낮습니다.
+
+### 영향, tradeoff, 남은 한계
+
+현재 repair는 Java 메서드 본문을 대상으로 하며 compiler 수준 type resolution은 아닙니다. 근거 coverage가 부족하면 답변을 재구성하지 않고 insufficient evidence를 반환합니다.
+
+### 관련 문서
+
+- `docs/ai-technical-overview.md`
+- `docs/failure-history.md`의 `Project Chat이 직접 호출과 간접 관계를 섞어 답했다`
+- `AI_CHANGELOG.md`의 `Project Chat 직접 호출 근거 검증과 안전한 답변 복구`
 ## 2026-07-21 - 하루 외부 시연은 저장소 스크립트와 별도 cloudflared container로 연다
 
 ### 배경
@@ -72,6 +177,8 @@
 - `AI_CHANGELOG.md` 항목 `Cloudflare Quick Tunnel 하루 시연 절차 자동화`
 
 ## 2026-07-21 - 동일 저장소의 새 프로젝트 검증은 격리 DB에서 수행한다
+
+> 이 결정은 전체 재현 중 기존 데이터를 보존하기 위한 임시 안전 조치였습니다. 최종 시연 운영 기준은 위의 `시연 기준은 기본 DB와 Docker 8501 하나로 통일한다` 결정으로 대체됐습니다.
 
 ### 배경
 

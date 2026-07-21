@@ -125,6 +125,8 @@ def message_to_ui_dict(message: ProjectChatMessage) -> dict:
         "provider": metadata.get("provider") or metadata.get("llm_provider"),
         "model": metadata.get("model") or metadata.get("llm_model"),
         "fallback_used": bool(metadata.get("fallback_used", False)),
+        "validation_status": metadata.get("validation_status") or "not_applicable",
+        "repair_attempted": bool(metadata.get("repair_attempted", False)),
     }
 
 

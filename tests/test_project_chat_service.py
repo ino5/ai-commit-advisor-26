@@ -5,7 +5,12 @@ from src.db.models import Project
 from src.rag.chat_service import (
     INSUFFICIENT_EVIDENCE_ANSWER,
     _build_prompt,
+    _build_verified_method_fallback,
+    _collect_verified_java_method_evidence,
+    _query_code_identifiers,
+    _relevant_method_calls,
     _sort_verified_sources_for_prompt,
+    _validate_method_answer,
     answer_source_question,
 )
 from src.rag.source_verifier import hash_text
@@ -232,6 +237,16 @@ def test_sort_verified_sources_prioritizes_question_identifiers():
     assert top_files == {"PaymentService.java", "OrderMapper.java"}
 
 
+def test_query_code_identifiers_keeps_java_class_name_without_generic_extension():
+    identifiers = _query_code_identifiers("PaymentController.java와 PaymentService.authorize 흐름")
+
+    assert "paymentcontroller.java" in identifiers
+    assert "paymentcontroller" in identifiers
+    assert "paymentservice" in identifiers
+    assert "authorize" in identifiers
+    assert "java" not in identifiers
+
+
 def test_prompt_with_verified_sources_does_not_prime_exact_insufficient_answer():
     prompt = _build_prompt(
         "PaymentService와 OrderMapper 관계를 설명해줘",
@@ -257,6 +272,98 @@ def test_prompt_with_verified_sources_does_not_prime_exact_insufficient_answer()
     assert "Named identifier focus" in prompt
     assert "import com.example.market.order.mapper.OrderMapper" in prompt
     assert "orderMapper.updateOrderStatus(orderId, \"PAID\")" in prompt
+
+
+def test_method_evidence_preserves_sample_payment_direct_call_chain(tmp_path):
+    files = {
+        "src/main/java/com/example/market/payment/controller/PaymentController.java": """\
+public class PaymentController {
+    private final PaymentService paymentService;
+    public String authorize(long orderId, int amount) {
+        return paymentService.authorize(orderId, amount);
+    }
+}
+""",
+        "src/main/java/com/example/market/payment/service/PaymentService.java": """\
+public class PaymentService {
+    private final OrderStatusService orderStatusService;
+    public String authorize(long orderId, int amount) {
+        if (amount <= 0) {
+            return "REJECTED";
+        }
+        orderStatusService.markPaid(orderId);
+        return "AUTHORIZED";
+    }
+}
+""",
+        "src/main/java/com/example/market/order/service/OrderStatusService.java": """\
+public class OrderStatusService {
+    private final OrderStatusMapper orderStatusMapper;
+    public void changeStatus(long orderId, String currentStatus, String nextStatus) {
+        orderStatusMapper.updateStatus(orderId, nextStatus);
+        orderStatusMapper.insertStatusHistory(orderId, nextStatus);
+    }
+    public void markPaid(long orderId) {
+        changeStatus(orderId, PAYMENT_WAITING, PAID);
+    }
+}
+""",
+        "src/main/java/com/example/market/order/mapper/OrderStatusMapper.java": """\
+public interface OrderStatusMapper {
+    void updateStatus(long orderId, String status);
+    void insertStatusHistory(long orderId, String status);
+}
+""",
+    }
+    sources = []
+    for file_path, text in files.items():
+        target = tmp_path / file_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        line_count = len(text.splitlines())
+        sources.append(
+            {
+                "source_type": "source_file",
+                "source_id": file_path,
+                "text": text,
+                "metadata": {"file_path": file_path, "line_start": 1, "line_end": line_count},
+                "verification_status": "verified",
+            }
+        )
+
+    question = (
+        "PaymentController.java, PaymentService.java, OrderStatusService.java, "
+        "OrderStatusMapper.java의 결제 금액 조건과 PAID 연결 흐름을 설명해줘"
+    )
+    evidence = _collect_verified_java_method_evidence(str(tmp_path), question, sources)
+    call_pairs = [(call.caller, call.callee) for call in _relevant_method_calls(question, evidence)]
+
+    assert call_pairs == [
+        ("PaymentController.authorize", "PaymentService.authorize"),
+        ("PaymentService.authorize", "OrderStatusService.markPaid"),
+        ("OrderStatusService.markPaid", "OrderStatusService.changeStatus"),
+        ("OrderStatusService.changeStatus", "OrderStatusMapper.updateStatus"),
+        ("OrderStatusService.changeStatus", "OrderStatusMapper.insertStatusHistory"),
+    ]
+    payment_authorize = next(item for item in evidence if item.owner == "PaymentService.authorize")
+    assert payment_authorize.condition_outcomes[0].condition == "amount <= 0"
+    assert payment_authorize.condition_outcomes[0].outcome == 'return "REJECTED"'
+
+    invalid_answer = (
+        "`PaymentController.authorize → PaymentService.authorize` 뒤 "
+        "`PaymentService.authorize → OrderStatusMapper.updateStatus`를 직접 호출하며 "
+        "amount < 0이면 AUTHORIZED입니다."
+    )
+    errors = _validate_method_answer(question, invalid_answer, evidence, sources)
+    assert any("검증되지 않은 직접 호출 단계" in error for error in errors)
+    assert any("조건 결과 누락 또는 불일치" in error for error in errors)
+
+    fallback = _build_verified_method_fallback(question, evidence)
+    assert "PaymentService.authorize → OrderStatusService.markPaid" in fallback
+    assert "OrderStatusService.markPaid → OrderStatusService.changeStatus" in fallback
+    assert "PaymentService.authorize → OrderStatusMapper.updateStatus" not in fallback
+    assert "amount <= 0" in fallback
+    assert 'return "REJECTED"' in fallback
 
 
 def test_answer_source_question_adds_graph_evidence_without_replacing_source_verification(tmp_path):
