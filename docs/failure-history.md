@@ -31,6 +31,87 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+
+## 2026-07-21 - 내부 시연 리허설에서 실행 환경과 저장 근거의 불일치가 확인됐다
+
+분류:
+
+- Local demo operations
+- First-run readiness
+- Project Chat source integrity
+- User-facing AI Progress/Risk semantics
+
+관련 기능 및 문서:
+
+- `scripts/demo_preflight.ps1`
+- `docs/demo-runbook.md`
+- `src/services/first_run_service.py`
+- `src/ui/ai_progress_page.py`
+- `src/ui/risk_page.py`
+- `AI_CHANGELOG.md` 항목 `내부 시연 리허설과 사전 점검 안정화`
+
+### 증상
+
+내부 시연을 앞두고 기존 샘플 프로젝트를 실제 local runtime에서 다시 열었을 때 다음 문제가 함께 나타났습니다.
+
+- LM Studio에 chat/embedding model을 로드했지만 기본 port `1234`에서 API server가 `listen EACCES`로 시작되지 않았습니다. `netstat`에는 해당 port listener가 없었습니다.
+- project 197의 commit 48개가 모두 Mapping 분석 완료 상태인데 Home은 관계 행 47개를 commit 48개와 비교해 `Mapping 분석 미완료`로 표시했습니다.
+- 저장 Project Chat session `#34`는 현재 샘플 저장소에서 이미 제거된 `docs/requirements/...` 파일을 verified source처럼 인용했습니다.
+- AI Progress와 Risk Analysis의 상단 설명은 최신 프로그램 단위 구현상태를 쓰는 현재 계산과 달리 예전 `LLM 매핑 결과 기반` 설명을 유지했습니다.
+
+### 직접 원인
+
+- Windows가 TCP `1195-1294`, `1295-1394` 범위를 제외 포트로 예약해 `1234` bind를 거부했습니다.
+- `first_run_service.py`가 `ProgramCommitMapping` 관계 행 수를 Mapping 분석 완료 commit 수로 사용했습니다. 관계는 한 commit에 0개 또는 여러 개일 수 있으므로 처리 상태와 같지 않습니다.
+- 샘플 저장소에서 설명용 `docs/` 파일을 제거한 뒤 project 197의 `source_file` chunk를 전체 refresh하지 않아 과거 chunk가 남았습니다.
+- AI Progress 의미를 프로그램 단위 구현상태로 바꿀 때 화면 caption과 `docs/feature-guide.md`의 기존 설명이 변경 대상에서 빠졌습니다.
+
+### 배경 또는 구조적 원인
+
+과거 검증은 각 기능의 성공 화면과 저장 결과에 집중했고, 발표 당일 한 번에 확인할 runtime/data preflight가 없었습니다. 준비 상태에서는 관계 데이터 수와 분석 process 상태가 구분되지 않았고, Project Chat은 저장 대화를 재사용할 수 있어 현재 checkout과 오래된 저장 session의 근거가 다르다는 점을 놓치기 쉬웠습니다. 사용자-facing 문구도 계산 변경과 같은 검증 단위로 묶이지 않았습니다.
+
+### 사전 검증에서 놓친 이유
+
+- 이전 LM Studio 검증 당시에는 `1234`를 사용할 수 있었고, 현재 Windows 제외 포트 범위를 다시 확인하지 않았습니다.
+- first-run test fixture가 commit 1개와 mapping 1개를 함께 만들어 관계 행 수와 처리 commit 수가 항상 같았습니다.
+- 기존 Project Chat screenshot은 저장 session의 답변 모양을 확인했지만, 현재 repo에 인용 파일이 계속 존재하는지 다시 대조하지 않았습니다.
+- service unit test는 AI Progress 산식을 검증했지만 화면 상단 caption의 의미까지 확인하지 않았습니다.
+
+### 수정 내용
+
+- LM Studio endpoint를 Windows 제외 범위 밖인 `12345`로 옮기고 `.env`의 chat/embedding base URL을 함께 변경했습니다.
+- Home 준비 상태는 `GitCommit.mapping_analyzed_at IS NOT NULL`인 commit 수를 사용하도록 수정했습니다. commit 2개가 모두 분석 완료이고 mapping 관계는 1개뿐인 회귀 test를 추가했습니다.
+- project 197의 source index를 현재 repo 전체 기준으로 refresh해 과거 chunk 21건을 제거하고 source 79건과 vector 79건을 다시 만들었습니다.
+- Knowledge Graph를 project 197 기준 234 nodes, 645 edges로 동기화하고, 새 Project Chat session `#400`을 source 10건과 graph evidence 8건, `fallback=False`로 저장했습니다.
+- `2325182` Code Review를 실제 local provider로 다시 실행해 `amount == 0` bug finding을 최신 저장 결과로 준비했습니다.
+- AI Progress와 Risk Analysis caption, 기능 가이드, screenshot scenario의 required/forbidden text를 현재 프로그램 단위 구현상태 기준으로 맞췄습니다.
+- runtime, model, vector dimension, 저장 결과, Chrome 원격 데스크톱을 읽기 전용으로 검사하는 `demo_preflight.ps1`와 시연 Runbook을 추가했습니다.
+
+### 재발 방지 규칙
+
+- local demo 전에는 model이 로드됐는지만 보지 말고 실제 `/chat/completions`, `/embeddings`, Streamlit health, DB, Neo4j, Chrome 원격 데스크톱을 함께 확인합니다.
+- bind `EACCES`가 나고 listener가 없으면 port collision로 단정하지 말고 Windows excluded port range를 확인합니다.
+- batch 준비 상태는 생성 결과 행 수가 아니라 처리 대상별 완료 timestamp/status로 판단합니다.
+- 저장 Project Chat을 재사용하기 전에는 현재 source count/vector count, checkout 검증 상태, 인용 path, fallback, graph evidence를 다시 확인합니다.
+- AI Progress/Risk 계산 기준을 바꾸면 service, UI caption, feature guide, screenshot assertion을 같은 변경 단위로 검토합니다.
+- 시연 직전에는 데이터 변경 action을 실행하지 않고, 저장 결과와 대체 PPTX를 기본 동선으로 준비합니다.
+
+### 남은 한계 또는 후속 확인 사항
+
+- project 197의 저장 Git 분석 HEAD는 `c60d2b3b7edb`, 현재 샘플 repo HEAD는 `221eb9ac9c83`입니다. 이번 시연은 저장 Mapping snapshot을 유지하면서 현재 source/Code Review만 별도 검증한 상태입니다. 실제 pilot에서는 같은 HEAD로 전체 pipeline을 다시 실행해야 합니다.
+- Windows 제외 포트 범위는 PC 상태에 따라 바뀔 수 있습니다. `12345`도 당일 preflight에서 다시 검사합니다.
+- local LLM 답변 문장과 실행 시간은 model load 상태와 PC 부하에 따라 달라질 수 있습니다.
+
+### 검증 명령과 결과
+
+- `.\scripts\demo_preflight.ps1`: `FAIL=0`, 예상 경고 1건.
+- `tests/test_first_run_service.py`: 5 passed.
+- source refresh: created 79, embedding created 79, failed 0, stale/missing/invalid 0.
+- Knowledge Graph sync: nodes 234, edges 645, errors 0.
+- Project Chat session `#400`: source 10, graph 8, `fallback=False`, insufficient evidence `False`.
+- AI Code Review result `#443`: target `2325182`, bug finding 1, refactoring suggestion 0.
+- Home, Dashboard, AI Progress, Risk Analysis, Project Chat GraphRAG, AI Code Review screenshot capture 통과.
+- 전체 compile/test 결과는 같은 날짜 `AI_CHANGELOG.md`의 `내부 시연 리허설과 사전 점검 안정화` 항목에 기록합니다.
 ## 2026-06-17 - AI Code Review 한국어 prompt 전환 중 경계값 해석이 흔들렸다
 
 분류:

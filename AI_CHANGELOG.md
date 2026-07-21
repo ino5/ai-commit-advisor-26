@@ -1,5 +1,21 @@
 # AI 변경 이력
 
+## 2026-07-21
+
+### 내부 시연 리허설과 사전 점검 안정화
+
+- 2026년 7월 23일 팀 내부 시연을 앞두고 project 197의 Home, Dashboard, AI Progress, Risk Analysis, Project Chat GraphRAG, AI Code Review 흐름을 실제 local provider와 현재 샘플 저장소에서 다시 검증했습니다.
+- Home의 Mapping 준비 상태가 `ProgramCommitMapping` 관계 행 수 47개를 commit 48개와 비교해 미완료로 오판하던 문제를 수정했습니다. 이제 `GitCommit.mapping_analyzed_at`이 있는 분석 완료 commit 수를 사용하며, commit 2개와 mapping 관계 1개가 있는 회귀 test를 추가했습니다.
+- AI Progress와 Risk Analysis의 상단 설명이 현재 프로그램 단위 구현상태 기준과 다르게 예전 Mapping 기반 문구를 표시하던 부분을 화면, `docs/feature-guide.md`, screenshot assertion에서 함께 바로잡았습니다.
+- 현재 저장소에 없는 과거 Project Chat source chunk 21건을 제거하고 source 79건과 vector 79건을 다시 생성했습니다. Knowledge Graph를 234 nodes와 645 edges로 동기화한 뒤 새 Project Chat session `#400`을 source 10건, graph evidence 8건, `fallback=False`로 저장했습니다.
+- `2325182 Relax partner payment validation for pilot channel`을 `local_openai / qwen2.5-coder-7b-instruct`로 다시 리뷰해 `amount == 0`이 새로 허용되는 bug finding 1건을 최신 결과 `#443`으로 저장했습니다.
+- Windows 제외 포트 범위 때문에 LM Studio가 `1234`에서 `EACCES`로 시작되지 않는 환경을 확인하고 local endpoint를 `12345`로 옮겼습니다. runtime, model identifier, embedding dimension, project data, 저장 Project Chat/Code Review, Chrome 원격 데스크톱을 읽기 전용으로 확인하는 `scripts/demo_preflight.ps1`를 추가했습니다.
+- 10~12분 기본 시나리오, 5분 압축 동선, 화면별 말할 내용, 예상 질문 22개, 장애별 대체 동선, 기동 순서, 수요일/목요일 체크리스트를 `docs/demo-runbook.md`에 정리했습니다. 특정 직급이나 참석자를 전제하지 않도록 관련 문서와 이력의 표현도 `내부 시연`으로 통일했습니다. 실제 검증 환경과 새 화면 6개는 `docs/sample-project-usage-verification.md`에 기록했습니다.
+- 기존 project 197을 fallback으로 보존하면서 같은 샘플 저장소 또는 다른 저장소를 새 프로젝트로 등록하는 절차, 다시 준비해야 할 Git Sync·산출물·Mapping·embedding·Risk·Knowledge Graph·대표 AI 결과 순서, 새 project ID용 preflight 명령을 Runbook에 추가했습니다.
+- 준비 상태 오판, stale source 재사용, Windows excluded port, 화면 문구 누락의 원인과 예방 규칙을 `docs/failure-history.md`에 남겼고, 저장 결과 우선·읽기 전용 preflight 방식을 `docs/engineering-decisions.md`에 기록했습니다.
+- 주요 파일: `src/services/first_run_service.py`, `src/ui/ai_progress_page.py`, `src/ui/risk_page.py`, `tests/test_first_run_service.py`, `scripts/demo_preflight.ps1`, `scripts/capture_feature_screenshot.py`, `docs/demo-runbook.md`, `docs/feature-guide.md`, `docs/sample-project-usage-verification.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`, `docs/images/usage-verification/demo-rehearsal-*-2026-07-21.png`.
+- 검증: `.\scripts\demo_preflight.ps1` 통과(`FAIL=0`, 저장 분석 HEAD와 현재 repo HEAD 차이에 대한 예상 `WARN=1`). `.\.venv\Scripts\python.exe -m compileall src app.py scripts` 통과. `.\.venv\Scripts\python.exe -m pytest -q` 172개 통과. Home, Dashboard, AI Progress, Risk Analysis, Project Chat GraphRAG, AI Code Review screenshot capture와 기대/금지 문구 검증 통과. 사용자-facing 문구는 변경 diff와 과장형 표현 검색으로 별도 점검했습니다.
+
 ## 2026-06-29
 
 ### AI Progress 프로그램 단위 구현상태 기준 적용

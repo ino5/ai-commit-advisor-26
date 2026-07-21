@@ -146,6 +146,27 @@
 | P3 | Project Chat UX | Graph-aware question templates | Done | Graph-aware Project Chat question templates |
 | P3 | Reporting | Graph-aware weekly report | Done | Graph-aware weekly report |
 | P3 | Product UX | First-run and empty-state polish | Done | First-run and empty-state preparation guide |
+| P1 | Demo Readiness | Internal demo rehearsal and preflight hardening | Done | 내부 시연 리허설과 사전 점검 안정화 |
+
+## P1 - Internal Demo Rehearsal And Preflight Hardening
+
+Status: Done
+
+Goal:
+목요일 팀 내부 시연 전에 샘플 프로젝트의 핵심 화면과 local LLM/embedding 연결을 실제로 리허설하고, 준비 상태 오판과 로컬 실행 환경 문제를 발표 전에 확인할 수 있는 실행 기준을 정리한다.
+
+Rationale:
+검증 데이터와 발표자료가 이미 있어도, Windows 예약 포트 때문에 LM Studio API가 시작되지 않거나 Mapping 결과 행 수를 분석 완료 commit 수로 잘못 비교하면 시연 직전 Home이 불완전 상태처럼 보일 수 있다. 시연에서는 데이터를 다시 만드는 것보다 저장된 결과를 안정적으로 보여주고, 필요한 경우에만 대표 AI 호출을 실행하는 편이 안전하다.
+
+Checklist:
+
+- [x] PostgreSQL, Neo4j, local LLM, embedding, Streamlit 기동과 핵심 연결을 확인한다.
+- [x] Mapping 준비 상태가 분석 완료 commit 기준으로 계산되도록 수정하고 회귀 테스트를 추가한다.
+- [x] 샘플 프로젝트의 Home, Risk, AI Progress, Project Chat, GraphRAG, AI Code Review 핵심 흐름을 리허설한다.
+- [x] 내부 시연용 대본, 예상 질문, 장애 대응, 당일 체크리스트를 문서화한다.
+- [x] 실패 이력, engineering decision, `AI_CHANGELOG.md`를 갱신하고 전체 검증을 완료한다.
+
+Related AI Change Log: `내부 시연 리허설과 사전 점검 안정화`
 
 ## P1 - Program-Level AI Progress Basis
 

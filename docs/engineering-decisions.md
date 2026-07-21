@@ -22,6 +22,46 @@
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
 
+
+## 2026-07-21 - 소규모 시연은 저장된 검증 결과를 기본으로 하고 읽기 전용 preflight로 현재성을 확인한다
+
+### 배경
+
+소규모 참석자가 보는 local 시연은 대규모 발표가 아니어도 실행 환경의 영향을 그대로 받습니다. PostgreSQL, Neo4j, local LLM, embedding, Streamlit, Chrome 원격 데스크톱 중 하나만 준비되지 않아도 흐름이 끊깁니다. Git Sync, Mapping, source reindex, graph sync 같은 batch 작업은 데이터를 최신화하지만, 시연 직전에 실행하면 기존 분석 결과가 stale 상태로 바뀌거나 local model 응답을 기다리는 시간이 길어질 수 있습니다.
+
+### 결정
+
+- 기본 시연은 사전에 실제 provider로 검증해 저장한 Project Chat, GraphRAG, AI Code Review, PL Briefing 결과를 사용합니다.
+- 새 Project Chat이나 Code Review 호출은 `demo_preflight.ps1`가 `FAIL=0`을 반환하고 질문을 받은 경우에만 선택적으로 실행합니다.
+- preflight는 service를 시작하거나 데이터를 고치지 않습니다. Docker/DB/Neo4j/LM Studio/Streamlit/Chrome 원격 데스크톱 연결, model identifier, embedding dimension, 샘플 repo, 프로젝트 저장 결과, fallback 여부를 읽기 전용으로 확인합니다.
+- Mapping 준비 상태는 생성된 관계 행 수가 아니라 `GitCommit.mapping_analyzed_at`이 있는 분석 완료 commit 수로 판단합니다.
+- 저장 분석 HEAD와 현재 repo HEAD가 다르면 경고하고, 시연 중 Git Sync와 Mapping 재실행을 금지합니다. 최신성이 꼭 필요한 source 검색과 특정 commit Code Review는 별도로 현재 repo 기준 검증 결과를 준비합니다.
+- 시연 화면, 대본, 대체 자료의 pass condition을 문서에 숫자와 label로 고정합니다.
+
+### 이유
+
+- 시연의 목적은 batch 처리 시간을 보여주는 것이 아니라 계획-Git-source-관계-리뷰로 이어지는 제품 흐름을 설명하는 것입니다.
+- 실제 provider 결과를 저장해 두면 mock 결과를 보여주는 문제를 피하면서 local model의 일시적인 응답 지연과 문장 변동을 줄일 수 있습니다.
+- read-only preflight는 정상 데이터를 시연 직전에 바꾸지 않으면서 환경 누락을 빠르게 발견합니다.
+- 관계 행 수는 commit당 0개 또는 여러 개가 될 수 있어 분석 완료 여부를 나타내지 못합니다.
+
+### 검토한 대안
+
+- 시연 직전에 모든 데이터를 처음부터 재생성: 가장 최신 상태를 만들 수 있지만 LLM/embedding 실행 시간, model 변동, 중간 실패 위험이 큽니다.
+- 화면을 모두 PPT screenshot으로만 설명: 가장 안정적이지만 실제 앱의 근거 확장과 저장 이력 탐색을 보여주기 어렵습니다.
+- 모든 AI action을 live로 실행: 즉석성은 높지만 small local model 응답 시간과 출력 변동 때문에 핵심 흐름이 흐려질 수 있습니다.
+- health endpoint만 확인: 앱 process는 확인할 수 있지만 model identifier, vector dimension, stale source, graph readback, 저장 결과 품질은 놓칩니다.
+
+### 영향과 tradeoff
+
+시연 시작 전 확인할 항목과 문서가 늘어나지만, 실패 원인을 발표 중에 찾는 시간을 줄입니다. 저장 결과를 기본으로 사용하므로 live 실행의 즉흥성은 줄어듭니다. 또한 저장 분석 HEAD가 현재 repo HEAD와 다른 상태를 허용하는 것은 일반 운영 기준이 아니라 이번 검증 snapshot을 보존하기 위한 제한된 선택입니다. 실제 pilot에서는 Git Sync 이후 Mapping, 구현상태, Risk, source, graph를 같은 HEAD로 다시 생성해야 합니다.
+
+### 관련 문서
+
+- [내부 시연 Runbook](demo-runbook.md)
+- [사용 가이드 검증 결과](sample-project-usage-verification.md#2026-07-21-내부-시연-리허설)
+- [Failure History](failure-history.md#2026-07-21---내부-시연-리허설에서-실행-환경과-저장-근거의-불일치가-확인됐다)
+- `AI_CHANGELOG.md` 항목 `내부 시연 리허설과 사전 점검 안정화`
 ## 2026-06-29 - AI Progress는 커밋별 최고 상태가 아니라 프로그램 단위 구현상태 신호로 다룬다
 
 ### 배경
