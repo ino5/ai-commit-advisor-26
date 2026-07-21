@@ -9,7 +9,7 @@
 - 관리형 등록은 기본적으로 `github.com`, `gitlab.com`, `bitbucket.org`의 인증정보 없는 HTTPS URL만 허용합니다. `GIT_TERMINAL_PROMPT=0`과 Git 작업 timeout을 적용하고, 기존 서버 경로는 `..` segment 정규화 후 허용 root를 검사합니다. 기존 SSH/private repository 운영은 그대로 유지합니다.
 - 프로젝트 삭제 시 관리형 clone 폴더는 자동 삭제하지 않으며, 인증·사용자 소유권·quota가 없는 Quick Tunnel을 불특정 다수에게 상시 개방하지 않는다는 운영 경계를 문서화했습니다.
 - 주요 파일: `src/ui/project_page.py`, `src/services/git_remote_service.py`, `src/utils/repo_path.py`, `src/utils/config.py`, `docker-compose.yml`, `tests/test_repo_path.py`, `tests/test_git_remote_service.py`, `README.md`, `docs/feature-guide.md`, `docs/demo-user-guide.md`, `docs/sample-project-first-run-guide.md`, `docs/setup-and-operations.md`, `docs/git-repository-operating-model.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`.
-- 검증: `compileall` 통과, 경로·remote clone 집중 테스트 16개와 전체 테스트 186개 통과, `docker compose config --quiet` 통과. Docker mount는 `/host-dev RW=False`, `/managed-repos RW=True`로 확인했고, 컨테이너 서비스가 `https://github.com/octocat/Hello-World.git`을 관리형 host 경로에 실제 clone한 뒤 테스트 폴더를 정리했습니다. Playwright 실제 화면에서 새 프로젝트의 기본 관리형 필드와 기존 경로 field 전환을 확인했으며, 이 과정에서 radio를 form 밖으로 옮겨 즉시 전환되도록 보완했습니다. 최종 앱 health는 `200 ok`, DB 프로젝트는 기존 `Sample Shop Demo (#1)` 1건, 관리형 root는 빈 상태입니다.
+- 검증: `compileall` 통과, 경로·remote clone 집중 테스트 16개와 리베이스 후 전체 테스트 207개 통과, `docker compose config --quiet` 통과. Docker mount는 `/host-dev RW=False`, `/managed-repos RW=True`로 확인했고, 컨테이너 서비스가 `https://github.com/octocat/Hello-World.git`을 관리형 host 경로에 실제 clone한 뒤 테스트 폴더를 정리했습니다. Playwright 실제 화면에서 새 프로젝트의 기본 관리형 필드와 기존 경로 field 전환을 확인했으며, 이 과정에서 radio를 form 밖으로 옮겨 즉시 전환되도록 보완했습니다. 최종 앱 health는 `200 ok`, DB 프로젝트는 기존 `Sample Shop Demo (#1)` 1건, 관리형 root는 빈 상태입니다.
 
 ### 샘플 프로젝트 처음 시작 버튼 가이드
 
@@ -25,9 +25,9 @@
 - `Sample Shop Demo`를 유일한 프로젝트 `#1`로 다시 등록했습니다. Git commit 48건과 변경 파일 106건, 개발자 6명, 프로그램·개발계획 8건, 표준용어/표준단어 14건을 샘플 저장소와 `advisor_uploads` 파일에서 새로 저장했습니다.
 - 현재 소스 79건을 `local_openai:text-embedding-nomic-embed-text-v2-moe:retrieval-v1`로 다시 인덱싱했습니다. DB에는 새 profile vector 79건만 있으며 구형 embedding vector는 남아 있지 않습니다.
 - 실제 `qwen2.5-coder-7b-instruct`로 commit 48건 Mapping과 프로그램 구현상태 8건을 실행했습니다. program-commit 관계 38건, Risk Finding 32건, Knowledge Graph 213 nodes/590 edges를 만들고, Project Chat `#1`, commit `2325182` AI Code Review, PL Briefing을 새로 저장했습니다. Mapping 48건과 대표 AI 호출 3건은 모두 parsed 또는 valid이며 fallback은 0건입니다.
-- 현재 시연 기준에 맞춰 `scripts/demo_preflight.ps1`의 기본 project ID와 `docs/demo-runbook.md`의 프로젝트명, 저장 대화 ID, Mapping·Knowledge Graph 수치를 갱신했습니다. 날짜가 붙은 기존 검증 증적과 screenshot은 당시 실행 기록이므로 변경하지 않았습니다.
-- 주요 파일: `scripts/demo_preflight.ps1`, `docs/demo-runbook.md`, `AI_CHANGELOG.md`.
-- 검증: `.\scripts\demo_preflight.ps1 -ProjectId 1`은 `FAIL=0`, `WARN=0`으로 통과했습니다. PostgreSQL에는 프로젝트 1건, source/vector 79/79, embedding profile 1종만 있고, Neo4j readback은 213 nodes/590 edges입니다. Docker app health, LM Studio chat/embedding 실제 호출, 저장 분석 HEAD `221eb9ac9c83`, 샘플 저장소 clean 상태도 통과했습니다.
+- 현재 시연 기준에 맞춰 `scripts/demo_preflight.ps1`과 `scripts/demo_start.ps1`의 기본 project ID를 `1`로, 기동 스크립트의 embedding model을 `text-embedding-nomic-embed-text-v2-moe`로 맞췄습니다. Runbook의 프로젝트명, 저장 대화 ID, Mapping·Knowledge Graph 수치와 현재 사용 안내도 같은 기준으로 갱신했습니다. 날짜가 붙은 기존 검증 증적과 screenshot은 당시 실행 기록이므로 변경하지 않았습니다.
+- 주요 파일: `scripts/demo_preflight.ps1`, `scripts/demo_start.ps1`, `tests/test_demo_start_script.py`, `README.md`, `docs/demo-runbook.md`, `docs/setup-and-operations.md`, `AGENTS.md`, `ROADMAP.md`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
+- 검증: `.\scripts\demo_preflight.ps1 -ProjectId 1`은 `FAIL=0`, `WARN=0`으로 통과했습니다. PostgreSQL에는 프로젝트 1건, source/vector 79/79, embedding profile 1종만 있고, Neo4j readback은 213 nodes/590 edges입니다. Docker app health, LM Studio chat/embedding 실제 호출, 저장 분석 HEAD `221eb9ac9c83`, 샘플 저장소 clean 상태도 통과했습니다. 리베이스 뒤 `.\scripts\demo_start.ps1 -CheckOnly -SkipPreflight`는 project `1`, port `12345`, Chat context `8192`, Nomic v2와 health를 비파괴로 확인했고, startup·Quick Tunnel·Git·embedding·LLM 집중 테스트 40개와 전체 테스트 207개가 통과했습니다.
 
 ## 2026-07-21
 

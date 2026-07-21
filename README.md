@@ -33,7 +33,7 @@ python -m venv .venv
 .\scripts\demo_start.ps1
 ```
 
-스크립트는 현재 상태를 먼저 읽고 필요한 서비스만 시작합니다. LM Studio port `12345`, Chat model context length `8192`, embedding model, Docker 8501 health, project `2716`, preflight를 확인합니다. 실행 중인 Quick Tunnel이 있으면 `ai_commit_advisor_demo_tunnel`과 기존 이름 `ai_commit_advisor_quick_tunnel`을 모두 찾아 현재 URL을 재사용하며, 기본 실행만으로 새 Tunnel을 만들지 않습니다.
+스크립트는 현재 상태를 먼저 읽고 필요한 서비스만 시작합니다. LM Studio port `12345`, Chat model context length `8192`, embedding model, Docker 8501 health, project `1`, preflight를 확인합니다. 실행 중인 Quick Tunnel이 있으면 `ai_commit_advisor_demo_tunnel`과 기존 이름 `ai_commit_advisor_quick_tunnel`을 모두 찾아 현재 URL을 재사용하며, 기본 실행만으로 새 Tunnel을 만들지 않습니다.
 
 상황별 옵션은 다음과 같습니다.
 
@@ -48,7 +48,7 @@ python -m venv .venv
 .\scripts\demo_start.ps1 -StartTunnel
 ```
 
-일반 재기동은 image를 다시 만들지 않는 `docker compose up -d app`과 같습니다. `docker compose down`이나 `docker compose down -v`는 기존 DB와 Tunnel network를 불필요하게 건드리므로 시연 재기동에 사용하지 않습니다. Docker 앱은 `http://127.0.0.1:8501/?project_id=2716`에서 열며 local 8502를 동시에 실행하지 않습니다.
+일반 재기동은 image를 다시 만들지 않는 `docker compose up -d app`과 같습니다. `docker compose down`이나 `docker compose down -v`는 기존 DB와 Tunnel network를 불필요하게 건드리므로 시연 재기동에 사용하지 않습니다. Docker 앱은 `http://127.0.0.1:8501/?project_id=1`에서 열며 local 8502를 동시에 실행하지 않습니다.
 
 Docker에서 AI 호출 없이 화면과 DB 연결만 확인하려면 실행 전에 `.env`에 `DOCKER_LLM_PROVIDER=mock`, `DOCKER_EMBEDDING_PROVIDER=mock`, `DOCKER_PGVECTOR_DIMENSION=768`을 명시합니다. 실제 분석 결과를 확인할 때는 이 override를 제거합니다. host의 `127.0.0.1`은 컨테이너 자신을 가리키므로 Docker LM Studio 주소는 기본값 `http://host.docker.internal:12345/v1`을 유지하세요.
 

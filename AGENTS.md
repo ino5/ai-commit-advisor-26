@@ -265,7 +265,7 @@ When asked to start, restart, or check the prepared demo runtime, use the reposi
 - Do not create a new Quick Tunnel unless no Tunnel is running and the user needs an external URL. Check and reuse the current URL first.
 - Do not use `docker compose down`, `docker compose down -v`, delete volumes, reset the database, or start a second local Streamlit port as part of normal demo startup.
 - Treat Docker containers and host ports as shared across branches, worktrees, terminals, and Agent sessions.
-- The prepared demo contract is Docker `8501`, project `2716`, LM Studio `12345`, Chat context length `8192`, and embedding dimension `768`. If the repository docs or runtime disagree, stop and report the mismatch instead of silently choosing a different setup.
+- The prepared demo contract is Docker `8501`, project `1`, LM Studio `12345`, Chat context length `8192`, `text-embedding-nomic-embed-text-v2-moe`, and embedding dimension `768`. If the repository docs or runtime disagree, stop and report the mismatch instead of silently choosing a different setup.
 
 ## Verification Surface Selection
 

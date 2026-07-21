@@ -190,7 +190,7 @@ Related changelog: `Project Chat 초기 화면 지연 개선`
 Status: Done
 
 Goal:
-새 Agent 세션이나 운영자가 대화 맥락을 다시 설명하지 않아도 저장소의 한 가지 기동 절차만으로 LM Studio, Docker 8501, 기본 DB, 기존 Quick Tunnel과 project `2716`을 안전하게 확인하고 필요한 서비스만 시작할 수 있게 한다.
+새 Agent 세션이나 운영자가 대화 맥락을 다시 설명하지 않아도 저장소의 한 가지 기동 절차만으로 LM Studio, Docker 8501, 기본 DB, 기존 Quick Tunnel과 현재 기준 project `1`을 안전하게 확인하고 필요한 서비스만 시작할 수 있게 한다.
 
 Rationale:
 README, setup 가이드, 시연 Runbook의 LM Studio port와 기동 순서가 달랐고, 현재 실행 중인 legacy Tunnel container와 저장소 스크립트가 관리하는 container 이름도 달랐다. 상태를 먼저 확인하지 않고 문서의 명령을 그대로 실행하면 불필요한 image rebuild, 잘못된 port 사용, 두 번째 Quick Tunnel 생성과 URL 변경이 생길 수 있다.

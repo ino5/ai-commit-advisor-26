@@ -264,7 +264,7 @@ docker compose up -d app
 .\scripts\demo_start.ps1
 ```
 
-앱은 `http://127.0.0.1:8501/?project_id=2716`에서 열립니다. Compose의 `app` service는 `postgres` healthcheck가 통과하고 `neo4j` service가 시작된 뒤 기동합니다.
+앱은 `http://127.0.0.1:8501/?project_id=1`에서 열립니다. Compose의 `app` service는 `postgres` healthcheck가 통과하고 `neo4j` service가 시작된 뒤 기동합니다.
 
 실행 상태 확인:
 

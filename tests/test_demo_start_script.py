@@ -14,11 +14,11 @@ def _script_text() -> str:
 def test_demo_start_script_uses_canonical_demo_runtime_values():
     text = _script_text()
 
-    assert '$projectId = 2716' in text
+    assert '$projectId = 1' in text
     assert '$lmStudioPort = 12345' in text
     assert '$chatContextLength = 8192' in text
     assert 'qwen2.5-coder-7b-instruct' in text
-    assert 'text-embedding-nomic-embed-text-v1.5' in text
+    assert 'text-embedding-nomic-embed-text-v2-moe' in text
     assert 'http://127.0.0.1:8501/_stcore/health' in text
 
 

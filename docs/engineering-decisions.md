@@ -153,7 +153,7 @@ README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, 
 - `scripts/demo_start.ps1`을 시연 환경의 단일 기동 진입점으로 사용하고, `AGENTS.md`가 새 Agent 세션에도 같은 원칙을 적용하게 합니다.
 - 스크립트는 현재 Docker daemon, LM Studio, model, Docker 8501, Quick Tunnel 상태를 먼저 읽고 필요한 항목만 시작합니다.
 - 정상 재기동은 `docker compose up -d app`, image 변경 시에만 `-Build`, 실행 중인 Tunnel이 없고 외부 주소가 필요할 때만 `-StartTunnel`을 사용합니다.
-- 기준값은 project `2716`, LM Studio port `12345`, `qwen2.5-coder-7b-instruct` context length `8192`, `text-embedding-nomic-embed-text-v1.5`, `PGVECTOR_DIMENSION=768`로 고정합니다.
+- 현재 기준값은 재구축된 project `1`, LM Studio port `12345`, `qwen2.5-coder-7b-instruct` context length `8192`, `text-embedding-nomic-embed-text-v2-moe`, `PGVECTOR_DIMENSION=768`로 고정합니다. 처음 이 결정을 기록할 때의 project `2716`과 v1.5 embedding 기준은 2026-07-22 전체 초기화와 multilingual embedding 전환으로 대체됐습니다.
 - `scripts/quick_tunnel.py`는 canonical 이름과 legacy 이름을 모두 찾습니다. legacy container는 URL 확인과 재사용만 허용하고 ownership label이 없으므로 자동 제거하지 않습니다. 두 이름이 동시에 실행 중이면 주소를 임의로 고르지 않고 중단합니다.
 - 통합 script는 `docker compose down`, `docker compose down -v`, DB 삭제, volume 삭제를 실행하지 않습니다. `-CheckOnly`는 어떤 서비스도 시작하지 않습니다.
 

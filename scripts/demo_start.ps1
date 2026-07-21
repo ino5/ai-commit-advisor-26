@@ -15,13 +15,13 @@ $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $env:PYTHONIOENCODING = "utf-8"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$projectId = 2716
+$projectId = 1
 $lmStudioPort = 12345
 $chatModelIdentifier = "qwen2.5-coder-7b-instruct"
 $chatModelPath = "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
 $chatContextLength = 8192
-$embeddingModelIdentifier = "text-embedding-nomic-embed-text-v1.5"
-$embeddingModelPath = "nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf"
+$embeddingModelIdentifier = "text-embedding-nomic-embed-text-v2-moe"
+$embeddingModelPath = "text-embedding-nomic-embed-text-v2-moe"
 $appHealthUrl = "http://127.0.0.1:8501/_stcore/health"
 
 function Write-Step([string]$Message) {
