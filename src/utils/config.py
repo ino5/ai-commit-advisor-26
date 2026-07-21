@@ -13,7 +13,7 @@ class Settings(BaseSettings):
         default="postgresql+psycopg2://ai_user:ai_password@localhost:5432/ai_commit_advisor",
         alias="DATABASE_URL",
     )
-    pgvector_dimension: int = Field(default=1536, alias="PGVECTOR_DIMENSION")
+    pgvector_dimension: int = Field(default=768, alias="PGVECTOR_DIMENSION")
     llm_provider: str = Field(default="mock", alias="LLM_PROVIDER")
     llm_api_key: str | None = Field(default=None, alias="LLM_API_KEY")
     llm_model: str | None = Field(default=None, alias="LLM_MODEL")
@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     repo_storage_root: str | None = Field(default=None, alias="REPO_STORAGE_ROOT")
     repo_path_host_prefix: str | None = Field(default=None, alias="REPO_PATH_HOST_PREFIX")
     repo_path_container_prefix: str | None = Field(default=None, alias="REPO_PATH_CONTAINER_PREFIX")
+    managed_repo_storage_root: str | None = Field(default=None, alias="MANAGED_REPO_STORAGE_ROOT")
+    managed_repo_container_prefix: str | None = Field(default=None, alias="MANAGED_REPO_CONTAINER_PREFIX")
+    managed_git_allowed_hosts: str = Field(
+        default="github.com,gitlab.com,bitbucket.org",
+        alias="MANAGED_GIT_ALLOWED_HOSTS",
+    )
+    git_operation_timeout_seconds: int = Field(default=300, alias="GIT_OPERATION_TIMEOUT_SECONDS")
     neo4j_enabled: bool = Field(default=False, alias="NEO4J_ENABLED")
     neo4j_uri: str = Field(default="bolt://localhost:7687", alias="NEO4J_URI")
     neo4j_user: str = Field(default="neo4j", alias="NEO4J_USER")

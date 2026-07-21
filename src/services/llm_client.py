@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
+from typing import Protocol
 from urllib import request
 from urllib.error import HTTPError, URLError
 
@@ -12,6 +14,10 @@ from src.utils.config import settings
 class LLMResponse:
     text: str
     raw: dict
+
+
+class SupportsGenerate(Protocol):
+    def generate(self, prompt: str) -> LLMResponse: ...
 
 
 class LLMClient:
@@ -30,17 +36,33 @@ class LLMClient:
         self.api_key = settings.llm_api_key
         self.max_tokens = max_tokens
 
-    def generate(self, prompt: str) -> LLMResponse:
+    def generate(
+        self,
+        prompt: str,
+        *,
+        response_schema: dict | None = None,
+        response_schema_name: str = "structured_response",
+    ) -> LLMResponse:
         if self.provider == "mock":
             return LLMResponse(
                 text="Mock LLM response. 실제 매핑 분석은 local_openai 또는 다른 provider 설정 후 실행합니다.",
                 raw={"provider": self.provider, "model": self.model, "prompt_length": len(prompt)},
             )
         if self.provider == "local_openai":
-            return self._generate_local_openai(prompt)
+            return self._generate_local_openai(
+                prompt,
+                response_schema=response_schema,
+                response_schema_name=response_schema_name,
+            )
         raise NotImplementedError(f"LLM provider is not implemented yet: {self.provider}")
 
-    def _generate_local_openai(self, prompt: str) -> LLMResponse:
+    def _generate_local_openai(
+        self,
+        prompt: str,
+        *,
+        response_schema: dict | None = None,
+        response_schema_name: str = "structured_response",
+    ) -> LLMResponse:
         payload = {
             "model": self.model,
             "messages": [
@@ -54,6 +76,18 @@ class LLMClient:
             "max_tokens": self.max_tokens,
             "stream": False,
         }
+        if response_schema is not None:
+            schema_name = re.sub(r"[^a-zA-Z0-9_-]", "_", response_schema_name)[:64] or "structured_response"
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": schema_name,
+                    "strict": True,
+                    "schema": response_schema,
+                },
+            }
+        if "qwen3" in self.model.lower():
+            payload["reasoning_effort"] = "none"
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         headers = {"Content-Type": "application/json"}
         if self.api_key:
@@ -71,3 +105,20 @@ class LLMClient:
 
         text = raw.get("choices", [{}])[0].get("message", {}).get("content", "")
         return LLMResponse(text=text, raw={"provider": self.provider, "model": self.model, "response": raw})
+
+
+def generate_structured(
+    llm_client: SupportsGenerate,
+    prompt: str,
+    *,
+    schema: dict,
+    schema_name: str,
+) -> LLMResponse:
+    """Use JSON Schema with the built-in client without breaking injected test clients."""
+    if isinstance(llm_client, LLMClient):
+        return llm_client.generate(
+            prompt,
+            response_schema=schema,
+            response_schema_name=schema_name,
+        )
+    return llm_client.generate(prompt)

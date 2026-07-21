@@ -9,7 +9,8 @@ from typing import Iterable
 from sqlalchemy.orm import Session, joinedload
 
 from src.db.models import GitCommit, Program, ProgramCommitMapping, ProgramImplementationStatus
-from src.services.llm_client import LLMClient
+from src.services.llm_client import LLMClient, generate_structured
+from src.services.structured_output_schemas import PROGRAM_IMPLEMENTATION_SCHEMA
 
 
 STATUS_NOT_STARTED = "NOT_STARTED"
@@ -289,7 +290,12 @@ class ProgramImplementationAnalyzer:
         if mappings:
             prompt = _build_prompt(program, mappings)
             try:
-                response = self.llm_client.generate(prompt)
+                response = generate_structured(
+                    self.llm_client,
+                    prompt,
+                    schema=PROGRAM_IMPLEMENTATION_SCHEMA,
+                    schema_name="program_implementation_status",
+                )
                 payload = _parse_json(response.text)
                 raw_response = {
                     "llm": response.raw,

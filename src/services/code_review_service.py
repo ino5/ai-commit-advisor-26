@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from src.db.models import CodeReviewResult, Project
 from src.services.ai_invocation_service import record_ai_invocation
 from src.services.git_service import _run_git, is_git_repository
-from src.services.llm_client import LLMClient
+from src.services.llm_client import LLMClient, generate_structured
+from src.services.structured_output_schemas import CODE_REVIEW_SCHEMA
 
 
 MAX_REVIEW_DIFF_CHARS = 18000
@@ -280,7 +281,12 @@ class CodeReviewService:
         else:
             prompt = _build_review_prompt(target)
             try:
-                response = self.llm_client.generate(prompt)
+                response = generate_structured(
+                    self.llm_client,
+                    prompt,
+                    schema=CODE_REVIEW_SCHEMA,
+                    schema_name="ai_code_review",
+                )
                 payload = _normalize_review_payload(_parse_json_object(response.text))
                 payload = _postprocess_review_payload(target, payload)
                 raw_response = {"llm": response.raw, "text": response.text, "prompt_length": len(prompt)}

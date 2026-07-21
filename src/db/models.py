@@ -434,7 +434,7 @@ class VectorItem(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     chunk_id: Mapped[int] = mapped_column(ForeignKey("document_chunks.id", ondelete="CASCADE"), nullable=False)
     embedding_model: Mapped[str | None] = mapped_column(String(255))
-    # Dimension is controlled by PGVECTOR_DIMENSION until a production embedding model is selected.
+    # Dimension must match PGVECTOR_DIMENSION and the active embedding model output.
     embedding: Mapped[list[float] | None] = mapped_column(Vector(settings.pgvector_dimension))
     raw_metadata: Mapped[dict | None] = mapped_column(JSONB)
 
