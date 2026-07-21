@@ -27,6 +27,15 @@ class ReviewTarget:
     commit_message: str | None = None
 
 
+@dataclass(frozen=True)
+class ReviewCommitOption:
+    commit_hash: str
+    author_name: str
+    author_email: str
+    committed_at: datetime
+    message: str
+
+
 @dataclass
 class CodeReviewRunResult:
     review: CodeReviewResult | None = None
@@ -37,6 +46,45 @@ def _truncate_diff(diff_text: str) -> str:
     if len(diff_text) <= MAX_REVIEW_DIFF_CHARS:
         return diff_text
     return diff_text[:MAX_REVIEW_DIFF_CHARS] + "\n\n[diff truncated for review]"
+
+
+def list_reviewable_commits(repo_path: str | Path, limit: int = 50) -> list[ReviewCommitOption]:
+    if limit < 1 or limit > 200:
+        raise ValueError("커밋 조회 개수는 1~200 사이여야 합니다.")
+
+    repo = Path(repo_path).expanduser()
+    if not is_git_repository(repo):
+        raise ValueError(f"Git repository not found: {repo}")
+
+    try:
+        _run_git(repo, ["rev-parse", "--verify", "HEAD"])
+    except subprocess.CalledProcessError:
+        return []
+
+    output = _run_git(
+        repo,
+        [
+            "log",
+            f"--max-count={limit}",
+            "--format=%H%x1f%an%x1f%ae%x1f%aI%x1f%s",
+        ],
+    )
+    commits: list[ReviewCommitOption] = []
+    for line in output.splitlines():
+        fields = line.split("\x1f", 4)
+        if len(fields) != 5:
+            continue
+        commit_hash, author_name, author_email, committed_at, message = fields
+        commits.append(
+            ReviewCommitOption(
+                commit_hash=commit_hash.strip(),
+                author_name=author_name.strip(),
+                author_email=author_email.strip(),
+                committed_at=datetime.fromisoformat(committed_at.strip()),
+                message=message.strip(),
+            )
+        )
+    return commits
 
 
 def _parse_json_object(text: str) -> dict | None:

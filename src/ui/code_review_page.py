@@ -3,14 +3,19 @@ import streamlit as st
 
 from src.db.database import SessionLocal
 from src.db.models import Project
-from src.services.code_review_service import CodeReviewService, get_recent_code_reviews
+from src.services.code_review_service import (
+    CodeReviewService,
+    ReviewCommitOption,
+    get_recent_code_reviews,
+    list_reviewable_commits,
+)
 from src.ui.display_utils import key_value_dataframe
-from src.ui.project_context import require_project_context
+from src.ui.project_context import project_scoped_key, require_project_context
 
 
 TARGET_OPTIONS = {
     "최신 커밋 (권장)": "latest_commit",
-    "특정 커밋": "commit",
+    "커밋 목록에서 선택": "commit",
     "서버 작업트리 변경": "working_tree",
     "서버 Staged 변경": "staged",
 }
@@ -62,6 +67,13 @@ def _commit_analysis_display_rows(commit_analysis: dict) -> list[tuple[str, obje
         display_value = COMMIT_ANALYSIS_VALUE_LABELS.get(value, value) if isinstance(value, str) else value
         rows.append((label, display_value))
     return rows
+
+
+def _commit_option_label(commit: ReviewCommitOption) -> str:
+    committed_at = commit.committed_at.strftime("%Y-%m-%d %H:%M")
+    author = commit.author_name or commit.author_email or "작성자 미상"
+    message = commit.message or "메시지 없음"
+    return f"{commit.commit_hash[:12]} · {committed_at} · {author} · {message[:90]}"
 
 
 def _review_metadata_display_rows(review) -> list[tuple[str, object]]:
@@ -192,12 +204,42 @@ def render_code_review_page() -> None:
     target_label = st.radio("리뷰 대상", list(TARGET_OPTIONS.keys()), horizontal=True)
     target_type = TARGET_OPTIONS[target_label]
     st.caption(
-        "중앙 앱 서버 모델에서는 최신/특정 커밋 리뷰가 기본 흐름입니다. "
+        "중앙 앱 서버 모델에서는 최신 커밋 또는 목록에서 선택한 커밋 리뷰가 기본 흐름입니다. "
         "서버 작업트리와 서버 Staged 변경은 분석용 서버 clone에 임시 변경이 남아 있을 때만 사용하세요."
     )
     target_ref = None
     if target_type == "commit":
-        target_ref = st.text_input("커밋 해시 또는 rev", value="HEAD")
+        try:
+            commit_options = list_reviewable_commits(project.git_repo_path, limit=50)
+        except Exception as exc:
+            commit_options = []
+            st.warning(f"커밋 목록을 불러오지 못했습니다. commit hash 또는 rev를 직접 입력하세요: {exc}")
+
+        if commit_options:
+            use_manual_ref = st.checkbox(
+                "목록에 없는 commit hash 또는 rev 직접 입력",
+                key=project_scoped_key(project_id, "code_review_use_manual_ref"),
+                help="현재 branch의 최근 50개 이력 밖에 있는 commit이나 branch/tag 같은 rev를 리뷰할 때 사용합니다.",
+            )
+        else:
+            use_manual_ref = True
+            st.info("현재 branch에서 선택할 커밋을 찾지 못했습니다. commit hash 또는 rev를 직접 입력하세요.")
+
+        if use_manual_ref:
+            target_ref = st.text_input(
+                "커밋 해시 또는 rev",
+                placeholder="예: a1b2c3d4 또는 main~2",
+                key=project_scoped_key(project_id, "code_review_manual_ref"),
+            )
+        else:
+            selected_commit = st.selectbox(
+                "커밋 선택 (최근 50개)",
+                commit_options,
+                format_func=_commit_option_label,
+                key=project_scoped_key(project_id, "code_review_commit_selection"),
+            )
+            target_ref = selected_commit.commit_hash
+            st.caption(f"선택한 commit: `{selected_commit.commit_hash}`")
     elif target_type in {"working_tree", "staged"}:
         st.info("이 옵션은 앱 서버 Git 저장소의 local 변경을 리뷰합니다. 개발자 개인 PC의 작업트리나 staged 변경은 서버 앱에서 직접 볼 수 없습니다.")
 

@@ -2,6 +2,15 @@
 
 ## 2026-07-22
 
+### AI Code Review 커밋 목록 선택
+
+- `AI Code Review`의 `특정 커밋` hash 직접 입력 흐름을 `커밋 목록에서 선택`으로 바꿨습니다. 현재 branch의 최근 50개 commit을 실제 앱 서버 Git 저장소에서 읽어 짧은 hash, commit 시각, 작성자, 메시지와 함께 보여주며, 선택한 전체 hash를 리뷰 대상으로 전달합니다.
+- 최근 50개 밖의 commit, branch, tag, `main~2` 같은 rev는 `목록에 없는 commit hash 또는 rev 직접 입력`으로 계속 사용할 수 있습니다. 빈 저장소이거나 목록 조회가 실패해도 직접 입력으로 리뷰를 진행할 수 있게 했습니다.
+- Git 수집 DB 대신 실제 리뷰 대상 저장소에서 목록을 읽으므로, 저장소 HEAD가 DB 동기화보다 앞선 경우에도 화면 선택지와 실제 리뷰 가능한 commit이 일치합니다. 선택 상태는 프로젝트별 Streamlit key로 분리했습니다.
+- README와 기능 가이드에 목록 선택 흐름과 직접 입력 범위를 반영했으며, 설명은 실제 화면에서 확인할 정보와 사용자 동작을 중심으로 표현 점검했습니다.
+- 주요 파일: `src/services/code_review_service.py`, `src/ui/code_review_page.py`, `tests/test_code_review_commit_list.py`, `tests/test_code_review_korean_output.py`, `README.md`, `docs/feature-guide.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `python -m compileall -q src app.py` 통과, Code Review focused test 15개 통과, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 211개 통과. 임시 local Streamlit에서 `Sample Shop Demo (1)`의 최근 commit 목록을 열고 `085ee4d1575e`를 선택했을 때 전체 hash `085ee4d1575e4c274ed98fcba6f56c2f062e82cb`로 바뀌는 것을 Playwright로 확인했으며, 리뷰 실행이나 저장 데이터 변경은 하지 않았습니다.
+
 ### 샘플 Project Chat 한글 대화 복구
 
 - 제목과 첫 질문이 실제 `?` 문자로 저장된 Project Chat 세션 `#1`만 삭제하고, 기존 프로젝트·Mapping·embedding·Knowledge Graph 데이터는 유지했습니다. 삭제 전 PostgreSQL custom dump를 `C:\dev\ai-commit-advisor-backups\20260722-utf8-chat-recovery\pre-chat-session-1-recreate.dump`에 저장했으며 SHA-256은 `B7BC37840B5817B7280376C393C0361E19ED5CD4ED94E562807DB872ABD4A80C`입니다.

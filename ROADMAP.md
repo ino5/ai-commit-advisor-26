@@ -129,6 +129,7 @@
 | P1 | Code Review UX | Korean AI Code Review output and status labels | Done | AI Code Review 한국어 출력과 상태 표시 개선 |
 | P1 | Code Review Quality | Grounded Korean AI Code Review suggestions | Done | AI Code Review grounded suggestion 보정 |
 | P2 | Code Review UX | Compact AI Code Review metadata display | Done | AI Code Review 메타데이터 표시 compact화 |
+| P1 | Code Review UX | AI Code Review commit list selection | Done | AI Code Review 커밋 목록 선택 |
 | P2 | Sample Data / Demo Quality | Source-first sample project and demo verification guide | Done | Source-first sample project and demo verification guide |
 | P2 | Docs / Policy | Roadmap commit hash tracking cleanup | Done | Roadmap commit hash tracking cleanup |
 | P2 | UX / State | Project-scoped UI state namespacing | Done | Project-scoped UI state namespacing |
@@ -163,6 +164,20 @@
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
 | P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
 | P0 | Demo Operations | Canonical demo startup contract and legacy Tunnel reuse | Done | 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용 |
+
+## P1 - AI Code Review Commit List Selection
+
+Status: Done
+
+Goal: AI Code Review에서 특정 commit hash를 외부 화면에서 찾아 직접 입력하지 않고, 실제 앱 서버 Git 저장소의 최근 commit 목록을 확인해 리뷰 대상을 선택할 수 있게 한다.
+
+Rationale: 현재 `특정 커밋` 흐름은 hash 또는 rev를 알고 있어야 하므로 Git History와 AI Code Review 사이를 오가야 한다. 리뷰 대상 저장소에서 직접 읽은 commit hash, 시각, 작성자, 메시지를 한 목록에 보여주면 사용자는 대상을 확인한 뒤 바로 리뷰할 수 있고, Git 수집 DB가 저장소 HEAD보다 늦은 경우에도 실제 리뷰 가능한 이력과 선택지가 일치한다.
+
+- [x] 실제 리뷰 대상 Git 저장소에서 제한된 최근 commit 목록을 안전하게 조회한다.
+- [x] AI Code Review 화면에서 commit 정보가 보이는 선택 목록과 직접 rev 입력 fallback을 제공한다.
+- [x] 목록 조회와 표시 형식의 회귀 test를 추가한다.
+- [x] 사용자 가이드와 `AI_CHANGELOG.md`를 갱신하고 사용자 문구를 점검한다.
+- [x] focused test, compileall, 전체 test를 실행한다.
 
 ## P0 - Restore UTF-8 Sample Project Chat Evidence
 
