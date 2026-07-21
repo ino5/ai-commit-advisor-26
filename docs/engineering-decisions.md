@@ -21,6 +21,42 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-22 - Quick Tunnel은 명시적 종료 전까지 Docker 재시작 후 복구한다
+
+### 배경
+
+앱, PostgreSQL, Neo4j는 `restart=unless-stopped`로 실행됐지만 기존 Quick Tunnel은 restart policy가 `no`였습니다. Docker daemon이 재시작되자 내부 서비스는 복구됐지만 외부 URL만 중단됐습니다. 또한 같은 Quick Tunnel container를 다시 시작하면 이전 process와 현재 process의 URL이 한 로그에 함께 남아 과거 주소를 선택할 수 있었습니다.
+
+### 결정
+
+- `scripts/quick_tunnel.py`가 새로 만드는 전용 Tunnel container에 `restart=unless-stopped`를 적용합니다.
+- Tunnel은 사용자가 `stop`, `--stop-app` 또는 명시적인 `docker stop`을 요청한 경우에만 중지합니다.
+- URL은 container의 현재 `StartedAt` 이후 로그에서만 찾습니다. Docker daemon 재시작 뒤에는 `status`로 새 URL과 외부 health를 확인합니다.
+- ownership label이 없는 legacy container는 저장소 script가 자동 변경하지 않습니다. 현재 운영 중인 legacy container의 restart policy 변경은 사용자의 명시적 요청에 따른 일회성 운영 조치로 수행합니다.
+
+### 이유
+
+외부 접속은 앱과 같은 재기동 단위로 복구되어야 운영자가 Docker Desktop 재시작 때마다 Tunnel을 수동으로 찾지 않아도 됩니다. 반면 명시적으로 중지한 Tunnel까지 되살리면 공개 종료 의도를 어기므로 `always`가 아니라 `unless-stopped`를 사용합니다. 현재 process 로그로 범위를 제한하면 재시작 전 만료된 URL을 정상 주소로 오인하지 않습니다.
+
+### 검토한 대안
+
+- restart policy를 계속 `no`로 유지: Docker 재시작마다 외부 접속만 조용히 중단되므로 제외했습니다.
+- `restart=always`: 운영자가 명시적으로 중지한 뒤에도 Docker 재시작 시 다시 공개될 수 있어 제외했습니다.
+- 전체 container 로그에서 마지막 URL 사용: Docker stdout/stderr 수집 시점과 상태 조회 타이밍에 따라 이전 URL을 먼저 읽을 수 있어 제외했습니다.
+- Quick Tunnel을 영구 주소로 취급: URL과 uptime이 보장되지 않고 인증도 없으므로 제외했습니다.
+
+### 영향, tradeoff, 남은 한계
+
+Docker daemon이 재시작돼도 Tunnel process는 복구되지만 Quick Tunnel URL은 바뀔 수 있습니다. 외부 사용자에게는 `status`가 확인한 현재 URL을 다시 전달해야 합니다. 장기 고정 주소와 접근 제어가 필요하면 Named Tunnel과 Cloudflare Access 또는 별도 reverse proxy가 필요합니다.
+
+### 관련 문서
+
+- `README.md`
+- `docs/setup-and-operations.md`
+- `docs/demo-runbook.md`
+- `docs/failure-history.md`의 `Docker 재시작 뒤 Quick Tunnel만 복구되지 않았다`
+- `AI_CHANGELOG.md`의 `Quick Tunnel 자동 복구와 현재 URL 판별`
+
 ## 2026-07-22 - 기존 Git 경로와 관리형 clone 저장공간의 쓰기 권한을 분리한다
 
 ### 배경

@@ -263,6 +263,7 @@ When asked to start, restart, or check the prepared demo runtime, use the reposi
 - Use `scripts/demo_start.ps1` as the default startup entry point. Use `-CheckOnly` for a read-only status check.
 - Do not rebuild the app image unless the user asks for current source changes to be included or `-Build` is otherwise justified.
 - Do not create a new Quick Tunnel unless no Tunnel is running and the user needs an external URL. Check and reuse the current URL first.
+- Do not stop or remove a running Quick Tunnel unless the user explicitly asks to end external access. Repository-created Tunnel containers use `restart=unless-stopped`; after a Docker daemon restart, run `status` and report the newly issued current URL because a Quick Tunnel URL can change.
 - Do not use `docker compose down`, `docker compose down -v`, delete volumes, reset the database, or start a second local Streamlit port as part of normal demo startup.
 - Treat Docker containers and host ports as shared across branches, worktrees, terminals, and Agent sessions.
 - The prepared demo contract is Docker `8501`, project `1`, LM Studio `12345`, Chat context length `8192`, `text-embedding-nomic-embed-text-v2-moe`, and embedding dimension `768`. If the repository docs or runtime disagree, stop and report the mismatch instead of silently choosing a different setup.

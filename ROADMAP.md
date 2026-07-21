@@ -62,6 +62,7 @@
 | P2 | Docs / Presentation | AI Use Case internal share deck aspect and polish pass | Done | AI Use Case 내부 공유용 PPT 이미지 비율과 품질 보정 |
 | P2 | Ops | Application Dockerfile and deployment guide | Done | Application Dockerfile and deployment guide |
 | P2 | Demo Ops | Quick Tunnel demo runbook and script | Done | Cloudflare Quick Tunnel 하루 시연 절차 자동화 |
+| P1 | Demo Ops | Quick Tunnel restart persistence and active URL detection | Done | Quick Tunnel 자동 복구와 현재 URL 판별 |
 | P2 | Docs | Engineering decisions log | Done | Engineering decisions documentation log |
 | P2 | Ops | Feature screenshot capture automation | Done | Feature screenshot capture automation |
 | P2 | Docs | Architecture document path cleanup | Done | Architecture document path cleanup |
@@ -161,6 +162,26 @@
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
 | P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
 | P0 | Demo Operations | Canonical demo startup contract and legacy Tunnel reuse | Done | 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용 |
+
+## P1 - Quick Tunnel Restart Persistence And Active URL Detection
+
+Status: Done
+
+Goal:
+명시적인 종료 명령이 없는 한 Quick Tunnel이 Docker daemon 재시작 뒤 자동 복구되고, 이전 실행 로그의 만료된 URL이 아니라 현재 실행에서 발급된 URL을 상태 확인에 사용하게 한다.
+
+Rationale:
+기존 legacy Tunnel은 restart policy가 `no`여서 Docker daemon이 재시작된 뒤 앱과 DB만 복구되고 외부 접속은 중단됐다. 같은 container를 다시 시작하면 과거와 현재 Quick Tunnel URL이 로그에 함께 남아 상태 확인이 이전 URL을 선택할 수도 있다. 사용자가 Tunnel 종료를 명시하지 않은 정상 재기동에서는 외부 경로도 함께 복구되어야 한다.
+
+Checklist:
+
+- [x] 종료 시각, exit code, OOM 여부와 다른 container 시작 시각으로 중단 원인을 확인한다.
+- [x] 새 Quick Tunnel container에 `restart: unless-stopped`와 같은 Docker restart policy를 적용한다.
+- [x] 현재 container 실행 이후 로그에서만 Quick Tunnel URL을 선택한다.
+- [x] 기존 legacy Tunnel의 restart policy를 갱신하고 실제 외부 health를 확인한다.
+- [x] focused/full test, 문서, engineering decision, failure history와 `AI_CHANGELOG.md`를 갱신한다.
+
+Related changelog: `Quick Tunnel 자동 복구와 현재 URL 판별`
 
 ## P0 - Project Chat Initial Render Latency Reduction
 
