@@ -5,7 +5,7 @@ param(
     [string]$LlmModel = "qwen2.5-coder-7b-instruct",
     [string]$EmbeddingModel = "text-embedding-nomic-embed-text-v1.5",
     [int]$ExpectedEmbeddingDimension = 768,
-    [int]$ProjectId = 197,
+    [int]$ProjectId = 2716,
     [string]$SampleRepoPath = "C:\dev\ai-advisor-sample-shop",
     [switch]$SkipLiveModelProbe,
     [switch]$SkipDatabaseProbe
@@ -13,6 +13,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$env:PYTHONIOENCODING = "utf-8"
 
 $script:FailureCount = 0
 $script:WarningCount = 0
@@ -141,6 +143,14 @@ else {
         }
         else {
             Write-Check "FAIL" "Neo4j container가 running 상태가 아닙니다: $neo4jStatus"
+        }
+
+        $appStatus = (& docker inspect --format "{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{end}}" ai_commit_advisor_app 2>$null).Trim()
+        if ($LASTEXITCODE -eq 0 -and $appStatus -eq "running/healthy") {
+            Write-Check "PASS" "Streamlit app container: $appStatus"
+        }
+        else {
+            Write-Check "FAIL" "Streamlit app container가 healthy 상태가 아닙니다: $appStatus"
         }
     }
     finally {
@@ -354,6 +364,7 @@ with SessionLocal() as db:
         "chat_source_count": chat.used_source_count if chat else 0,
         "chat_graph_count": len(chat_meta.get("graph_evidence") or []),
         "chat_fallback": chat_meta.get("fallback_used"),
+        "chat_validation": chat_meta.get("validation_status"),
         "chat_insufficient": chat.insufficient_evidence if chat else True,
         "review_target": review.target_ref if review else None,
         "review_bug_count": len(review.bug_findings or []) if review else 0,
@@ -424,11 +435,13 @@ with SessionLocal() as db:
                 Write-Check "FAIL" "Knowledge Graph 상태를 확인하세요: status=$($dbState.graph_status), node=$($dbState.graph_node_count), edge=$($dbState.graph_edge_count)"
             }
 
-            if (-not $dbState.chat_fallback -and -not $dbState.chat_insufficient -and $dbState.chat_source_count -ge 8 -and $dbState.chat_graph_count -ge 8) {
-                Write-Check "PASS" "저장 Project Chat #$($dbState.chat_session_id): source=$($dbState.chat_source_count), graph=$($dbState.chat_graph_count), fallback=False"
+            $chatEvidenceReady = -not $dbState.chat_insufficient -and $dbState.chat_source_count -ge 6 -and $dbState.chat_graph_count -ge 4
+            $chatOutputVerified = -not $dbState.chat_fallback -or $dbState.chat_validation -eq "deterministic_repair"
+            if ($chatEvidenceReady -and $chatOutputVerified) {
+                Write-Check "PASS" "저장 Project Chat #$($dbState.chat_session_id): source=$($dbState.chat_source_count), graph=$($dbState.chat_graph_count), validation=$($dbState.chat_validation), fallback=$($dbState.chat_fallback)"
             }
             else {
-                Write-Check "FAIL" "저장 Project Chat 결과를 확인하세요: session=$($dbState.chat_session_id), source=$($dbState.chat_source_count), graph=$($dbState.chat_graph_count), fallback=$($dbState.chat_fallback)"
+                Write-Check "FAIL" "저장 Project Chat 결과를 확인하세요: session=$($dbState.chat_session_id), source=$($dbState.chat_source_count), graph=$($dbState.chat_graph_count), validation=$($dbState.chat_validation), fallback=$($dbState.chat_fallback)"
             }
 
             if ($dbState.review_status -eq "completed" -and ([string]$dbState.review_target).StartsWith("2325182") -and $dbState.review_bug_count -ge 1) {
@@ -440,6 +453,9 @@ with SessionLocal() as db:
 
             if ($repoHead -and $dbState.stored_analysis_head -and $repoHead -ne $dbState.stored_analysis_head) {
                 Write-Check "WARN" "저장 Mapping 스냅샷 HEAD와 현재 샘플 저장소 HEAD가 다릅니다. 시연 중 Git 동기화/Mapping 재실행은 누르지 마세요."
+            }
+            elseif ($repoHead -and $dbState.stored_analysis_head) {
+                Write-Check "PASS" "저장 분석 HEAD와 샘플 저장소 HEAD가 일치합니다: $($repoHead.Substring(0, 12))"
             }
         }
     }

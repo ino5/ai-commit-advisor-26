@@ -10,15 +10,15 @@ services:
         condition: service_started
     environment:
       DATABASE_URL: postgresql+psycopg2://ai_user:ai_password@postgres:5432/ai_commit_advisor
-      PGVECTOR_DIMENSION: "1536"
-      LLM_PROVIDER: mock
-      LLM_BASE_URL: http://host.docker.internal:1234/v1
-      LLM_API_KEY: ""
-      LLM_MODEL: qwen2.5-coder-7b-instruct
-      EMBEDDING_PROVIDER: mock
-      EMBEDDING_BASE_URL: http://host.docker.internal:1234/v1
-      EMBEDDING_API_KEY: ""
-      EMBEDDING_MODEL: text-embedding-nomic-embed-text-v1
+      PGVECTOR_DIMENSION: "${DOCKER_PGVECTOR_DIMENSION:-768}"
+      LLM_PROVIDER: "${DOCKER_LLM_PROVIDER:-local_openai}"
+      LLM_BASE_URL: "${DOCKER_LLM_BASE_URL:-http://host.docker.internal:12345/v1}"
+      LLM_API_KEY: "${DOCKER_LLM_API_KEY:-}"
+      LLM_MODEL: "${DOCKER_LLM_MODEL:-qwen2.5-coder-7b-instruct}"
+      EMBEDDING_PROVIDER: "${DOCKER_EMBEDDING_PROVIDER:-local_openai}"
+      EMBEDDING_BASE_URL: "${DOCKER_EMBEDDING_BASE_URL:-http://host.docker.internal:12345/v1}"
+      EMBEDDING_API_KEY: "${DOCKER_EMBEDDING_API_KEY:-}"
+      EMBEDDING_MODEL: "${DOCKER_EMBEDDING_MODEL:-text-embedding-nomic-embed-text-v1.5}"
       REPO_STORAGE_ROOT: "C:\\dev"
       REPO_PATH_HOST_PREFIX: "C:\\dev"
       REPO_PATH_CONTAINER_PREFIX: /host-dev
