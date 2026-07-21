@@ -31,6 +31,64 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-22 - AI Code Review 한국어 지시가 언어 검증 없이 통과했다
+
+분류:
+
+- AI Code Review
+- LLM output language
+- Validation and fallback
+
+관련 기능 및 문서:
+
+- `src/services/code_review_service.py`
+- `src/services/structured_output_schemas.py`
+- `ai_invocation_logs`
+- `docs/ai-technical-overview.md`
+
+증상:
+
+- AI Code Review prompt가 한국어 작성을 명시했지만 일부 실행에서 summary, 변경 의도, finding과 recommendation이 영어로 저장됐습니다.
+- JSON parsing이 성공했기 때문에 telemetry에는 `validation_status=parsed`로 기록되어 언어 불일치를 구분할 수 없었습니다.
+
+직접 원인:
+
+- `CODE_REVIEW_SCHEMA`는 설명 필드를 `string`으로만 정의하며 문자열 언어를 제한하지 않습니다.
+- `_normalize_review_payload()` 이후에는 한국어 여부를 검사하거나 보정하는 단계가 없었습니다.
+
+배경 또는 구조적 원인:
+
+- local model은 English system prompt, commit message, code identifier, Git diff처럼 영어 비중이 높은 입력을 함께 받습니다.
+- Structured Output을 JSON shape 보장으로 사용하면서 schema validation과 자연어 품질 validation을 구분하지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 기존 test는 prompt에 `Write all human-readable text values in Korean.` 문구가 포함됐는지만 확인했습니다.
+- 실제 영어 payload를 반환하는 fake LLM과 보정 실패 시 저장 결과·telemetry를 확인하는 회귀 test가 없었습니다.
+
+수정 내용:
+
+- 사용자 설명 필드의 한글 문자 수와 비율을 검사하고 영어 위주 결과에는 한국어 보정 호출을 한 번 추가했습니다.
+- 보정본이 finding/suggestion 구조와 기술 metadata를 유지할 때만 채택합니다.
+- 보정 실패 시 최초 영어 원문을 `completed` 리뷰로 저장·표시하고 `language_invalid` telemetry와 warning log를 남깁니다.
+
+재발 방지 규칙:
+
+- 자연어 출력 요구사항은 prompt 존재 test만으로 검증하지 않고 실제 위반 payload와 실패 fallback을 test합니다.
+- 언어, 형식, 근거 정확성처럼 서로 다른 validation 차원은 별도 상태로 기록합니다.
+- 표현 품질 문제만으로 유효한 분석 결과를 숨기지 않으며, 보정 단계가 원래 판단 구조를 바꾸지 못하게 합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- 한글 문자 비율은 English-only 결과를 찾기 위한 signal이며 한국어 문장의 자연스러움과 의미 보존을 완전히 판정하지 않습니다.
+- 실제 local model별 보정 성공률과 추가 latency/token은 운영 telemetry로 계속 확인해야 합니다.
+
+검증 명령과 결과:
+
+- Code Review focused test 11개가 통과했습니다. 영어 최초 응답의 보정 성공, 구조 변경 보정 거부, 영어 원문 유지, `status=completed`, `validation_status=language_invalid`, warning log를 확인했습니다.
+- 첫 전체 test에서는 warning text를 `caplog`로 수집하는 새 assertion이 focused 실행과 달리 process-global logging configuration의 영향을 받아 기록을 받지 못했습니다. 제품 logger call 자체를 직접 mock하는 assertion으로 바꿔 test를 logging handler 상태에서 격리했습니다.
+- 수정 후 `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 215개가 통과했습니다.
+
 ## 2026-07-22 - Project Chat 질문이 저장 전에 물음표로 변환됐다
 
 분류:

@@ -200,6 +200,8 @@ Local LLM/embedding 운영에서는 화면에서 한 번에 처리할 전체 수
 
 Mapping, 프로그램 구현상태, AI Code Review, PL Briefing은 기능별 schema를 `response_format.type=json_schema`로 전달합니다. Structured Output은 downstream validation과 fallback을 대체하지 않습니다. 응답이 잘리거나 모델이 schema를 지원하지 않거나 의미 검증을 통과하지 못하면 각 service의 기존 error/fallback 정책이 계속 적용됩니다. Project Chat은 JSON 저장 형태보다 자연어 citation, 현재 source 검증, 직접 호출 ledger 검사가 중요하므로 schema 강제 대상이 아닙니다.
 
+AI Code Review는 `summary`, 변경 의도, bug issue/recommendation, refactoring suggestion/benefit에서 한글 문자 수와 비율을 검사합니다. 영어 위주 결과는 동일한 JSON Schema로 한국어 보정을 한 번 요청하며, 보정본은 finding/suggestion 수와 순서, file, line, severity, impact scope, risk level이 최초 결과와 같을 때만 채택합니다. 언어 또는 구조 검증이 다시 실패하면 영어 최초 결과를 버리지 않고 `code_review_results.status=completed`로 저장해 사용자에게 보여줍니다. 대신 `raw_response.language_validation`, `ai_invocation_logs.validation_status=language_invalid`, `fallback_used=true`, application warning log로 추적합니다. 보정 성공은 `language_repaired`, 최초 결과가 이미 한국어면 `parsed`로 기록합니다. 이 정책은 설명 언어와 리뷰 내용의 유효성을 분리하며, 한글 비율 검사가 의미 정확성이나 자연스러운 번역을 보장하지는 않습니다.
+
 Qwen3 계열 local model에는 `reasoning_effort=none`을 전달합니다. 8GB 장비에서 내부 reasoning이 제한된 completion token과 지연시간을 소비하지 않게 하기 위한 설정이며, 실제 LM Studio 응답의 `reasoning_tokens=0`으로 확인합니다. 현재 운영 기본값은 VRAM 여유와 기존 feature 검증량을 고려해 `qwen2.5-coder-7b-instruct` context length 8192, parallel 1로 유지합니다.
 
 ## 추적성

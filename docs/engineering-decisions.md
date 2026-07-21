@@ -21,6 +21,41 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-22 - AI Code Review 언어 검증 실패는 리뷰 실패로 처리하지 않는다
+
+### 배경
+
+AI Code Review prompt는 사용자 설명을 한국어로 작성하라고 지시하지만, local model은 English system prompt, commit message, source identifier, diff 문맥의 영향을 받아 가끔 설명 전체를 영어로 반환합니다. JSON Schema는 응답 구조와 enum만 제한하고 자연어 언어를 강제하지 않으므로 기존 경로는 영어 결과도 `parsed`로 저장했습니다.
+
+### 결정
+
+- 사용자 설명 필드가 영어 위주이면 동일한 LLM과 JSON Schema로 한국어 보정을 한 번 시도합니다.
+- 보정본은 사용자 설명만 바뀌고 finding/suggestion 수, file, line, severity, impact scope, risk level이 유지될 때만 채택합니다.
+- 보정이 실패해도 최초 영어 리뷰는 화면과 저장 결과에 그대로 제공하고 `CodeReviewResult.status`는 `completed`로 유지합니다.
+- 언어 검증 실패는 `language_invalid`, 보정 성공은 `language_repaired`로 telemetry와 raw metadata에 기록하고 application warning log를 남깁니다.
+
+### 이유
+
+영어는 사용자가 원하는 기본 언어가 아니지만 리뷰 내용이 틀렸다는 증거는 아닙니다. 언어 보정 실패 때문에 이미 생성된 bug finding과 권장 조치를 숨기면 사용자 가치가 더 크게 줄어듭니다. 반대로 보정 LLM이 finding 구조나 위험도를 바꾼 결과를 조용히 채택하면 번역 단계가 리뷰 판단을 다시 쓰게 되므로, 구조 보존 검사가 필요합니다.
+
+### 검토한 대안
+
+- Prompt만 더 강하게 작성: 발생 빈도는 줄일 수 있지만 model instruction 준수를 보장하지 못해 제외했습니다.
+- 영어 결과를 전체 실패 처리: 유효한 리뷰 근거까지 숨기므로 제외했습니다.
+- 보정본을 구조 검사 없이 채택: 번역 호출이 finding을 추가·삭제하거나 위험도를 바꿀 수 있어 제외했습니다.
+- deterministic 번역 사전 사용: 자유로운 리뷰 문장을 안정적으로 번역할 수 없고 별도 번역 품질 문제가 생겨 제외했습니다.
+
+### 영향, tradeoff, 남은 한계
+
+영어 결과에는 LLM 호출이 한 번 추가되어 지연과 token 사용량이 늘어납니다. 한글 문자 비율은 English-only 결과를 찾는 보수적 signal이며 문장 자연스러움이나 의미 정확성을 증명하지 않습니다. 끝까지 영어인 결과도 사용자가 볼 수 있으므로 운영자는 `AI 운영 현황`의 validation metadata와 warning log로 반복 빈도를 확인해야 합니다.
+
+### 관련 문서
+
+- `docs/ai-technical-overview.md`
+- `docs/feature-guide.md`
+- `docs/failure-history.md`의 `AI Code Review 한국어 지시가 언어 검증 없이 통과했다`
+- `AI_CHANGELOG.md`의 `AI Code Review 한국어 보정과 영어 원문 fallback`
+
 ## 2026-07-22 - Quick Tunnel은 명시적 종료 전까지 Docker 재시작 후 복구한다
 
 ### 배경

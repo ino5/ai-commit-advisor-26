@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -11,11 +13,14 @@ from sqlalchemy.orm import Session
 from src.db.models import CodeReviewResult, Project
 from src.services.ai_invocation_service import record_ai_invocation
 from src.services.git_service import _run_git, is_git_repository
-from src.services.llm_client import LLMClient, generate_structured
+from src.services.llm_client import LLMClient, LLMResponse, SupportsGenerate, generate_structured
 from src.services.structured_output_schemas import CODE_REVIEW_SCHEMA
 
 
 MAX_REVIEW_DIFF_CHARS = 18000
+MIN_REVIEW_HANGUL_CHARS = 3
+MIN_REVIEW_HANGUL_RATIO = 0.1
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -40,6 +45,29 @@ class ReviewCommitOption:
 class CodeReviewRunResult:
     review: CodeReviewResult | None = None
     errors: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ReviewLanguageRepairResult:
+    payload: dict
+    validation_status: str
+    repair_attempted: bool
+    fallback_used: bool
+    initial_metrics: dict
+    final_metrics: dict
+    repair_response: LLMResponse | None = None
+    repair_prompt_length: int = 0
+    error_message: str | None = None
+
+    def metadata(self) -> dict:
+        return {
+            "validation_status": self.validation_status,
+            "repair_attempted": self.repair_attempted,
+            "fallback_used": self.fallback_used,
+            "initial_metrics": self.initial_metrics,
+            "final_metrics": self.final_metrics,
+            "error_message": self.error_message,
+        }
 
 
 def _truncate_diff(diff_text: str) -> str:
@@ -144,6 +172,169 @@ def _normalize_review_payload(payload: dict | None) -> dict:
             payload.get("refactoring_suggestions") if isinstance(payload.get("refactoring_suggestions"), list) else []
         ),
     }
+
+
+def _review_human_texts(payload: dict) -> list[str]:
+    texts = [str(payload.get("summary") or "")]
+    commit_analysis = payload.get("commit_analysis") or {}
+    if isinstance(commit_analysis, dict):
+        texts.append(str(commit_analysis.get("change_intent") or ""))
+    for finding in payload.get("bug_findings") or []:
+        if isinstance(finding, dict):
+            texts.extend(str(finding.get(key) or "") for key in ("issue", "recommendation"))
+    for suggestion in payload.get("refactoring_suggestions") or []:
+        if isinstance(suggestion, dict):
+            texts.extend(str(suggestion.get(key) or "") for key in ("suggestion", "benefit"))
+    return [text.strip() for text in texts if text.strip()]
+
+
+def _review_language_metrics(payload: dict) -> dict:
+    texts = _review_human_texts(payload)
+    joined = "\n".join(texts)
+    hangul_char_count = len(re.findall(r"[가-힣]", joined))
+    latin_char_count = len(re.findall(r"[A-Za-z]", joined))
+    letter_count = hangul_char_count + latin_char_count
+    hangul_ratio = round(hangul_char_count / letter_count, 4) if letter_count else 0.0
+    is_korean = (
+        not texts
+        or (
+            hangul_char_count >= MIN_REVIEW_HANGUL_CHARS
+            and hangul_ratio >= MIN_REVIEW_HANGUL_RATIO
+        )
+    )
+    return {
+        "is_korean": is_korean,
+        "text_count": len(texts),
+        "hangul_char_count": hangul_char_count,
+        "latin_char_count": latin_char_count,
+        "hangul_ratio": hangul_ratio,
+    }
+
+
+def _repair_preserves_review_structure(original: dict, candidate: dict) -> bool:
+    original_analysis = original.get("commit_analysis") or {}
+    candidate_analysis = candidate.get("commit_analysis") or {}
+    if any(
+        original_analysis.get(key) != candidate_analysis.get(key)
+        for key in ("impact_scope", "risk_level")
+    ):
+        return False
+
+    original_findings = original.get("bug_findings") or []
+    candidate_findings = candidate.get("bug_findings") or []
+    if len(original_findings) != len(candidate_findings):
+        return False
+    for original_finding, candidate_finding in zip(original_findings, candidate_findings):
+        if any(
+            original_finding.get(key) != candidate_finding.get(key)
+            for key in ("severity", "file", "line")
+        ):
+            return False
+
+    original_suggestions = original.get("refactoring_suggestions") or []
+    candidate_suggestions = candidate.get("refactoring_suggestions") or []
+    if len(original_suggestions) != len(candidate_suggestions):
+        return False
+    for original_suggestion, candidate_suggestion in zip(original_suggestions, candidate_suggestions):
+        if any(
+            original_suggestion.get(key) != candidate_suggestion.get(key)
+            for key in ("file", "line")
+        ):
+            return False
+    return True
+
+
+def _build_korean_repair_prompt(payload: dict) -> str:
+    original_json = json.dumps(payload, ensure_ascii=False, indent=2)
+    return f"""
+다음 AI Code Review JSON의 사용자 설명 필드만 자연스러운 한국어로 다시 작성하세요.
+
+수정할 필드:
+- summary
+- commit_analysis.change_intent
+- bug_findings[*].issue
+- bug_findings[*].recommendation
+- refactoring_suggestions[*].suggestion
+- refactoring_suggestions[*].benefit
+
+규칙:
+- JSON object 하나만 반환하고 key와 배열 순서를 유지하세요.
+- finding과 suggestion을 추가하거나 삭제하지 마세요.
+- impact_scope, risk_level, severity enum은 원래 English token을 그대로 유지하세요.
+- file, line, class, method, function, API, table, column, constant, code expression은 원문을 그대로 유지하세요.
+- 사실, 위험도, 권장 조치의 의미를 바꾸지 말고 설명 문장만 한국어로 고치세요.
+- 한국어 문장 안에서도 원문에 있는 기술 식별자와 짧은 English business term은 번역하지 마세요.
+
+원본 JSON:
+{original_json}
+""".strip()
+
+
+def _repair_review_language(
+    llm_client: SupportsGenerate,
+    target: ReviewTarget,
+    payload: dict,
+) -> ReviewLanguageRepairResult:
+    initial_metrics = _review_language_metrics(payload)
+    if initial_metrics["is_korean"]:
+        return ReviewLanguageRepairResult(
+            payload=payload,
+            validation_status="parsed",
+            repair_attempted=False,
+            fallback_used=False,
+            initial_metrics=initial_metrics,
+            final_metrics=initial_metrics,
+        )
+
+    repair_prompt = _build_korean_repair_prompt(payload)
+    repair_response: LLMResponse | None = None
+    try:
+        repair_response = generate_structured(
+            llm_client,
+            repair_prompt,
+            schema=CODE_REVIEW_SCHEMA,
+            schema_name="ai_code_review_korean_repair",
+        )
+        parsed_repair = _parse_json_object(repair_response.text)
+        if parsed_repair is None:
+            raise ValueError("한국어 보정 응답을 JSON으로 해석하지 못했습니다.")
+        repaired_payload = _normalize_review_payload(parsed_repair)
+        repaired_payload = _postprocess_review_payload(target, repaired_payload)
+        final_metrics = _review_language_metrics(repaired_payload)
+        structure_preserved = _repair_preserves_review_structure(payload, repaired_payload)
+        final_metrics = {**final_metrics, "structure_preserved": structure_preserved}
+        if final_metrics["is_korean"] and structure_preserved:
+            return ReviewLanguageRepairResult(
+                payload=repaired_payload,
+                validation_status="language_repaired",
+                repair_attempted=True,
+                fallback_used=True,
+                initial_metrics=initial_metrics,
+                final_metrics=final_metrics,
+                repair_response=repair_response,
+                repair_prompt_length=len(repair_prompt),
+            )
+        error_message = "한국어 보정 뒤에도 언어 또는 구조 검증을 통과하지 못했습니다."
+    except Exception as exc:
+        final_metrics = initial_metrics
+        error_message = str(exc)
+
+    logger.warning(
+        "AI Code Review Korean repair failed; preserving original review: target=%s reason=%s",
+        target.title,
+        error_message,
+    )
+    return ReviewLanguageRepairResult(
+        payload=payload,
+        validation_status="language_invalid",
+        repair_attempted=True,
+        fallback_used=True,
+        initial_metrics=initial_metrics,
+        final_metrics=final_metrics,
+        repair_response=repair_response,
+        repair_prompt_length=len(repair_prompt),
+        error_message=error_message,
+    )
 
 
 def _is_amount_zero_boundary_change(diff_text: str) -> bool:
@@ -314,6 +505,8 @@ class CodeReviewService:
             payload = _empty_review_payload("리뷰할 변경 사항이 없습니다.")
             raw_response = {"provider": self.llm_client.provider, "empty_diff": True}
             status = "completed"
+            validation_status = "not_applicable"
+            language_metadata = None
             prompt_length = 0
             response_length = 0
             fallback_used = False
@@ -322,6 +515,8 @@ class CodeReviewService:
             payload = _mock_review_payload(target)
             raw_response = {"provider": "mock", "target": target.title}
             status = "completed"
+            validation_status = "not_applicable"
+            language_metadata = None
             prompt_length = len(target.diff_text)
             response_length = len(json.dumps(payload, ensure_ascii=False))
             fallback_used = True
@@ -337,16 +532,35 @@ class CodeReviewService:
                 )
                 payload = _normalize_review_payload(_parse_json_object(response.text))
                 payload = _postprocess_review_payload(target, payload)
-                raw_response = {"llm": response.raw, "text": response.text, "prompt_length": len(prompt)}
+                language_result = _repair_review_language(self.llm_client, target, payload)
+                payload = language_result.payload
+                language_metadata = language_result.metadata()
+                raw_response = {
+                    "llm": response.raw,
+                    "text": response.text,
+                    "prompt_length": len(prompt),
+                    "language_validation": language_metadata,
+                }
+                if language_result.repair_response is not None:
+                    raw_response["language_repair"] = {
+                        "llm": language_result.repair_response.raw,
+                        "text": language_result.repair_response.text,
+                        "prompt_length": language_result.repair_prompt_length,
+                    }
                 status = "completed"
-                prompt_length = len(prompt)
-                response_length = len(response.text or "")
-                fallback_used = False
+                validation_status = language_result.validation_status
+                prompt_length = len(prompt) + language_result.repair_prompt_length
+                response_length = len(response.text or "") + len(
+                    (language_result.repair_response.text or "") if language_result.repair_response else ""
+                )
+                fallback_used = language_result.fallback_used
                 error_message = None
             except Exception as exc:
                 payload = _empty_review_payload(f"LLM 코드리뷰 호출 실패: {exc}")
                 raw_response = {"llm_error": str(exc)}
                 status = "failed"
+                validation_status = "failed"
+                language_metadata = None
                 prompt_length = len(prompt)
                 response_length = 0
                 fallback_used = True
@@ -376,14 +590,18 @@ class CodeReviewService:
             status=status,
             mode=target.target_type,
             fallback_used=fallback_used,
-            validation_status="parsed" if status == "completed" else "failed",
+            validation_status=validation_status,
             started_at=started_at,
             finished_at=finished_at,
             duration_ms=int((finished_at - started_at).total_seconds() * 1000),
             prompt_length=prompt_length,
             response_length=response_length,
             error_message=error_message,
-            raw_metadata={"target": target.title, "target_ref": target.target_ref},
+            raw_metadata={
+                "target": target.title,
+                "target_ref": target.target_ref,
+                "language_validation": language_metadata,
+            },
         )
         db.commit()
         db.refresh(review)
