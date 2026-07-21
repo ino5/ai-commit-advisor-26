@@ -4,7 +4,13 @@ import subprocess
 from pathlib import Path
 
 from src.db.models import Project
-from src.services.git_remote_service import clone_or_update_project_repository, validate_git_remote_url_for_storage
+from src.services import git_remote_service
+from src.services.git_remote_service import (
+    clone_or_update_project_repository,
+    validate_git_remote_url_for_storage,
+    validate_managed_git_remote_url_for_storage,
+)
+from src.utils import repo_path
 
 
 def _git(cwd: Path, *args: str) -> str:
@@ -129,3 +135,30 @@ def test_validate_git_remote_url_allows_ssh_user_without_password():
     assert validate_git_remote_url_for_storage("git@github.com:org/repo.git") is None
     assert validate_git_remote_url_for_storage("ssh://git@github.com/org/repo.git") is None
     assert validate_git_remote_url_for_storage("ssh://git:secret@github.com/org/repo.git") is not None
+
+
+def test_validate_managed_git_remote_url_allows_configured_public_https_host(monkeypatch):
+    monkeypatch.setattr(git_remote_service.settings, "managed_git_allowed_hosts", "github.com,gitlab.example.com")
+
+    assert validate_managed_git_remote_url_for_storage("https://github.com/example/repository.git") is None
+    assert validate_managed_git_remote_url_for_storage("git@github.com:example/repository.git") is not None
+    assert validate_managed_git_remote_url_for_storage("https://untrusted.example.com/example/repository.git") is not None
+    assert validate_managed_git_remote_url_for_storage("https://github.com/example/repository.git?token=secret") is not None
+
+
+def test_managed_clone_rejects_non_https_remote_before_running_git(monkeypatch, tmp_path: Path):
+    managed_root = tmp_path / "managed-root"
+    monkeypatch.setattr(repo_path.settings, "managed_repo_storage_root", str(managed_root))
+    monkeypatch.setattr(repo_path.settings, "managed_repo_container_prefix", None)
+    project = Project(
+        name="Managed",
+        git_repo_path=str(managed_root / "project-1"),
+        git_remote_url=str(tmp_path / "local-remote.git"),
+        git_branch="main",
+    )
+
+    result = clone_or_update_project_repository(project)
+
+    assert result.status == "failed"
+    assert "공개 HTTPS" in result.errors[0]
+    assert not managed_root.exists()

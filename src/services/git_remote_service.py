@@ -8,7 +8,8 @@ from urllib.parse import urlsplit
 
 from src.db.models import Project
 from src.services.git_service import get_head_commit_hash, is_git_repository
-from src.utils.repo_path import is_repo_path_allowed, resolve_repo_path
+from src.utils.config import settings
+from src.utils.repo_path import is_managed_repo_path, is_repo_path_allowed, resolve_repo_path
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,32 @@ def validate_git_remote_url_for_storage(remote_url: str) -> str | None:
         return "Git remote URL에 password를 포함할 수 없습니다. 서버 OS의 Git 인증 설정을 사용하세요."
     if parsed.scheme in {"http", "https"} and parsed.username:
         return "HTTPS Git remote URL에 인증정보를 포함할 수 없습니다. 서버 OS의 Git 인증 설정을 사용하세요."
+    return None
+
+
+def validate_managed_git_remote_url_for_storage(remote_url: str) -> str | None:
+    validation_error = validate_git_remote_url_for_storage(remote_url)
+    if validation_error:
+        return validation_error
+
+    normalized = remote_url.strip()
+    if not normalized:
+        return "Git remote URL을 입력해 주세요."
+
+    parsed = urlsplit(normalized)
+    if parsed.scheme != "https" or not parsed.hostname:
+        return "관리형 저장소는 공개 HTTPS Git URL만 사용할 수 있습니다."
+    if parsed.query or parsed.fragment:
+        return "관리형 Git remote URL에는 query parameter나 fragment를 포함할 수 없습니다."
+
+    allowed_hosts = {
+        host.strip().lower()
+        for host in settings.managed_git_allowed_hosts.split(",")
+        if host.strip()
+    }
+    if parsed.hostname.lower() not in allowed_hosts:
+        allowed_label = ", ".join(sorted(allowed_hosts)) or "설정된 host 없음"
+        return f"관리형 저장소에 허용되지 않은 Git host입니다. 허용 host: {allowed_label}"
     return None
 
 
@@ -60,6 +87,8 @@ class RepositorySyncLock:
 
 
 def _run_git(repo_path: Path, args: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
     return subprocess.run(
         ["git", "-c", f"safe.directory={repo_path.as_posix()}", *args],
         cwd=repo_path,
@@ -68,11 +97,15 @@ def _run_git(repo_path: Path, args: list[str], *, check: bool = True) -> subproc
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=env,
+        timeout=max(settings.git_operation_timeout_seconds, 1),
     )
 
 
 def _run_git_parent(parent: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
     parent.mkdir(parents=True, exist_ok=True)
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
     return subprocess.run(
         ["git", *args],
         cwd=parent,
@@ -81,6 +114,8 @@ def _run_git_parent(parent: Path, args: list[str]) -> subprocess.CompletedProces
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=env,
+        timeout=max(settings.git_operation_timeout_seconds, 1),
     )
 
 
@@ -111,7 +146,10 @@ def clone_or_update_project_repository(project: Project, *, force_reset: bool = 
     repo_path = resolve_repo_path(project.git_repo_path)
     branch = (project.git_branch or "main").strip() or "main"
     remote_url = project.git_remote_url.strip()
-    validation_error = validate_git_remote_url_for_storage(remote_url)
+    if is_managed_repo_path(project.git_repo_path):
+        validation_error = validate_managed_git_remote_url_for_storage(remote_url)
+    else:
+        validation_error = validate_git_remote_url_for_storage(remote_url)
     if validation_error:
         return RemoteSyncResult(
             status="failed",
@@ -133,7 +171,7 @@ def clone_or_update_project_repository(project: Project, *, force_reset: bool = 
                     repo_path=project.git_repo_path,
                     branch=branch,
                     head_after=head_after,
-                    messages=[f"cloned configured remote into {project.git_repo_path}", f"HEAD {_short_hash(head_after)}"],
+                    messages=[f"저장소 clone 완료: {project.git_repo_path}", f"HEAD {_short_hash(head_after)}"],
                 )
 
             if not is_git_repository(project.git_repo_path):
@@ -147,7 +185,7 @@ def clone_or_update_project_repository(project: Project, *, force_reset: bool = 
             head_before = get_head_commit_hash(project.git_repo_path)
             _run_git(repo_path, ["remote", "set-url", "origin", remote_url], check=False)
             _run_git(repo_path, ["fetch", "--prune", "origin"])
-            messages.append("fetched origin")
+            messages.append("origin fetch 완료")
 
             dirty_status = _git_output(repo_path, ["status", "--porcelain"], check=False)
             if dirty_status and not force_reset:
@@ -166,7 +204,7 @@ def clone_or_update_project_repository(project: Project, *, force_reset: bool = 
                 _run_git(repo_path, ["checkout", "-B", branch, f"origin/{branch}"])
             _run_git(repo_path, ["reset", "--hard", f"origin/{branch}"])
             head_after = get_head_commit_hash(project.git_repo_path)
-            messages.append(f"reset {branch} to origin/{branch}")
+            messages.append(f"{branch} branch를 origin/{branch} 기준으로 reset했습니다.")
             return RemoteSyncResult(
                 status="updated",
                 repo_path=project.git_repo_path,

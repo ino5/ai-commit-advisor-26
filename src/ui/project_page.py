@@ -4,7 +4,11 @@ from src.db.database import SessionLocal
 from src.db.init_db import init_db
 from src.db.models import Project
 from src.services.git_service import is_git_repository
-from src.services.git_remote_service import clone_or_update_project_repository, validate_git_remote_url_for_storage
+from src.services.git_remote_service import (
+    clone_or_update_project_repository,
+    validate_git_remote_url_for_storage,
+    validate_managed_git_remote_url_for_storage,
+)
 from src.services.project_management_service import (
     delete_project,
     get_project_delete_impact,
@@ -13,7 +17,17 @@ from src.services.project_management_service import (
 )
 from src.ui.git_status_panel import render_repository_status
 from src.ui.project_context import CURRENT_PROJECT_ID_KEY, load_projects, set_current_project_id
-from src.utils.repo_path import is_repo_path_allowed, repo_storage_root_label
+from src.utils.repo_path import (
+    build_managed_repo_path,
+    is_managed_repo_path,
+    is_repo_path_allowed,
+    managed_repo_storage_root_label,
+    repo_storage_root_label,
+)
+
+
+MANAGED_REPOSITORY_MODE = "Git URL에서 가져오기"
+EXISTING_REPOSITORY_MODE = "서버에 이미 있는 저장소 사용"
 
 
 def _render_project_delete_section(project: Project) -> None:
@@ -143,10 +157,16 @@ def _render_project_reset_section(project: Project) -> None:
 def _render_remote_repository_section(project: Project) -> None:
     st.divider()
     st.subheader("서버 저장소 clone/fetch")
-    st.caption(
-        "Git remote URL과 branch가 저장된 프로젝트는 앱 서버가 저장소 경로에 clone하거나 origin을 fetch/reset할 수 있습니다. "
-        "access token, SSH key, password는 앱에 저장하지 않으며 서버 OS의 Git 인증 설정을 사용합니다."
-    )
+    if is_managed_repo_path(project.git_repo_path):
+        st.caption(
+            "관리형 저장소는 앱 전용 쓰기 가능 폴더에서 clone/fetch/reset합니다. "
+            "인증정보가 없는 허용된 공개 HTTPS Git URL만 사용할 수 있습니다."
+        )
+    else:
+        st.caption(
+            "기존 서버 경로는 분석에 그대로 사용할 수 있습니다. clone/fetch 가능 여부는 해당 경로의 서버 쓰기 권한에 따르며, "
+            "access token, SSH key, password는 앱에 저장하지 않습니다."
+        )
     if not project.git_remote_url:
         st.info("Git remote URL을 저장하면 서버 저장소 clone/fetch를 사용할 수 있습니다.")
         return
@@ -185,14 +205,17 @@ def _render_remote_repository_section(project: Project) -> None:
 
 def render_project_page() -> None:
     st.title("프로젝트/Git 설정")
-    st.caption("프로젝트와 앱 서버에서 접근 가능한 Git 저장소 경로를 등록합니다.")
+    st.caption("프로젝트와 Git 저장소 준비 방식을 등록합니다.")
     st.info(
-        "Git 저장소 경로는 브라우저 사용자 PC가 아니라 현재 AI Commit Advisor 앱 서버 기준입니다. "
-        "사내 서버 운영에서는 서버에 clone된 저장소 경로를 입력하세요."
+        "브라우저 사용자 PC의 로컬 경로는 서버가 직접 읽을 수 없습니다. 공개 저장소는 `Git URL에서 가져오기`를 사용하고, "
+        "운영자가 서버에 준비한 저장소는 `서버에 이미 있는 저장소 사용`을 선택하세요."
     )
     storage_root = repo_storage_root_label()
     if storage_root:
-        st.caption(f"허용된 저장소 루트: {storage_root}")
+        st.caption(f"기존 서버 저장소 루트: {storage_root} (Docker 기본 구성에서는 읽기 전용)")
+    managed_storage_root = managed_repo_storage_root_label()
+    if managed_storage_root:
+        st.caption(f"Git URL 관리형 저장소 루트: {managed_storage_root}")
 
     projects = load_projects()
     project_options = ["새 프로젝트"] + [f"{project.id} - {project.name}" for project in projects]
@@ -208,17 +231,43 @@ def render_project_page() -> None:
         selected_id = int(selected.split(" - ", 1)[0])
         selected_project = next((project for project in projects if project.id == selected_id), None)
 
+    repository_modes = [EXISTING_REPOSITORY_MODE]
+    if managed_storage_root:
+        repository_modes.insert(0, MANAGED_REPOSITORY_MODE)
+    selected_mode = (
+        MANAGED_REPOSITORY_MODE
+        if managed_storage_root and (selected_project is None or is_managed_repo_path(selected_project.git_repo_path))
+        else EXISTING_REPOSITORY_MODE
+    )
+
+    repository_mode = st.radio(
+        "저장소 등록 방식",
+        repository_modes,
+        index=repository_modes.index(selected_mode),
+        horizontal=True,
+        key=f"project_repository_mode_{selected_project.id if selected_project else 'new'}",
+    )
+    managed_mode = repository_mode == MANAGED_REPOSITORY_MODE
+
     with st.form("project_form"):
         name = st.text_input("프로젝트명", value=selected_project.name if selected_project else "")
-        repo_path = st.text_input(
-            "앱 서버 Git 저장소 경로",
-            value=selected_project.git_repo_path if selected_project else "",
-            help="사용자 PC 경로가 아니라 Streamlit 앱이 실행 중인 서버에서 접근 가능한 Git 저장소 경로입니다.",
-        )
+        if managed_mode:
+            repo_path = selected_project.git_repo_path if selected_project and is_managed_repo_path(selected_project.git_repo_path) else ""
+            st.caption("서버 저장소 경로는 프로젝트를 저장할 때 자동으로 배정됩니다.")
+        else:
+            repo_path = st.text_input(
+                "앱 서버 Git 저장소 경로",
+                value=selected_project.git_repo_path if selected_project else "",
+                help="사용자 PC 경로가 아니라 Streamlit 앱이 실행 중인 서버에서 접근 가능한 Git 저장소 경로입니다.",
+            )
         remote_url = st.text_input(
-            "Git remote URL",
+            "공개 HTTPS Git URL" if managed_mode else "Git remote URL",
             value=selected_project.git_remote_url if selected_project else "",
-            help="선택 사항입니다. 저장하면 앱 서버가 이 URL을 사용해 저장소를 clone/fetch할 수 있습니다. 인증 정보는 저장하지 마세요.",
+            help=(
+                "GitHub, GitLab, Bitbucket의 인증정보 없는 공개 HTTPS clone URL을 입력합니다."
+                if managed_mode
+                else "선택 사항입니다. 서버 경로에 쓰기 권한이 있으면 이 URL로 clone/fetch할 수 있습니다. 인증 정보는 저장하지 마세요."
+            ),
         )
         branch = st.text_input(
             "Git branch",
@@ -226,7 +275,10 @@ def render_project_page() -> None:
             help="서버 저장소 clone/fetch/reset에 사용할 branch입니다.",
         )
         description = st.text_area("설명", value=selected_project.description if selected_project else "")
-        submitted = st.form_submit_button("프로젝트 저장", type="primary")
+        submitted = st.form_submit_button(
+            "저장소 준비 및 프로젝트 저장" if managed_mode else "프로젝트 저장",
+            type="primary",
+        )
 
     if not submitted:
         if selected_project:
@@ -242,18 +294,26 @@ def render_project_page() -> None:
     if not name.strip():
         st.error("프로젝트명을 입력해 주세요.")
         return
-    if repo_path.strip() and not is_repo_path_allowed(repo_path.strip()):
+    if managed_mode and not managed_storage_root:
+        st.error("관리형 Git 저장소 루트가 설정되지 않았습니다. 서버 운영 설정을 확인해 주세요.")
+        return
+    if not managed_mode and repo_path.strip() and not is_repo_path_allowed(repo_path.strip()):
         st.error("입력한 Git 저장소 경로가 허용된 저장소 루트 밖에 있습니다.")
         return
     remote_url_value = remote_url.strip()
-    remote_validation_error = validate_git_remote_url_for_storage(remote_url_value)
+    remote_validation_error = (
+        validate_managed_git_remote_url_for_storage(remote_url_value)
+        if managed_mode
+        else validate_git_remote_url_for_storage(remote_url_value)
+    )
     if remote_validation_error:
         st.error(remote_validation_error)
         return
-    if repo_path.strip() and not remote_url_value and not is_git_repository(repo_path.strip()):
+    if not managed_mode and repo_path.strip() and not remote_url_value and not is_git_repository(repo_path.strip()):
         st.error("앱 서버에서 입력한 경로를 실제 Git 저장소로 확인할 수 없습니다.")
         return
 
+    saved_project_values: dict[str, object]
     init_db()
     with SessionLocal() as db:
         if selected_project:
@@ -261,15 +321,44 @@ def render_project_page() -> None:
         else:
             project = Project(name=name.strip())
             db.add(project)
+            db.flush()
 
         project.name = name.strip()
-        project.git_repo_path = repo_path.strip() or None
+        if managed_mode:
+            project.git_repo_path = (
+                repo_path.strip()
+                if repo_path.strip() and is_managed_repo_path(repo_path.strip())
+                else build_managed_repo_path(int(project.id))
+            )
+        else:
+            project.git_repo_path = repo_path.strip() or None
         project.git_remote_url = remote_url_value or None
         project.git_branch = branch.strip() or None
         project.description = description.strip() or None
         db.commit()
         db.refresh(project)
         saved_project_id = int(project.id)
+        saved_project_values = {
+            "id": saved_project_id,
+            "name": project.name,
+            "git_repo_path": project.git_repo_path,
+            "git_remote_url": project.git_remote_url,
+            "git_branch": project.git_branch,
+        }
 
     set_current_project_id(saved_project_id)
-    st.success("프로젝트를 저장했습니다.")
+    if not managed_mode:
+        st.success("프로젝트를 저장했습니다.")
+        return
+
+    managed_project = Project(**saved_project_values)
+    with st.spinner("관리형 저장소를 clone/fetch하는 중입니다."):
+        result = clone_or_update_project_repository(managed_project)
+    for message in result.messages:
+        st.info(message)
+    if result.status in {"cloned", "updated"}:
+        st.success(f"프로젝트와 관리형 저장소를 준비했습니다. HEAD {result.head_after[:12] if result.head_after else '-'}")
+        return
+    st.warning("프로젝트 정보는 저장했지만 관리형 저장소를 준비하지 못했습니다. 아래 오류를 확인한 뒤 다시 실행해 주세요.")
+    for error in result.errors:
+        st.error(error)
