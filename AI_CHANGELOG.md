@@ -2,6 +2,14 @@
 
 ## 2026-07-21
 
+### Cloudflare Quick Tunnel 하루 시연 절차 자동화
+
+- 도메인이나 공유기 port forwarding 없이 샘플 화면을 하루 동안 외부에 공개할 때 사용할 `scripts/quick_tunnel.py`를 추가했습니다. `start`, `status`, `stop` 명령이 Docker 앱 확인, 임시 URL 추출, 로컬·외부 health 검증, 안전한 종료를 담당합니다.
+- Quick Tunnel은 Cloudflare 공식 `cloudflare/cloudflared` Docker image를 앱의 Compose network에 연결해 실행합니다. 기본 종료는 전용 label이 붙은 `ai_commit_advisor_demo_tunnel` container만 제거하고, `--stop-app`을 명시한 경우에도 PostgreSQL, Neo4j, volume은 유지합니다.
+- README와 운영 가이드에 실행 명령, 외부 주소 확인법, 동시 request와 SSE 제한, 인증 부재, 공용 네트워크 보안, 장애 대응, 종료 절차를 한국어로 정리했습니다.
+- Git branch나 worktree가 달라도 Docker daemon, container 이름, host port는 공유된다는 운영상 주의점을 가이드, engineering decision, failure history에 기록했습니다. 다른 개발 세션이 같은 runtime을 사용하는 동안에는 Tunnel을 다시 실행하지 않고 자동 테스트와 read-only 검증만 수행했습니다.
+- 주요 파일: `scripts/quick_tunnel.py`, `tests/test_quick_tunnel_script.py`, `README.md`, `docs/setup-and-operations.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `C:\dev\ai-commit-advisor\.venv\Scripts\python.exe -m py_compile scripts\quick_tunnel.py tests\test_quick_tunnel_script.py` 통과; focused test 8개 통과; `DATABASE_URL`, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock`을 명시한 전체 test 178개 통과; 최신 `main` 병합 후 같은 환경에서 전체 test 180개 통과; `docker compose --project-name ai-commit-advisor config -q` 통과; `scripts\quick_tunnel.py --help` 출력 확인; 중지 상태의 read-only `status --timeout 1`이 예상대로 종료 code `1`을 반환하는지 확인; Cloudflare 공식 Quick Tunnels와 connectivity pre-check 문서의 최신 제한 확인; 변경한 사용자 문서의 AI식 표현 점검 통과. 기본 `PGVECTOR_DIMENSION=1536`으로 실행한 첫 전체 test는 기존 DB column 768과 달라 2개가 실패했으며 원인과 정리 결과를 `docs/failure-history.md`에 기록했습니다.
 ### 새 프로젝트 전체 시연 재현과 단계별 증적
 
 - 기존 project 197과 Sample Shop 저장소를 보존하면서 동일한 Git 저장소를 검증용 새 프로젝트에 연결해 프로젝트 등록부터 Git 수집, 산출물 등록, Mapping, 구현상태, Risk, RAG/embedding, Knowledge Graph, Project Chat, AI Code Review, Dashboard까지 전체 흐름을 재현했습니다.

@@ -21,8 +21,55 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-21 - 하루 외부 시연은 저장소 스크립트와 별도 cloudflared container로 연다
 
+### 배경
 
+도메인이나 공유기 port forwarding을 준비하지 못한 환경에서도 샘플 데이터를 외부 참석자에게 하루 동안 보여줄 수 있어야 했습니다. Cloudflare Quick Tunnel 명령을 한 번 실행하는 것만으로도 외부 URL은 만들 수 있지만, 운영자가 Docker 앱 기동 순서, Compose network 이름, URL 추출, 외부 health 확인, 종료 범위를 기억해야 하면 Agent가 없는 다음 시연에서 같은 절차를 재현하기 어렵습니다.
+
+같은 저장소를 여러 터미널이나 Git worktree에서 다루는 경우 파일은 분리할 수 있어도 `ai_commit_advisor_app` 같은 Docker container와 port `8501`은 공유됩니다. 한 세션이 시연을 위해 앱을 다시 만들거나 중지하면 다른 개발 세션에 영향을 줄 수 있으므로 실행 명령뿐 아니라 runtime 소유 범위를 함께 정해야 했습니다.
+
+### 결정
+
+- `scripts/quick_tunnel.py`에 `start`, `status`, `stop` action을 제공하고 저장소 root에서 같은 명령으로 실행합니다.
+- Quick Tunnel은 호스트에 binary를 설치하지 않고 Cloudflare 공식 `cloudflare/cloudflared` Docker image를 별도 container로 실행합니다.
+- Tunnel container는 기존 app container의 Compose network에 연결하고 `http://app:8501`만 origin으로 사용합니다.
+- 스크립트는 Compose project 이름을 `ai-commit-advisor`로 고정해 저장소 directory나 worktree 이름에 따라 다른 volume/network가 만들어지지 않게 합니다.
+- 기본 `stop`은 `ai_commit_advisor_demo_tunnel`만 제거합니다. App 중지는 `--stop-app`을 명시한 경우에만 실행하며 PostgreSQL, Neo4j, volume은 건드리지 않습니다.
+- 시작 성공 기준은 local `/_stcore/health`와 발급된 `trycloudflare.com` 주소의 public `/_stcore/health`가 모두 `200 ok`인 상태입니다.
+- 여러 Git 세션은 Docker runtime을 공유한다는 사실을 운영 문서에 명시하고, 다른 세션과 실행 시점을 합의하지 않은 상태에서는 `start`나 `--stop-app`을 실행하지 않습니다.
+
+### 이유
+
+- Python 표준 라이브러리 기반 실행 스크립트는 Windows PowerShell에서 긴 Docker 명령을 다시 조합하는 실수를 줄이고 자동 테스트가 가능합니다.
+- 별도 `cloudflared` container는 host 설치, PATH, local `.cloudflared/config.yaml` 상태에 의존하지 않습니다.
+- Quick Tunnel을 기본 Compose service에 넣지 않으면 일반 개발용 `docker compose up`이 의도치 않게 앱을 인터넷에 공개하지 않습니다.
+- local health만 확인하면 Tunnel route나 Cloudflare 연결 실패를 놓칠 수 있으므로 public health까지 성공 조건으로 포함해야 합니다.
+- `docker compose down`을 사용하지 않고 전용 container만 제거하면 기존 분석 DB와 Neo4j read model을 유지할 수 있습니다.
+
+### 검토한 대안
+
+- `cloudflared`를 Windows host에 설치하고 터미널에서 직접 실행: 명령은 짧지만 설치 상태, PATH, config file, 터미널 종료 여부를 운영자가 관리해야 합니다.
+- Quick Tunnel을 `docker-compose.yml`의 상시 service로 추가: 시작은 쉬워지지만 평상시 Compose 실행만으로 공개 URL이 열릴 수 있고, 재시작 때 바뀐 URL을 찾기 어렵습니다.
+- 자체 도메인과 Named Tunnel 사용: 고정 주소와 Cloudflare Access가 필요한 장기 운영에는 맞지만, 주소 변경을 허용하는 하루 샘플 시연에는 준비 범위가 큽니다.
+- Worker와 Workers VPC로 `workers.dev` 주소 사용: 도메인 구매 없이 고정 주소를 만들 수 있지만 Beta 구성과 별도 Worker 운영이 추가됩니다.
+- 문서에 수동 명령만 기록: 구현은 없지만 network 탐색, URL parsing, health 확인, 안전한 종료를 매번 사람이 수행해야 합니다.
+
+### 영향, tradeoff, 남은 한계
+
+- Quick Tunnel은 주소, 가동 시간, 인증을 보장하지 않으므로 샘플 데이터 기반 단기 시연으로 범위를 제한합니다.
+- 기본 image는 `cloudflare/cloudflared:latest`이며 `--image` 또는 `CLOUDFLARED_IMAGE`로 검증한 version을 고정할 수 있습니다. 기본 사용은 간단하지만 완전한 image 재현성보다 최신 connector 사용을 우선합니다.
+- Compose 기본 port mapping은 계속 host interface에 publish됩니다. 스크립트는 경고만 표시하고 firewall이나 Compose를 자동 변경하지 않습니다.
+- Git worktree는 Docker runtime을 분리하지 않습니다. 동시에 독립된 앱을 실행하려면 Compose project, container name, host port, volume 전략을 별도로 설계해야 합니다.
+- 앱 서버, Docker Desktop, 인터넷 연결이 중지되면 Tunnel도 사용할 수 없습니다.
+
+### 관련 문서
+
+- `scripts/quick_tunnel.py`
+- `tests/test_quick_tunnel_script.py`
+- `docs/setup-and-operations.md`
+- `docs/failure-history.md`의 `같은 저장소의 동시 세션이 Docker demo runtime을 공유했다`
+- `AI_CHANGELOG.md` 항목 `Cloudflare Quick Tunnel 하루 시연 절차 자동화`
 
 ## 2026-07-21 - 동일 저장소의 새 프로젝트 검증은 격리 DB에서 수행한다
 

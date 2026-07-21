@@ -33,6 +33,14 @@ docker compose up -d --build
 
 Docker 앱은 `http://localhost:8501`에서 열립니다. 로컬 Python 실행과 Docker 앱 실행을 동시에 켜면 같은 port를 사용할 수 있으므로 한 방식만 선택하세요.
 
+도메인이나 공유기 port forwarding 없이 하루 동안 샘플 화면을 외부에 보여줘야 한다면 저장소에 포함된 Quick Tunnel 스크립트를 사용할 수 있습니다. 다른 개발 세션이 같은 Docker 앱을 사용 중이지 않은지 먼저 확인하세요.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quick_tunnel.py start --build
+```
+
+스크립트는 Docker 앱을 확인한 뒤 Cloudflare 공식 `cloudflared` container를 같은 Compose network에 연결하고, 발급된 `https://...trycloudflare.com` 주소와 외부 health 결과를 출력합니다. Quick Tunnel 주소에는 자체 로그인이 없고 가동 시간도 보장되지 않으므로 샘플 데이터 기반의 짧은 시연에만 사용하세요. 상태 확인, 종료, 장애 대응은 [하루 시연용 Cloudflare Quick Tunnel](docs/setup-and-operations.md#하루-시연용-cloudflare-quick-tunnel)을 따릅니다.
+
 로컬 Python Quick Start도 기본적으로 Neo4j를 함께 켭니다. Neo4j는 첫 image pull 때만 시간이 더 걸릴 수 있고, 이후에는 기존 Docker volume/image를 재사용합니다. 아주 가볍게 PostgreSQL만 켜고 싶다면 `docker compose up -d postgres`만 실행하고 `.env`에서 `NEO4J_ENABLED=false`로 바꾸세요. 이 경우 `Knowledge Graph` 화면은 PostgreSQL 데이터를 기준으로 preview만 보여주며, Neo4j 저장 동기화는 건너뜁니다.
 
 실제 LLM/RAG/Project Chat 품질을 검증하려면 로컬 LLM 설정 예시를 사용합니다.
