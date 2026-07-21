@@ -31,6 +31,65 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-22 - Project Chat 질문이 저장 전에 물음표로 변환됐다
+
+분류:
+
+- Project Chat
+- Korean text encoding
+- Sample data verification
+
+관련 기능 및 문서:
+
+- `project_chat_sessions`
+- `project_chat_messages`
+- `docs/demo-runbook.md`
+- `docs/sample-project-first-run-guide.md`
+
+증상:
+
+- 새로 재구축한 `Sample Shop Demo (#1)`의 첫 Project Chat 대화 제목과 사용자 질문에 한글 대신 실제 `?` 문자가 저장됐습니다.
+- 같은 대화의 assistant 답변과 이후 한글 메시지는 정상이어서 DB 전체 손상이나 PostgreSQL UTF-8 설정 오류처럼 보이지 않았습니다.
+
+직접 원인:
+
+- agent가 한글 질문을 PowerShell 5.1 기본 출력 인코딩이 적용되는 일회성 실행 경계로 전달했고, DB insert 전에 한글 일부가 `?`로 치환됐습니다.
+- PostgreSQL의 `server_encoding`과 `client_encoding`은 모두 UTF-8이었으므로 저장 계층이 정상 한글을 물음표로 바꾼 것이 아닙니다.
+
+배경 또는 구조적 원인:
+
+- 기존 대표 답변 검증은 assistant 답변의 source citation과 validation 상태를 중심으로 확인했습니다. 사용자 질문과 session title이 입력 원문과 같은지 저장 후 다시 읽어 비교하는 검증은 없었습니다.
+- `validation_status=valid`는 답변 근거 검증 상태이며 사용자 입력의 문자 보존을 보장하지 않지만, 시연 증거 점검에서 두 의미를 구분하지 못했습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- `demo_preflight.ps1`는 저장 답변의 source·graph·validation metadata를 확인했지만 사용자 질문의 UTF-8 왕복과 예상 문장 일치를 확인하지 않았습니다.
+- assistant 답변이 정상 한글이어서 저장소 전체 인코딩 문제는 아니라고 판단했지만, 손상된 사용자 입력을 대표 질문 증거에서 즉시 제외하지 않았습니다.
+
+수정 내용:
+
+- 삭제 전에 PostgreSQL custom dump를 `C:\dev\ai-commit-advisor-backups\20260722-utf8-chat-recovery\pre-chat-session-1-recreate.dump`에 저장하고 archive 목록과 SHA-256을 확인했습니다.
+- 프로젝트·Mapping·embedding·Knowledge Graph는 유지한 채 손상된 Project Chat 세션 `#1`만 삭제했습니다.
+- 실제 브라우저 UI에서 기준 한글 질문을 입력해 새 세션 `#32`를 만들고, 질문 원문과 답변을 DB에서 다시 읽어 검증했습니다.
+
+재발 방지 규칙:
+
+- 한글 demo 데이터를 만들 때 shell inline 문자열을 저장 경계로 사용하지 않고 실제 UI, UTF-8 파일 또는 명시적 UTF-8 subprocess 입력을 사용합니다.
+- 대표 AI 결과는 assistant 답변 검증과 별도로 사용자 질문 원문·session title·문자 수를 저장 후 다시 읽어 확인합니다.
+- `?`는 코드와 자연어에서 정상적으로 쓰일 수 있으므로 전역 차단하지 않습니다. 예상 원문과의 정확한 비교나 해당 시나리오에서 기대한 한글 비율처럼 범위가 정해진 검증을 사용합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- 이번 작업은 사용자 요청대로 Project Chat 세션 `#1`만 교체했으며 다른 애플리케이션 데이터는 수정하지 않았습니다.
+- 현재 `demo_preflight.ps1`는 저장 질문의 원문 일치까지 자동 검사하지 않습니다. 자동화가 필요하면 기준 질문을 별도 fixture로 관리하는 변경을 검토해야 합니다.
+
+검증 명령과 결과:
+
+- PostgreSQL readback: 세션 `#32`의 사용자 질문이 기준 문장과 완전 일치하고 `?` 문자는 0개였습니다.
+- 답변 저장 상태: `local_openai / qwen2.5-coder-7b-instruct`, source 6건, graph 4건, `validation_status=deterministic_repair`, `fallback_used=true`, `insufficient_evidence=false`였습니다.
+- 실제 샘플 소스의 호출 행과 답변을 대조했고 `PaymentController.authorize → PaymentService.authorize → OrderStatusService.markPaid → OrderStatusService.changeStatus → OrderStatusMapper` 흐름, 두 금액 거절 조건, 파일·행 인용이 일치했습니다.
+- `scripts/demo_preflight.ps1 -ProjectId 1`: `FAIL=0`, `WARN=0`. program 8, commit 48, source/vector 79/79, Knowledge Graph 213 nodes/590 edges가 유지됐습니다.
+
 ## 2026-07-22 - Docker 재시작 뒤 Quick Tunnel만 복구되지 않았다
 
 분류:
