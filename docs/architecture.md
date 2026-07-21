@@ -53,13 +53,13 @@ flowchart TB
 
 - 사용자는 브라우저에서 Python App의 `화면단`을 사용합니다.
 - `화면단`은 Streamlit page 묶음이고, 실제 수집·분석·저장은 `백단` Python service가 처리합니다.
-- `분석 대상 프로젝트`는 이 앱이 분석하는 별도 업무 시스템입니다. GitHub/사내 Git에서 앱 서버 clone으로 내려온 source와 업무 산출물이 입력이 됩니다.
+- `분석 대상 프로젝트`는 이 앱이 분석하는 별도 업무 시스템입니다. 운영자가 준비한 read-only 서버 경로 또는 앱이 전용 쓰기 영역에 clone한 공개 Git 저장소의 source와 업무 산출물이 입력이 됩니다.
 - `저장소`는 PostgreSQL + pgvector와 선택적 Neo4j로 나뉩니다. PostgreSQL은 업무 데이터, Git 수집 데이터, RAG vector, 분석 결과의 source of truth이고, Neo4j는 프로젝트 관계 탐색용 read model입니다.
 - `AI Provider`는 LLM 판단과 embedding 생성을 담당하고, 백단 service와 RAG가 필요할 때 호출합니다.
 
 ## 0.1 우리 프로젝트와 대상 프로젝트의 관계
 
-이 저장소(`ai-commit-advisor`)는 분석 도구 자체이고, 대상 프로젝트는 분석을 받는 별도 Git 프로젝트입니다. GitHub는 대상 프로젝트의 원격 저장소일 수 있지만, 앱은 GitHub API를 직접 분석 대상으로 삼지 않고 앱 서버에 clone/fetch된 대상 프로젝트의 Git 저장소를 읽습니다.
+이 저장소(`ai-commit-advisor`)는 분석 도구 자체이고, 대상 프로젝트는 분석을 받는 별도 Git 프로젝트입니다. GitHub는 대상 프로젝트의 원격 저장소일 수 있지만, 앱은 GitHub API를 직접 분석 대상으로 삼지 않고 앱 서버에서 읽을 수 있는 clone을 분석합니다. 기존 서버 경로는 read-only mount로 읽고, URL 등록 프로젝트는 별도의 managed repository mount에서 clone/fetch합니다.
 
 ```mermaid
 flowchart LR
@@ -216,7 +216,7 @@ flowchart LR
 ### 주요 화면 역할
 
 - `Home`: 사이드바에서 선택한 현재 프로젝트의 핵심 지표, AI 진척도, 리스크 프로그램, first-run/empty-state 다음 준비 작업 요약.
-- `Project`: 프로젝트 이름, 설명, 앱 서버에서 접근 가능한 Git 저장소 경로, Git remote URL/branch 관리, 서버 저장소 clone/fetch, 분석 데이터 초기화, 프로젝트 삭제. 프로젝트 저장 후 사이드바 현재 프로젝트 선택과 동기화하고, 프로젝트 삭제 후에는 남은 프로젝트로 현재 선택을 복구한다.
+- `Project`: 기존 서버 저장소 경로 등록과 관리형 공개 HTTPS Git URL 등록을 구분하고, 관리형 경로 자동 배정, clone/fetch, 분석 데이터 초기화, 프로젝트 삭제를 제공한다. 프로젝트 저장 후 사이드바 현재 프로젝트 선택과 동기화하고, 프로젝트 삭제 후에는 남은 프로젝트로 현재 선택을 복구한다.
 - `개발자 현황`: Git author 기반 개발자 자동 추출, 통계, role/skills 관리. 자동 추출된 author는 전역 개발자 마스터에 저장하고 현재 프로젝트 연결도 함께 생성한다.
 - `개발자 목록`: 현재 프로젝트에 연결된 개발자 조회를 기본으로 제공하고, 전역 개발자 마스터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기를 지원한다.
 - `Program`: 프로그램 현재 데이터 조회, 직접 추가/수정/삭제, Excel 양식 다운로드, 업로드 전 검증/미리보기, 컬럼 매핑, 저장.

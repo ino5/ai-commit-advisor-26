@@ -3,9 +3,9 @@ param(
     [string]$AppUrl = "http://127.0.0.1:8501",
     [string]$LlmBaseUrl = "http://127.0.0.1:12345/v1",
     [string]$LlmModel = "qwen2.5-coder-7b-instruct",
-    [string]$EmbeddingModel = "text-embedding-nomic-embed-text-v1.5",
+    [string]$EmbeddingModel = "text-embedding-nomic-embed-text-v2-moe",
     [int]$ExpectedEmbeddingDimension = 768,
-    [int]$ProjectId = 2716,
+    [int]$ProjectId = 1,
     [string]$SampleRepoPath = "C:\dev\ai-advisor-sample-shop",
     [switch]$SkipLiveModelProbe,
     [switch]$SkipDatabaseProbe
@@ -289,6 +289,8 @@ else {
 import json
 import sys
 
+from sqlalchemy import func
+
 from src.db.database import SessionLocal
 from src.db.models import (
     CodeReviewResult,
@@ -301,6 +303,7 @@ from src.db.models import (
     ProjectGraphSyncState,
     VectorItem,
 )
+from src.rag.embedding_client import EmbeddingClient
 from src.utils.config import settings
 
 project_id = int(sys.argv[1])
@@ -313,14 +316,17 @@ with SessionLocal() as db:
         DocumentChunk.project_id == project_id,
         DocumentChunk.source_type == "source_file",
     )
+    embedding_storage_key = EmbeddingClient().embedding_model_name
     vector_count = (
-        db.query(VectorItem)
+        db.query(func.count(func.distinct(VectorItem.chunk_id)))
         .join(DocumentChunk, VectorItem.chunk_id == DocumentChunk.id)
         .filter(
             DocumentChunk.project_id == project_id,
             DocumentChunk.source_type == "source_file",
+            VectorItem.embedding_model == embedding_storage_key,
         )
-        .count()
+        .scalar()
+        or 0
     )
     graph = db.query(ProjectGraphSyncState).filter(ProjectGraphSyncState.project_id == project_id).one_or_none()
     chat = (
@@ -344,6 +350,7 @@ with SessionLocal() as db:
         "llm_base_url": settings.llm_base_url,
         "embedding_provider": settings.embedding_provider,
         "embedding_model": settings.embedding_model,
+        "embedding_storage_key": embedding_storage_key,
         "embedding_base_url": settings.embedding_base_url,
         "pgvector_dimension": settings.pgvector_dimension,
         "neo4j_enabled": settings.neo4j_enabled,
@@ -422,7 +429,7 @@ with SessionLocal() as db:
             }
 
             if ($dbState.source_count -ge 79 -and $dbState.vector_count -eq $dbState.source_count) {
-                Write-Check "PASS" "현재 소스 검색 준비: $($dbState.vector_count)/$($dbState.source_count)"
+                Write-Check "PASS" "현재 소스 검색 준비: $($dbState.vector_count)/$($dbState.source_count), profile=$($dbState.embedding_storage_key)"
             }
             else {
                 Write-Check "FAIL" "현재 소스 검색 준비가 부족합니다: vector=$($dbState.vector_count), source=$($dbState.source_count)"

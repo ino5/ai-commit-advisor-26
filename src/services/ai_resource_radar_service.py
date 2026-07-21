@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from src.db.models import GitCommit, PLBriefingHistory, Program, ProgramCommitMapping, RiskFinding
 from src.services.ai_invocation_service import record_ai_invocation
-from src.services.llm_client import LLMClient
+from src.services.llm_client import LLMClient, generate_structured
+from src.services.structured_output_schemas import PL_BRIEFING_SCHEMA
 from src.services.resource_metrics_service import ProgramResourceMetric, ResourceMetricsSummary
 
 
@@ -589,7 +590,12 @@ def generate_pl_briefing(radar: ResourceRadar, llm_client: BriefingLLM | None = 
         )
     prompt = _build_briefing_prompt(radar)
     try:
-        response = llm.generate(prompt)
+        response = generate_structured(
+            llm,
+            prompt,
+            schema=PL_BRIEFING_SCHEMA,
+            schema_name="pl_weekly_briefing",
+        )
     except Exception as exc:
         return _fallback_briefing(
             radar,
@@ -615,7 +621,12 @@ def generate_pl_briefing(radar: ResourceRadar, llm_client: BriefingLLM | None = 
         repair_prompt = _build_briefing_repair_prompt(raw_text, errors)
         prompt_length += len(repair_prompt)
         try:
-            repair_response = llm.generate(repair_prompt)
+            repair_response = generate_structured(
+                llm,
+                repair_prompt,
+                schema=PL_BRIEFING_SCHEMA,
+                schema_name="pl_weekly_briefing_repair",
+            )
             repair_text = (getattr(repair_response, "text", "") or "").strip()
             repair_raw = getattr(repair_response, "raw", None)
             response_length += len(repair_text)

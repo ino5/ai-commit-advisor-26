@@ -10,15 +10,15 @@
 | 압축 시간 | 5분 |
 | 실행 위치 | 발표 PC의 Docker Streamlit |
 | 접속 방식 | Chrome 원격 데스크톱 |
-| 앱 URL | `http://127.0.0.1:8501/?project_id=2716` |
-| 시연 프로젝트 | `Sample Shop 전체 시연 검증 2026-07-21` (`project_id=2716`) |
+| 앱 URL | `http://127.0.0.1:8501/?project_id=1` |
+| 시연 프로젝트 | `Sample Shop Demo` (`project_id=1`) |
 | 샘플 저장소 | `C:\dev\ai-advisor-sample-shop`, 48 commits |
 | Chat model | `qwen2.5-coder-7b-instruct` |
-| Embedding model | `text-embedding-nomic-embed-text-v1.5`, 768 dimensions |
+| Embedding model | `text-embedding-nomic-embed-text-v2-moe` (`Q8_0`), 768 dimensions |
 | LM Studio endpoint | host `http://127.0.0.1:12345/v1`, Docker `http://host.docker.internal:12345/v1` |
 | LLM context length | 8192 |
 
-기본 원칙은 저장된 검증 결과를 안정적으로 보여주는 것입니다. 시연 중에는 `Git 동기화`, `Mapping 실행`, `리스크 분석 실행`, `전체 소스 다시 읽기`, `Neo4j 동기화`를 누르지 않습니다. 이 작업들은 저장된 분석 상태를 바꾸거나 수 분 이상 걸릴 수 있습니다. 새 Project Chat 질문도 기본 동선에서는 실행하지 않고, 미리 검증한 저장 대화 `#429`를 보여줍니다.
+기본 원칙은 저장된 검증 결과를 안정적으로 보여주는 것입니다. 시연 중에는 `Git 동기화`, `Mapping 실행`, `리스크 분석 실행`, `전체 소스 다시 읽기`, `Neo4j 동기화`를 누르지 않습니다. 이 작업들은 저장된 분석 상태를 바꾸거나 수 분 이상 걸릴 수 있습니다. 새 Project Chat 질문도 기본 동선에서는 실행하지 않고, 미리 검증한 저장 대화 `#1`을 보여줍니다.
 
 ## 새 프로젝트로도 시연할 수 있나
 
@@ -37,7 +37,7 @@
 9. 새 project ID로 `demo_preflight.ps1`를 실행하고 `FAIL=0`인지 확인합니다.
 
 ```powershell
-$demoProjectId = 2716  # 프로젝트/Git 설정 화면에서 확인한 실제 ID로 변경
+$demoProjectId = 1  # 프로젝트/Git 설정 화면에서 확인한 실제 ID로 변경
 .\scripts\demo_preflight.ps1 -ProjectId $demoProjectId
 ```
 
@@ -53,10 +53,10 @@ $demoProjectId = 2716  # 프로젝트/Git 설정 화면에서 확인한 실제 I
 | Dashboard | 계획 90.6%, AI Progress 50.0%, 차이 40.6% | 40.6%p는 지연 확정값이 아니라 검토가 필요한 차이입니다. |
 | AI Progress | 최신 구현상태 분석 8건, Mapping 참고값 분리 | AI가 완료를 승인하는 화면이 아닙니다. |
 | Risk Analysis | Finding 32건: HIGH 8, MEDIUM 15, LOW 9 | 규칙과 저장 근거가 만든 검토 목록입니다. |
-| Project Chat | source 79, vector 79, 코드 `최신`, graph `최신` | 저장 대화 `#429`를 선택합니다. |
-| Project Chat `#429` | 실제 답변 source 6건, graph 4건, `deterministic_repair` | 모델 응답이 직접 호출 검증을 통과하지 못해 현재 소스로 안전하게 재구성됐음을 함께 설명합니다. |
+| Project Chat | source 79, vector 79, 코드 `최신`, graph `최신` | 저장 대화 `#1`을 선택합니다. |
+| Project Chat `#1` | 실제 답변 source 6건, graph 4건, 검증 `valid` | local LLM 답변이 현재 소스 근거 검증을 통과했고 fallback 없이 저장됐습니다. |
 | AI Code Review | commit `2325182`, 위험도 보통, bug finding 1건 | 모델 결과는 리뷰 후보이며 최종 결함 판정은 사람이 합니다. |
-| Knowledge Graph | node 213, edge 591 | vector 검색과 달리 program-commit-file-class 관계를 확인하는 용도입니다. |
+| Knowledge Graph | node 213, edge 590 | vector 검색과 달리 program-commit-file-class 관계를 확인하는 용도입니다. |
 
 ## 10~12분 기본 시나리오
 
@@ -66,7 +66,7 @@ $demoProjectId = 2716  # 프로젝트/Git 설정 화면에서 확인한 실제 I
 
 > 오늘은 개발계획과 Git 변경 이력을 연결해서, 진척도와 위험 신호를 어떤 근거로 확인할 수 있는지 보여드리겠습니다. 운영 전환 제안보다는 이번 AX Use Case에서 실제로 구현하고 검증한 범위를 짧게 공유드리겠습니다.
 
-화면은 `Home`에서 시작합니다. 현재 프로젝트가 `Sample Shop 전체 시연 검증 2026-07-21 (2716)`인지 먼저 확인합니다.
+화면은 `Home`에서 시작합니다. 현재 프로젝트가 `Sample Shop Demo (1)`인지 먼저 확인합니다.
 
 ### 1. Home — 1분
 
@@ -138,13 +138,13 @@ $demoProjectId = 2716  # 프로젝트/Git 설정 화면에서 확인한 실제 I
 
 1. `답변 근거 상태`에서 source 79, 검색 준비 79/79, 코드 반영 `최신`, 추가 준비 0을 확인합니다.
 2. `Knowledge Graph가 최신입니다` 안내를 보여줍니다.
-3. 저장된 대화에서 `#429`를 선택합니다. 질문은 네 Java 파일을 지정하고 결제 조건과 `PAID` 전환의 직접 호출 흐름을 묻습니다.
+3. 저장된 대화에서 `#1`을 선택합니다. 질문은 네 Java 파일을 지정하고 결제 조건과 `PAID` 전환의 직접 호출 흐름을 묻습니다.
 4. `PaymentController.authorize → PaymentService.authorize → OrderStatusService.markPaid → OrderStatusService.changeStatus`와 두 Mapper 호출을 단계별로 짚습니다.
-5. `답변 근거 보기`와 `그래프 관계 근거 보기`를 펼쳐 source 6건, graph 4건, `deterministic_repair`, `class_import`, `impact_path`를 보여줍니다.
+5. `답변 근거 보기`와 `그래프 관계 근거 보기`를 펼쳐 source 6건, graph 4건, 검증 `valid`, `class_import`, `impact_path`를 보여줍니다.
 
 말할 내용:
 
-> Project Chat은 모델 기억만으로 답하지 않고, 현재 저장소에서 확인한 소스 조각과 Knowledge Graph 관계를 함께 전달합니다. 이번 답변은 local LLM의 첫 문장이 직접 호출 순서를 정확히 지키지 않아 검증된 현재 소스로 안전하게 다시 구성됐습니다. 그래서 fallback과 repair 상태를 숨기지 않고 보여주며, 각 호출과 조건식은 파일·행 근거로 확인할 수 있습니다.
+> Project Chat은 모델 기억만으로 답하지 않고, 현재 저장소에서 확인한 소스 조각과 Knowledge Graph 관계를 함께 전달합니다. 이번 저장 답변은 직접 호출 순서와 조건식, 파일 근거 검증을 통과했습니다. 검증 상태와 source·graph 근거 수를 화면에서 확인할 수 있습니다.
 
 주의:
 
@@ -182,7 +182,7 @@ $demoProjectId = 2716  # 프로젝트/Git 설정 화면에서 확인한 실제 I
 
 1. `Home` — 8 programs, 48 commits, 계획 90.6%, AI Progress 50.0%, 준비 완료.
 2. `Dashboard` — 전체 차이와 Radar가 검토 순서를 정한다는 점.
-3. `Project Chat #429` — 현재 source 79/79, graph 최신, 직접 호출 흐름과 실제 답변 근거 6+4건.
+3. `Project Chat #1` — 현재 source 79/79, graph 최신, 직접 호출 흐름과 실제 답변 근거 6+4건.
 4. `AI Code Review 2325182` — `amount == 0` 경계값 bug 후보.
 
 압축 마무리 문장:
@@ -197,14 +197,14 @@ $demoProjectId = 2716  # 프로젝트/Git 설정 화면에서 확인한 실제 I
 | AI가 진척도를 결정하나요? | 아닙니다. 프로그램 단위 구현상태를 보수적으로 추정해 확인 대상을 좁히며, 완료 승인과 일정 판단은 담당자가 합니다. |
 | 계획 90.6%와 AI Progress 50% 차이가 곧 지연인가요? | 아닙니다. 최신 구현 근거와 계획의 차이가 크다는 점검 신호입니다. 프로그램 상세와 담당자 확인을 거쳐야 합니다. |
 | Home은 리스크 8인데 Risk 화면은 32인 이유가 뭔가요? | 8은 리스크가 있는 프로그램 수이고, 32는 한 프로그램에 여러 유형이 생길 수 있는 Risk Finding 수입니다. |
-| Mapping 39건인데 commit은 48개면 실패한 건가요? | 아닙니다. 48개 commit 모두 분석됐고, 39는 program-commit 관계 행 수입니다. 한 commit에 관계가 없거나 여러 관계가 생길 수 있어 완료 기준으로 쓰지 않습니다. |
+| Mapping 38건인데 commit은 48개면 실패한 건가요? | 아닙니다. 48개 commit 모두 분석됐고, 38은 program-commit 관계 행 수입니다. 한 commit에 관계가 없거나 여러 관계가 생길 수 있어 완료 기준으로 쓰지 않습니다. |
 | AI 답변이 틀리면 어떻게 하나요? | 답변 아래 verified source와 graph 관계를 확인하고, 근거가 부족하면 부족 상태로 표시합니다. 최종 판단은 코드와 담당자 검토로 확정합니다. |
 | 왜 GraphRAG가 필요한가요? | vector 검색은 비슷한 문장을 찾는 데 적합하고, GraphRAG는 program-commit-file-class 연결 경로를 설명할 때 유용합니다. 두 근거를 함께 사용합니다. |
 | 현재 코드가 반영됐는지 어떻게 아나요? | Project Chat이 저장소 HEAD와 source index metadata를 비교해 `최신`, stale, 재인덱싱 필요 상태를 표시합니다. 이번 시연은 79/79로 확인했습니다. |
 | Code Review는 SonarQube나 GitHub review를 대체하나요? | 대체하지 않습니다. diff의 의미와 경계값 위험을 먼저 제시해 사람 리뷰와 기존 정적 분석을 보조합니다. |
 | 같은 commit을 다시 돌리면 같은 결과가 나오나요? | 핵심 경계값은 재현되도록 prompt와 후처리를 보강했지만 문장과 세부 제안은 모델 상태에 따라 달라질 수 있습니다. 시연에서는 검증한 저장 결과를 사용합니다. |
 | 왜 local LLM을 썼나요? | PoC에서 코드가 외부 API로 나가지 않는 실행 경로와 OpenAI-compatible provider 교체 구조를 검증하기 위해서입니다. 운영 보안 통제까지 완료됐다는 뜻은 아닙니다. |
-| 어떤 모델을 썼나요? | Chat과 Code Review는 `qwen2.5-coder-7b-instruct`, embedding은 `text-embedding-nomic-embed-text-v1.5` 768 dimensions를 사용했습니다. |
+| 어떤 모델을 썼나요? | Chat과 Code Review는 `qwen2.5-coder-7b-instruct`, embedding은 `text-embedding-nomic-embed-text-v2-moe` `Q8_0` 768 dimensions를 사용합니다. |
 | 응답이 왜 느린가요? | 7B local model을 발표 PC 자원으로 실행하므로 질문 길이와 현재 부하에 따라 약 5~45초가 걸립니다. 저장 결과를 기본으로 보여주는 이유입니다. |
 | 실제 GitHub에 바로 연결되나요? | 현재는 app-server가 접근하는 Git 저장소 경로를 분석합니다. 운영하려면 중앙 clone/fetch, 인증, branch 정책, 접근 통제를 실제 환경에 맞게 붙여야 합니다. |
 | 개발자 PC의 미커밋 코드도 볼 수 있나요? | 중앙 앱이 접근하는 저장소의 작업트리만 볼 수 있습니다. 개인 PC의 미커밋 변경을 자동으로 읽는 구조는 아닙니다. |
@@ -220,14 +220,14 @@ $demoProjectId = 2716  # 프로젝트/Git 설정 화면에서 확인한 실제 I
 
 | 상황 | 바로 할 일 | 보여줄 자료 |
 |---|---|---|
-| LM Studio가 응답하지 않음 | live 질문과 새 Code Review를 생략하고 저장 결과만 사용 | 앱의 Project Chat `#429`, 저장 Code Review `2325182` |
-| Project Chat 답변이 늦음 | 10초가 지나면 “local model 실행 시간”을 설명하고 저장 대화로 전환 | `#429` 또는 13장 발표자료의 Project Chat 장표 |
+| LM Studio가 응답하지 않음 | live 질문과 새 Code Review를 생략하고 저장 결과만 사용 | 앱의 Project Chat `#1`, 저장 Code Review `2325182` |
+| Project Chat 답변이 늦음 | 10초가 지나면 “local model 실행 시간”을 설명하고 저장 대화로 전환 | `#1` 또는 13장 발표자료의 Project Chat 장표 |
 | Project Chat 답변이 어색함 | 답변을 방어하지 말고 source/graph 근거 확인 흐름을 보여줌 | `답변 근거 보기`, `그래프 관계 근거 보기` |
 | PostgreSQL 또는 Streamlit 장애 | 한 번만 health와 process를 확인하고, 2분 안에 복구되지 않으면 화면 자료로 전환 | `outputs\20260630_0547_application-preview-summary.pptx` |
 | Neo4j 장애 | GraphRAG 확장을 생략하고 source evidence만 설명 | 저장 screenshot과 13장 발표자료의 GraphRAG 장표 |
 | Chrome 원격 데스크톱 지연 | animation/scroll을 줄이고 이미 열린 탭만 이동 | 13장 발표자료 |
 | Chrome 원격 데스크톱 연결 끊김 | 재접속을 한 번 시도하고 2분 안에 안 되면 로컬 참석 팀원에게 PPT 공유 요청 | 아래 대체 발표자료 |
-| 앱 프로젝트 선택이 바뀜 | sidebar에서 `Sample Shop 전체 시연 검증 2026-07-21 (2716)` 선택 | Home의 8 programs/48 commits로 재확인 |
+| 앱 프로젝트 선택이 바뀜 | sidebar에서 `Sample Shop Demo (1)` 선택 | Home의 8 programs/48 commits로 재확인 |
 | Code Review 최신 결과가 다른 commit | 실행 버튼을 누르지 말고 리뷰 기록에서 `2325182` 결과 확인 | 13장 발표자료의 Code Review 장표 |
 | 시간이 5분으로 줄어듦 | Home → Dashboard → Project Chat → Code Review만 진행 | 5분 압축 시나리오 |
 
@@ -254,7 +254,7 @@ $demoProjectId = 2716  # 프로젝트/Git 설정 화면에서 확인한 실제 I
 3. Chat model의 `contextLength=8192`를 확인합니다. 다른 값으로 이미 로드돼 있으면 임의로 unload하지 않고 오류로 알려줍니다.
 4. Docker app이 꺼져 있을 때 `docker compose up -d app`으로 기본 DB `ai_commit_advisor`, Neo4j, 8501 앱을 기동합니다.
 5. 기존 `ai_commit_advisor_demo_tunnel` 또는 legacy `ai_commit_advisor_quick_tunnel`을 먼저 찾아 주소를 재사용합니다.
-6. local health와 `demo_preflight.ps1 -ProjectId 2716`을 실행합니다.
+6. local health와 `demo_preflight.ps1 -ProjectId 1`을 실행합니다.
 
 코드나 Docker image가 바뀐 경우에만 `-Build`, 실행 중인 Tunnel이 없고 외부 주소가 필요한 경우에만 `-StartTunnel`을 사용합니다.
 
@@ -278,12 +278,13 @@ $lms = "$env:USERPROFILE\.lmstudio\bin\lms.exe"
 & $lms ps --port 12345 --json
 & $lms server start --port 12345
 & $lms load "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/qwen2.5-coder-7b-instruct-q4_k_m.gguf" --port 12345 --identifier qwen2.5-coder-7b-instruct --context-length 8192 --yes
-& $lms load "nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf" --port 12345 --identifier text-embedding-nomic-embed-text-v1.5 --yes
+& $lms load "text-embedding-nomic-embed-text-v2-moe" --port 12345 --identifier text-embedding-nomic-embed-text-v2-moe --context-length 512 --gpu max --yes
 docker compose up -d app
 docker compose ps
 ```
 
 이미 실행 중인 model과 server에는 해당 start/load 명령을 반복하지 않습니다. host script용 `.env`는 `http://127.0.0.1:12345/v1`, Docker는 `http://host.docker.internal:12345/v1`을 사용합니다.
+`ai_commit_advisor_app`과 `ai_commit_advisor_postgres`가 `healthy`, `ai_commit_advisor_neo4j`가 `Up`인지 확인합니다. Docker 앱은 기본 DB `ai_commit_advisor`, 실제 local LLM/embedding, 768차원을 사용합니다. 별도 override가 필요할 때만 `.env`에 `DOCKER_LLM_*`, `DOCKER_EMBEDDING_*`, `DOCKER_PGVECTOR_DIMENSION`을 둡니다.
 
 ### 3. Streamlit과 외부 URL
 
@@ -292,9 +293,13 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8501/_stcore/health
 .\.venv\Scripts\python.exe scripts\quick_tunnel.py status
 ```
 
-로컬 주소는 `http://127.0.0.1:8501/?project_id=2716`입니다. `status`가 정상 URL을 출력하면 그대로 사용하고 Tunnel을 다시 시작하지 않습니다. 실행 중인 Tunnel이 없을 때만 `demo_start.ps1 -StartTunnel`을 사용합니다. Tunnel process를 새로 만들면 quick tunnel URL도 바뀝니다.
+로컬에서는 `http://127.0.0.1:8501/?project_id=1`을 엽니다. `status`가 정상 URL을 출력하면 기존 Tunnel을 그대로 사용하고 주소 뒤에 `/?project_id=1`을 붙입니다. 실행 중인 Tunnel이 없을 때만 `demo_start.ps1 -StartTunnel`을 사용합니다. Tunnel process를 새로 만들면 quick tunnel URL도 바뀝니다. 화면 자체를 원격으로 조작할 때는 Chrome 원격 데스크톱을 사용할 수 있습니다.
 
 ### 4. 사전 점검 결과
+
+```powershell
+.\scripts\demo_preflight.ps1 -ProjectId 1
+```
 
 통합 script가 실행하는 preflight의 정상 기준은 `FAIL=0`입니다. 저장 분석 HEAD와 현재 샘플 저장소 HEAD가 `221eb9ac9c83`으로 일치해야 합니다. 불일치 경고가 나오면 원인을 확인하기 전까지 `Git 동기화`와 `Mapping 실행`을 누르지 않습니다. `-SkipPreflight`는 문제 원인을 이미 알고 별도로 검증할 때만 사용합니다.
 
@@ -306,7 +311,7 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8501/_stcore/health
 - [ ] Chrome 원격 데스크톱으로 다른 기기에서 한 번 접속하고 끊은 뒤 재접속한다.
 - [ ] 기본 시나리오를 소리 내어 12분 안에 한 번 끝낸다.
 - [ ] 5분 압축 시나리오도 한 번 실행한다.
-- [ ] Project Chat `#429`와 AI Code Review `2325182`가 저장돼 있는지 확인한다.
+- [ ] Project Chat `#1`과 AI Code Review `2325182`가 저장돼 있는지 확인한다.
 - [ ] 세 개의 대체 PPTX를 실제로 열어 본다.
 
 ### 목요일 T-60분
@@ -322,7 +327,7 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8501/_stcore/health
 - [ ] Chrome 원격 데스크톱으로 재접속해 mouse, keyboard, scroll이 동작하는지 확인한다.
 - [ ] Chrome 창 하나만 사용하고 zoom 100%로 맞춘다.
 - [ ] 앱 탭, 13장 발표자료, 24장 화면 자료를 미리 연다.
-- [ ] 앱은 Home, 프로젝트는 `2716`으로 맞춘다.
+- [ ] 앱은 Home, 프로젝트는 `1`로 맞춘다.
 - [ ] 알림, 메신저 popup, mail popup을 끈다.
 - [ ] 개인 정보나 다른 프로젝트 tab이 화면에 남아 있지 않은지 확인한다.
 

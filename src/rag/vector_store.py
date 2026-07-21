@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 from src.db.models import DocumentChunk, VectorItem
 
 
+DEFAULT_EMBEDDING_BATCH_SIZE = 32
+
+
 @dataclass
 class EmbeddingBuildResult:
     created_count: int = 0
@@ -77,7 +80,10 @@ class VectorStore:
         project_id: int | None = None,
         source_types: list[str] | None = None,
         limit: int | None = None,
+        batch_size: int = DEFAULT_EMBEDDING_BATCH_SIZE,
     ) -> EmbeddingBuildResult:
+        if batch_size <= 0:
+            raise ValueError("batch_size must be greater than 0")
         result = EmbeddingBuildResult()
         model_name = embedding_client.embedding_model_name
         vector_exists = (
@@ -93,28 +99,61 @@ class VectorStore:
         if limit is not None:
             query = query.limit(limit)
 
-        for chunk in query.all():
-            if self.has_vector(chunk.id, model_name):
-                result.skipped_count += 1
+        chunks = query.all()
+        for start in range(0, len(chunks), batch_size):
+            batch = [
+                chunk
+                for chunk in chunks[start : start + batch_size]
+                if not self.has_vector(chunk.id, model_name)
+            ]
+            result.skipped_count += min(batch_size, len(chunks) - start) - len(batch)
+            if not batch:
                 continue
 
-            try:
-                embedding = embedding_client.embed_text(chunk.chunk_text)
-                self.save_vector(chunk.id, embedding, model_name)
-                metadata = dict(chunk.raw_metadata or {})
-                metadata["embedding_status"] = "completed"
-                metadata["embedding_model"] = model_name
-                chunk.raw_metadata = metadata
-                result.created_count += 1
-            except Exception as exc:
-                metadata = dict(chunk.raw_metadata or {})
-                metadata["embedding_status"] = "failed"
-                metadata["embedding_error"] = str(exc)
-                chunk.raw_metadata = metadata
-                result.failed_count += 1
-                result.errors.append(f"chunk_id={chunk.id}: {exc}")
+            embeddings: list[list[float]] | None = None
+            embed_documents = getattr(embedding_client, "embed_documents", None)
+            if callable(embed_documents):
+                try:
+                    embeddings = embed_documents([chunk.chunk_text for chunk in batch])
+                    if len(embeddings) != len(batch):
+                        raise RuntimeError(
+                            f"Embedding batch size mismatch: got {len(embeddings)}, expected {len(batch)}"
+                        )
+                except Exception:
+                    embeddings = None
+
+            if embeddings is not None:
+                for chunk, embedding in zip(batch, embeddings, strict=True):
+                    self._stage_completed_vector(chunk, embedding, model_name)
+                    result.created_count += 1
+            else:
+                for chunk in batch:
+                    try:
+                        embedding = embedding_client.embed_document(chunk.chunk_text)
+                        self._stage_completed_vector(chunk, embedding, model_name)
+                        result.created_count += 1
+                    except Exception as exc:
+                        metadata = dict(chunk.raw_metadata or {})
+                        metadata["embedding_status"] = "failed"
+                        metadata["embedding_error"] = str(exc)
+                        chunk.raw_metadata = metadata
+                        result.failed_count += 1
+                        result.errors.append(f"chunk_id={chunk.id}: {exc}")
             self.db.commit()
         return result
+
+    def _stage_completed_vector(
+        self,
+        chunk: DocumentChunk,
+        embedding: list[float],
+        embedding_model: str | None,
+    ) -> None:
+        self.db.add(VectorItem(chunk_id=chunk.id, embedding=embedding, embedding_model=embedding_model))
+        metadata = dict(chunk.raw_metadata or {})
+        metadata["embedding_status"] = "completed"
+        metadata["embedding_model"] = embedding_model
+        metadata.pop("embedding_error", None)
+        chunk.raw_metadata = metadata
 
     def count_missing_chunks(
         self,

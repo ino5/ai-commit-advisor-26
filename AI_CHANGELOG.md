@@ -1,5 +1,34 @@
 # AI 변경 이력
 
+## 2026-07-22
+
+### 관리형 Git URL 프로젝트 등록
+
+- `프로젝트/Git 설정`에 `Git URL에서 가져오기`와 `서버에 이미 있는 저장소 사용`을 분리했습니다. 관리형 모드에서는 사용자가 서버 경로를 입력하지 않고 프로젝트명, 공개 HTTPS Git URL, branch만 입력하면 `project-<ID>` 전용 경로를 자동 배정하고 clone/fetch합니다.
+- Docker의 기존 `C:/dev:/host-dev:ro` mount는 유지하고, `C:/dev/ai-commit-advisor-managed-repos:/managed-repos:rw`만 추가했습니다. 관리형 경로 mapping을 먼저 적용해 기존 샘플과 다른 개발 저장소는 read-only로 보호합니다.
+- 관리형 등록은 기본적으로 `github.com`, `gitlab.com`, `bitbucket.org`의 인증정보 없는 HTTPS URL만 허용합니다. `GIT_TERMINAL_PROMPT=0`과 Git 작업 timeout을 적용하고, 기존 서버 경로는 `..` segment 정규화 후 허용 root를 검사합니다. 기존 SSH/private repository 운영은 그대로 유지합니다.
+- 프로젝트 삭제 시 관리형 clone 폴더는 자동 삭제하지 않으며, 인증·사용자 소유권·quota가 없는 Quick Tunnel을 불특정 다수에게 상시 개방하지 않는다는 운영 경계를 문서화했습니다.
+- 주요 파일: `src/ui/project_page.py`, `src/services/git_remote_service.py`, `src/utils/repo_path.py`, `src/utils/config.py`, `docker-compose.yml`, `tests/test_repo_path.py`, `tests/test_git_remote_service.py`, `README.md`, `docs/feature-guide.md`, `docs/demo-user-guide.md`, `docs/sample-project-first-run-guide.md`, `docs/setup-and-operations.md`, `docs/git-repository-operating-model.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`.
+- 검증: `compileall` 통과, 경로·remote clone 집중 테스트 16개와 리베이스 후 전체 테스트 207개 통과, `docker compose config --quiet` 통과. Docker mount는 `/host-dev RW=False`, `/managed-repos RW=True`로 확인했고, 컨테이너 서비스가 `https://github.com/octocat/Hello-World.git`을 관리형 host 경로에 실제 clone한 뒤 테스트 폴더를 정리했습니다. Playwright 실제 화면에서 새 프로젝트의 기본 관리형 필드와 기존 경로 field 전환을 확인했으며, 이 과정에서 radio를 form 밖으로 옮겨 즉시 전환되도록 보완했습니다. 최종 앱 health는 `200 ok`, DB 프로젝트는 기존 `Sample Shop Demo (#1)` 1건, 관리형 root는 빈 상태입니다.
+
+### 샘플 프로젝트 처음 시작 버튼 가이드
+
+- 설정과 분석 옵션을 처음 접하는 사용자가 필요한 작업만 따라갈 수 있도록 `docs/sample-project-first-run-guide.md`를 추가했습니다. 현재 준비된 `Sample Shop Demo (#1)`에서 바로 Project Chat을 사용하는 경로와 빈 DB에서 프로젝트 등록부터 Git 수집, Excel 업로드, Mapping, Risk, source/embedding, Knowledge Graph, Project Chat까지 준비하는 버튼 순서를 분리했습니다.
+- 일반 소스 질문, 프로그램·커밋 관계 질문, Dashboard/Risk 사용에 필요한 준비 항목을 구분하고, 첫 실행에서 유지할 기본값과 누르지 않아도 되는 `프로그램 기준 분석`, `서버 저장소 clone/fetch`, `증분 동기화`, 재분석·초기화 버튼을 명시했습니다. 새 commit이 추가된 뒤에는 전체 재구축 대신 증분 동기화부터 Neo4j 변경분 반영까지 6단계만 실행하도록 정리했습니다.
+- README 문서 목록과 기존 사용 가이드에서 짧은 시작 가이드로 연결하고, 기존 가이드의 샘플 프로젝트명을 현재 기준인 `Sample Shop Demo`로 맞췄습니다.
+- 주요 파일: `docs/sample-project-first-run-guide.md`, `docs/demo-user-guide.md`, `README.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: UI source에서 `프로젝트 저장`, `전체 수집`, `검증 통과 행 저장`, `미완료 커밋 전체 분석`, `리스크 분석 실행`, `전체 소스 다시 읽기`, `검색 준비 실행`, `전체 재동기화`, `새 대화 시작` 버튼명을 대조했습니다. 문서 링크 존재 여부와 AI스러운 과장 문구를 확인했고, `.\scripts\demo_preflight.ps1`은 현재 프로젝트에서 `FAIL=0`, `WARN=0`으로 통과했습니다.
+
+### 기본 데이터 완전 초기화와 Sample Shop 재구축
+
+- 기존 PostgreSQL 애플리케이션 데이터와 Neo4j graph를 비우고, DB schema와 `alembic_version=20260615_0010`, 샘플 Git 저장소는 유지했습니다. 삭제 전 PostgreSQL custom dump를 `C:\dev\ai-commit-advisor-backups\20260722-061030\postgres-pre-full-reset.dump`에 저장했으며 SHA-256은 `0540F5BFD34A134E061F4CC7A20E47B8205F91BF41AD9DFDE39060F5121D97FA`입니다.
+- `Sample Shop Demo`를 유일한 프로젝트 `#1`로 다시 등록했습니다. Git commit 48건과 변경 파일 106건, 개발자 6명, 프로그램·개발계획 8건, 표준용어/표준단어 14건을 샘플 저장소와 `advisor_uploads` 파일에서 새로 저장했습니다.
+- 현재 소스 79건을 `local_openai:text-embedding-nomic-embed-text-v2-moe:retrieval-v1`로 다시 인덱싱했습니다. DB에는 새 profile vector 79건만 있으며 구형 embedding vector는 남아 있지 않습니다.
+- 실제 `qwen2.5-coder-7b-instruct`로 commit 48건 Mapping과 프로그램 구현상태 8건을 실행했습니다. program-commit 관계 38건, Risk Finding 32건, Knowledge Graph 213 nodes/590 edges를 만들고, Project Chat `#1`, commit `2325182` AI Code Review, PL Briefing을 새로 저장했습니다. Mapping 48건과 대표 AI 호출 3건은 모두 parsed 또는 valid이며 fallback은 0건입니다.
+- 현재 시연 기준에 맞춰 `scripts/demo_preflight.ps1`과 `scripts/demo_start.ps1`의 기본 project ID를 `1`로, 기동 스크립트의 embedding model을 `text-embedding-nomic-embed-text-v2-moe`로 맞췄습니다. Runbook의 프로젝트명, 저장 대화 ID, Mapping·Knowledge Graph 수치와 현재 사용 안내도 같은 기준으로 갱신했습니다. 날짜가 붙은 기존 검증 증적과 screenshot은 당시 실행 기록이므로 변경하지 않았습니다.
+- 주요 파일: `scripts/demo_preflight.ps1`, `scripts/demo_start.ps1`, `tests/test_demo_start_script.py`, `README.md`, `docs/demo-runbook.md`, `docs/setup-and-operations.md`, `AGENTS.md`, `ROADMAP.md`, `docs/engineering-decisions.md`, `AI_CHANGELOG.md`.
+- 검증: `.\scripts\demo_preflight.ps1 -ProjectId 1`은 `FAIL=0`, `WARN=0`으로 통과했습니다. PostgreSQL에는 프로젝트 1건, source/vector 79/79, embedding profile 1종만 있고, Neo4j readback은 213 nodes/590 edges입니다. Docker app health, LM Studio chat/embedding 실제 호출, 저장 분석 HEAD `221eb9ac9c83`, 샘플 저장소 clean 상태도 통과했습니다. 리베이스 뒤 `.\scripts\demo_start.ps1 -CheckOnly -SkipPreflight`는 project `1`, port `12345`, Chat context `8192`, Nomic v2와 health를 비파괴로 확인했고, startup·Quick Tunnel·Git·embedding·LLM 집중 테스트 40개와 전체 테스트 207개가 통과했습니다.
+
 ## 2026-07-21
 
 ### Project Chat 초기 화면 지연 개선
@@ -20,6 +49,17 @@
 - `.env.local-llm.example`, README, setup 가이드, 시연 Runbook의 기준을 LM Studio port `12345`, context length `8192`, embedding 768차원, Docker 8501, project `2716`으로 통일했습니다. 정상 재기동에는 rebuild나 Tunnel 재생성이 필요 없다는 조건도 명시했습니다.
 - 주요 파일: `AGENTS.md`, `scripts/demo_start.ps1`, `scripts/quick_tunnel.py`, `tests/test_demo_start_script.py`, `tests/test_quick_tunnel_script.py`, `.env.local-llm.example`, `README.md`, `docs/setup-and-operations.md`, `docs/demo-runbook.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`.
 - 검증: startup/Quick Tunnel focused test `18 passed`, PostgreSQL 768차원·mock provider를 명시한 전체 test `192 passed`, `scripts/quick_tunnel.py` compileall, `scripts/demo_start.ps1` PowerShell parse, `docker compose --project-name ai-commit-advisor config -q`, `git diff --check`가 통과했습니다. 실제 `demo_start.ps1 -CheckOnly -SkipPreflight`가 현재 Docker·LM Studio·8501과 legacy Tunnel의 기존 URL을 변경 없이 확인했고, 별도 전체 `demo_preflight.ps1 -ProjectId 2716`은 실제 Chat/embedding 호출을 포함해 `FAIL=0, WARN=0`으로 끝났습니다. 변경한 사용자 문서에서 특정 직급 표현, 남은 port `1234` 안내, 과장형·번역체 표현을 별도로 검색했으며 의도적으로 port 제외 사유를 설명한 Runbook 한 곳 외에는 충돌하는 안내가 없었습니다.
+
+### Local AI 모델 및 다국어 RAG 최적화
+
+- LM Studio를 `0.3.16`에서 `0.4.19+2`로 올리고, RTX 3060 Ti 8GB 기준 운영 조합을 `qwen2.5-coder-7b-instruct Q4_K_M` context 8192/parallel 1과 `nomic-embed-text-v2-moe Q8_0` 768차원으로 정리했습니다. 기존 Qwen3 8B도 같은 3개 구조화 문제로 비교했지만, embedding 모델과 동시 로드할 때 VRAM 여유가 268MB까지 줄어 운영 기본값은 Qwen2.5로 유지했습니다.
+- Nomic 검색 입력을 `search_query:`와 `search_document:`로 분리하고, prefix 정책을 `embedding_model` key의 `retrieval-v1` profile로 포함했습니다. OpenAI-compatible `/v1/embeddings` 배열 입력을 32개 단위로 보내고 배치가 실패하면 단건 처리로 격리하도록 바꿨습니다.
+- Mapping, 프로그램 구현상태, AI Code Review, PL Briefing에 LM Studio `response_format=json_schema`를 적용했습니다. Qwen3 계열은 LM Studio가 지원하는 `reasoning_effort=none`을 사용해 제한된 응답 token이 내부 reasoning에 소진되지 않도록 했고, 자연어 근거 검증이 필요한 Project Chat은 기존 검증·복구 경로를 유지했습니다.
+- 기존 chunk 4,834건을 `local_openai:text-embedding-nomic-embed-text-v2-moe:retrieval-v1`로 모두 재생성했습니다. 샘플 프로젝트의 한국어 질문 5개에서 기대 파일 순위는 v1.5 `[56, 73, 50, 68, 31]`에서 v2 `[1, 11, 6, 7, 2]`로 바뀌었고 MRR은 `0.0197`에서 `0.3801`로 개선됐습니다.
+- 동일한 Mapping·결제 Code Review·SQL Code Review 3문제 A/B 스크립트를 추가했습니다. JSON은 두 모델 모두 3/3이었고 기대 판단은 Qwen2.5 1/3, Qwen3 2/3이었지만, 이 소규모 진단의 제한과 VRAM 여유를 함께 판단해 9B Qwen3.5 전환은 진행하지 않았습니다.
+- `demo_preflight.ps1`가 보존된 모든 model vector를 더하지 않고 현재 `embedding_model` profile의 고유 chunk만 집계하도록 바꿨습니다. 실제 검증 뒤 시연 기준 Code Review `2325182`도 다시 실행해 bug finding 1건을 최신 결과로 복원했습니다.
+- 주요 파일: `src/rag/embedding_client.py`, `src/rag/retriever.py`, `src/rag/vector_store.py`, `src/services/llm_client.py`, `src/services/structured_output_schemas.py`, `src/services/mapping_service.py`, `src/services/program_implementation_analyzer.py`, `src/services/code_review_service.py`, `src/services/ai_resource_radar_service.py`, `src/utils/config.py`, `scripts/benchmark_local_chat_model.py`, `docker-compose.yml`, `.env.local-llm.example`, `README.md`, `docs/setup-and-operations.md`, `docs/ai-technical-overview.md`.
+- 검증: `compileall` 통과, `pytest -q` 180개 통과. 실제 LM Studio에서 Structured Output JSON 파싱, 768차원 query/document embedding, Qwen2.5/Qwen3 A/B를 실행했습니다. local verification은 embedding-check, PL Briefing, Project Chat, AI Code Review, Mapping이 완료됐고 이번 호출은 fallback이 없었습니다. 프로그램 구현상태 schema 응답은 transaction rollback 방식으로 별도 확인했습니다. Docker app을 재빌드한 뒤 health `200`, 컨테이너 내부 `text-embedding-nomic-embed-text-v2-moe:retrieval-v1` 연결과 768차원을 확인했고, `demo_preflight.ps1 -ProjectId 2716`은 `FAIL=0`, `WARN=0`으로 통과했습니다.
 
 ### 기본 DB와 Docker 8501 시연 환경 통합
 
@@ -72,7 +112,83 @@
 - 주요 파일: `src/services/first_run_service.py`, `src/ui/ai_progress_page.py`, `src/ui/risk_page.py`, `tests/test_first_run_service.py`, `scripts/demo_preflight.ps1`, `scripts/capture_feature_screenshot.py`, `docs/demo-runbook.md`, `docs/feature-guide.md`, `docs/sample-project-usage-verification.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`, `docs/images/usage-verification/demo-rehearsal-*-2026-07-21.png`.
 - 검증: `.\scripts\demo_preflight.ps1` 통과(`FAIL=0`, 저장 분석 HEAD와 현재 repo HEAD 차이에 대한 예상 `WARN=1`). `.\.venv\Scripts\python.exe -m compileall src app.py scripts` 통과. `.\.venv\Scripts\python.exe -m pytest -q` 172개 통과. Home, Dashboard, AI Progress, Risk Analysis, Project Chat GraphRAG, AI Code Review screenshot capture와 기대/금지 문구 검증 통과. 사용자-facing 문구는 변경 diff와 과장형 표현 검색으로 별도 점검했습니다.
 
+## 2026-06-30
+
+### Application Preview 요약 PPT 작성
+
+- `docs/application-preview.md`의 주요 화면을 기능별 1장 구성의 PowerPoint로 정리했습니다.
+- 각 슬라이드는 기능명, 짧은 설명, 실제 Application Preview screenshot을 함께 보여주도록 구성했고, screenshot은 원본 UI 비율이 깨지지 않도록 `contain` 방식으로 배치했습니다.
+- 표지 포함 24장으로 구성했으며, `Home`, `Dashboard`, `AI Progress`, `AI 운영 현황`, `Project Chat`, `AI Code Review`, `Knowledge Graph` 등 preview 문서의 주요 기능 섹션을 포함했습니다.
+- 주요 파일: `outputs/application-preview-summary.pptx`, `AI_CHANGELOG.md`.
+- 검증: `@oai/artifact-tool` workspace setup은 PowerShell의 `HOME` 경로를 `C:\Users\chch`로 명시한 뒤 성공했습니다. `node ...\build-application-preview-deck.mjs`로 PPTX, 24개 slide PNG preview, layout JSON, inspect 결과를 생성했고, 생성된 PPTX를 `PresentationFile.importPptx`로 다시 열어 24장 import를 확인했습니다. `rg -n "overlap|warning|clip|overflow|placeholder|undefined|NaN|error" ...` 검색 결과 문제 문자열은 확인되지 않았습니다. slide 2, 5, 16, 18, 22, 24 preview를 시각 확인해 screenshot 비율과 설명 영역 줄바꿈을 점검했습니다. `rg -n "혁신적인|강력한|원활한|향상된 사용자 경험|AI 기반으로 자동화|이를 통해|최첨단|놀라운|완벽한|상향평준화" ...`로 AI스러운 과장 문구가 없는지 점검했습니다.
+
+### AX Use Case Axiom 템플릿 기반 PPT 초안 작성
+
+- 사용자가 제공한 4장 사진 템플릿을 참고해 `AX Use Case - Axiom` 형식의 편집 가능한 PowerPoint 초안을 작성했습니다.
+- 사진의 표지, 기본정보 표, Use-Case 서비스 정의 흐름도, Use-Case 시나리오 정의 화면 구성을 4:3 슬라이드 구조로 재현했습니다.
+- 본문 내용은 `AI Commit Advisor`의 AX Use Case 맥락에 맞춰 개발계획, Git 커밋, 현재 소스 근거, AI Progress, Risk Analysis, Resource Metrics, AI Code Review, Project Chat 중심으로 재구성했습니다.
+- 로고 이미지는 원본 사진에서 추출하지 않고, footer 배치와 텍스트 스타일만 참고해 editable shape/text로 구성했습니다.
+- 주요 파일: `outputs/ax-use-case-axiom-ai-commit-advisor.pptx`, `AI_CHANGELOG.md`.
+- 검증: `@oai/artifact-tool` 기반 ES module로 PPTX 생성 성공. 최종 PPTX를 `PresentationFile.importPptx`로 다시 열어 4장 import를 확인했습니다. 슬라이드 PNG preview로 표 하단 문구 흐름, 3장 프로세스 도식 겹침, footer 줄바꿈을 확인하고 보정했습니다. PPT inspect 결과에 대해 `rg -n "혁신적인|강력한|원활한|향상된 사용자 경험|AI 기반으로 자동화|이를 통해|최첨단|놀라운|완벽한|상향평준화"` 문구 점검을 수행했습니다.
+
+### PPT용 단순 아키텍처 선 그림 추가
+
+- 발표자료에 넣기 쉽도록 첨부 예시처럼 흰 배경, 단순 아이콘, 점선/실선 연결 중심의 `AI Commit Advisor` 아키텍처 이미지를 추가했습니다.
+- 구성도는 `Input Data`, `PostgreSQL + pgvector`, `Neo4j`, `Local LLM`, `AI Commit Advisor App`, `Client` 간 연결을 단순화해 보여줍니다.
+- 입력 데이터 연결선을 하나의 버스 라인으로 정리하고, DB/Graph/LLM 근거 연결과 Client 요청/응답 화살표를 더 얇고 일관된 형태로 다듬었습니다.
+- 사용자의 후속 요청을 반영해 `분석 결과 화면` 노드를 제거하고, 같은 구성을 PowerPoint에서 직접 수정할 수 있는 native shape 기반 PPTX로도 생성했습니다.
+- PPT 삽입용 PNG와 확대 편집용 SVG 원본을 함께 생성했습니다.
+- 주요 파일: `outputs/ai-commit-advisor-architecture-simple-ppt.svg`, `outputs/ai-commit-advisor-architecture-simple-ppt.png`, `outputs/ai-commit-advisor-architecture-simple-editable.pptx`, `AI_CHANGELOG.md`, `docs/failure-history.md`.
+- 검증: Edge 기반 Playwright 렌더링으로 PNG 생성 성공. `.\.venv\Scripts\python.exe -c "from PIL import Image; ..."`로 `1920x1080`, `RGB` 이미지임을 확인했습니다. `@oai/artifact-tool`로 편집 가능한 PPTX 생성 후 PowerPoint COM으로 최종 PPTX 열기와 1장 PNG export 성공. `rg -n "분석 결과 화면" outputs\ai-commit-advisor-architecture-simple-ppt.svg outputs\ai-commit-advisor-architecture-simple-editable.pptx.inspect.ndjson` 결과 제거 확인. `rg -n "혁신적인|강력한|원활한|향상된 사용자 경험|AI 기반으로 자동화|이를 통해|최첨단|놀라운|완벽한" outputs\ai-commit-advisor-architecture-simple-ppt.svg outputs\ai-commit-advisor-architecture-simple-editable.pptx.inspect.ndjson` 결과 과장형 AI 문구가 확인되지 않았습니다. `git diff --check -- AI_CHANGELOG.md docs\failure-history.md outputs\ai-commit-advisor-architecture-simple-ppt.svg` 통과.
+
+### PPT용 AI Commit Advisor 아키텍처 이미지 추가
+
+- 팀 내부 공유 PPT에 바로 삽입할 수 있도록 16:9 비율의 `AI Commit Advisor` 아키텍처 이미지를 추가했습니다.
+- 이미지는 `활용 데이터`, `Python Streamlit App`, `AI 분석 계층`, `결과 화면`, `PostgreSQL + pgvector`, `Neo4j Knowledge Graph`, `AI 운영 현황` 흐름을 한 장에서 설명하도록 구성했습니다.
+- PPT 확대 삽입을 고려해 원본 SVG와 1920x1080 PNG를 함께 생성했습니다.
+- 주요 파일: `outputs/ai-commit-advisor-architecture-ppt.svg`, `outputs/ai-commit-advisor-architecture-ppt.png`, `AI_CHANGELOG.md`.
+- 검증: Edge 기반 Playwright 렌더링으로 PNG 생성 성공. `.\.venv\Scripts\python.exe -c "from PIL import Image; ..."`로 `1920x1080`, `RGB` 이미지임을 확인했습니다. `rg -n "혁신적인|강력한|원활한|향상된 사용자 경험|AI 기반으로 자동화|이를 통해|최첨단|놀라운|완벽한" outputs\ai-commit-advisor-architecture-ppt.svg` 결과 과장형 AI 문구가 확인되지 않았습니다. `git diff --check -- outputs/ai-commit-advisor-architecture-ppt.svg` 통과.
+
 ## 2026-06-29
+
+### AI Use Case 내부 공유용 PPT 이미지 비율과 품질 보정
+
+- `outputs/ai-use-case-team-share.pptx`를 추가 개선하기 전에 `outputs/backups/ai-use-case-team-share.before-aspect-fix.20260629-202340.pptx`로 백업했습니다.
+- 6페이지 `분석 대상 Git 프로젝트를 등록하고 동기화`와 7페이지 `전체 현황 화면`의 screenshot이 PPT frame에 강제로 맞춰져 가로로 늘어나 보이던 문제를 수정했습니다.
+- 같은 방식으로 삽입된 주요 screenshot도 frame 비율에 맞게 다시 crop해 Project Chat, GraphRAG, AI Code Review, Resource/Risk 장표의 화면 비율을 보정했습니다.
+- 추가 품질 점검에서 제작 메모처럼 보이던 `PPT에 넣을 메시지`, `이 장표의 역할` 문구를 `핵심 메시지`, `핵심 포인트`로 바꿨습니다.
+- 8페이지 `개발 진척도와 일정 리스크`의 하단 설명 겹침과 어색한 줄바꿈을 보정했고, 11페이지 `GraphRAG`의 bullet 겹침과 그래프 하단 잘림을 수정했습니다.
+- 주요 파일: `outputs/ai-use-case-team-share.pptx`, `ROADMAP.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: PowerPoint COM으로 `outputs\ai-use-case-team-share.pptx` 열기 성공 및 13장 확인. PowerPoint COM `Slides.Export(..., 'PNG', 1280, 720)`로 전체 slide preview 렌더링 성공. `contact-sheet.png`와 6, 7, 8, 11페이지를 시각 확인해 screenshot 비율, 문구 겹침, GraphRAG crop을 점검했습니다.
+
+### AI Use Case 내부 공유용 PPT 전면 보완
+
+- 내부 `AX Use Case` 과제 결과 공유라는 목적에 맞춰 `outputs/ai-use-case-team-share.pptx`를 13장 구성으로 전면 재작성했습니다.
+- 기존 요약형 덱은 `outputs/backups/ai-use-case-team-share.before-rewrite.20260629-194802.pptx`로 백업했습니다.
+- 새 덱은 Use Case 배경, 고객 Pain Point, AI 적용 구조, 기술 구성도, 분석 대상 Git 프로젝트 등록/동기화, Dashboard, AI Progress/Risk, Resource Metrics, Project Chat 질문/답변, GraphRAG 관계도, AI Code Review 결과, 기대 효과와 과제 결과 순서로 구성했습니다.
+- LG CNS 내부 IT 발표 맥락을 반영해 `분석 대상 Git 프로젝트`, `app-server clone`, `PostgreSQL + pgvector`, `Neo4j`, `Local/OpenAI-compatible LLM`, `Embedding model`을 기술 구성도에 포함했습니다.
+- Project Chat 장표는 실제 질문/답변 화면과 provider/source evidence 표시가 보이게 구성했고, GraphRAG 장표는 PaymentController, PaymentService, OrderStatusService, OrderStatusMapper 관계도를 별도 장표로 분리했습니다.
+- AI Code Review 장표는 `2325182` 커밋의 `0원 결제 허용 가능성` bug finding과 권장 수정이 보이도록 결과 중심 screenshot crop을 사용했습니다.
+- 주요 파일: `outputs/ai-use-case-team-share.pptx`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: PowerPoint COM으로 `outputs\ai-use-case-team-share.pptx` 열기 성공 및 13장 확인. PowerPoint COM `Slides.Export(..., 'PNG', 1280, 720)`로 전체 슬라이드 preview 렌더링 성공. `contact-sheet.png`와 핵심 슬라이드 5, 6, 10, 12를 시각 확인했고, 기술 구성도 줄바꿈, Git 대상 설명 문장, Code Review provider 문구를 조정했습니다.
+
+### AI Use Case 참고문서 고정과 내부 공유용 PPT 방향 재정의
+
+- 상위 폴더의 `C:\dev\와이어-AI커밋분석기반프로젝트자원관리서비스.txt`를 repo 안에서 추적 가능한 참고문서로 남기기 위해 `docs/ai-use-case-brief-reference.md`를 추가했습니다.
+- 참고문서에는 원문과 함께 PPT 해석 기준을 정리해, 내부 공유용 덱이 한계 설명보다 고객 Pain Point, 핵심 기능, 사용 목적, 기대 효과를 먼저 보여주도록 방향을 바로잡았습니다.
+- 사용자의 추가 설명을 반영해 `AX Use Case`를 실제 운영 전환 제안이 아니라 내부 AI 활용 과제 결과 공유 맥락으로 정의하고, 이 기준을 `CONTEXT.md`와 참고문서에 반영했습니다.
+- 진행 중인 `AI Use Case internal share deck quality rewrite` Roadmap 항목에 참고문서 고정 완료를 반영했고, AI Progress 장표는 세부 산식보다 진척도 관리 불확실성을 줄이는 화면 근거로 설명하도록 체크리스트를 수정했습니다.
+- 주요 파일: `CONTEXT.md`, `docs/ai-use-case-brief-reference.md`, `ROADMAP.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: `Get-Content -Path C:\dev\와이어-AI커밋분석기반프로젝트자원관리서비스.txt -Encoding UTF8`로 원문을 확인하고 문서에 반영했습니다. AI-sounding wording 점검은 원문 보존 영역에서 `상향평준화`가 확인될 수 있으므로, 발표자료 작성 시 원문을 그대로 홍보 문구로 옮기지 않고 화면 근거 중심 문장으로 재작성합니다.
+
+### AI Use Case 내부 공유용 PPT 작성
+
+- 팀 내부 공유용으로 `AI 커밋 분석 기반 프로젝트 자원 관리 서비스`를 9장 본문과 1장 부록으로 정리한 PPT를 추가했습니다.
+- 상위 폴더의 `C:\dev\와이어-AI커밋분석기반프로젝트자원관리서비스.txt`를 Use Case 원문으로 사용하고, `docs/images/features/`의 Application Preview screenshot을 PPT용으로 crop해 Dashboard, AI Progress, Risk Analysis, Project Chat GraphRAG, AI Code Review 화면 근거를 넣었습니다.
+- 기존 47장 기술 상세덱은 내부 공유용으로는 무거워 새 덱을 별도로 만들었고, 톤은 승인 요청보다 "이번에 만든 AI Use Case 공유"에 맞춰 짧게 정리했습니다.
+- presentation skill의 기본 `@oai/artifact-tool` workspace setup은 로컬 runtime package 누락으로 실패해 JavaScript 기반 `pptxgenjs`로 대체 생성했고, `pptxgenjs`의 native table output이 PowerPoint에서 깨지는 문제는 shape/text grid로 우회했습니다.
+- 주요 파일: `outputs/ai-use-case-team-share.pptx`, `ROADMAP.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: PowerPoint COM으로 `outputs\ai-use-case-team-share.pptx` 열기 성공 및 10장 확인. PowerPoint COM `Slides.Export(..., 'PNG', 1280, 720)`로 전체 슬라이드 preview 렌더링 성공. `contact-sheet.png`와 주요 슬라이드 5, 7, 8, 10을 시각 확인해 제목 줄바꿈, GraphRAG 관계도, Code Review bug finding crop, 부록 grid 표시를 조정했습니다. `rg -n "혁신적인|강력한|원활한|향상된 사용자 경험|AI 기반으로 자동화|이를 통해|최첨단|놀라운|완벽한|상향평준화" ...` 문구 점검 결과, 이번 PPT 원고에서는 과장형 AI 문구가 확인되지 않았고 기존 changelog 검증 로그만 검색됐습니다.
 
 ### AI Progress 프로그램 단위 구현상태 기준 적용
 
@@ -84,6 +200,29 @@
 - 반복될 설계 판단이므로 `docs/engineering-decisions.md`에 현재 구조의 한계, 선택한 방향, 대안, tradeoff를 기록했고, `docs/ai-technical-overview.md`의 AI Progress 설명을 현재 동작에 맞게 갱신했습니다.
 - 주요 파일: `src/services/progress_service.py`, `src/services/risk_service.py`, `src/services/resource_metrics_service.py`, `src/services/ai_resource_radar_service.py`, `src/services/ai_evidence_service.py`, `src/ui/ai_progress_page.py`, `src/ui/home_page.py`, `src/ui/dashboard_page.py`, `src/ui/risk_page.py`, `src/ui/program_detail_page.py`, `tests/test_progress_service.py`, `tests/test_resource_metrics_service.py`, `CONTEXT.md`, `ROADMAP.md`, `docs/engineering-decisions.md`, `docs/ai-technical-overview.md`, `AI_CHANGELOG.md`.
 - 검증: `.\.venv\Scripts\python.exe -m pytest tests\test_progress_service.py -q` 4개 통과. `.\.venv\Scripts\python.exe -m pytest tests\test_resource_metrics_service.py -q` 9개 통과. `.\.venv\Scripts\python.exe -m pytest -q` 171개 통과. `.\.venv\Scripts\python.exe -m compileall src app.py` 통과. `git diff --check` 통과(Windows line-ending 경고만 표시). PostgreSQL host 연결이 처음에는 `server closed the connection unexpectedly`로 끊겼으나 `docker compose restart postgres` 후 DB 연결과 테스트가 통과했습니다. CI workflow에는 PostgreSQL service, `DATABASE_URL`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 설정이 있음을 확인했습니다. 사용자-facing 문서 문구 점검으로 `rg -n "혁신적인|강력한|원활한|향상된 사용자 경험|AI 기반으로 자동화|이를 통해|최첨단|놀라운|완벽한" CONTEXT.md docs\ai-technical-overview.md docs\engineering-decisions.md ROADMAP.md AI_CHANGELOG.md`를 실행했으며, 이번 변경분의 과장형 AI 문구는 확인되지 않았습니다.
+
+## 2026-06-21
+
+### AI스러운 문구 필수 점검 agent policy 추가
+
+- 사용자-facing 문서, UI copy, Application Preview caption, 보고서, PPT/PPTX 같은 발표자료를 마무리하기 전에 AI스러운 문구가 남아 있는지 반드시 확인하도록 `AGENTS.md`에 `AI-Sounding Wording Review`를 추가했습니다.
+- 모호한 AI 홍보 문구, 번역체, 내부 구현을 직역한 표현, 근거 없는 AI 단정 표현을 actor, workflow, evidence, action, limitation이 드러나는 문장으로 고치도록 기준을 명확히 했습니다.
+- 반복 가능한 agent-policy 변경이므로 `docs/engineering-decisions.md`에 결정 배경, 대안, tradeoff를 기록했습니다.
+- 과한 신규 화면과 발표 문구가 제품 톤에서 벗어난 사례를 `docs/failure-history.md`에 기록했습니다.
+- 주요 파일: `AGENTS.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: `rg -n "AI-Sounding Wording Review|AI스러운 문구|Mandatory AI-Sounding Wording Review" AGENTS.md docs\engineering-decisions.md ROADMAP.md AI_CHANGELOG.md`로 정책, decision, roadmap, changelog 반영을 확인; `git diff --check` 통과(Windows line-ending 경고만 표시).
+
+### AI Use Case 기술 상세 마스터덱 전면 재작성
+
+- 과하게 추가했던 `PL 관리 Cockpit` 화면, service, test, screenshot, navigation, screenshot capture scenario, 관련 문서 반영분을 제거했습니다.
+- 기존 8장 PPT는 참고하지 않고, `C:\dev\와이어-AI커밋분석기반프로젝트자원관리서비스.txt`는 사업 문제와 기대효과 기준으로만 사용했습니다.
+- 13장 요약본이 AI Use Case와 기술 적용 구조를 충분히 보여주지 못해, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/feature-guide.md`, README, 현재 앱 screenshot 근거를 바탕으로 47장 기술 상세 마스터덱으로 전면 재작성했습니다.
+- 결과서는 Use Case 정의, 고객 Pain Point, end-to-end architecture, app-server Git 운영 모델, PostgreSQL/pgvector/Neo4j/LLM provider 구조, LLM Mapping, 구현상태 분석, AI Progress, Risk Analysis, Resource Metrics, AI Code Review, RAG Search, 표준용어 query 확장, Project Chat source verification, GraphRAG, Knowledge Graph, Commit Impact, AI evidence/telemetry, demo flow, PoC 결과와 적용 한계를 포함합니다.
+- 자원관리 지표 슬라이드는 도식으로 다시 그린 영역을 제거하고, 실제 Dashboard 하단의 자원관리 지표 screenshot crop으로 유지했습니다.
+- 마지막 슬라이드는 작성자용 발표 안내처럼 보이던 문구를 제거하고, `결론 및 적용 확장` 장표로 바꿨습니다.
+- 새 앱 화면이나 신규 기능은 추가하지 않았고, 결과서에는 `PL`, `Cockpit`, `action queue`, `개발자 집중관리`, `프로그램 액션 큐` 같은 전면 문구가 남지 않도록 점검했습니다.
+- 주요 파일: `outputs/ai-commit-advisor-final-report.pptx`, `ROADMAP.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: `node "C:\Users\chch\AppData\Local\Temp\codex-presentations\manual-ai-commit-advisor-final-report\ai-commit-advisor-final-report\tmp\build-final-report.mjs"`로 PPTX와 47개 preview 생성 통과; PPT inspect/layout에서 `PL`, `Cockpit`, `pl-management`, `개발자 집중관리`, `프로그램 액션`, `action queue`, `최종 발표에서는`, `AI Use Case로 보여줄 핵심`, `사람이 확정한다` 검색 결과 없음; PPT inspect/layout에서 `혁신적인|강력한|원활한|향상된 사용자 경험|AI 기반으로 자동화|이를 통해|최첨단|놀라운|완벽한` 검색 결과 없음; PPT QA 검색에서 `overlap|warning|clip|placeholder|undefined|NaN|error|overflow` 결과 없음; PPT 슬라이드 47장 확인; `LLM`, `Embedding`, `RAG`, `pgvector`, `Neo4j`, `GraphRAG`, `Mapping`, `AI Progress`, `Risk Analysis`, `AI Code Review`, `ai_invocation_logs`, `resource_metric_snapshots`, `Knowledge Graph`, `Project Chat` 포함 확인; preview 주요 슬라이드 1, 9, 15, 28, 32, 34, 47을 시각 확인했고 28번 슬라이드가 실제 screenshot crop으로 들어간 것을 확인; `.\.venv\Scripts\python.exe -m pytest tests\test_documentation_images.py -q` 1개 통과; `git diff --check` 통과(Windows line-ending 경고만 표시).
 
 ## 2026-06-17
 

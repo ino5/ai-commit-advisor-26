@@ -18,7 +18,7 @@ class Retriever:
         project_id: int | None = None,
         source_types: list[str] | None = None,
     ) -> list[dict]:
-        query_embedding = self.embedding_client.embed_text(query)
+        query_embedding = self.embedding_client.embed_query(query)
         results = self.vector_store.search_similar(
             query_embedding,
             limit=limit,

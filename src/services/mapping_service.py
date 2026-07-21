@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session, joinedload
 from src.db.models import AnalysisRun, GitCommit, Program, ProgramCommitMapping
 from src.rag.retriever import Retriever
 from src.services.ai_invocation_service import record_ai_invocation
-from src.services.llm_client import LLMClient
+from src.services.llm_client import LLMClient, generate_structured
+from src.services.structured_output_schemas import COMMIT_MAPPING_SCHEMA, PAIR_MAPPING_SCHEMA
 
 
 MAX_COMMIT_TEXT_LENGTH = 2200
@@ -351,7 +352,12 @@ class MappingService:
         response_length = 0
         invocation_error: str | None = None
         try:
-            response = self.llm_client.generate(prompt)
+            response = generate_structured(
+                self.llm_client,
+                prompt,
+                schema=COMMIT_MAPPING_SCHEMA,
+                schema_name="commit_mapping",
+            )
             response_length = len(response.text or "")
             related_programs = _parse_commit_based_result(response.text, candidate_programs)
             if related_programs is None:
@@ -563,7 +569,12 @@ class MappingService:
     def analyze_pair(self, program: Program, commit: GitCommit) -> dict:
         prompt = _build_prompt(program, commit)
         try:
-            response = self.llm_client.generate(prompt)
+            response = generate_structured(
+                self.llm_client,
+                prompt,
+                schema=PAIR_MAPPING_SCHEMA,
+                schema_name="program_commit_mapping",
+            )
             parsed = _parse_llm_result(response.text) or _fallback_result(program, commit)
             raw_response = {
                 "llm": response.raw,
