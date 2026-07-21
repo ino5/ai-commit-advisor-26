@@ -14,6 +14,7 @@
 
 | Priority | Area | Task | Status | Related AI Change Log |
 |---|---|---|---|---|
+| P0 | Project Chat / Performance | Project Chat initial render latency reduction | Done | Project Chat 초기 화면 지연 개선 |
 | P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 |
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 |
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 |
@@ -151,6 +152,29 @@
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
 | P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
 | P0 | Demo Operations | Canonical demo startup contract and legacy Tunnel reuse | Done | 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용 |
+
+## P0 - Project Chat Initial Render Latency Reduction
+
+Status: Done
+
+Goal:
+Project Chat 메뉴 진입과 질문 전송을 분리하고, 초기 화면에서는 저장소 전체 파일 검증이나 AI 호출 없이 현재 근거 상태와 입력창을 빠르게 표시한다.
+
+Rationale:
+현재 Docker 8501 환경에서 Project Chat 첫 화면이 표시되기 전에 source index 상태 확인과 현재 파일 검증이 실행되어 수십 초가 걸린다는 관측이 있다. 단계별 시간과 호출 횟수로 병목을 확정하고, stale source를 숨기지 않으면서 고비용 검증은 사용자가 요청하거나 질문에 필요한 시점으로 늦춰야 한다.
+
+Checklist:
+
+- [x] 초기 진입 call path와 DB, repository scan/hash, source freshness, embedding, Neo4j, session/history 시간을 계측한다.
+- [x] localhost와 기존 Quick Tunnel의 메뉴 진입 시간을 비교하고 질문 응답 대기 시간과 분리한다.
+- [x] 초기 render에서 repository 전체 검증, embedding, LLM, 전체 재색인, graph sync가 실행되지 않게 한다.
+- [x] 마지막 확인 시각, repo HEAD 일치 여부, 새로고침 필요 상태를 표시하고 명시적 새로고침에서만 실제 파일 검증을 실행한다.
+- [x] project ID, repo HEAD, embedding provider/model/dimension에 따른 cache 격리와 무효화를 검증한다.
+- [x] 기존 citation, 직접 호출 검증, deterministic repair, session 격리 회귀를 검증한다.
+- [x] 전체 pytest, Docker browser timing, 기존 Quick Tunnel timing, 실제 한국어 질문을 검증한다.
+- [x] 관련 사용자/기술 문서, engineering decision, failure history와 `AI_CHANGELOG.md`를 갱신한다.
+
+Related changelog: `Project Chat 초기 화면 지연 개선`
 
 ## P0 - Canonical Demo Startup Contract And Legacy Tunnel Reuse
 

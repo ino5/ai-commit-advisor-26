@@ -21,6 +21,42 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-21 - Project Chat 초기 render는 HEAD 요약과 파일 검증을 분리한다
+
+### 배경
+
+Project Chat은 stale source를 현재 코드 근거처럼 사용하지 않기 위해 `source_file` chunk의 file/line/hash를 검증합니다. 그러나 이 검증을 질문 직전뿐 아니라 메뉴 진입 때도 모든 chunk에 실행해 Docker의 Windows bind mount에서 첫 화면이 10초 이상 늦어졌습니다. 첫 화면 표시와 답변 근거 검증은 필요한 정확도와 비용이 다른 작업입니다.
+
+### 결정
+
+- 메뉴 진입에서는 PostgreSQL의 source/vector 요약, indexed HEAD, 마지막 근거 저장 시각과 현재 Repo HEAD만 확인합니다.
+- 전체 파일 내용 검증은 사용자가 `근거 상태 새로고침`을 누른 경우에만 실행합니다.
+- 질문 전송 시에는 검색된 근거와 identifier로 보강한 관련 파일을 직접 검증하는 기존 정책을 유지합니다.
+- 전체 파일 검증 cache는 Streamlit session 범위로 제한하고 project ID, Repo HEAD, DB Git Sync HEAD, embedding provider/model/dimension, source index signature가 모두 같을 때만 재사용합니다.
+- 초기 화면은 전체 파일을 확인하지 않은 상태를 `HEAD 일치 · 파일 확인 전`과 확인 시각으로 명시하며, 메뉴 진입만으로 LLM, embedding 생성, source re-index, Knowledge Graph sync를 실행하지 않습니다.
+
+### 이유
+
+Repo HEAD와 DB index metadata 비교는 수백 ms 수준이지만, repository file hash 검증은 mount 성능과 파일 수에 따라 수십 초가 걸릴 수 있습니다. 두 작업을 분리하면 입력창을 먼저 표시하면서도 실제 답변에는 verified source만 사용하는 안전 경계를 유지할 수 있습니다. Cache key에 프로젝트와 source/embedding identity를 모두 포함하면 다른 프로젝트나 model의 검증 결과를 잘못 재사용하지 않습니다.
+
+### 검토한 대안
+
+- 전체 파일 검증 결과를 process-wide TTL cache로 공유: 사용자 session 간 상태 공유와 무효화 시점이 복잡하고, source refresh 직후 오래된 결과가 남을 수 있어 제외했습니다.
+- Repo HEAD가 같으면 파일 내용도 최신으로 간주: uncommitted 변경을 놓치므로 사용하지 않습니다.
+- 메뉴 진입 때 검증을 유지하고 spinner만 추가: 원인을 설명할 뿐 입력 가능 시간이 줄지 않아 제외했습니다.
+- 검증을 제거: stale/invalid source 차단과 citation 신뢰도를 약화하므로 제외했습니다.
+
+### 영향, tradeoff, 남은 한계
+
+Project Chat 기본 화면은 빨라졌지만, 처음에는 전체 파일 검증이 끝났다는 표현을 사용하지 않습니다. Docker bind mount에서 `근거 상태 새로고침`은 여전히 오래 걸릴 수 있으나 명시적 작업으로 분리되고 무엇을 확인하는지 표시됩니다. 질문 응답 시간은 embedding 검색, 관련 파일 검증, Neo4j 조회, LLM 생성과 답변 검증을 포함하므로 메뉴 진입 성능과 별도로 측정해야 합니다.
+
+### 관련 문서
+
+- `docs/ai-technical-overview.md`
+- `docs/feature-guide.md`
+- `docs/failure-history.md`의 `Project Chat 메뉴 진입이 전체 source file 검증을 반복했다`
+- `AI_CHANGELOG.md`의 `Project Chat 초기 화면 지연 개선`
+
 ## 2026-07-21 - 시연 재기동은 상태 우선 통합 script를 단일 기준으로 사용한다
 
 ### 배경

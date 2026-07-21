@@ -2,6 +2,16 @@
 
 ## 2026-07-21
 
+### Project Chat 초기 화면 지연 개선
+
+- Project Chat 메뉴 진입에서 전체 `source_file` file/line/hash 검증을 제거하고, PostgreSQL의 source/vector 요약과 indexed HEAD metadata, 현재 Repo HEAD만 읽는 `get_source_index_summary()`를 추가했습니다. 첫 화면은 전체 파일을 확인하지 않았으면 `HEAD 일치 · 파일 확인 전`으로 표시하며 확인 시각과 마지막 근거 저장 시각을 함께 보여줍니다.
+- 전체 파일 검증은 사용자가 `근거 상태 새로고침`을 누를 때만 실행합니다. 검증 결과는 같은 Streamlit session에서 project ID, Repo HEAD, DB Git Sync HEAD, embedding provider/model/dimension, source index signature가 모두 같을 때만 재사용합니다. 프로젝트·HEAD·Git Sync·source refresh·embedding 설정이 바뀌면 이전 결과를 사용하지 않습니다.
+- 질문 전송 시 검색된 source 근거를 현재 파일과 직접 비교하는 정책, source citation, Java 직접 호출 검증, `deterministic_repair`, project별 chat session/history는 그대로 유지했습니다. 메뉴 진입만으로 LLM, embedding 생성, 전체 source re-index, Knowledge Graph sync가 실행되지 않는 것도 DB count와 graph sync 시각으로 확인했습니다.
+- 병목 계측에서 DB query는 1~108ms, Repo HEAD 203ms, Neo4j freshness 106ms, session/history 4~17ms였고, 79개 chunk의 파일 현재성 검증만 17.838초가 걸렸습니다. 변경 전 browser 입력창 표시는 localhost 12.663초/반복 8.339초, Quick Tunnel 13.121초/반복 9.448초였습니다. 변경 후 localhost 2.426초/반복 2.046초, 기존 Quick Tunnel 4.550초/반복 1.657초였습니다. localhost 첫 화면 3초 목표는 달성했고 반복 2초 목표는 0.046초 초과했습니다.
+- 명시적 전체 파일 검증은 Docker bind mount에서 45.091초가 걸렸습니다. 실제 한국어 질문은 메뉴 진입 2.884초와 별도로 답변 완료까지 42.110초였으며 `local_openai / qwen2.5-coder-7b-instruct`, 한국어 정상 표시, 직접 호출, `.java:line-line` citation, `deterministic_repair`를 확인했습니다.
+- 주요 파일: `src/rag/source_index_service.py`, `src/services/neo4j_graph_service.py`, `src/ui/project_chat_page.py`, `tests/test_project_chat_page.py`, `docs/ai-technical-overview.md`, `docs/feature-guide.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: focused test 39개와 graph focused test 28개 통과, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 `pytest -q` 195개 통과. Docker image는 `scripts/demo_start.ps1 -Build -SkipPreflight`로 반영했고 localhost 8501과 기존 Quick Tunnel URL에서 실제 browser timing을 확인했습니다. 사용자-facing 문구는 특정 직급 전제, 과장형 표현, 번역체 표현을 별도로 점검했습니다.
+
 ### 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용
 
 - 새 Agent 세션이나 운영자가 저장소 문서만 보고 같은 환경을 재기동할 수 있도록 `scripts/demo_start.ps1`을 추가하고 `AGENTS.md`에 자동 적용할 기동 원칙을 기록했습니다. 기본 실행은 Docker daemon, LM Studio port `12345`, Chat model context length `8192`, embedding model, Docker 8501, project `2716`, preflight를 순서대로 확인하고 필요한 서비스만 시작합니다.

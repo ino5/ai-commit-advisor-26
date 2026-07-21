@@ -31,6 +31,67 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-21 - Project Chat 메뉴 진입이 전체 source file 검증을 반복했다
+
+분류:
+
+- Project Chat performance
+- Source freshness
+- Streamlit rerun
+
+관련 기능 및 문서:
+
+- `src/ui/project_chat_page.py`
+- `src/rag/source_index_service.py`
+- `docs/ai-technical-overview.md`
+- `docs/feature-guide.md`
+
+증상:
+
+- Docker 8501에서 Project Chat 입력창이 보이기까지 첫 진입 12.663초, 같은 session 반복 진입 8.339초가 걸렸습니다.
+- 기존 Quick Tunnel은 첫 진입 13.121초, 반복 9.448초였고 warm health 요청 차이는 약 8~31ms 수준이라 Cloudflare보다 server render가 지배적이었습니다.
+- 명시적 action을 누르지 않았는데도 Streamlit rerun마다 같은 긴 검사가 반복됐습니다.
+
+직접 원인:
+
+`_render_source_index_status()`가 매 render마다 `get_source_index_status()`를 호출했습니다. 이 함수는 project `2716`의 `source_file` chunk 79건을 ORM으로 모두 읽고, 각 chunk마다 repository file을 열어 line range를 잘라 hash를 다시 계산했습니다. 독립 계측에서 DB project/chunk/vector/embedding 상태 조회는 각각 1~108ms, Repo HEAD는 203ms, Neo4j freshness는 106ms, session/history는 4~17ms였지만 파일 현재성 검증만 17.838초가 걸렸습니다. 같은 파일을 여러 번 읽는 문제보다 76개 파일을 Windows host에서 Docker bind mount를 통해 여는 비용이 컸습니다.
+
+배경 또는 구조적 원인:
+
+stale source를 차단하는 답변 안전장치와 화면에 상태를 보여주는 진입 경로가 같은 service를 사용했습니다. 정확한 답변을 만들 때 필요한 file/line/hash 검증을 모든 메뉴 진입에도 동일하게 적용했고, Streamlit rerun의 실행 빈도를 별도 성능 조건으로 다루지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+기존 test는 stale/invalid 판정과 citation 정확성을 검증했지만 초기 render에서 어떤 함수를 몇 번 호출하는지 확인하지 않았습니다. local filesystem에서는 같은 전체 검증이 1초보다 짧을 수 있어 Docker bind mount의 파일 open 지연도 드러나지 않았습니다. 브라우저 검증은 최종 화면 내용에 집중했고 메뉴 클릭부터 입력창 표시까지를 질문 응답과 분리해 재지 않았습니다.
+
+수정 내용:
+
+- source/vector count와 indexed HEAD metadata만 조회하는 `get_source_index_summary()`를 추가했습니다.
+- 초기 render는 요약과 현재 Repo HEAD만 표시하고 전체 파일 검증은 `근거 상태 새로고침`에서만 실행하도록 분리했습니다.
+- 검증하지 않은 상태는 `HEAD 일치 · 파일 확인 전`, 확인 시각, 마지막 근거 저장 시각으로 표시합니다.
+- 전체 파일 검증 cache key에 project ID, Repo HEAD, DB Git Sync HEAD, embedding provider/model/dimension, source index signature를 포함했습니다.
+- 질문 전송의 retrieved source 검증, citation, 직접 호출 검증, deterministic repair, project별 session 저장은 유지했습니다.
+
+재발 방지 규칙:
+
+- Streamlit 초기 render에는 repository 전체 scan/hash, LLM, embedding 생성, 전체 re-index, graph sync를 넣지 않습니다.
+- 전체 repository 검증은 명시적 사용자 action으로 분리하고 spinner에 실제 작업 대상을 적습니다.
+- freshness cache는 project/source/embedding identity를 모두 key에 포함하고 HEAD, Git Sync, source refresh, model 설정 변경 시 재사용하지 않습니다.
+- AI 질문 대기 시간과 화면 진입 시간은 별도 browser timer와 telemetry로 기록합니다.
+- Docker bind mount를 사용하는 기능은 host Python timing만으로 성능을 판단하지 않습니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- 전체 파일 hash를 확인하는 `근거 상태 새로고침`은 Docker bind mount에서 45.091초가 걸렸습니다. 초기 화면에서는 제거됐지만 explicit audit 자체의 파일 I/O 비용은 남아 있습니다.
+- 최종 localhost 첫 진입은 2.426초, 반복은 2.046초였습니다. 첫 화면 3초 목표는 달성했지만 반복 2초 목표는 0.046초 초과했습니다.
+- Quick Tunnel 첫 진입은 4.550초, 반복은 1.657초였습니다. 첫 외부 browser/WebSocket 연결은 변동이 있지만 warm health 요청 차이와 반복 진입은 서버 병목 제거 효과를 확인할 수 있습니다.
+
+검증 명령과 결과:
+
+- 초기 render가 전체 검증을 호출하지 않는 test, 명시적 새로고침 helper가 전체 검증을 호출하는 test, project/HEAD/model/source signature별 cache 격리 test가 통과했습니다.
+- Project Chat/source index/Neo4j focused test 39개와 추가 graph focused test 28개가 통과했습니다.
+- 실제 질문은 메뉴 진입 2.884초와 별도로 42.110초가 걸렸고, 한국어 표시, `local_openai / qwen2.5-coder-7b-instruct`, 직접 호출, `.java:line-line` citation, `deterministic_repair`를 확인했습니다.
+
 ## 2026-07-21 - 서버 기동 문서가 서로 다른 port와 Tunnel identity를 안내했다
 
 분류:
