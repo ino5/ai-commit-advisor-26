@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -34,6 +35,26 @@ class SourceIndexStatus:
     stale_chunk_count: int
     invalid_chunk_count: int
     needs_reindex: bool
+    errors: list[str]
+
+
+@dataclass(frozen=True)
+class SourceIndexSummary:
+    """Lightweight DB/HEAD snapshot that never reads repository source files."""
+
+    repo_path: str | None
+    current_head_hash: str | None
+    latest_indexed_head_hash: str | None
+    indexed_head_hashes: list[str]
+    source_chunk_count: int
+    source_vector_count: int
+    missing_embedding_count: int
+    head_mismatch_chunk_count: int
+    needs_refresh: bool
+    head_matches_index: bool | None
+    last_indexed_at: datetime | None
+    checked_at: datetime
+    index_signature: str
     errors: list[str]
 
 
@@ -218,6 +239,90 @@ def get_source_index_status(db: Session, project: Project) -> SourceIndexStatus:
     )
 
 
+def get_source_index_summary(db: Session, project: Project) -> SourceIndexSummary:
+    """Return status suitable for page entry without scanning or hashing source files.
+
+    This summary deliberately limits freshness claims to the repository HEAD and
+    the index metadata stored in PostgreSQL. Call ``get_source_index_status``
+    when an explicit file-content verification is required.
+    """
+
+    repo_path = project.git_repo_path
+    errors: list[str] = []
+    current_head_hash: str | None = None
+    checked_at = datetime.now(timezone.utc)
+
+    if repo_path:
+        try:
+            current_head_hash = get_head_commit_hash(resolve_repo_path(repo_path))
+        except Exception as exc:
+            errors.append(f"Git HEAD 확인 실패: {exc}")
+    else:
+        errors.append("프로젝트에 앱 서버 Git 저장소 경로가 등록되지 않았습니다.")
+
+    rows = (
+        db.query(DocumentChunk.id, DocumentChunk.raw_metadata, DocumentChunk.created_at)
+        .filter(DocumentChunk.project_id == project.id, DocumentChunk.source_type == SOURCE_FILE_TYPE)
+        .order_by(DocumentChunk.id)
+        .all()
+    )
+    source_chunk_count = len(rows)
+    metadata_rows = [row.raw_metadata or {} for row in rows]
+    indexed_head_hashes = sorted(
+        {
+            str(metadata.get("indexed_head_hash") or "")
+            for metadata in metadata_rows
+            if metadata.get("indexed_head_hash")
+        }
+    )
+    latest_indexed_head_hash = indexed_head_hashes[-1] if indexed_head_hashes else None
+    head_mismatch_chunk_count = count_head_mismatch_chunks(current_head_hash, metadata_rows)
+    last_indexed_at = max((row.created_at for row in rows if row.created_at is not None), default=None)
+    max_chunk_id = max((int(row.id) for row in rows), default=0)
+
+    source_vector_count = (
+        db.query(VectorItem)
+        .join(DocumentChunk, VectorItem.chunk_id == DocumentChunk.id)
+        .filter(DocumentChunk.project_id == project.id, DocumentChunk.source_type == SOURCE_FILE_TYPE)
+        .count()
+    )
+    embedding_model_name = EmbeddingClient().embedding_model_name
+    missing_embedding_count = VectorStore(db).count_missing_chunks(
+        embedding_model_name,
+        project_id=project.id,
+        source_types=[SOURCE_FILE_TYPE],
+    )
+
+    if not repo_path:
+        head_matches_index: bool | None = None
+        needs_refresh = False
+    elif not current_head_hash:
+        head_matches_index = None
+        needs_refresh = True
+    else:
+        head_matches_index = bool(rows) and indexed_head_hashes == [current_head_hash]
+        needs_refresh = not head_matches_index
+
+    indexed_timestamp = last_indexed_at.isoformat() if last_indexed_at else "-"
+    index_signature = f"{source_chunk_count}:{max_chunk_id}:{indexed_timestamp}"
+    return SourceIndexSummary(
+        repo_path=repo_path,
+        current_head_hash=current_head_hash,
+        latest_indexed_head_hash=latest_indexed_head_hash,
+        indexed_head_hashes=indexed_head_hashes,
+        source_chunk_count=source_chunk_count,
+        source_vector_count=source_vector_count,
+        missing_embedding_count=missing_embedding_count,
+        head_mismatch_chunk_count=head_mismatch_chunk_count,
+        needs_refresh=needs_refresh,
+        head_matches_index=head_matches_index,
+        last_indexed_at=last_indexed_at,
+        checked_at=checked_at,
+        index_signature=index_signature,
+        errors=errors,
+    )
+
+
 def clear_source_file_index(db: Session, project_id: int) -> int:
     chunk_ids = select(DocumentChunk.id).where(
         DocumentChunk.project_id == project_id,
@@ -292,7 +397,7 @@ def _delete_source_file_chunks_for_paths(db: Session, project_id: int, file_path
 
 
 def get_changed_source_files_since_latest_index(db: Session, project: Project) -> list[ChangedSourceFile]:
-    status = get_source_index_status(db, project)
+    status = get_source_index_summary(db, project)
     if not status.latest_indexed_head_hash:
         return []
 
