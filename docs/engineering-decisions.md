@@ -21,10 +21,77 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-21 - 시연 기준은 기본 DB와 Docker 8501 하나로 통일한다
 
+### 배경
 
+전체 재현을 위해 격리 DB와 local 8502를 사용한 뒤 Docker 8501을 다시 열자, 포트마다 프로젝트 목록과 provider가 달랐습니다. Docker는 기본 DB의 과거 프로젝트와 mock provider를, local 8502는 격리 DB의 새 결과를 보여줘 사용자가 어느 프로젝트를 선택해야 하는지 판단할 수 없었습니다.
+
+### 결정
+
+- 시연 데이터의 기준은 PostgreSQL `ai_commit_advisor` 하나로 둡니다.
+- 같은 Sample Shop 저장소의 기준 프로젝트는 `Sample Shop 전체 시연 검증 2026-07-21` (`project_id=2716`) 하나만 유지합니다.
+- 최종 앱 surface는 Docker 8501로 고정하고, local 8502는 재구축 중에만 임시로 사용한 뒤 종료합니다.
+- Docker 앱은 기본 DB, `local_openai`, LM Studio host port 12345, `text-embedding-nomic-embed-text-v1.5`, 768차원을 기본값으로 사용합니다. 다른 설정은 `DOCKER_*` override로만 명시합니다.
+- 데이터 정리 전에는 기준 DB와 임시 DB를 각각 dump하고 임시 restore로 읽기 가능한지 확인합니다.
+
+### 이유
+
+같은 UI가 실행 방법에 따라 다른 프로젝트와 AI 결과를 보이면 기능 오류와 환경 혼선을 구분하기 어렵습니다. DB, project ID, provider, port를 하나의 기준으로 고정하면 Chrome 원격 데스크톱, localhost, Cloudflare 경로가 모두 같은 저장 결과를 보여주는지 직접 비교할 수 있습니다.
+
+### 검토한 대안
+
+- 격리 DB와 local 8502를 계속 시연 기준으로 유지: Docker 8501과 데이터가 달라 운영자가 매번 환경 변수를 바꿔야 하므로 제외했습니다.
+- Docker 기본을 mock으로 유지하고 저장 결과만 표시: live provider 연결을 확인할 수 없고 포트별 AI 동작 차이가 남아 제외했습니다.
+- 같은 저장소의 여러 프로젝트를 기본 DB에 함께 유지: `git_commits.commit_hash` 전역 unique 문제가 해결되지 않아 제외했습니다.
+
+### 영향, tradeoff, 남은 한계
+
+최종 동선은 단순해졌지만, 동일 저장소를 여러 프로젝트에서 동시에 분석하려면 project-scoped commit identity migration이 여전히 필요합니다. quick tunnel URL은 재시작할 때 바뀌므로 영구 배포 주소로 취급하지 않습니다.
+
+### 관련 문서
+
+- `docs/end-to-end-demo-evidence-2026-07-21.md`
+- `docs/demo-runbook.md`
+- `docs/failure-history.md`의 `포트별 DB와 provider가 달라 같은 앱이 다른 결과를 표시했다`
+- `AI_CHANGELOG.md`의 `기본 DB와 Docker 8501 시연 환경 통합`
+
+## 2026-07-21 - 직접 호출 답변은 모델 문장보다 현재 소스 검증 결과를 우선한다
+
+### 배경
+
+작은 local model은 관련 파일을 모두 받아도 `A → B → C`를 `A → C`의 직접 호출로 축약하거나, import 관계를 method call처럼 설명할 수 있습니다. 일반적인 citation 추가만으로는 문장 안의 잘못된 호출 소유권을 고치지 못합니다.
+
+### 결정
+
+- Java 파일명이 명시된 질문은 현재 파일과 verified chunk 행 범위를 함께 확인해 method별 직접 호출과 조건 결과를 추출합니다.
+- 답변이 직접 호출 순서, 조건식, 결과, 파일·행 인용을 통과하지 못하면 검증된 ledger로 deterministic repair를 만듭니다.
+- repair는 숨기지 않고 `validation_status`, `fallback_used`, `repair_attempted`를 DB와 UI에 표시합니다.
+- prompt와 UI의 source/graph 수는 실제로 모델에 전달된 제한 수를 기준으로 표시합니다.
+
+### 이유
+
+모델을 한 번 더 호출해 문장을 고치는 방식은 같은 오류를 반복할 수 있고 응답 시간도 늘립니다. 이미 확인한 현재 소스 사실만 조립하면 직접 호출을 간접 관계와 섞지 않으면서 결과를 재현할 수 있습니다.
+
+### 검토한 대안
+
+- prompt 지시만 강화: 실제 시연 질문에서 형식과 호출 소유권 오류가 남았습니다.
+- 두 번째 LLM repair 호출: 지연과 변동성이 늘고 검증 책임을 다시 모델에 맡기므로 제외했습니다.
+- 근거가 있어도 전체 답변 거부: 안전하지만 검증된 사실까지 보여주지 못해 사용자 가치가 낮습니다.
+
+### 영향, tradeoff, 남은 한계
+
+현재 repair는 Java 메서드 본문을 대상으로 하며 compiler 수준 type resolution은 아닙니다. 근거 coverage가 부족하면 답변을 재구성하지 않고 insufficient evidence를 반환합니다.
+
+### 관련 문서
+
+- `docs/ai-technical-overview.md`
+- `docs/failure-history.md`의 `Project Chat이 직접 호출과 간접 관계를 섞어 답했다`
+- `AI_CHANGELOG.md`의 `Project Chat 직접 호출 근거 검증과 안전한 답변 복구`
 
 ## 2026-07-21 - 동일 저장소의 새 프로젝트 검증은 격리 DB에서 수행한다
+
+> 이 결정은 전체 재현 중 기존 데이터를 보존하기 위한 임시 안전 조치였습니다. 최종 시연 운영 기준은 위의 `시연 기준은 기본 DB와 Docker 8501 하나로 통일한다` 결정으로 대체됐습니다.
 
 ### 배경
 

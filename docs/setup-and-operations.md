@@ -228,7 +228,7 @@ REPO_STORAGE_ROOT=/srv/ai-commit-advisor/repos
 
 - 처음 실행하는 사람도 `docker compose up`만으로 PostgreSQL + Neo4j + Streamlit 앱 조합을 재현합니다.
 - 서버 배포 시 앱 시작 전에 DB schema 초기화와 Alembic migration을 같은 방식으로 실행합니다.
-- mock LLM/embedding 기본값으로 먼저 화면과 DB 연결을 확인한 뒤, 필요할 때 local/OpenAI-compatible provider로 전환합니다.
+- 현재 시연 구성은 Docker와 로컬 Python이 같은 실제 local LLM/embedding 결과를 읽도록 기본값을 맞춥니다. 외부 AI 없이 화면만 확인할 때는 `DOCKER_*` override로 mock을 명시합니다.
 - 배포 후 health endpoint로 최소 기동 상태를 빠르게 확인합니다.
 - 앱 서버에서 접근 가능한 Git 저장소 경로를 기준으로 Git Sync, RAG source_file 검증, Project Chat 현재 소스 검증을 실행합니다.
 - Windows 개발 PC의 Docker 실행처럼 host 경로와 container 경로가 다를 때는 DB에 저장된 host Git 경로를 컨테이너 내부 mount 경로로 변환합니다.
@@ -277,20 +277,20 @@ docker build -t ai-commit-advisor:local .
 
 ### Docker 환경 변수
 
-`docker-compose.yml`의 `app.environment`는 컨테이너 내부 실행 기준입니다. 로컬 Python 실행의 `.env`와 달리 DB host는 `127.0.0.1`이 아니라 Compose service 이름인 `postgres`를 사용합니다.
+`docker-compose.yml`의 `app.environment`는 컨테이너 내부 실행 기준입니다. 로컬 Python 실행의 `.env`와 달리 DB host는 Compose service 이름인 `postgres`, Windows host의 LM Studio는 `host.docker.internal`을 사용합니다. Compose override는 host용 설정과 섞이지 않도록 `DOCKER_*` 이름으로 받습니다.
 
 | 변수 | 기본값 | 설명 |
 |---|---|---|
 | `DATABASE_URL` | `postgresql+psycopg2://ai_user:ai_password@postgres:5432/ai_commit_advisor` | 앱 컨테이너가 Compose PostgreSQL에 접속하는 SQLAlchemy URL입니다. |
-| `PGVECTOR_DIMENSION` | `1536` | 새 DB에서 `vector_items.embedding` column을 만들 때 사용할 vector 차원입니다. 실제 embedding 모델 차원과 같아야 합니다. |
-| `LLM_PROVIDER` | `mock` | 기본은 외부 LLM 없이 동작 확인이 가능한 mock입니다. |
-| `LLM_BASE_URL` | `http://host.docker.internal:1234/v1` | 컨테이너에서 Windows host의 LM Studio에 접근할 때 쓰는 OpenAI-compatible base URL입니다. |
-| `LLM_API_KEY` | 빈 값 | local LM Studio는 보통 비워 둡니다. |
-| `LLM_MODEL` | `qwen2.5-coder-7b-instruct` | local/OpenAI-compatible provider 전환 시 사용할 chat model 이름입니다. |
-| `EMBEDDING_PROVIDER` | `mock` | 기본은 mock embedding입니다. 실제 RAG 품질 검증 시 `local_openai` 등으로 바꿉니다. |
-| `EMBEDDING_BASE_URL` | `http://host.docker.internal:1234/v1` | 컨테이너에서 Windows host의 embedding server에 접근할 때 쓰는 base URL입니다. |
-| `EMBEDDING_API_KEY` | 빈 값 | local embedding server는 보통 비워 둡니다. |
-| `EMBEDDING_MODEL` | `text-embedding-nomic-embed-text-v1` | 실제 embedding provider 전환 시 사용할 embedding model 이름입니다. |
+| `PGVECTOR_DIMENSION` | `768` | `DOCKER_PGVECTOR_DIMENSION`으로 덮어쓸 수 있습니다. 실제 embedding 모델과 DB column 차원이 같아야 합니다. |
+| `LLM_PROVIDER` | `local_openai` | `DOCKER_LLM_PROVIDER`로 덮어씁니다. 화면만 확인할 때만 `mock`을 명시합니다. |
+| `LLM_BASE_URL` | `http://host.docker.internal:12345/v1` | `DOCKER_LLM_BASE_URL`로 덮어씁니다. 컨테이너에서 Windows host의 LM Studio에 접근하는 주소입니다. |
+| `LLM_API_KEY` | 빈 값 | `DOCKER_LLM_API_KEY`로 덮어씁니다. local LM Studio는 보통 비워 둡니다. |
+| `LLM_MODEL` | `qwen2.5-coder-7b-instruct` | `DOCKER_LLM_MODEL`로 덮어쓸 수 있는 chat model 이름입니다. |
+| `EMBEDDING_PROVIDER` | `local_openai` | `DOCKER_EMBEDDING_PROVIDER`로 덮어씁니다. |
+| `EMBEDDING_BASE_URL` | `http://host.docker.internal:12345/v1` | `DOCKER_EMBEDDING_BASE_URL`로 덮어씁니다. |
+| `EMBEDDING_API_KEY` | 빈 값 | `DOCKER_EMBEDDING_API_KEY`로 덮어씁니다. local embedding server는 보통 비워 둡니다. |
+| `EMBEDDING_MODEL` | `text-embedding-nomic-embed-text-v1.5` | `DOCKER_EMBEDDING_MODEL`로 덮어쓸 수 있는 embedding model 이름입니다. |
 | `REPO_STORAGE_ROOT` | Compose: `C:\dev`, `.env`: 빈 값 | 프로젝트 Git 저장소 경로를 이 앱 서버 기준 root 하위로 제한합니다. 비워 두면 제한하지 않습니다. |
 | `REPO_PATH_HOST_PREFIX` | `C:\dev` | DB와 화면에 저장되는 host 기준 Git 저장소 경로 prefix입니다. |
 | `REPO_PATH_CONTAINER_PREFIX` | `/host-dev` | app 컨테이너가 같은 저장소를 읽을 때 사용하는 mount 경로 prefix입니다. |
@@ -304,15 +304,15 @@ docker build -t ai-commit-advisor:local .
 | `NEO4J_RETRY_BACKOFF_SECONDS` | `0.5` | retry 사이 기본 대기 시간입니다. 실제 대기는 attempt 수에 비례해 조금씩 늘어납니다. |
 | `PORT` | `8501` | Dockerfile의 Streamlit 실행 port입니다. Compose는 host `8501`을 container `8501`에 연결합니다. |
 
-실제 LM Studio를 Compose 앱에서 사용하려면 provider를 바꿉니다.
+기본 Compose 설정은 LM Studio의 실제 provider를 사용합니다. 화면·DB smoke test만 하려면 `.env`에 다음 override를 넣고 앱을 다시 만듭니다.
 
-```yaml
-LLM_PROVIDER: local_openai
-EMBEDDING_PROVIDER: local_openai
-PGVECTOR_DIMENSION: "768"
+```dotenv
+DOCKER_LLM_PROVIDER=mock
+DOCKER_EMBEDDING_PROVIDER=mock
+DOCKER_PGVECTOR_DIMENSION=768
 ```
 
-`PGVECTOR_DIMENSION`은 embedding 모델 출력 차원과 반드시 맞춰야 합니다. 이미 다른 차원으로 DB가 만들어진 뒤에는 단순 환경 변수 변경만으로 기존 `vector_items.embedding` column 차원이 바뀌지 않습니다. 이 경우 새 DB volume으로 다시 시작하거나 schema migration 전략을 별도로 잡아야 합니다.
+실제 시연에서는 mock override를 제거하고 LM Studio에서 `qwen2.5-coder-7b-instruct`를 context length 8192로, `text-embedding-nomic-embed-text-v1.5`를 함께 로드합니다. `PGVECTOR_DIMENSION`은 embedding 모델 출력 차원과 반드시 맞춰야 합니다. 이미 다른 차원으로 DB가 만들어진 뒤에는 단순 환경 변수 변경만으로 기존 `vector_items.embedding` column 차원이 바뀌지 않습니다. 이 경우 새 DB volume으로 다시 시작하지 말고 먼저 백업한 뒤 schema migration 전략을 별도로 잡습니다.
 
 ### Docker에서 앱 서버 Git 저장소 접근
 

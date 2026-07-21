@@ -2,6 +2,25 @@
 
 ## 2026-07-21
 
+### 기본 DB와 Docker 8501 시연 환경 통합
+
+- 기본 PostgreSQL DB `ai_commit_advisor`와 격리 E2E DB를 OneDrive에 각각 custom dump로 백업하고 임시 restore에서 프로젝트 수를 조회한 뒤, 기본 DB의 중복 Sample Shop project `4`, `97`, `197`만 정리했습니다. 동일 샘플 저장소를 project `2716`에 연결해 Git 48건/변경 파일 106건, 프로그램 8건, Mapping 48/48, 구현상태 8건, Risk 32건, source/vector 79/79, Knowledge Graph 213/591을 다시 만들었습니다.
+- `docker-compose.yml`의 app 기본값을 기본 DB, `local_openai`, host LM Studio port 12345, `text-embedding-nomic-embed-text-v1.5`, 768차원으로 통일하고 `DOCKER_*` override를 지원하도록 바꿨습니다. Docker 8501에서 실제 chat completion과 768차원 embedding을 호출했으며, Cloudflare quick tunnel에서도 project `2716`과 저장 결과가 동일한지 확인했습니다.
+- 최종 시연 surface는 Docker 8501 하나로 정리했습니다. local 8502를 종료하고, Docker·외부 경로 검증 뒤 격리 DB `ai_commit_advisor_e2e_20260721_140322`를 삭제했습니다. dump 파일은 `C:\Users\chch\OneDrive\AI Commit Advisor Backups\database\20260721_183459`에 남아 있습니다.
+- `scripts/demo_preflight.ps1`의 기본 project ID와 Chat 검증 기준을 현재 결과에 맞추고 Docker app health, 저장 분석 HEAD 일치, UTF-8 subprocess 출력을 확인하도록 보강했습니다. LM Studio Chat model은 context length 8192로 실행합니다.
+- 프로젝트 등록 전부터 Docker 8501과 Cloudflare 확인까지 40개 화면을 `docs/images/usage-verification/end-to-end-demo-2026-07-21/`에 저장하고, 단계별 설명·DB 수치·백업 hash·남은 한계를 `docs/end-to-end-demo-evidence-2026-07-21.md`에 정리했습니다. Runbook, setup, README, 사용 가이드와 검증 문서도 project `2716` 기준으로 갱신했습니다.
+- 주요 파일: `docker-compose.yml`, `.env.example`, `scripts/demo_preflight.ps1`, `README.md`, `docs/setup-and-operations.md`, `docs/demo-runbook.md`, `docs/end-to-end-demo-evidence-2026-07-21.md`, `docs/images/usage-verification/end-to-end-demo-2026-07-21/`, `ROADMAP.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`.
+- 검증: `docker compose config --format json`에서 실제 provider/768차원 확인, Docker app `healthy`, localhost 8501 health `ok`, Docker 내부 chat/embedding 실제 호출 통과, Cloudflare Home/Project Chat 확인, `scripts/demo_preflight.ps1 -ProjectId 2716`은 `FAIL=0, WARN=0`, 화면 link 40개 모두 읽기 성공, `git diff --check` 통과. 샘플 저장소는 HEAD `221eb9ac9c83364f4450bdf4970196b51cb1f9e1`, working tree clean입니다.
+
+### Project Chat 직접 호출 근거 검증과 안전한 답변 복구
+
+- Java 파일명이 포함된 질문은 `.java` 확장자보다 정확한 파일명/stem을 우선하고, verified chunk가 덮는 현재 파일 행 안에서 method별 직접 호출과 조건 결과를 추출하도록 바꿨습니다. `A → B`, `B → C`를 `A → C`의 직접 호출로 합치지 않고 import 관계와 method call을 구분합니다.
+- local LLM 답변이 필수 호출 단계, 조건식, 결과, 파일·행 인용을 통과하지 못하면 추가 LLM 호출 없이 검증된 현재 소스 ledger로 답변을 재구성합니다. `validation_status=deterministic_repair`, `fallback_used`, `repair_attempted`를 message metadata와 UI에 표시해 보정 사실을 숨기지 않습니다.
+- UI의 source/graph 사용 건수는 전체 retrieval 수가 아니라 실제 prompt에 전달된 current source 최대 6건과 graph evidence 최대 4건을 표시합니다. Graph seed에서는 `java`, `src`, `main` 같은 일반 경로 토큰을 제외했습니다.
+- 실제 한글 질문으로 `PaymentController.authorize → PaymentService.authorize → OrderStatusService.markPaid → OrderStatusService.changeStatus`와 두 Mapper 호출, `amount <= 0`, `amount > MAX_AUTHORIZATION_AMOUNT`의 `REJECTED` 결과, 파일·행 인용을 확인했습니다. 과거 `???`는 브라우저 글꼴이 아니라 삭제된 DB message 자체의 깨진 문자열이었고 새 session `#429`는 UTF-8로 정상 저장됐습니다.
+- 주요 파일: `src/rag/chat_service.py`, `src/rag/chat_history_service.py`, `src/services/neo4j_graph_service.py`, `src/ui/project_chat_page.py`, `tests/test_project_chat_service.py`, `tests/test_neo4j_graph_service.py`, `docs/ai-technical-overview.md`, `docs/feature-guide.md`, `docs/demo-user-guide.md`.
+- 검증: targeted Project Chat/Graph/UI test `37 passed`, 전체 `pytest -q` `174 passed`, `compileall` 통과. Docker 8501과 Cloudflare에서 저장 session `#429`의 한글, 직접 호출, source 6, graph 4, `deterministic_repair` 표시를 다시 확인했습니다. 변경한 사용자 문서는 모호한 과장 표현과 번역체를 별도로 검색해 다듬었습니다.
+
 ### 새 프로젝트 전체 시연 재현과 단계별 증적
 
 - 기존 project 197과 Sample Shop 저장소를 보존하면서 동일한 Git 저장소를 검증용 새 프로젝트에 연결해 프로젝트 등록부터 Git 수집, 산출물 등록, Mapping, 구현상태, Risk, RAG/embedding, Knowledge Graph, Project Chat, AI Code Review, Dashboard까지 전체 흐름을 재현했습니다.

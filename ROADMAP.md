@@ -148,6 +148,30 @@
 | P3 | Product UX | First-run and empty-state polish | Done | First-run and empty-state preparation guide |
 | P1 | Demo Readiness | Internal demo rehearsal and preflight hardening | Done | 내부 시연 리허설과 사전 점검 안정화 |
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
+| P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
+
+## P0 - Canonical Demo Database And Docker 8501 Recovery
+
+Status: Done
+
+Goal:
+기본 PostgreSQL DB `ai_commit_advisor` 하나를 실제 시연 데이터의 기준으로 사용하고, Docker 8501과 Cloudflare 경로가 같은 DB와 실제 local LLM/embedding provider를 보도록 복구한다.
+
+Rationale:
+동일 저장소의 기존 commit 소유권 이동을 피하려고 별도 E2E DB를 만든 결과, local 8502와 Docker 8501이 서로 다른 프로젝트 목록과 provider 설정을 보여줬다. Docker 8501은 기본 DB와 mock provider를 사용해 과거의 깨진 Chat 메시지까지 다시 노출했다. 사용자가 포트나 실행 명령에 따라 다른 데이터를 보지 않도록 기준 DB와 실행 경로를 하나로 고정해야 한다.
+
+Checklist:
+
+- [x] 기본 DB와 격리 E2E DB를 OneDrive에 각각 백업하고 복구 가능한 dump인지 확인한다.
+- [x] 잘못 열린 Docker 8501 앱과 quick tunnel을 중지한다.
+- [x] 기본 DB의 기존 Sample Shop 프로젝트 4, 97, 197만 제거한다.
+- [x] 기본 DB에 새 Sample Shop 프로젝트를 등록하고 Git, 산출물, Mapping, 구현상태, Risk, RAG, Knowledge Graph, Project Chat, Code Review, Dashboard 분석을 다시 실행한다.
+- [x] Docker 8501이 기본 DB와 실제 local LLM/embedding provider, 768 dimension을 사용하도록 설정한다.
+- [x] 한글 질문 저장, Project Chat 사실·호출 관계·인용 범위, 화면 프로젝트 ID를 검증한다.
+- [x] Cloudflare 경로에서 새 프로젝트와 저장 결과를 확인한 뒤 격리 E2E DB를 제거한다.
+- [x] 운영 문서, failure history, engineering decision, `AI_CHANGELOG.md`, 테스트와 화면 증적을 갱신한다.
+
+Related AI Change Log: `기본 DB와 Docker 8501 시연 환경 통합`
 
 ## P1 - Fresh End-To-End Demo Project Rebuild And Evidence
 
