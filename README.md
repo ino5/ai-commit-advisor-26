@@ -58,7 +58,7 @@ Quick Tunnel만 따로 확인할 때는 상태 명령부터 실행합니다.
 .\.venv\Scripts\python.exe scripts\quick_tunnel.py status
 ```
 
-상태가 정상이면 출력된 URL을 그대로 사용합니다. 새 URL이 필요할 때만 `start`를 실행합니다. Quick Tunnel 주소에는 자체 로그인이 없고 가동 시간도 보장되지 않으므로 샘플 데이터 기반의 짧은 시연에만 사용하세요. 전체 순서와 장애 대응은 [시연 Runbook](docs/demo-runbook.md#기동-절차)과 [하루 시연용 Cloudflare Quick Tunnel](docs/setup-and-operations.md#하루-시연용-cloudflare-quick-tunnel)을 따릅니다.
+상태가 정상이면 출력된 URL을 그대로 사용합니다. 새 URL이 필요할 때만 `start`를 실행합니다. 스크립트가 새로 만드는 Tunnel은 `restart=unless-stopped`를 사용하므로 명시적으로 `stop`하지 않으면 Docker daemon 재시작 뒤에도 다시 올라옵니다. 이때 Quick Tunnel URL은 바뀔 수 있으므로 `status`가 표시한 현재 실행의 URL을 다시 전달해야 합니다. Quick Tunnel 주소에는 자체 로그인이 없고 가동 시간도 보장되지 않으므로 샘플 데이터 기반의 짧은 시연에만 사용하세요. 전체 순서와 장애 대응은 [시연 Runbook](docs/demo-runbook.md#기동-절차)과 [하루 시연용 Cloudflare Quick Tunnel](docs/setup-and-operations.md#하루-시연용-cloudflare-quick-tunnel)을 따릅니다.
 
 로컬 Python Quick Start도 기본적으로 Neo4j를 함께 켭니다. Neo4j는 첫 image pull 때만 시간이 더 걸릴 수 있고, 이후에는 기존 Docker volume/image를 재사용합니다. 아주 가볍게 PostgreSQL만 켜고 싶다면 `docker compose up -d postgres`만 실행하고 `.env`에서 `NEO4J_ENABLED=false`로 바꾸세요. 이 경우 `Knowledge Graph` 화면은 PostgreSQL 데이터를 기준으로 preview만 보여주며, Neo4j 저장 동기화는 건너뜁니다.
 

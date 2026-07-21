@@ -78,6 +78,8 @@ def test_start_uses_app_service_and_dedicated_tunnel_without_down(monkeypatch):
             "docker",
             "run",
             "--detach",
+            "--restart",
+            "unless-stopped",
             "--name",
             quick_tunnel.TUNNEL_CONTAINER_NAME,
             "--network",
@@ -89,6 +91,40 @@ def test_start_uses_app_service_and_dedicated_tunnel_without_down(monkeypatch):
             "--no-autoupdate",
             "--url",
             quick_tunnel.TUNNEL_ORIGIN_URL,
+        ]
+    ]
+
+
+def test_current_run_logs_excludes_urls_from_previous_container_runs(monkeypatch):
+    commands: list[list[str]] = []
+
+    monkeypatch.setattr(
+        quick_tunnel,
+        "_container_state",
+        lambda _name: {"StartedAt": "2026-07-21T22:19:00.943320458Z"},
+    )
+    monkeypatch.setattr(
+        quick_tunnel,
+        "_run",
+        lambda command, check=True: commands.append(command)
+        or subprocess.CompletedProcess(
+            command,
+            0,
+            stdout="https://current-run.trycloudflare.com",
+            stderr="",
+        ),
+    )
+
+    logs = quick_tunnel._current_run_logs("demo-tunnel")
+
+    assert logs == "https://current-run.trycloudflare.com"
+    assert commands == [
+        [
+            "docker",
+            "logs",
+            "--since",
+            "2026-07-21T22:19:00.943320458Z",
+            "demo-tunnel",
         ]
     ]
 
