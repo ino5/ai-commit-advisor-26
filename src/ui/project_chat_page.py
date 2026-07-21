@@ -782,6 +782,12 @@ def _render_chat_history(messages: list[dict]) -> None:
                 fallback_used = bool(message.get("fallback_used"))
                 if provider != "-" or model != "-":
                     st.caption(f"Provider: {provider} / {model} / fallback={fallback_used}")
+                validation_status = message.get("validation_status") or "not_applicable"
+                if validation_status != "not_applicable":
+                    st.caption(
+                        f"답변 근거 검증: {validation_status} / "
+                        f"repair={bool(message.get('repair_attempted', False))}"
+                    )
                 used_source_count = int(message.get("used_source_count") or 0)
                 insufficient = bool(message.get("insufficient_evidence"))
                 if insufficient:
@@ -936,6 +942,11 @@ def render_project_chat_page() -> None:
                 else:
                     st.write(content)
                     st.caption(f"Provider: {answer.provider or '-'} / {answer.model or '-'} / fallback={answer.fallback_used}")
+                    if answer.validation_status != "not_applicable":
+                        st.caption(
+                            f"답변 근거 검증: {answer.validation_status} / "
+                            f"repair={answer.repair_attempted}"
+                        )
                     if answer.used_source_count:
                         st.caption(f"답변에 사용된 현재 소스 근거 {answer.used_source_count}건")
                     if answer.graph_evidence:
@@ -983,6 +994,8 @@ def render_project_chat_page() -> None:
                     "provider": answer.provider,
                     "model": answer.model,
                     "fallback_used": answer.fallback_used,
+                    "validation_status": answer.validation_status,
+                    "repair_attempted": answer.repair_attempted,
                 }
                 if answer.errors
                 else {
@@ -991,6 +1004,8 @@ def render_project_chat_page() -> None:
                     "provider": answer.provider,
                     "model": answer.model,
                     "fallback_used": answer.fallback_used,
+                    "validation_status": answer.validation_status,
+                    "repair_attempted": answer.repair_attempted,
                 }
             ),
         )

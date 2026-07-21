@@ -119,6 +119,9 @@ def test_build_graph_evidence_seeds_uses_question_expansion_and_source_symbols()
     assert "paymentservice" in seeds
     assert "payment" in seeds
     assert "ordermapper" in seeds
+    assert "java" not in seeds
+    assert "src" not in seeds
+    assert "com" not in seeds
 
 
 def test_build_graph_evidence_seeds_strips_korean_particles_from_code_identifiers() -> None:
