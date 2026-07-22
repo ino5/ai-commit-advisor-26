@@ -155,7 +155,7 @@ Neo4j Knowledge Graph가 최신이면 Project Chat 답변 아래에서 그래프
 
 ### AI Code Review
 
-샘플 프로젝트의 선별 커밋을 `local_openai / qwen2.5-coder-7b-instruct`로 실제 리뷰하고 저장한 결과입니다. 화면은 한국어 출력 prompt로 다시 실행한 최신 저장 리뷰인 `2325182 Relax partner payment validation for pilot channel`의 상태, provider/model, 영향 범위, 위험도, 버그 후보, 권장 수정, 리팩토링 제안을 함께 보여줘 AI Code Review가 단순 실행 버튼이 아니라 실제 local LLM 검토 근거를 남기는 흐름임을 확인할 수 있습니다. 상태와 provider 같은 보조 정보는 큰 KPI가 아니라 `리뷰 메타데이터` 표로 표시합니다.
+샘플 프로젝트의 선별 커밋을 `local_openai / qwen2.5-coder-7b-instruct`로 실제 리뷰하고 저장한 결과입니다. 리뷰 대상은 앱 서버 Git 저장소의 최신 commit 또는 최근 목록에서 선택한 commit으로 한정합니다. 화면은 한국어 출력 prompt로 다시 실행한 최신 저장 리뷰인 `2325182 Relax partner payment validation for pilot channel`의 상태, provider/model, 영향 범위, 위험도, 버그 후보, 권장 수정, 리팩토링 제안을 함께 보여줘 AI Code Review가 단순 실행 버튼이 아니라 실제 local LLM 검토 근거를 남기는 흐름임을 확인할 수 있습니다. 상태와 provider 같은 보조 정보는 큰 KPI가 아니라 `리뷰 메타데이터` 표로 표시합니다.
 
 아래 커밋들은 Application Preview 갱신 전에 실제 AI Code Review로 실행해 DB에 저장한 대상입니다. 최신 화면은 high-risk 후보인 `2325182`를 보여주고, 나머지는 `리뷰 기록`에서 확인할 수 있습니다.
 

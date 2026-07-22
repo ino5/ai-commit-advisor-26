@@ -2,6 +2,17 @@
 
 ## 2026-07-23
 
+### AI Code Review 서버 local 대상 제거
+
+- `AI Code Review`의 실행 대상을 앱 서버 Git 저장소의 `최신 커밋 (권장)`과 `커밋 목록에서 선택`으로 한정했습니다. 개발자 PC의 변경을 볼 수 없고 관리형 clone에는 local 변경을 남기지 않는 현재 운영 모델에 맞춰 `서버 작업트리 변경`, `서버 Staged 변경` 선택지와 안내 문구를 화면에서 제거했습니다.
+- `code_review_service.py`의 `working_tree`/`staged` diff 실행 분기와 `run_local_ai_verification.py`의 같은 CLI 선택지를 제거했습니다. 제거된 target 요청은 기존 unsupported-target 오류로 거부하며, 최신 commit과 직접 rev를 포함한 선택 commit 리뷰는 그대로 유지합니다.
+- 기존 `code_review_results`는 삭제하거나 변환하지 않았습니다. 과거 `working_tree`/`staged` row는 리뷰 기록에서 `서버 작업트리 변경 (과거 기록)`, `서버 Staged 변경 (과거 기록)`으로 계속 표시하되 재실행할 수 없습니다. Column 구조가 바뀌지 않아 Alembic migration은 추가하지 않았습니다.
+- 기능 가이드, 시연 가이드, architecture, AI 기술 설명, Application Preview, engineering decision을 commit-only 지원 범위로 갱신했습니다. README는 이미 최신/선택 commit만 사용자 기능으로 설명해 수정하지 않았고, `docs/db-migrations.md`와 sample scenario 문서는 schema와 샘플 commit 설계가 바뀌지 않아 갱신하지 않았습니다.
+- Application Preview screenshot을 실제 `local_openai / qwen2.5-coder-7b-instruct` commit `2325182` 저장 결과와 새 두 개 target 선택지가 함께 보이도록 갱신했습니다. 공유 기본 DB의 최신 리뷰 순서 때문에 최초 캡처가 timeout 난 원인과, 기본 DB를 변경하지 않는 임시 DB 복제 캡처 절차를 `docs/failure-history.md`에 기록했습니다. 캡처 후 임시 DB와 port 8502/8503 Streamlit process를 제거했으며 Docker 8501과 Quick Tunnel은 변경하지 않았습니다.
+- UI에서 두 commit target만 제공하는지, service와 local verification CLI가 제거 target을 거부하는지, 과거 target label을 유지하는지 회귀 test를 추가했습니다. 사용자-facing 변경 문구는 실행 주체, 지원 입력, 과거 기록 경계를 직접 설명하는지 검토했고, 변경 diff에는 과장형·번역체 표현이 남지 않았습니다.
+- 주요 파일: `src/ui/code_review_page.py`, `src/services/code_review_service.py`, `scripts/run_local_ai_verification.py`, `scripts/capture_feature_screenshot.py`, `tests/test_code_review_commit_list.py`, `tests/test_code_review_korean_output.py`, `docs/images/features/ai-code-review.png`, `docs/feature-guide.md`, `docs/demo-user-guide.md`, `docs/application-preview.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`.
+- 검증: Code Review·문서 이미지 focused test 15개, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 239개와 `compileall src app.py scripts tests`가 통과했습니다. Playwright browser snapshot에서 target radio 2개와 console error 0건을 확인했고, 격리 local Streamlit screenshot 검증과 `git diff --check`가 통과했습니다.
+
 ### 모바일 sidebar 연속 자동 닫힘 안정화
 
 - 모바일에서 첫 메뉴 이동은 닫히지만 sidebar를 다시 열어 다음 메뉴로 이동하면 열린 상태가 남던 문제를 수정했습니다. 메뉴 전환마다 session state 요청 ID를 증가시키고 iframe HTML에 포함해, 같은 위치의 `components.html`이 재사용되어도 `srcdoc`가 바뀌고 닫기 script가 다시 실행됩니다.

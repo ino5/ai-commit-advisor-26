@@ -452,14 +452,6 @@ def get_review_target(repo_path: str | Path, target_type: str, target_ref: str |
     if not is_git_repository(repo):
         raise ValueError(f"Git repository not found: {repo}")
 
-    if target_type == "working_tree":
-        diff = _run_git(repo, ["diff", "--no-ext-diff", "--no-color"])
-        return ReviewTarget("working_tree", None, "서버 작업트리 변경", _truncate_diff(diff))
-
-    if target_type == "staged":
-        diff = _run_git(repo, ["diff", "--cached", "--no-ext-diff", "--no-color"])
-        return ReviewTarget("staged", None, "서버 Staged 변경", _truncate_diff(diff))
-
     if target_type == "latest_commit":
         commit_hash = _run_git(repo, ["rev-parse", "HEAD"]).strip()
         message = _run_git(repo, ["show", "-s", "--format=%B", commit_hash]).strip()

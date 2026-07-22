@@ -16,11 +16,14 @@ from src.ui.project_context import project_scoped_key, require_project_context
 TARGET_OPTIONS = {
     "최신 커밋 (권장)": "latest_commit",
     "커밋 목록에서 선택": "commit",
-    "서버 작업트리 변경": "working_tree",
-    "서버 Staged 변경": "staged",
 }
 
-TARGET_TYPE_LABELS = {value: label for label, value in TARGET_OPTIONS.items()}
+TARGET_TYPE_LABELS = {
+    "latest_commit": "최신 커밋 (권장)",
+    "commit": "커밋 목록에서 선택",
+    "working_tree": "서버 작업트리 변경 (과거 기록)",
+    "staged": "서버 Staged 변경 (과거 기록)",
+}
 STATUS_LABELS = {
     "completed": "완료",
     "failed": "실패",
@@ -203,10 +206,6 @@ def render_code_review_page() -> None:
 
     target_label = st.radio("리뷰 대상", list(TARGET_OPTIONS.keys()), horizontal=True)
     target_type = TARGET_OPTIONS[target_label]
-    st.caption(
-        "중앙 앱 서버 모델에서는 최신 커밋 또는 목록에서 선택한 커밋 리뷰가 기본 흐름입니다. "
-        "서버 작업트리와 서버 Staged 변경은 분석용 서버 clone에 임시 변경이 남아 있을 때만 사용하세요."
-    )
     target_ref = None
     if target_type == "commit":
         try:
@@ -240,8 +239,6 @@ def render_code_review_page() -> None:
             )
             target_ref = selected_commit.commit_hash
             st.caption(f"선택한 commit: `{selected_commit.commit_hash}`")
-    elif target_type in {"working_tree", "staged"}:
-        st.info("이 옵션은 앱 서버 Git 저장소의 local 변경을 리뷰합니다. 개발자 개인 PC의 작업트리나 staged 변경은 서버 앱에서 직접 볼 수 없습니다.")
 
     rendered_current_review = False
     if st.button("AI 코드리뷰 실행", type="primary"):

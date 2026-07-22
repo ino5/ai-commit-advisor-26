@@ -228,7 +228,7 @@ flowchart LR
 - `Git History`: 현재 프로젝트의 커밋 목록, 작성자/날짜/파일 필터, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff를 조회.
 - `Commit Impact`: 특정 커밋이 영향을 주는 프로그램, 파일, 개발자 범위를 요약.
 - `Knowledge Graph`: PostgreSQL 분석 데이터와 앱 서버 Git 저장소의 Java class/import 구조를 Neo4j graph read model로 동기화하고, 저장된 Neo4j graph에서 선택 node 주변 path, 클래스 관계도, 커밋 영향 경로, node/edge 저장 상태를 다시 조회.
-- `AI Code Review`: 앱 서버 Git 저장소의 최근 커밋과 특정 커밋을 중심으로 LLM 리뷰를 실행하고 결과를 저장. 서버 clone에 local 변경이 남아 있을 때만 서버 작업트리/staged 변경 리뷰를 보조 옵션으로 사용.
+- `AI Code Review`: 앱 서버 Git 저장소의 최신 커밋 또는 목록에서 선택한 커밋 diff를 LLM으로 리뷰하고 결과를 저장. 개발자 PC와 서버 clone의 미커밋 변경은 실행 대상으로 사용하지 않으며, 과거 서버 local 변경 리뷰는 기존 기록 표시만 유지.
 - `Dashboard`: 프로젝트별 계획/AI/Git 활동 요약, AI Resource Radar, PL Briefing, 개발자별 업무량·난이도, 예상 지연 프로그램, 고객가치 참고 지표 표시.
 - `AI 운영 현황`: LLM/embedding/Neo4j 연결 상태, Knowledge Graph/GraphRAG 준비 상태, AI 분석 준비 상태, first-run/empty-state 다음 준비 작업, AI 실행 바로가기, AI 근거 추적, 프로젝트 AI 품질 점검, 실제 LLM 검증 요약, graph impact가 포함된 주간 보고서 export, AI 호출 기록 표시.
 - `개발계획 대시보드`: 개발계획 기준 일정, 담당자, 완료/지연 현황 표시.
@@ -572,7 +572,7 @@ erDiagram
 | `risk_service.py` | 계획 일정, 담당자, 커밋/매핑 상태를 기반으로 리스크를 탐지하고 `risk_findings`에 저장/해결 처리한다. |
 | `git_history_service.py` | 프로젝트별 커밋 이력, 변경 파일, 저장 diff preview, 앱 서버 저장소의 전체 `git show` diff 조회를 처리한다. |
 | `commit_impact_service.py` | 특정 커밋이 영향을 줄 가능성이 있는 프로그램, 파일, 개발자 범위를 계산한다. |
-| `code_review_service.py` | 앱 서버 Git 저장소의 최근 커밋, 특정 커밋 diff를 중심으로 LLM 리뷰를 실행하고 `code_review_results`에 저장한다. 서버 clone local 변경 점검용으로 working tree/staged diff 리뷰도 지원한다. |
+| `code_review_service.py` | 앱 서버 Git 저장소의 최신 커밋 또는 선택한 커밋 diff를 LLM으로 리뷰하고 `code_review_results`에 저장한다. 서버 clone의 미커밋 변경 요청은 거부하고 기존 저장 결과는 그대로 둔다. |
 | `resource_metrics_service.py` | AX 자원관리 지표. 프로그램별 예상 종료일·난이도·업무량 근거, 개발자별 업무량·난이도 집계, 고객가치 참고 지표를 계산하고, 사용자가 요청한 기준 시점 snapshot을 저장/조회한다. |
 | `ai_resource_radar_service.py` | AX 자원관리 Radar. `resource_metrics_service.py` 결과와 미해결 리스크, 관련 commit evidence를 조합해 PL 우선 검토 프로그램을 랭킹하고, LLM 또는 fallback으로 구조화된 PL Briefing을 생성해 `pl_briefing_history`에 저장한다. |
 | `ai_invocation_service.py` | AI 호출 telemetry 저장과 조회를 담당한다. provider/model, feature, latency, prompt/response length, validation/fallback/error metadata를 `ai_invocation_logs`에 기록한다. |
