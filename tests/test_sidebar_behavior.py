@@ -51,9 +51,20 @@ def test_sidebar_behavior_targets_streamlit_mobile_overlay_and_open_sidebar() ->
 
 
 def test_sidebar_header_is_sticky() -> None:
+    assert 'data-testid="stSidebarContent"' in SIDEBAR_BEHAVIOR_STYLES
     assert 'data-testid="stSidebarHeader"' in SIDEBAR_BEHAVIOR_STYLES
+    assert SIDEBAR_BEHAVIOR_STYLES.count("background-color: inherit") == 2
+    assert "#ffffff" not in SIDEBAR_BEHAVIOR_STYLES
+    assert "min-height: 2.75rem" in SIDEBAR_BEHAVIOR_STYLES
+    assert "padding: 0.375rem 0.75rem" in SIDEBAR_BEHAVIOR_STYLES
     assert "position: sticky" in SIDEBAR_BEHAVIOR_STYLES
     assert "top: 0" in SIDEBAR_BEHAVIOR_STYLES
+
+
+def test_touch_sidebar_keeps_streamlit_collapse_button_visible() -> None:
+    assert "@media (hover: none), (pointer: coarse)" in SIDEBAR_BEHAVIOR_STYLES
+    assert 'data-testid="stSidebarCollapseButton"' in SIDEBAR_BEHAVIOR_STYLES
+    assert "display: block !important" in SIDEBAR_BEHAVIOR_STYLES
 
 
 def test_pinned_streamlit_bundle_still_exposes_sidebar_behavior_targets() -> None:
