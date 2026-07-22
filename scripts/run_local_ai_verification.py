@@ -206,7 +206,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--question", default="결제금액 검증은 어디에서 수행되나요?")
     parser.add_argument("--top-k", type=int, default=8)
-    parser.add_argument("--code-review-target", default="latest_commit", choices=["latest_commit", "working_tree", "staged", "commit"])
+    parser.add_argument("--code-review-target", default="latest_commit", choices=["latest_commit", "commit"])
     parser.add_argument("--code-review-ref")
     parser.add_argument("--mapping-commit-limit", type=int, default=1)
     parser.add_argument("--mapping-candidates", type=int, default=10)
