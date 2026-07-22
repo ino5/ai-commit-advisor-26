@@ -21,6 +21,46 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-22 - 모바일 메뉴 이동만 sidebar 자동 닫기를 요청한다
+
+### 배경
+
+AI Commit Advisor는 custom `st.button`과 session state로 sidebar 내비게이션을 구성합니다. 모바일에서 이 버튼으로 다른 화면을 선택하면 본문은 바뀌지만 sidebar overlay가 열린 채로 남아 결과 화면을 가렸습니다. 메뉴가 길어 sidebar를 아래로 스크롤하면 Streamlit 기본 닫기 버튼도 함께 사라져, 모바일과 데스크톱 모두 다시 상단까지 이동해야 했습니다.
+
+### 결정
+
+- 실제 sidebar 메뉴가 다른 화면으로 전환될 때 Python session state에 1회성 모바일 닫기 요청을 기록합니다.
+- 다음 rerun에서 브라우저 폭이 Streamlit의 mobile overlay 기준인 768px 이하이고 sidebar가 열린 경우에만 기존 `stSidebarCollapseButton`을 한 번 호출합니다.
+- 데스크톱, 현재 메뉴 재클릭, 메뉴 그룹 펼치기, 현재 프로젝트 변경은 자동 닫기 대상에서 제외합니다.
+- Streamlit 기본 `stSidebarHeader`를 sticky 처리해 sidebar 내부 스크롤과 관계없이 기존 닫기 버튼을 상단에 유지합니다.
+- DOM 연동은 `src/ui/sidebar_behavior.py`에 격리하고, pinned Streamlit bundle의 selector와 실제 모바일·데스크톱 viewport 동작을 검증합니다.
+
+### 이유
+
+- 모바일은 sidebar가 본문 위를 덮으므로 메뉴 선택 뒤 닫는 편이 이동 결과를 바로 확인하기 쉽습니다. 데스크톱은 sidebar와 본문이 나란히 배치되므로 연속 메뉴 탐색을 위해 열린 상태를 유지합니다.
+- click event를 상시 감시하지 않고 Python이 실제 화면 전환을 판별한 뒤 1회 요청만 보내면 프로젝트 selector나 expander click을 잘못 닫기 동작으로 해석하지 않습니다.
+- 별도 닫기 버튼을 복제하지 않고 Streamlit 기본 버튼과 접근성 동작을 재사용하면 sidebar 상태를 이중으로 관리하지 않아도 됩니다.
+- 기존 내비게이션을 `st.navigation`으로 전면 교체하는 것보다 현재 page callable과 내부 화면 이동 상태를 유지하면서 변경 범위를 작게 제한할 수 있습니다.
+
+### 검토한 대안
+
+- 모바일과 데스크톱 모두 자동 닫기: 분석 본문 폭은 넓어지지만 데스크톱에서 여러 메뉴를 비교할 때 매번 sidebar를 다시 열어야 합니다.
+- sidebar 안의 모든 button click을 browser event delegation으로 감시: 구현은 가능하지만 프로젝트 selector 주변 동작과 새 버튼을 구분하는 DOM 규칙이 추가되고 listener lifecycle을 관리해야 합니다.
+- custom 닫기 버튼 추가: selector 의존성은 줄일 수 있지만 Streamlit sidebar 상태와 접근성 동작을 별도로 재현해야 합니다.
+- `st.navigation` 기반 multipage 구조로 전환: 공식 navigation을 사용할 수 있지만 현재 단일 entrypoint, page callable, session-state 기반 내부 이동을 함께 바꾸는 범위가 이번 UX 문제보다 큽니다.
+
+### 영향, tradeoff, 남은 한계
+
+- Streamlit 1.41.1은 sidebar를 Python에서 닫는 public API를 제공하지 않으므로 `stSidebarCollapseButton`과 `stSidebarHeader` DOM 식별자에 의존합니다.
+- Streamlit version을 올릴 때 selector 존재 test와 390px/1440px 실제 browser 검증을 다시 실행해야 합니다.
+- 1회성 script는 `components.html` iframe에서 parent sidebar를 제어합니다. 동작을 한 모듈에 제한했지만 browser sandbox 또는 Streamlit component 정책이 바뀌면 해당 adapter를 조정해야 합니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Mobile Sidebar Auto-Collapse And Sticky Close Control`
+- `docs/feature-guide.md`의 `권장 사용 순서`
+- `AI_CHANGELOG.md`의 `모바일 sidebar 자동 닫기와 닫기 버튼 상단 고정`
+
 ## 2026-07-22 - 현재 프로젝트 선택은 session state를 단일 기준으로 관리한다
 
 ### 배경

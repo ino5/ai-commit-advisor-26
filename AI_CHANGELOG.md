@@ -2,6 +2,15 @@
 
 ## 2026-07-22
 
+### 모바일 sidebar 자동 닫기와 닫기 버튼 상단 고정
+
+- 화면 폭이 768px 이하인 모바일 overlay에서 다른 sidebar 메뉴로 이동하면 메뉴가 자동으로 닫히도록 했습니다. 데스크톱, 현재 메뉴 재클릭, 메뉴 그룹 펼치기, 현재 프로젝트 변경에는 적용하지 않아 연속 탐색과 선택 흐름을 유지합니다.
+- Streamlit 기본 `stSidebarHeader`를 sticky 처리해 sidebar 내부를 아래로 스크롤해도 기존 `<` 닫기 버튼이 상단에 남도록 했습니다. 별도 버튼이나 상시 click listener를 만들지 않고, Python이 실제 메뉴 전환 때만 1회성 요청을 기록한 뒤 열린 모바일 sidebar의 기본 닫기 버튼을 호출합니다.
+- DOM 연동을 `src/ui/sidebar_behavior.py`에 격리하고, 요청이 한 번만 소비되는지, 메뉴 상태 변경과 닫기 요청이 함께 기록되는지, pinned Streamlit bundle에 필요한 selector가 남아 있는지 검증하는 회귀 test를 추가했습니다.
+- README, 기능 가이드, engineering decision에 모바일/데스크톱 동작 차이와 Streamlit DOM selector 의존성, version upgrade 시 재검증 범위를 기록했습니다. 사용자-facing 문구는 실제 화면 폭, 사용자 동작, 제외 조건을 직접 설명하는지 확인했고 과장형·번역체 표현이 남지 않았는지 점검했습니다.
+- 주요 파일: `app.py`, `src/ui/sidebar_behavior.py`, `tests/test_sidebar_behavior.py`, `README.md`, `docs/feature-guide.md`, `docs/engineering-decisions.md`, `ROADMAP.md`.
+- 검증: `tests/test_sidebar_behavior.py` 5개, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 232개, `compileall`, `git diff --check`가 통과했습니다. 실제 local Streamlit에서 390x844 viewport는 `Dashboard` 이동 뒤 sidebar `aria-expanded=false`, 1440x1000 viewport는 `AI Progress` 이동 뒤 `aria-expanded=true`를 확인했습니다. 1440x500 viewport에서 sidebar scrollTop 631까지 이동한 뒤에도 sticky header top 2px, 닫기 버튼 top 24px가 유지됐고 browser console error는 0건이었습니다. `demo_start.ps1 -Build`로 Docker image를 빌드하고 app만 재생성한 뒤 app health와 기존 Quick Tunnel 외부 health가 모두 `200 ok`임을 확인했습니다. Docker 8501의 390x844 viewport에서는 현재 `Home` 재클릭 뒤 sidebar가 열린 상태를 유지하고 `Dashboard` 이동 뒤 닫혔습니다. 통합 preflight는 앱·DB·Neo4j·LLM·embedding·Mapping·RAG·Knowledge Graph 항목을 통과했지만, 이번 변경과 무관한 기존 저장 AI Code Review `bug=0` 조건으로 `FAIL=1`이었습니다.
+
 ### 현재 프로젝트 URL 연동 제거
 
 - 사이드바 `현재 프로젝트` 선택의 URL `project_id` 읽기·쓰기와 URL 우선 복원 로직을 제거하고 Streamlit session state를 단일 기준으로 바꿨습니다. 이전 URL 값이 새 widget 선택을 덮을 수 없으므로 한 번의 선택이 즉시 현재 프로젝트에 반영됩니다.

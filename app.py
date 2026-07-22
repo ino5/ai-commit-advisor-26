@@ -24,6 +24,11 @@ from src.ui.rag_page import render_rag_page
 from src.ui.risk_page import render_risk_page
 from src.ui.sample_data_page import render_sample_data_page
 from src.ui.settings_page import render_settings_page
+from src.ui.sidebar_behavior import (
+    inject_sidebar_behavior_styles,
+    render_requested_mobile_sidebar_collapse,
+    request_mobile_sidebar_collapse,
+)
 from src.ui.standard_terms_page import render_standard_terms_page
 from src.ui.upload_page import render_upload_page
 
@@ -79,6 +84,7 @@ NAV_STATE_KEY = "sidebar_navigation"
 
 
 def _inject_sidebar_styles() -> None:
+    inject_sidebar_behavior_styles()
     st.markdown(
         """
         <style>
@@ -144,6 +150,7 @@ def _ensure_navigation_state() -> dict:
 
 def _select_page(group: str, page: str) -> None:
     st.session_state[NAV_STATE_KEY] = {"group": group, "page": page}
+    request_mobile_sidebar_collapse()
 
 
 def _render_sidebar_navigation() -> tuple[str, str, Callable[[], None]]:
@@ -165,6 +172,8 @@ def _render_sidebar_navigation() -> tuple[str, str, Callable[[], None]]:
                         continue
                     _select_page(group, page_name)
                     st.rerun()
+
+    render_requested_mobile_sidebar_collapse()
 
     selected_group = st.session_state[NAV_STATE_KEY]["group"]
     selected_page = st.session_state[NAV_STATE_KEY]["page"]
