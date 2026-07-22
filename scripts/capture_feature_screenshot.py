@@ -189,14 +189,6 @@ SCENARIOS: dict[str, FeatureScenario] = {
         description="Git History 커밋 상세/diff preview 화면",
         scroll_to_text="저장된 diff preview",
     ),
-    "sample-data": FeatureScenario(
-        name="sample-data",
-        sidebar_label="샘플 데이터 생성",
-        wait_text="앱 서버 Git 저장소 경로",
-        required_texts=("샘플 데이터 생성", "앱 서버 Git 저장소 경로", "샘플 데이터 생성"),
-        default_screenshot="docs/images/features/sample-data.png",
-        description="샘플 데이터 생성 화면",
-    ),
     "standard-terms": FeatureScenario(
         name="standard-terms",
         sidebar_label="표준용어/표준단어",
@@ -648,7 +640,6 @@ SIDEBAR_GROUP_BY_LABEL = {
     "AI Progress": "개요",
     "프로젝트/Git 설정": "프로젝트 설정",
     "Git 동기화": "프로젝트 설정",
-    "샘플 데이터 생성": "프로젝트 설정",
     "개발자 현황": "산출물 관리",
     "개발자 목록": "산출물 관리",
     "프로그램 목록": "산출물 관리",

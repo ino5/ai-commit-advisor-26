@@ -22,7 +22,6 @@ from src.ui.project_context import render_global_project_selector
 from src.ui.project_page import render_project_page
 from src.ui.rag_page import render_rag_page
 from src.ui.risk_page import render_risk_page
-from src.ui.sample_data_page import render_sample_data_page
 from src.ui.settings_page import render_settings_page
 from src.ui.sidebar_behavior import (
     inject_sidebar_behavior_styles,
@@ -50,7 +49,6 @@ PAGE_GROUPS = {
     "프로젝트 설정": {
         "프로젝트/Git 설정": render_project_page,
         "Git 동기화": render_git_page,
-        "샘플 데이터 생성": render_sample_data_page,
     },
     "산출물 관리": {
         "개발자 현황": render_developer_page,

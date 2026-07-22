@@ -2,6 +2,16 @@
 
 ## 2026-07-22
 
+### 샘플 데이터 생성 메뉴 제거와 CLI 유지
+
+- `프로젝트 설정`에서 개발·업로드 검증용 `샘플 데이터 생성` 메뉴와 전용 Streamlit page를 제거했습니다. 프로젝트 설정에는 `프로젝트/Git 설정`, `Git 동기화`만 남기고, 제거된 page가 session state에 남아도 기존 navigation validation이 첫 화면으로 복구합니다.
+- 전용 화면을 설명하던 Application Preview section, `docs/images/features/sample-data.png`, feature screenshot capture scenario도 함께 제거했습니다.
+- Git commit author, commit date, 변경 파일에서 개발자·프로그램·개발계획 Excel을 만드는 `scripts/generate_sample_development_data.py`와 생성 로직 test는 유지했습니다. README와 기능 가이드에 CLI 명령, 출력 파일 3종, 기존 프로그램목록 CSV 옵션, DB를 자동 변경하지 않는다는 경계, 생성값이 실제 계획이 아닌 가상 데이터라는 주의사항을 추가했습니다.
+- architecture에는 사용자 navigation과 CLI 책임을 분리해 기록하고, engineering decision에는 고정 Sample Shop 다운로드와 임의 Git 기반 생성기의 역할을 나눈 이유와 대안을 남겼습니다. `docs/failure-history.md`는 제품 실패나 재발 가능한 사고를 다룬 변경이 아니어서 갱신하지 않았습니다.
+- 사용자-facing 문구는 실행 주체, 출력 파일, 저장 동작, 사용 제한을 구체적으로 설명하는지 확인했고 과장형·번역체 표현이 남지 않았는지 점검했습니다.
+- 주요 파일: `app.py`, `src/ui/sample_data_page.py`(삭제), `scripts/generate_sample_development_data.py`(유지), `scripts/capture_feature_screenshot.py`, `tests/test_sidebar_behavior.py`, `tests/test_sample_data_generation.py`(유지), `README.md`, `docs/feature-guide.md`, `docs/application-preview.md`, `docs/images/features/sample-data.png`(삭제), `docs/architecture.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: CLI `--help` 출력 확인 후 `C:\dev\ai-advisor-sample-shop`을 대상으로 임시 실행해 개발자 6명, 프로그램 55개, 개발계획 55개와 `sample_developers.xlsx`, `sample_programs.xlsx`, `sample_development_plan.xlsx` 생성을 확인하고 임시 파일을 삭제했습니다. `compileall` 통과, sidebar·샘플 생성·문서 이미지 focused test 22개 통과, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 234개 통과, 제거 대상 참조 검색·사용자 문구 점검·`git diff --check` 통과.
+
 ### 태블릿 sidebar 상단 고정 영역 보정
 
 - 어두운 테마 태블릿에서 sidebar 상단이 흰색 빈 영역으로 보이던 문제를 수정했습니다. `stSidebarContent`와 sticky `stSidebarHeader`가 sidebar의 실제 배경색을 상속하므로 밝은/어두운 테마에서 본문과 같은 색을 유지합니다.

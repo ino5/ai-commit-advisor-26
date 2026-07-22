@@ -21,6 +21,48 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-22 - Git 기반 샘플 데이터 생성은 사용자 메뉴가 아닌 CLI로 제공한다
+
+### 배경
+
+기존 `샘플 데이터 생성` 화면은 앱 서버가 읽을 수 있는 로컬 Git 저장소 경로를 받아 commit author, commit date, 변경 파일에서 개발자·프로그램·개발계획 Excel을 만들었습니다. 이후 각 산출물 관리 화면에서 검증된 Sample Shop Excel을 직접 내려받을 수 있게 되면서, 일반 사용자는 고정 샘플 다운로드와 Git 기반 가상 데이터 생성 중 어느 경로를 선택해야 하는지 구분해야 했습니다. Git 경로와 프로그램목록 CSV를 직접 지정하는 기존 기능은 제품 설정 화면보다 개발·업로드 검증 도구에 가깝습니다.
+
+### 결정
+
+- sidebar의 `샘플 데이터 생성` 항목과 전용 Streamlit page를 제거합니다.
+- 제거된 화면의 Application Preview section, screenshot asset, 자동 capture scenario도 함께 제거합니다.
+- Git 이력에서 가상 Excel을 만드는 `scripts/generate_sample_development_data.py`와 회귀 test는 유지합니다.
+- Sample Shop을 확인하는 일반 사용자는 각 산출물 관리 화면의 샘플 Excel 다운로드를 사용합니다. 임의 저장소 기반 데이터가 필요한 개발·검증 작업은 문서화된 CLI를 명시적으로 실행합니다.
+- CLI는 파일만 생성하며 DB에 자동 저장하지 않습니다. 생성값을 앱에 반영할 때는 기존 Excel upload validation과 저장 절차를 거칩니다.
+
+### 이유
+
+- sidebar에는 프로젝트 등록과 Git 수집처럼 모든 사용자에게 필요한 설정만 남아 초기 선택 부담이 줄어듭니다.
+- 고정 Sample Shop 데이터와 임의 Git 이력에서 추정한 가상 데이터가 같은 수준의 메뉴로 보이지 않아 목적과 신뢰 경계가 분명해집니다.
+- 생성기를 CLI로 유지하면 샘플 프로젝트 생성과 임의 저장소의 업로드 검증 자동화는 잃지 않습니다.
+- 기존 upload validator를 계속 통과해야 저장되므로 개발 도구가 운영 데이터 저장 경로를 우회하지 않습니다.
+
+### 검토한 대안
+
+- 메뉴를 그대로 유지: 접근은 쉽지만 산출물 화면의 샘플 다운로드와 역할이 겹치고, 서버 로컬 경로를 요구하는 개발 도구가 일반 설정처럼 노출됩니다.
+- `고급 설정`으로 이동: 메뉴 중복은 줄어들지만 사용 빈도가 낮은 전용 UI와 screenshot/capture 유지 비용은 남습니다.
+- 생성기까지 삭제: UI는 단순해지지만 `scripts/create_sample_target_repo.py`가 사용하는 생성 로직과 임의 저장소 검증 수단을 잃습니다.
+- 실제 프로젝트의 초기 데이터 생성 기능으로 이름만 변경: Git 이력에서 추정한 역할·일정·진척도가 실제 계획으로 오해될 수 있어 현재 신뢰 수준과 맞지 않습니다.
+
+### 영향, tradeoff, 남은 한계
+
+- CLI 사용자는 Python 환경과 로컬 Git 경로를 준비해야 하므로 화면 실행보다 진입 장벽이 높습니다.
+- CLI가 만드는 개발자·프로그램·개발계획은 가상 데이터이며 표준용어/표준단어 파일은 포함하지 않습니다.
+- 산출물 관리 화면의 Sample Shop 다운로드 기능과 `scripts/create_sample_target_repo.py`는 유지됩니다.
+- 이전 session state에 제거된 page 이름이 남아 있어도 `app.py`의 navigation validation이 프로젝트 설정 그룹의 첫 화면으로 복구합니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Remove Sample Data UI And Retain CLI Workflow`
+- `README.md`의 `샘플 프로젝트`
+- `docs/feature-guide.md`의 `Git 저장소 기반 샘플 Excel 생성 CLI`
+- `AI_CHANGELOG.md`의 `샘플 데이터 생성 메뉴 제거와 CLI 유지`
+
 ## 2026-07-22 - sidebar sticky header는 테마 상속과 입력 장치 특성을 기준으로 구성한다
 
 ### 배경

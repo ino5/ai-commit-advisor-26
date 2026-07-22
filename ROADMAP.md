@@ -14,6 +14,7 @@
 
 | Priority | Area | Task | Status | Related AI Change Log |
 |---|---|---|---|---|
+| P2 | Navigation UX / Sample Data | Remove sample data UI and retain CLI workflow | Done | 샘플 데이터 생성 메뉴 제거와 CLI 유지 |
 | P1 | Navigation UX | Tablet sidebar sticky header theme and touch fix | Done | 태블릿 sidebar 상단 고정 영역 보정 |
 | P2 | Navigation UX | Mobile sidebar auto-collapse and sticky close control | Done | 모바일 sidebar 자동 닫기와 닫기 버튼 상단 고정 |
 | P1 | UX / State | Remove current-project URL synchronization | Done | 현재 프로젝트 URL 연동 제거 |
@@ -171,6 +172,28 @@
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
 | P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
 | P0 | Demo Operations | Canonical demo startup contract and legacy Tunnel reuse | Done | 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용 |
+
+## P2 - Remove Sample Data UI And Retain CLI Workflow
+
+Status: Done
+
+Goal:
+사용자용 sidebar에서 개발·검증 목적의 `샘플 데이터 생성` 화면과 관련 preview 산출물을 제거하되, Git 저장소에서 개발자·프로그램·개발계획 Excel을 생성하는 CLI 프로그램과 실행 가이드는 유지한다.
+
+Rationale:
+산출물 관리 화면에서 Sample Shop Excel을 직접 내려받을 수 있게 된 뒤에도 별도의 `샘플 데이터 생성` 메뉴가 남아 있어 두 경로의 목적이 겹쳐 보인다. 전용 화면은 앱 서버의 로컬 Git 경로를 요구하는 개발 도구 성격이 강하므로 일반 navigation에서는 제외하고, 임의 저장소로 가상 Excel을 만들어야 하는 개발·검증 작업은 명시적인 CLI로 계속 수행할 수 있게 한다.
+
+Checklist:
+
+- [x] sidebar 메뉴 연결과 전용 Streamlit page를 제거한다.
+- [x] Application Preview section, screenshot asset, capture scenario를 제거한다.
+- [x] `scripts/generate_sample_development_data.py`와 생성 로직 test를 유지한다.
+- [x] README와 기능 가이드에 CLI 실행 방법, 출력 파일, 사용 경계를 남긴다.
+- [x] architecture와 engineering decision에 UI/CLI 경계를 반영한다.
+- [x] `AI_CHANGELOG.md`를 갱신한다.
+- [x] 참조 검색, CLI smoke test, focused/전체 test, 문서 문구와 whitespace를 검증한다.
+
+Related AI Change Log: `샘플 데이터 생성 메뉴 제거와 CLI 유지`
 
 ## P1 - Tablet Sidebar Sticky Header Theme And Touch Fix
 
