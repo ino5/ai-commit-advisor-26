@@ -14,6 +14,7 @@
 
 | Priority | Area | Task | Status | Related AI Change Log |
 |---|---|---|---|---|
+| P1 | Navigation UX | Tablet sidebar sticky header theme and touch fix | Done | 태블릿 sidebar 상단 고정 영역 보정 |
 | P2 | Navigation UX | Mobile sidebar auto-collapse and sticky close control | Done | 모바일 sidebar 자동 닫기와 닫기 버튼 상단 고정 |
 | P1 | UX / State | Remove current-project URL synchronization | Done | 현재 프로젝트 URL 연동 제거 |
 | P0 | Project Chat / Demo Data | Restore UTF-8 sample Project Chat evidence | Done | 샘플 Project Chat 한글 대화 복구 |
@@ -170,6 +171,26 @@
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
 | P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
 | P0 | Demo Operations | Canonical demo startup contract and legacy Tunnel reuse | Done | 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용 |
+
+## P1 - Tablet Sidebar Sticky Header Theme And Touch Fix
+
+Status: Done
+
+Goal:
+태블릿의 다크·라이트 테마에서 sidebar 상단 고정 영역이 주변 배경과 자연스럽게 이어지고, 과도한 높이 없이 터치로 닫기 버튼을 항상 사용할 수 있게 한다.
+
+Rationale:
+기존 sticky header는 존재하지 않는 CSS theme variable의 fallback을 흰색으로 지정하고 Streamlit 기본 header padding을 그대로 고정했다. 다크 테마 태블릿에서는 약 70px 높이의 흰 영역이 생겼고, hover가 없는 터치 화면에서는 그 안의 닫기 버튼도 보이지 않았다. sidebar의 실제 계산 배경색을 상속하고 compact toolbar 크기를 명시하며 touch capability에서 기본 닫기 버튼을 표시해야 원래 목적을 충족할 수 있다.
+
+Checklist:
+
+- [x] 흰색 fallback을 제거하고 sidebar 실제 배경색을 sticky header까지 상속한다.
+- [x] sticky header 높이와 padding을 compact하게 줄이고 기존 메뉴 content와 겹치지 않게 한다.
+- [x] hover가 없는 coarse pointer에서 Streamlit 기본 닫기 버튼을 항상 표시한다.
+- [x] CSS 회귀 test와 태블릿 다크·라이트, 모바일·데스크톱 browser 검증을 수행한다.
+- [x] engineering decision, failure history, `AI_CHANGELOG.md`를 갱신하고 Docker app을 재빌드한다.
+
+Related AI Change Log: `태블릿 sidebar 상단 고정 영역 보정`
 
 ## P2 - Mobile Sidebar Auto-Collapse And Sticky Close Control
 
