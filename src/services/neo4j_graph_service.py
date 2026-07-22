@@ -309,6 +309,20 @@ class GraphNodeDetail:
 
 
 @dataclass(frozen=True)
+class GraphPathNode:
+    node_id: str
+    node_type: str
+    label: str
+
+
+@dataclass(frozen=True)
+class GraphPathEdge:
+    source_node_id: str
+    target_node_id: str
+    edge_type: str
+
+
+@dataclass(frozen=True)
 class GraphPathRow:
     depth: int
     path: str
@@ -316,6 +330,8 @@ class GraphPathRow:
     target_node_id: str
     target_type: str
     target_label: str
+    nodes: list[GraphPathNode] = field(default_factory=list)
+    edges: list[GraphPathEdge] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -2289,10 +2305,11 @@ def _read_graph_exploration_tx(
         OPTIONAL MATCH (focus)-[out_rel:RELATED]->(:KnowledgeNode {project_id: $project_id})
         WITH focus, count(out_rel) AS outgoing_count
         OPTIONAL MATCH (:KnowledgeNode {project_id: $project_id})-[in_rel:RELATED]->(focus)
+        WITH focus, outgoing_count, count(in_rel) AS incoming_count
         RETURN focus.node_id AS node_id,
                focus.node_type AS node_type,
                coalesce(focus.label, focus.node_id) AS label,
-               outgoing_count + count(in_rel) AS related_count,
+               outgoing_count + incoming_count AS related_count,
                properties(focus) AS properties
         """,
         project_id=int(project_id),
@@ -2319,9 +2336,16 @@ def _read_graph_exploration_tx(
         WITH path, target, relationships(path) AS rels
         WHERE size($relationship_types) = 0
            OR any(rel IN rels WHERE rel.edge_type IN $relationship_types)
-        RETURN [node IN nodes(path) | coalesce(node.label, node.node_id)] AS node_labels,
-               [node IN nodes(path) | coalesce(node.node_type, '-')] AS node_types,
-               [rel IN rels | coalesce(rel.edge_type, '-')] AS edge_types,
+        RETURN [node IN nodes(path) | {{
+                   node_id: node.node_id,
+                   node_type: coalesce(node.node_type, '-'),
+                   label: coalesce(node.label, node.node_id)
+               }}] AS path_nodes,
+               [rel IN rels | {{
+                   source_node_id: startNode(rel).node_id,
+                   target_node_id: endNode(rel).node_id,
+                   edge_type: coalesce(rel.edge_type, '-')
+               }}] AS path_edges,
                target.node_id AS target_node_id,
                coalesce(target.node_type, '-') AS target_type,
                coalesce(target.label, target.node_id) AS target_label,
@@ -2335,22 +2359,47 @@ def _read_graph_exploration_tx(
         limit=limit,
     )
     rows: list[GraphPathRow] = []
-    seen: set[tuple[str, tuple[str, ...]]] = set()
+    seen: set[tuple[tuple[str, ...], tuple[tuple[str, str, str], ...]]] = set()
     for row in path_result:
-        edge_types = [str(edge_type or "-") for edge_type in (row["edge_types"] or [])]
+        path_nodes = [
+            GraphPathNode(
+                node_id=str(node.get("node_id") or "-"),
+                node_type=str(node.get("node_type") or "-"),
+                label=str(node.get("label") or node.get("node_id") or "-"),
+            )
+            for node in (row["path_nodes"] or [])
+        ]
+        path_edges = [
+            GraphPathEdge(
+                source_node_id=str(edge.get("source_node_id") or "-"),
+                target_node_id=str(edge.get("target_node_id") or "-"),
+                edge_type=str(edge.get("edge_type") or "-"),
+            )
+            for edge in (row["path_edges"] or [])
+        ]
+        edge_types = [edge.edge_type for edge in path_edges]
         target_node_id = str(row["target_node_id"] or "-")
-        key = (target_node_id, tuple(edge_types))
+        key = (
+            tuple(node.node_id for node in path_nodes),
+            tuple((edge.source_node_id, edge.target_node_id, edge.edge_type) for edge in path_edges),
+        )
         if key in seen:
             continue
         seen.add(key)
         rows.append(
             GraphPathRow(
                 depth=int(row["depth"] or 0),
-                path=_format_graph_path(row["node_types"] or [], row["node_labels"] or [], edge_types),
+                path=_format_graph_path(
+                    [node.node_type for node in path_nodes],
+                    [node.label for node in path_nodes],
+                    edge_types,
+                ),
                 edge_types=edge_types,
                 target_node_id=target_node_id,
                 target_type=str(row["target_type"] or "-"),
                 target_label=str(row["target_label"] or "-"),
+                nodes=path_nodes,
+                edges=path_edges,
             )
         )
     return node_detail, rows

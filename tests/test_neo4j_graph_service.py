@@ -999,6 +999,8 @@ def test_explore_neo4j_project_graph_reads_node_detail_and_paths(monkeypatch) ->
         def run(self, query, **params):
             normalized = " ".join(query.split())
             if "properties(focus)" in normalized:
+                captured["detail_query"] = normalized
+                captured["detail_params"] = params
                 return FakeResult(
                     single_row={
                         "node_id": "p123:program:PAY-001",
@@ -1014,13 +1016,35 @@ def test_explore_neo4j_project_graph_reads_node_detail_and_paths(monkeypatch) ->
             return FakeResult(
                 rows=[
                     {
-                        "node_labels": [
-                            "PAY-001 Payment Program",
-                            "abcdef123456",
-                            "src/main/java/com/example/market/payment/service/PaymentService.java",
+                        "path_nodes": [
+                            {
+                                "node_id": "p123:program:PAY-001",
+                                "node_type": "program",
+                                "label": "PAY-001 Payment Program",
+                            },
+                            {
+                                "node_id": "p123:commit:abcdef123456",
+                                "node_type": "commit",
+                                "label": "abcdef123456",
+                            },
+                            {
+                                "node_id": "p123:file:PaymentService.java",
+                                "node_type": "file",
+                                "label": "src/main/java/com/example/market/payment/service/PaymentService.java",
+                            },
                         ],
-                        "node_types": ["program", "commit", "file"],
-                        "edge_types": ["MAPPED_TO_COMMIT", "TOUCHES_FILE"],
+                        "path_edges": [
+                            {
+                                "source_node_id": "p123:program:PAY-001",
+                                "target_node_id": "p123:commit:abcdef123456",
+                                "edge_type": "MAPPED_TO_COMMIT",
+                            },
+                            {
+                                "source_node_id": "p123:commit:abcdef123456",
+                                "target_node_id": "p123:file:PaymentService.java",
+                                "edge_type": "TOUCHES_FILE",
+                            },
+                        ],
                         "target_node_id": "p123:file:PaymentService.java",
                         "target_type": "file",
                         "target_label": "PaymentService.java",
@@ -1064,7 +1088,16 @@ def test_explore_neo4j_project_graph_reads_node_detail_and_paths(monkeypatch) ->
     assert result.node_detail is not None
     assert result.node_detail.related_count == 3
     assert result.node_detail.properties["program_name"] == "Payment Program"
+    assert "WITH focus, outgoing_count, count(in_rel) AS incoming_count" in captured["detail_query"]
+    assert "outgoing_count + incoming_count AS related_count" in captured["detail_query"]
+    assert "outgoing_count + count(in_rel)" not in captured["detail_query"]
+    assert captured["detail_params"] == {
+        "project_id": 123,
+        "node_id": "p123:program:PAY-001",
+    }
     assert "*1..3" in captured["path_query"]
+    assert "startNode(rel).node_id" in captured["path_query"]
+    assert "endNode(rel).node_id" in captured["path_query"]
     assert captured["path_params"]["relationship_types"] == ["MAPPED_TO_COMMIT", "TOUCHES_FILE"]
     assert captured["path_params"]["limit"] == 300
     assert result.rows[0].target_label == "PaymentService.java"
@@ -1073,6 +1106,18 @@ def test_explore_neo4j_project_graph_reads_node_detail_and_paths(monkeypatch) ->
         "commit:abcdef123456 -> [TOUCHES_FILE] -> "
         "file:src/main/java/com/example/market/payment/service/PaymentService.java"
     )
+    assert [node.node_id for node in result.rows[0].nodes] == [
+        "p123:program:PAY-001",
+        "p123:commit:abcdef123456",
+        "p123:file:PaymentService.java",
+    ]
+    assert [
+        (edge.source_node_id, edge.target_node_id, edge.edge_type)
+        for edge in result.rows[0].edges
+    ] == [
+        ("p123:program:PAY-001", "p123:commit:abcdef123456", "MAPPED_TO_COMMIT"),
+        ("p123:commit:abcdef123456", "p123:file:PaymentService.java", "TOUCHES_FILE"),
+    ]
 
 
 def test_find_project_graph_evidence_reads_impact_import_and_domain_paths(monkeypatch) -> None:
