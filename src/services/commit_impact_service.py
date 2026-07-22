@@ -153,11 +153,11 @@ def _impact_score(program_count: int, developer_count: int, file_count: int, max
     return "LOW", reasons or ["영향 범위 제한적"]
 
 
-def get_commit_impact_analysis(db: Session, commit_db_id: int) -> ImpactAnalysis:
+def get_commit_impact_analysis(db: Session, project_id: int, commit_db_id: int) -> ImpactAnalysis:
     commit = (
         db.query(GitCommit)
         .options(joinedload(GitCommit.files))
-        .filter(GitCommit.id == commit_db_id)
+        .filter(GitCommit.project_id == project_id, GitCommit.id == commit_db_id)
         .one()
     )
 

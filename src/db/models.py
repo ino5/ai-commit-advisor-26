@@ -158,10 +158,7 @@ class Program(Base, TimestampMixin):
 
 class GitCommit(Base, TimestampMixin):
     __tablename__ = "git_commits"
-    __table_args__ = (
-        UniqueConstraint("commit_hash", name="uq_git_commits_commit_hash"),
-        UniqueConstraint("project_id", "commit_hash", name="uq_git_commits_project_hash"),
-    )
+    __table_args__ = (UniqueConstraint("project_id", "commit_hash", name="uq_git_commits_project_hash"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)

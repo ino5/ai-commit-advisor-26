@@ -196,7 +196,7 @@ def render_commit_impact_page() -> None:
         return
 
     with SessionLocal() as db:
-        analysis = get_commit_impact_analysis(db, commit_db_id)
+        analysis = get_commit_impact_analysis(db, project_id, commit_db_id)
 
     st.divider()
     _render_kpis(analysis)
