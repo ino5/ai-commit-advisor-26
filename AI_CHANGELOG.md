@@ -2,6 +2,16 @@
 
 ## 2026-07-22
 
+### Session-scoped 시연 Q&A mode 추가
+
+- 새 Codex 세션에서 standalone `qna ON`으로 시연 Q&A 기록을 활성화하고 `qna OFF`로 일반 작업 mode에 복귀하는 규칙을 `AGENTS.md`에 추가했습니다. Mode는 세션마다 기본 `OFF`이며, 활성화 중에는 `docs/qna.md` 외 repository file과 runtime·GitHub 상태를 read-only로 다룹니다.
+- Q&A 저장 전에 기존 문서를 검색해 같은 질문은 답변을 수정·보완하고, 후속 질문은 관련 위치에 통합하며, 새 주제만 적절한 위치에 추가하도록 했습니다. Activation/deactivation command 자체는 Q&A로 저장하지 않고, mode 활성화 중의 일상적인 `docs/qna.md` 정리는 일반 changelog·Roadmap 갱신의 좁은 예외로 정의했습니다.
+- `docs/qna.md`에는 새 세션 toggle과 통합 저장 동작을 현재 구현된 정책에 맞게 보완했습니다. Agent policy의 배경, 대안과 tradeoff는 `docs/engineering-decisions.md`에 기록했습니다.
+- Q&A 준비 중 source code를 대조하며 발견한 증분 source indexing의 `indexed_head_hash` 정합성 한계를 `docs/failure-history.md`에 기록하고, product code 수정은 승인된 범위가 아니므로 `ROADMAP.md` Candidate Task로 보존했습니다. 현재 안전장치는 stale 근거를 제외하지만, unchanged chunk가 이전 HEAD metadata로 남아 전체 re-index가 필요할 수 있습니다.
+- 주요 파일: `AGENTS.md`, `docs/qna.md`, `ROADMAP.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- `README.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`는 제품 설정·화면·module 책임·AI runtime behavior·schema가 바뀌지 않아 수정하지 않았습니다.
+- 검증: 모든 변경 Markdown을 UTF-8로 다시 읽었고, `qna ON/OFF`, read-only 범위, 유사 질문 통합, Roadmap active/candidate, engineering decision과 failure-history 연결을 `rg`로 확인했습니다. 변경 파일 전체 `git diff --check`가 통과했으며, 사용자-facing Q&A 추가 문구의 과장형·번역체 표현을 점검했습니다. Product code가 바뀌지 않아 Python test는 실행하지 않았습니다.
+
 ### 샘플 데이터 생성 메뉴 제거와 CLI 유지
 
 - `프로젝트 설정`에서 개발·업로드 검증용 `샘플 데이터 생성` 메뉴와 전용 Streamlit page를 제거했습니다. 프로젝트 설정에는 `프로젝트/Git 설정`, `Git 동기화`만 남기고, 제거된 page가 session state에 남아도 기존 navigation validation이 첫 화면으로 복구합니다.
