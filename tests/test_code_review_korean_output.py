@@ -13,6 +13,7 @@ from src.services.code_review_service import (
 )
 from src.services.llm_client import LLMResponse
 from src.ui.code_review_page import (
+    TARGET_TYPE_LABELS,
     _commit_analysis_display_rows,
     _review_metadata_display_rows,
     _severity_label,
@@ -85,6 +86,11 @@ def test_review_metadata_rows_are_compact_key_values() -> None:
         ("대상", "커밋 목록에서 선택"),
         ("참조", "2325182ecf5c"),
     ]
+
+
+def test_legacy_server_local_review_targets_keep_history_labels() -> None:
+    assert TARGET_TYPE_LABELS["working_tree"] == "서버 작업트리 변경 (과거 기록)"
+    assert TARGET_TYPE_LABELS["staged"] == "서버 Staged 변경 (과거 기록)"
 
 
 def test_postprocess_removes_ungrounded_amount_boundary_refactoring() -> None:

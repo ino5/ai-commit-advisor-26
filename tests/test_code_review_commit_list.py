@@ -6,8 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from src.services.code_review_service import ReviewCommitOption, list_reviewable_commits
-from src.ui.code_review_page import _commit_option_label
+from scripts.run_local_ai_verification import parse_args
+from src.services.code_review_service import (
+    ReviewCommitOption,
+    get_review_target,
+    list_reviewable_commits,
+)
+from src.ui.code_review_page import TARGET_OPTIONS, _commit_option_label
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -68,3 +73,22 @@ def test_commit_option_label_shows_hash_time_author_and_message() -> None:
     )
 
     assert _commit_option_label(option) == "abcdef123456 · 2026-07-22 09:30 · 홍길동 · 결제 승인 경계값 수정"
+
+
+def test_code_review_targets_only_offer_commit_history(tmp_path: Path) -> None:
+    repo = tmp_path / "review-target-repo"
+    repo.mkdir()
+    _git(repo, "init")
+
+    assert list(TARGET_OPTIONS.values()) == ["latest_commit", "commit"]
+    for removed_target in ("working_tree", "staged"):
+        with pytest.raises(ValueError, match="Unsupported review target type"):
+            get_review_target(repo, removed_target)
+
+
+def test_local_ai_verification_rejects_server_local_review_targets() -> None:
+    assert parse_args(["--code-review-target", "commit"]).code_review_target == "commit"
+
+    for removed_target in ("working_tree", "staged"):
+        with pytest.raises(SystemExit):
+            parse_args(["--code-review-target", removed_target])
