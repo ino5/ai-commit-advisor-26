@@ -17,6 +17,7 @@
 | P2 | Navigation UX / Sample Data | Remove sample data UI and retain CLI workflow | Done | 샘플 데이터 생성 메뉴 제거와 CLI 유지 |
 | P1 | Navigation UX | Tablet sidebar sticky header theme and touch fix | Done | 태블릿 sidebar 상단 고정 영역 보정 |
 | P2 | Navigation UX | Mobile sidebar auto-collapse and sticky close control | Done | 모바일 sidebar 자동 닫기와 닫기 버튼 상단 고정 |
+| P1 | Navigation UX | Mobile sidebar repeated auto-collapse reliability | Done | 모바일 sidebar 연속 자동 닫힘 안정화 |
 | P1 | UX / State | Remove current-project URL synchronization | Done | 현재 프로젝트 URL 연동 제거 |
 | P0 | Project Chat / Demo Data | Restore UTF-8 sample Project Chat evidence | Done | 샘플 Project Chat 한글 대화 복구 |
 | P0 | Project Chat / Performance | Project Chat initial render latency reduction | Done | Project Chat 초기 화면 지연 개선 |
@@ -235,6 +236,26 @@ Checklist:
 - [x] focused/full test, compileall, 실제 viewport UI, Docker build를 검증한다.
 
 Related AI Change Log: `모바일 sidebar 자동 닫기와 닫기 버튼 상단 고정`
+
+## P1 - Mobile Sidebar Repeated Auto-Collapse Reliability
+
+Status: Done
+
+Goal:
+모바일에서 sidebar를 다시 열어 연속으로 다른 메뉴를 선택해도 매번 자동으로 닫히도록 1회성 browser component 실행을 안정화한다.
+
+Rationale:
+현재 구현은 메뉴 이동 요청마다 같은 `components.html` payload를 렌더링한다. 첫 이동 뒤 iframe이 DOM에 남아 있으면 다음 이동에서 같은 `srcdoc`가 재사용되어 닫기 script가 다시 실행되지 않을 수 있고, Python 요청은 browser 성공 여부와 관계없이 이미 소비된다. 요청마다 고유한 payload를 만들고 sidebar DOM 준비 시점을 제한적으로 재시도하면 기존 모바일 전용 동작과 Streamlit 기본 닫기 버튼 재사용 원칙을 유지하면서 연속 이동 실패를 제거할 수 있다.
+
+Checklist:
+
+- [x] 모바일 닫기 요청마다 고유한 component payload를 만들고 sidebar DOM 준비를 제한적으로 재시도한다.
+- [x] 요청 ID 소비와 연속 component 렌더링을 검증하는 회귀 test를 추가한다.
+- [x] focused/full test와 compileall을 통과한다.
+- [x] 390px 실제 browser에서 중간 rerun 없이 연속 메뉴 이동이 모두 닫히고 desktop은 열린 상태를 유지하는지 확인한다.
+- [x] engineering decision, failure history, `AI_CHANGELOG.md`를 갱신한다.
+
+Related AI Change Log: `모바일 sidebar 연속 자동 닫힘 안정화`
 
 ## P1 - Remove Current-Project URL Synchronization
 

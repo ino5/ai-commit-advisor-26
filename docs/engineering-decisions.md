@@ -21,6 +21,48 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-23 - 반복 Streamlit browser action은 요청별 component identity와 연속 동작으로 검증한다
+
+### 배경
+
+모바일 sidebar 자동 닫기는 Python이 실제 메뉴 전환을 판별한 뒤 `components.html` iframe에서 Streamlit 기본 닫기 버튼을 누르는 방식으로 구현되어 있습니다. 최초 구현은 같은 HTML을 매번 렌더링했기 때문에 첫 메뉴 이동 뒤 iframe이 DOM에 남으면 다음 이동에서 같은 `srcdoc`가 재사용될 수 있었습니다. 이 경우 화면은 바뀌지만 iframe script는 다시 실행되지 않아 sidebar가 열린 채로 남았습니다.
+
+### 결정
+
+- 실제 sidebar 메뉴 전환마다 session state의 모바일 닫기 요청 ID를 1씩 증가시킵니다.
+- 요청 ID를 iframe HTML marker에 포함해 같은 element 위치에서도 `srcdoc`가 매번 달라지도록 합니다. Streamlit frontend가 iframe을 재사용하더라도 새 document가 로드되어 닫기 script가 다시 실행됩니다.
+- Script 실행 시 sidebar 또는 기본 닫기 버튼이 아직 준비되지 않았으면 50ms 간격으로 최대 20회 확인합니다. 모바일 폭이 아니거나 sidebar가 이미 닫혔으면 즉시 종료합니다.
+- Sidebar button 전체를 감시하는 상시 listener는 만들지 않고, Python이 판별한 실제 메뉴 이동만 1회성 component를 렌더링하는 기존 경계를 유지합니다.
+- Browser 회귀 검증은 새로고침 뒤 첫 이동만 확인하지 않습니다. 중간 rerun 없이 `sidebar 열기 → 다른 메뉴 이동 → 다시 열기 → 다른 메뉴 이동`을 최소 두 번 연속 실행하고, 각 이동 뒤 `aria-expanded=false`와 서로 다른 요청 ID를 확인합니다.
+
+### 이유
+
+- 증가하는 요청 ID는 UUID보다 결과를 읽고 test하기 쉬우면서 iframe payload를 매번 바꾸는 목적을 충족합니다.
+- 제한적 DOM 재확인은 Streamlit rerun과 frontend render 시점 차이를 흡수하지만, 상시 timer나 전역 click listener를 남기지 않습니다.
+- Streamlit 기본 닫기 버튼을 계속 사용하므로 sidebar 상태와 접근성 동작을 별도로 구현하지 않아도 됩니다.
+- 연속 이동 검증은 첫 mount만 성공하고 iframe 재사용부터 실패하는 회귀를 직접 잡습니다.
+
+### 검토한 대안
+
+- 동일한 iframe HTML을 계속 렌더링: 코드가 가장 단순하지만 frontend가 같은 `srcdoc`를 재사용하면 script 재실행을 보장할 수 없습니다.
+- Sidebar 내부 모든 click을 event delegation으로 감시: iframe 재실행 문제는 피하지만 프로젝트 selector, expander, 현재 메뉴와 실제 메뉴 이동을 browser DOM 규칙으로 다시 구분해야 합니다.
+- 요청마다 UUID 생성: payload는 고유해지지만 순서를 test하거나 browser에서 실행 횟수를 확인할 때 증가 ID보다 불필요하게 복잡합니다.
+- 메뉴 이동마다 추가 rerun으로 기존 iframe을 먼저 제거: component lifecycle은 명확해지지만 화면 전환마다 rerun이 한 번 더 필요하고 사용자에게 보이는 지연이 늘어납니다.
+
+### 영향, tradeoff, 남은 한계
+
+- Session마다 정수 sequence가 하나 남지만 저장 데이터나 다른 browser session에는 영향을 주지 않습니다.
+- DOM 준비 재시도는 약 1초로 제한됩니다. 그 뒤에도 Streamlit selector가 없으면 요청은 종료되므로 Streamlit version 변경 시 pinned bundle test와 실제 browser 검증이 계속 필요합니다.
+- 기본 닫기 버튼 `click()` 이후 별도 browser acknowledgement를 Python으로 돌려주지는 않습니다. 따라서 회귀 test가 실제 `aria-expanded` 결과를 확인해야 합니다.
+- 이 결정은 `components.html`처럼 동일 위치의 browser side effect를 반복 실행하는 다른 기능에도 적용할 수 있습니다. 단일 성공만 확인하지 말고 component identity와 연속 실행 scenario를 함께 검증합니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Mobile Sidebar Repeated Auto-Collapse Reliability`
+- `docs/failure-history.md`의 `모바일 sidebar가 첫 이동 뒤 다시 자동으로 닫히지 않을 수 있었다`
+- `AI_CHANGELOG.md`의 `모바일 sidebar 연속 자동 닫힘 안정화`
+- `docs/engineering-decisions.md`의 `모바일 메뉴 이동만 sidebar 자동 닫기를 요청한다`
+
 ## 2026-07-22 - 시연 Q&A 기록은 session-scoped 명시적 toggle과 문서 통합 방식으로 운영한다
 
 ### 배경

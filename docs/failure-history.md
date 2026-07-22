@@ -31,6 +31,62 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-23 - 모바일 sidebar가 첫 이동 뒤 다시 자동으로 닫히지 않을 수 있었다
+
+관련 기능과 문서:
+
+- `src/ui/sidebar_behavior.py`
+- `tests/test_sidebar_behavior.py`
+- `ROADMAP.md`의 `Mobile Sidebar Repeated Auto-Collapse Reliability`
+- `docs/engineering-decisions.md`의 `반복 Streamlit browser action은 요청별 component identity와 연속 동작으로 검증한다`
+
+증상:
+
+- 모바일에서 sidebar를 열고 다른 메뉴를 처음 선택하면 자동으로 닫히지만, 다시 열어 다음 메뉴를 선택하면 화면만 바뀌고 sidebar가 본문을 계속 가리는 경우가 많았습니다.
+- 새로고침하거나 현재 메뉴를 한 번 눌러 별도 rerun이 발생한 뒤에는 다음 이동 한 번이 다시 정상 동작해 간헐적인 문제처럼 보였습니다.
+
+직접 원인:
+
+- 모든 닫기 요청이 같은 `MOBILE_COLLAPSE_COMPONENT` HTML을 사용했습니다.
+- 첫 성공 뒤 `components.html` iframe이 DOM에 남은 상태에서 다음 메뉴 이동이 같은 element 위치와 같은 `srcdoc`를 렌더링하면 frontend가 기존 iframe을 재사용했고, document 안의 1회성 script가 다시 실행되지 않았습니다.
+- Python은 browser 실행 성공을 확인하기 전에 boolean 요청을 소비했기 때문에 script가 실행되지 않아도 재시도할 요청이 남지 않았습니다.
+
+배경 또는 구조적 원인:
+
+- 최초 설계는 sidebar의 모든 click을 감시하지 않기 위해 실제 메뉴 이동마다 1회성 component만 렌더링하는 범위를 선택했습니다. 이 경계는 맞았지만, 1회성 side effect를 반복할 때 component 내용도 매번 달라야 한다는 lifecycle 조건을 빠뜨렸습니다.
+- Streamlit rerun이 같은 코드 위치에 같은 iframe proto를 보내면 browser가 script를 다시 실행할 것이라고 가정했습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 단위 test는 요청 boolean이 한 번 소비되는지, HTML에 breakpoint와 selector가 들어 있는지, pinned Streamlit bundle에 selector가 남아 있는지만 확인했습니다.
+- 실제 browser 검증도 새로고침 뒤 `Home → Dashboard` 한 번의 이동만 확인했습니다. 첫 iframe mount는 정상 실행되므로 이 검증은 통과했습니다.
+- `열기 → 이동 → 다시 열기 → 재이동`을 중간 rerun 없이 반복하는 scenario와 iframe payload가 요청마다 달라지는지 확인하는 assertion이 없었습니다.
+
+수정 내용:
+
+- Session state에 증가하는 모바일 닫기 요청 ID를 추가하고, 요청 ID를 iframe HTML marker에 포함해 매번 다른 `srcdoc`를 렌더링하도록 바꿨습니다.
+- Sidebar나 기본 닫기 버튼이 아직 준비되지 않은 경우 50ms 간격으로 최대 20회만 재확인하도록 했습니다.
+- 연속 두 요청이 서로 다른 component payload를 렌더링하는지, 요청 ID가 증가하고 한 번씩 소비되는지 검증하는 단위 test를 추가했습니다.
+
+재발 방지 규칙:
+
+- `components.html`이나 동일 위치 iframe으로 browser side effect를 반복할 때는 selector뿐 아니라 요청별 component identity가 달라지는지 검증합니다.
+- Responsive UI의 자동 동작은 첫 실행만 확인하지 않고, 사용자가 control을 다시 열어 같은 workflow를 연속 수행하는 scenario를 포함합니다.
+- Python request test와 실제 browser 결과를 분리해 검증합니다. Request가 생성됐다는 사실만으로 `aria-expanded`, dialog open state 같은 최종 UI 상태를 성공으로 간주하지 않습니다.
+- DOM 준비를 기다려야 하는 script는 무기한 polling 대신 짧고 명시적인 재시도 횟수와 간격을 둡니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- Streamlit 1.41.1의 `stSidebar`, `stSidebarCollapseButton`과 iframe 동작에 의존하므로 Streamlit upgrade 때 selector와 연속 실행을 다시 검증해야 합니다.
+- 닫기 버튼 click 결과를 Python에 acknowledgement로 반환하지는 않습니다. 실제 browser 회귀 test가 최종 `aria-expanded=false`를 계속 확인해야 합니다.
+
+검증 명령과 결과:
+
+- 수정 전 Docker 8501의 390x844 viewport에서 iframe이 없는 첫 `Home → Dashboard`는 542ms에 닫혔지만, iframe이 남은 두 번째 `Dashboard → Home`은 화면 전환 뒤 6,026ms에도 `aria-expanded=true`였습니다. 현재 메뉴 rerun으로 iframe을 제거한 뒤 다음 이동은 644ms에 다시 닫혀 iframe 재사용 조건을 확인했습니다.
+- `tests/test_sidebar_behavior.py` 9개와 `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 236개, `compileall`이 통과했습니다.
+- 재빌드한 Docker 8501의 390x844 viewport에서 `Dashboard → AI Progress → Home`을 두 번 반복한 6회 이동이 모두 451~804ms 안에 `aria-expanded=false`가 됐고, iframe request ID는 1부터 6까지 증가했습니다. 1280px desktop에서는 메뉴 이동 1.2초 뒤에도 `aria-expanded=true`였고 browser warning/error는 0건이었습니다.
+- `demo_start.ps1 -Build`로 image와 app 재생성, local/external health `200 ok`를 확인했습니다. 통합 preflight는 이번 변경과 무관한 기존 저장 AI Code Review `bug=0` 조건으로 `FAIL=1`이었습니다.
+
 ## 2026-07-22 - 증분 source indexing 뒤 변경되지 않은 청크가 이전 HEAD metadata로 남을 수 있다
 
 관련 기능과 문서:
