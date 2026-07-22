@@ -87,6 +87,60 @@
 - 재빌드한 Docker 8501의 390x844 viewport에서 `Dashboard → AI Progress → Home`을 두 번 반복한 6회 이동이 모두 451~804ms 안에 `aria-expanded=false`가 됐고, iframe request ID는 1부터 6까지 증가했습니다. 1280px desktop에서는 메뉴 이동 1.2초 뒤에도 `aria-expanded=true`였고 browser warning/error는 0건이었습니다.
 - `demo_start.ps1 -Build`로 image와 app 재생성, local/external health `200 ok`를 확인했습니다. 통합 preflight는 이번 변경과 무관한 기존 저장 AI Code Review `bug=0` 조건으로 `FAIL=1`이었습니다.
 
+## 2026-07-22 - 증분 source indexing 뒤 변경되지 않은 청크가 이전 HEAD metadata로 남을 수 있다
+
+관련 기능과 문서:
+
+- `src/rag/source_index_service.py::refresh_changed_source_files`
+- `src/rag/source_verifier.py::verify_source_file_chunk`
+- `tests/test_incremental_source_index_service.py`
+- `ROADMAP.md` Candidate Task `Align unchanged source chunks with incremental indexed HEAD`
+
+증상:
+
+- Source inspection 결과, repository HEAD가 바뀐 뒤 `최신 변경분 반영`을 실행해도 변경되지 않은 파일의 chunk는 이전 `indexed_head_hash`를 유지할 수 있습니다.
+- Project Chat 검증은 content hash를 비교하기 전에 `indexed_head_hash != current_head_hash`를 stale로 판정하므로, 실제 내용이 바뀌지 않은 파일도 current source evidence에서 제외될 수 있습니다.
+- 오래된 내용을 현재 사실로 사용하는 문제는 막지만, 증분 갱신 후 검색 가능한 근거 범위가 줄고 인덱스가 계속 `갱신 필요`로 보일 수 있습니다.
+
+직접 원인:
+
+- `refresh_changed_source_files`는 Git Sync가 제공한 added·modified·copied·deleted·renamed path만 교체하거나 삭제합니다.
+- 변경되지 않은 파일의 기존 chunk에는 현재 HEAD를 승격하는 처리 없이 이전 `indexed_head_hash`가 남습니다.
+- Source verifier는 HEAD가 다르면 같은 라인 내용의 hash 일치 여부를 확인하기 전에 stale을 반환합니다.
+
+배경 또는 구조적 원인:
+
+- Source verification은 다른 branch나 checkout에서 만든 chunk를 현재 코드로 오인하지 않도록 repository snapshot 전체의 HEAD를 보수적으로 확인합니다.
+- 이후 path 단위 증분 indexing을 추가하면서, global snapshot identity와 changed-path-only 갱신을 함께 사용할 때 unchanged chunk를 어떤 조건으로 현재 snapshot에 승격할지 명시하지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 기존 증분 test는 파일 수정·삭제·rename 동작과 vector 정리를 검증하지만, 두 개 이상의 파일을 만든 뒤 새 commit으로 HEAD를 바꾸고 changed/unchanged chunk를 함께 검증하는 scenario가 없습니다.
+- 일부 test는 working tree의 파일 내용만 바꾸고 새 commit을 만들지 않아 `indexed_head_hash` mismatch가 발생하지 않습니다.
+
+수정 내용:
+
+- 이번 변경에는 product code fix를 포함하지 않았습니다.
+- 운영상 안전한 복구 방법으로 `전체 소스 다시 읽기`를 사용하면 모든 current source chunk를 현재 HEAD 기준으로 다시 만들 수 있음을 `docs/qna.md`에 명시했습니다.
+- 구현 전 설계가 필요한 문제이므로 Roadmap candidate에 unchanged chunk HEAD 정합성, content verification 기반 승격 여부와 회귀 test 필요성을 기록했습니다.
+
+재발 방지 규칙:
+
+- Source indexing 변경은 changed file의 교체뿐 아니라 같은 HEAD snapshot 안의 unchanged file이 verified 상태를 유지하는지도 함께 검증합니다.
+- Snapshot-level HEAD와 file content hash를 함께 사용할 때는 full refresh와 incremental refresh 각각의 metadata invariant를 test로 고정합니다.
+- 안전성 때문에 stale evidence를 허용하지 않는 원칙은 유지하되, 정상 unchanged evidence를 불필요하게 제외하지 않는지 별도 scenario로 확인합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- Unchanged chunk의 `indexed_head_hash`만 현재 HEAD로 바꾸는 방식은 branch 전환이나 누락된 Git Sync에서 잘못된 승격을 만들 수 있으므로 바로 적용하지 않습니다.
+- Candidate 구현 시 commit ancestry, DB Git Sync HEAD, file content hash를 함께 검증하는 승격 조건 또는 file-level snapshot identity를 비교해야 합니다.
+- 현재 workaround는 전체 source re-indexing이며, 대형 repository에서는 비용이 큽니다.
+
+검증 명령과 결과:
+
+- `Get-Content -Encoding UTF8`과 `rg -n "indexed_head_hash|refresh_changed_source_files|stale"`로 source verifier, 증분 service와 기존 test 경로를 대조해 위 control flow를 확인했습니다.
+- 현재 product code와 test는 변경하지 않았으며, 실제 runtime 재현과 수정 검증은 Candidate 작업 범위로 남겼습니다.
+
 ## 2026-07-22 - 태블릿 sidebar sticky header가 흰색 빈 영역으로 표시됐다
 
 관련 기능과 문서:

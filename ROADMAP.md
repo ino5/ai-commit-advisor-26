@@ -62,6 +62,7 @@
 | P2 | Docs | Local LLM env onboarding guide | Done | local LLM env 예시와 Project Chat 재현 절차 |
 | P2 | Docs | Korean-first user documentation cleanup | Done | Korean-first user documentation cleanup |
 | P2 | Docs / Agent Policy | Mandatory AI-sounding wording review | Done | AI스러운 문구 필수 점검 agent policy 추가 |
+| P2 | Docs / Agent Policy | Session-scoped Q&A documentation mode | Done | Session-scoped 시연 Q&A mode 추가 |
 | P2 | Docs / Presentation | Text-brief-based final report rewrite | Done | 텍스트 계획서 기준 결과서 PPT 재작성 |
 | P2 | Docs / Presentation | AI Use Case technical master deck rewrite | Done | AI Use Case 기술 상세 마스터덱 전면 재작성 |
 | P2 | Docs / Presentation | AI Use Case internal share deck | Done | AI Use Case 내부 공유용 PPT 작성 |
@@ -908,6 +909,28 @@ Checklist:
 
 Related AI Change Log: `산출물 관리 샘플 Excel 다운로드`
 
+## P2 - Session-Scoped Q&A Documentation Mode
+
+Status: Done
+
+Goal:
+새 Codex 세션에서도 사용자가 `qna ON`과 `qna OFF`만으로 시연 Q&A 기록 모드를 명시적으로 켜고 끌 수 있게 하고, 활성화 중에는 `docs/qna.md`를 중복 없이 주제별로 정리한다.
+
+Rationale:
+시연 준비 중에는 질문에 답하는 것과 답변을 문서에 남기는 작업이 반복된다. 이 동작을 매 세션마다 긴 prompt로 다시 설명하면 저장 위치, 다른 파일의 read-only 범위, 유사 질문 통합 여부가 달라질 수 있다. 저장소 지침에 session-scoped toggle과 문서 정리 기준을 두면 사용자는 짧은 명령으로 같은 workflow를 재현할 수 있고, 일반 개발 작업에는 Q&A 전용 제한이 자동 적용되지 않는다.
+
+Checklist:
+
+- [x] `AGENTS.md`에 기본 `OFF`, `qna ON`, `qna OFF`의 session-scoped 동작을 정의한다.
+- [x] Q&A 모드에서 `docs/qna.md` 외 파일을 read-only로 다루고, 예외 변경은 명시적 허용을 요구하게 한다.
+- [x] 유사 질문 검색, 기존 답변 통합·수정·보완, 주제별 배치 원칙을 정의한다.
+- [x] 실제 동작과 한계를 `docs/qna.md`에 설명한다.
+- [x] agent policy 결정과 관련 RAG 조사 교훈을 durable 문서에 기록한다.
+- [x] 사용자-facing 문구, UTF-8, Markdown whitespace와 변경 범위를 검증한다.
+- [x] `AI_CHANGELOG.md`를 갱신한다.
+
+Related AI Change Log: `Session-scoped 시연 Q&A mode 추가`
+
 ## Candidate Tasks
 
 These items are known follow-up concerns, not approved implementation tasks. Keep them here when the team wants to preserve the reasoning without committing to scope yet. When a candidate becomes active work, move it into the priority overview, add a dedicated roadmap section with checklist, and set it to `In Progress`.
@@ -917,6 +940,7 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
 | P1 | Data Model / RAG | Enforce vector uniqueness per embedding profile | 현재 `vector_items`에는 `(chunk_id, embedding_model)` unique constraint가 없어 같은 profile의 re-embedding worker가 겹치면 중복 검색 row가 생길 수 있다. Alembic migration, 기존 duplicate 정리, conflict-safe insert, concurrent 회귀 test를 함께 설계해야 한다. |
+| P1 | RAG / Reliability | Align unchanged source chunks with incremental indexed HEAD | 현재 source verification은 `indexed_head_hash`가 현재 `Repo HEAD`와 다르면 content hash 비교 전에 stale로 판정하지만, 증분 갱신은 변경된 path의 chunk만 새 HEAD로 기록한다. 변경되지 않은 파일의 기존 chunk를 content 검증 후 새 HEAD로 승격할지, file-level snapshot identity로 바꿀지 결정하고 회귀 test를 추가해야 한다. |
 | P2 | AI Verification | Add non-mutating local AI verification mode | 현재 `run_local_ai_verification.py`의 PL Briefing, Project Chat, Code Review, Mapping은 정상 결과를 저장하므로 연결/schema만 점검해도 최신 시연 결과가 바뀔 수 있다. rollback 가능한 probe와 저장형 검증을 명시적으로 분리해야 한다. |
 | P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
 | P2 | Test / Runtime Reliability | pgvector dimension preflight and failure-safe DB test cleanup | 기존 DB column 차원과 현재 `PGVECTOR_DIMENSION`이 다르면 DB-backed test와 RAG 실행이 늦게 실패한다. 구현을 시작할 때 read-only preflight 범위와 transaction 실패 후에도 임시 행을 정리하는 test fixture를 함께 설계한다. |

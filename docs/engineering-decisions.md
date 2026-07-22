@@ -63,6 +63,48 @@
 - `AI_CHANGELOG.md`의 `모바일 sidebar 연속 자동 닫힘 안정화`
 - `docs/engineering-decisions.md`의 `모바일 메뉴 이동만 sidebar 자동 닫기를 요청한다`
 
+## 2026-07-22 - 시연 Q&A 기록은 session-scoped 명시적 toggle과 문서 통합 방식으로 운영한다
+
+### 배경
+
+시연 준비에서는 사용자가 연속해서 기술 질문을 하고, 확정된 답변을 `docs/qna.md`에 남기는 작업이 반복됩니다. 이전 방식은 한 세션의 대화 지시로만 `qna.md` 외 파일을 read-only로 제한하고 매 답변을 저장했기 때문에, 새 세션에서는 같은 긴 prompt를 다시 전달해야 했습니다. 질문을 순서대로 append하면 같은 주제의 질문과 답변이 중복되거나 뒤에서 확인된 한계가 앞선 설명과 분리될 수도 있습니다.
+
+### 결정
+
+- `AGENTS.md`에 기본 `OFF`인 session-scoped Q&A mode를 정의합니다.
+- 사용자가 standalone `qna ON`을 입력하면 해당 세션에서 질문과 최종 답변을 `docs/qna.md`에 자동 반영하고, `qna OFF`를 입력하면 일반 작업 mode로 복귀합니다.
+- 활성화 중에는 `docs/qna.md` 외 repository file과 runtime·GitHub 상태를 read-only로 다룹니다. 다른 변경이 필요하면 사용자의 별도 명시적 허용을 받습니다.
+- 저장 전 기존 Q&A를 검색하고, 같은 질문은 기존 답변을 보완하며, 후속 질문은 관련 위치에 통합합니다. 새 주제만 적절한 위치에 추가합니다.
+- 일반적인 Q&A 축적마다 `AI_CHANGELOG.md`와 Roadmap을 함께 고치는 것은 Q&A 전용 read-only 범위와 충돌하므로 mode 활성화 중의 `docs/qna.md` 정리는 좁은 예외로 둡니다. Mode를 끄고 publish하거나 정책을 변경할 때는 일반 문서 영향 검토를 다시 적용합니다.
+
+### 이유
+
+- 새 세션에서 짧은 명령만으로 동일한 저장 위치와 read-only 경계를 재현할 수 있습니다.
+- 단순 append 대신 기존 답변을 통합하면 시연자가 같은 주제의 여러 답변 중 최신 내용을 골라야 하는 부담이 줄어듭니다.
+- 기본값을 `OFF`로 두면 일반 개발 세션이 Q&A 전용 파일 제한에 묶이지 않습니다.
+- activation/deactivation command를 Q&A로 저장하지 않아 문서가 운영 명령으로 오염되지 않습니다.
+
+### 검토한 대안
+
+- 대화 시작 때마다 전체 prompt를 다시 전달: repository 변경은 없지만 새 세션마다 규칙 누락과 표현 차이가 반복될 수 있습니다.
+- Q&A mode를 항상 활성화: 시연 준비에는 편하지만 일반 개발 작업까지 `docs/qna.md` 외 read-only 제한을 받아 기본 workflow로 부적합합니다.
+- 모든 질문을 문서 끝에 append: 구현은 단순하지만 중복, 상충 설명, 관련 질문의 분산이 누적됩니다.
+- personal skill로만 제공: 여러 repository에서 재사용하기에는 좋지만 현재 repository를 여는 모든 agent가 자동으로 규칙을 확인한다는 보장이 `AGENTS.md`보다 약합니다.
+
+### 영향, tradeoff, 남은 한계
+
+- Mode 상태는 conversation context에 의존하므로 새 세션에서는 다시 `qna ON`을 입력해야 합니다.
+- 유사 질문 통합에는 agent 판단이 필요하므로, 중요한 고유 근거나 제한을 보존하라는 규칙과 diff 검토가 계속 필요합니다.
+- `qna ON` 상태에서 commit·push·PR까지 자동 허용하지 않습니다. Q&A 외 상태 변경은 사용자가 별도로 허용해야 합니다.
+- 이 정책은 현재 repository의 `AGENTS.md`를 읽는 agent에 적용됩니다. 여러 repository에 공통 적용하려면 별도 personal skill을 검토할 수 있습니다.
+
+### 관련 문서
+
+- `AGENTS.md`의 `Session-Scoped Q&A Mode`
+- `ROADMAP.md`의 `Session-Scoped Q&A Documentation Mode`
+- `docs/qna.md`
+- `AI_CHANGELOG.md`의 `Session-scoped 시연 Q&A mode 추가`
+
 ## 2026-07-22 - Git 기반 샘플 데이터 생성은 사용자 메뉴가 아닌 CLI로 제공한다
 
 ### 배경
