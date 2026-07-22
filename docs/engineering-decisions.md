@@ -21,6 +21,85 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-22 - Git commit identity는 프로젝트 범위로 관리한다
+
+### 배경
+
+Git commit hash는 저장소 history 안에서는 안정적인 식별자지만, 같은 원격 저장소를 여러 분석 프로젝트로 등록하면 hash가 겹칩니다. 기존 schema는 `commit_hash`를 DB 전체에서 unique로 두고 Git Sync가 발견한 기존 행의 `project_id`를 새 프로젝트로 바꿨습니다. 오류를 반환하지 않는 대신 기존 프로젝트의 commit/file 소유권과 Mapping·RAG·graph 근거가 조용히 어긋나는 구조였습니다.
+
+### 결정
+
+- `git_commits`의 업무 식별자는 `(project_id, commit_hash)`로 정의하고, 전역 `commit_hash` unique constraint는 Alembic revision `20260722_0011`에서 제거합니다.
+- Git Sync는 현재 프로젝트 안에서만 같은 hash를 중복으로 판단합니다. 다른 프로젝트의 같은 hash는 새 `GitCommit`과 `CommitFile` 행으로 저장하며 기존 행의 `project_id`를 바꾸지 않습니다.
+- `GitCommit.id`를 직접 받는 조회도 사용자가 선택한 `project_id`를 함께 확인합니다. Mapping과 후속 분석은 프로젝트별 commit DB ID를 참조합니다.
+- RAG schema는 바꾸지 않습니다. `DocumentChunk.project_id`가 검색 범위를 나누고 commit/commit_file chunk의 `source_id`가 프로젝트별 DB ID를 사용하며, `VectorItem`은 chunk FK를 따릅니다.
+- Neo4j schema도 바꾸지 않습니다. 모든 `KnowledgeNode.node_id`가 `p{project_id}:`로 시작하고 read/write/cleanup이 `project_id`를 사용하므로 같은 hash의 commit node도 프로젝트별로 분리됩니다.
+- 이전 Git Sync로 소유권이 이미 이동한 프로젝트는 migration만으로 추정 복구하지 않습니다. DB를 백업한 뒤 관련 프로젝트의 분석 데이터를 초기화하고 Git Sync, Mapping, RAG/vector, Knowledge Graph를 다시 생성합니다.
+
+### 이유
+
+같은 source repository도 비교 기준, branch 운영, 산출물, 분석 시점이 다른 별도 프로젝트가 될 수 있습니다. commit 행을 전역 공유하면 프로젝트별 분석 결과가 하나의 소유권 필드에 의존하지만, 프로젝트별 행을 만들면 기존 FK 구조를 유지하면서 수집·삭제·재분석 경계를 명확히 할 수 있습니다. RAG와 Neo4j는 이미 프로젝트 범위 키를 갖고 있어 불필요한 저장소별 migration보다 교차 프로젝트 회귀 테스트가 더 적합합니다.
+
+### 검토한 대안
+
+- 같은 remote URL이면 기존 프로젝트를 재사용: 서로 다른 산출물이나 분석 설정을 가진 프로젝트를 만들 수 없어 제외했습니다.
+- commit을 전역 master로 두고 project-commit 연결 테이블 추가: 정규화는 가능하지만 기존 `CommitFile`, Mapping, chunk source ID와 서비스 조회를 모두 이중 관계로 바꾸는 비용이 현재 요구보다 큽니다.
+- 다른 프로젝트의 같은 hash를 오류로 거부: 데이터 이동은 막지만 사용자가 같은 저장소를 의도적으로 두 번 분석할 수 없어 제외했습니다.
+- RAG source ID와 Neo4j node ID를 다시 설계: 두 저장소 모두 이미 `project_id` 경계를 갖고 있어 변경 이득 없이 migration과 재색인 비용만 늘어납니다.
+
+### 영향, tradeoff, 남은 한계
+
+동일 repository를 등록한 프로젝트 수만큼 commit/file 행과 commit 기반 chunk가 저장되므로 PostgreSQL 사용량은 늘어납니다. 반대로 프로젝트 삭제와 분석 초기화가 다른 프로젝트의 근거를 건드리지 않고, 같은 프로젝트 재수집은 기존처럼 중복을 건너뜁니다. migration downgrade는 서로 다른 프로젝트에 같은 hash가 저장된 뒤에는 전역 unique를 다시 만들 수 없으므로, downgrade 전에 중복 프로젝트 데이터를 명시적으로 정리해야 합니다. `DocumentChunk`와 `VectorItem`의 동시 생성 unique 보장은 별도 roadmap 과제로 유지합니다.
+
+### 관련 문서
+
+- `docs/architecture.md`
+- `docs/ai-technical-overview.md`
+- `docs/db-migrations.md`
+- `docs/failure-history.md`의 `동일 저장소를 새 프로젝트로 수집하면 기존 GitCommit 소유가 이동할 수 있다`
+- `ROADMAP.md`의 `Project-Scoped Git Commit Identity Across RAG And Graph`
+- `AI_CHANGELOG.md`의 `프로젝트 범위 Git commit identity와 전체 저장소 격리`
+
+## 2026-07-22 - 공개 샘플 저장소는 로컬 생성본의 검증된 mirror로 운영한다
+
+> 관리형 clone까지만 검증하던 제한은 위의 `Git commit identity는 프로젝트 범위로 관리한다` 결정과 revision `20260722_0011`로 해소됐습니다. 공개 mirror 운영 원칙과 공개 전 안전 점검은 계속 유지합니다.
+
+### 배경
+
+Sample Shop은 `scripts/create_sample_target_repo.py`가 만드는 로컬 sibling Git 저장소라서 Docker 외부 사용자가 서버 경로 없이 관리형 Git URL 등록을 재현할 수 없었습니다. 최초 등록 당시에는 같은 48개 commit history를 기본 DB의 두 프로젝트에 수집하면 `git_commits.commit_hash` 전역 unique 제약 때문에 기존 기준 프로젝트의 commit 소유권이 이동할 수 있었습니다.
+
+### 결정
+
+- `https://github.com/ino5/ai-advisor-sample-shop`의 public `main`을 검증된 로컬 샘플 history의 외부 등록용 mirror로 사용합니다.
+- 공개 전에는 clean working tree, commit 수와 HEAD, synthetic author, 민감정보 후보, Git 무결성을 확인합니다.
+- 공개 URL 등록 프로젝트명은 로컬 기준 프로젝트와 구분되는 `Sample Shop Demo (github)`를 사용합니다.
+- 기본 시연 DB에서 관리형 clone 뒤 전체 Git 수집, RAG/vector, Neo4j graph까지 프로젝트별로 검증합니다.
+- 샘플 생성 결과가 바뀌면 로컬 검증을 먼저 끝내고 공개 mirror의 branch와 문서에 기록한 HEAD를 함께 갱신합니다.
+
+### 이유
+
+공개 mirror가 있으면 외부 사용자가 서버 파일 경로를 알지 못해도 제품의 관리형 clone 흐름을 그대로 확인할 수 있습니다. 프로젝트 범위 commit identity를 적용한 뒤에는 clone부터 DB 수집과 후속 저장소 격리까지 한 DB에서 검증할 수 있습니다. 로컬 생성본을 먼저 검증하면 샘플 scenario와 upload 산출물을 만드는 기존 자동화도 계속 기준으로 사용할 수 있습니다.
+
+### 검토한 대안
+
+- 기본 DB의 두 프로젝트에 전체 수집: 최초 등록 당시에는 기존 프로젝트의 commit 소유권을 바꿀 수 있어 제외했지만, revision `20260722_0011` 적용 뒤 후속 검증 범위에 포함했습니다.
+- GitHub 저장소를 샘플 생성의 원본으로 전환: 생성 스크립트와 48개 scenario history 재현 기준이 분산되므로 제외했습니다.
+- private GitHub 저장소 사용: 현재 관리형 등록이 인증정보 없는 공개 HTTPS URL만 지원하므로 검증 대상과 맞지 않습니다.
+- clone 없이 `git ls-remote`만 확인: 네트워크 접근은 확인할 수 있지만 실제 UI, 관리형 path mapping, Docker read-write mount를 검증하지 못합니다.
+
+### 영향, tradeoff, 남은 한계
+
+샘플 history를 재생성하면 공개 mirror와 문서 HEAD를 수동으로 맞춰야 합니다. 같은 history를 여러 프로젝트에 저장하면 commit/file과 후속 인덱스가 프로젝트 수만큼 늘어납니다. 공개 저장소에는 실제 고객 코드, secret, 내부 운영 데이터를 넣지 않으며, 관리형 프로젝트를 앱에서 삭제해도 서버 clone 폴더는 자동 삭제되지 않습니다.
+
+### 관련 문서
+
+- `README.md`
+- `docs/sample-target-repo-demo-design.md`
+- `docs/demo-user-guide.md`
+- `docs/sample-project-usage-verification.md`
+- `ROADMAP.md`의 `Public Sample Repository And Managed Onboarding Verification`
+- `AI_CHANGELOG.md`의 `공개 샘플 GitHub 저장소와 관리형 등록 검증`
+
 ## 2026-07-22 - AI Code Review 언어 검증 실패는 리뷰 실패로 처리하지 않는다
 
 ### 배경
@@ -275,11 +354,11 @@ README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, 
 
 - 격리 DB와 local 8502를 계속 시연 기준으로 유지: Docker 8501과 데이터가 달라 운영자가 매번 환경 변수를 바꿔야 하므로 제외했습니다.
 - Docker 기본을 mock으로 유지하고 저장 결과만 표시: live provider 연결을 확인할 수 없고 포트별 AI 동작 차이가 남아 제외했습니다.
-- 같은 저장소의 여러 프로젝트를 기본 DB에 함께 유지: `git_commits.commit_hash` 전역 unique 문제가 해결되지 않아 제외했습니다.
+- 같은 저장소의 여러 프로젝트를 기본 DB에 함께 유지: 당시에는 `git_commits.commit_hash` 전역 unique 문제로 제외했습니다. revision `20260722_0011` 이후에는 가능하지만, 발표 기준 프로젝트 하나를 고정하는 운영 원칙은 유지합니다.
 
 ### 영향, tradeoff, 남은 한계
 
-최종 동선은 단순해졌지만, 동일 저장소를 여러 프로젝트에서 동시에 분석하려면 project-scoped commit identity migration이 여전히 필요합니다. quick tunnel URL은 재시작할 때 바뀌므로 영구 배포 주소로 취급하지 않습니다.
+최종 동선은 기준 프로젝트 하나로 단순하게 유지합니다. 동일 저장소의 여러 프로젝트 분석 제한은 2026-07-22 project-scoped commit identity로 해소됐습니다. quick tunnel URL은 재시작할 때 바뀌므로 영구 배포 주소로 취급하지 않습니다.
 
 ### 관련 문서
 
@@ -323,11 +402,11 @@ README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, 
 
 ## 2026-07-21 - 동일 저장소의 새 프로젝트 검증은 격리 DB에서 수행한다
 
-> 이 결정은 전체 재현 중 기존 데이터를 보존하기 위한 임시 안전 조치였습니다. 최종 시연 운영 기준은 위의 `시연 기준은 기본 DB와 Docker 8501 하나로 통일한다` 결정으로 대체됐습니다.
+> 이 결정은 전체 재현 중 기존 데이터를 보존하기 위한 임시 안전 조치였습니다. 2026-07-22 `Git commit identity는 프로젝트 범위로 관리한다` 결정과 revision `20260722_0011` 적용 뒤에는 같은 DB에서 동일 저장소를 여러 프로젝트에 수집할 수 있습니다.
 
 ### 배경
 
-새 프로젝트의 전체 수집·분석 흐름을 검증하려면 실제 Sample Shop 저장소를 처음부터 다시 읽어야 합니다. 그러나 현재 `git_commits.commit_hash`는 전역 unique이고 Git Sync가 같은 hash의 기존 행을 현재 project로 재지정하므로, 운영 DB에서 새 프로젝트를 만들면 기존 프로젝트의 분석 근거가 이동할 수 있습니다.
+새 프로젝트의 전체 수집·분석 흐름을 검증하려면 실제 Sample Shop 저장소를 처음부터 다시 읽어야 했습니다. 당시 `git_commits.commit_hash`는 전역 unique이고 Git Sync가 같은 hash의 기존 행을 현재 project로 재지정했으므로, 운영 DB에서 새 프로젝트를 만들면 기존 프로젝트의 분석 근거가 이동할 수 있었습니다.
 
 ### 결정
 
@@ -360,7 +439,7 @@ README, setup 가이드, 시연 Runbook이 LM Studio port, model 기동 순서, 
 - `docs/end-to-end-demo-evidence-2026-07-21.md`
 - `docs/failure-history.md`의 `동일 저장소를 새 프로젝트로 수집하면 기존 GitCommit 소유가 이동할 수 있다`
 - `AI_CHANGELOG.md`의 `새 프로젝트 전체 시연 재현과 단계별 증적`
-- `ROADMAP.md` Candidate Task `Make Git commit uniqueness project-scoped`
+- `ROADMAP.md`의 `Project-Scoped Git Commit Identity Across RAG And Graph`
 
 ## 2026-07-21 - 소규모 시연은 저장된 검증 결과를 기본으로 하고 읽기 전용 preflight로 현재성을 확인한다
 

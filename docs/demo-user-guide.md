@@ -72,6 +72,8 @@ C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_standard_terms.xlsx
 
 외부 링크에서 자신의 공개 저장소를 새로 등록할 때는 `Git URL에서 가져오기`를 선택합니다. 프로젝트명, 공개 HTTPS Git URL, branch를 입력하고 `저장소 준비 및 프로젝트 저장`을 누르면 서버가 관리형 경로를 자동 배정해 clone합니다. 현재 기본 허용 host는 `github.com`, `gitlab.com`, `bitbucket.org`이며, private repository와 사용자 PC의 로컬 폴더 직접 등록은 지원하지 않습니다.
 
+공개 Sample Shop으로 이 흐름을 확인하려면 프로젝트명 `Sample Shop Demo (github)`, URL `https://github.com/ino5/ai-advisor-sample-shop.git`, branch `main`을 입력합니다. 기본 시연 DB에 `Sample Shop Demo`가 이미 있어도 새 프로젝트에서 `전체 수집`을 실행할 수 있습니다. 같은 hash는 두 프로젝트에 별도 `GitCommit`으로 저장되고, 재수집할 때는 현재 프로젝트 안의 중복만 건너뜁니다. `(github)`는 화면에서 로컬 기준 프로젝트와 쉽게 구분하기 위한 이름입니다.
+
 ## 2. Git 동기화
 
 `프로젝트 설정 > Git 동기화`로 이동합니다.

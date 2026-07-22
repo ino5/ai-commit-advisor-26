@@ -253,6 +253,17 @@ AI Commit Advisor는 브라우저 사용자 PC의 Git 저장소를 직접 읽지
 
 Git Sync, RAG source_file 인덱싱, Project Chat 현재 소스 검증, AI Code Review는 모두 이 앱 서버 기준 경로를 사용합니다. 사내 서버 운영의 자세한 기준은 [Git 저장소 운영 모델](git-repository-operating-model.md)을 참고합니다.
 
+### 2.2 동일 저장소의 프로젝트별 데이터 경계
+
+하나의 원격 저장소를 여러 분석 프로젝트로 등록할 수 있습니다. 프로젝트명이나 remote URL은 표시·운영 정보이고, 실제 데이터 경계는 `project_id`입니다.
+
+- PostgreSQL의 Git commit identity는 `(project_id, commit_hash)`입니다. 같은 hash도 프로젝트마다 다른 `GitCommit.id`와 `CommitFile` 행을 가지며, 같은 프로젝트에서 다시 수집할 때만 중복으로 건너뜁니다.
+- Mapping은 프로젝트별 `Program`과 프로젝트별 `GitCommit.id`를 연결합니다. Commit Impact처럼 DB ID를 직접 받는 조회도 현재 `project_id`를 함께 확인합니다.
+- RAG의 `DocumentChunk.project_id`가 검색 범위를 나눕니다. commit/commit_file chunk의 `source_id`는 프로젝트별 commit/file DB ID이고, `VectorItem`은 해당 chunk FK를 따릅니다.
+- Neo4j는 PostgreSQL을 source of truth로 다시 만드는 read model입니다. node ID가 `p{project_id}:`로 시작하고 모든 sync/read/cleanup이 `project_id`를 사용하므로 같은 commit hash도 별도 node가 됩니다.
+
+revision `20260722_0011` 이전 Git Sync로 commit 소유권이 이미 이동한 DB는 constraint 제거만으로 과거 관계를 추정 복구하지 않습니다. 관련 프로젝트의 분석 데이터를 초기화한 뒤 Git Sync, Mapping, RAG/vector, Knowledge Graph를 다시 생성해야 합니다.
+
 ## 3. DB ERD
 
 ```mermaid
@@ -276,6 +287,7 @@ erDiagram
     PROJECTS ||--o{ RISK_FINDINGS : has
     PROJECTS ||--o{ PROJECT_CHAT_SESSIONS : has
     PROJECT_CHAT_SESSIONS ||--o{ PROJECT_CHAT_MESSAGES : contains
+    PROJECTS ||--o{ DOCUMENT_CHUNKS : indexes
     DOCUMENT_CHUNKS ||--o{ VECTOR_ITEMS : embedded
 
     PROJECTS {
@@ -524,8 +536,8 @@ erDiagram
 | `developers` | 전역 개발자 마스터. Git author 또는 업로드 데이터 기반으로 생성되며 role/skills를 관리한다. 프로젝트 삭제 시 자동 삭제하지 않는다. |
 | `project_developers` | 프로젝트와 전역 개발자 마스터의 연결 테이블. 현재 프로젝트 개발자 목록의 기준이며, 같은 개발자를 여러 프로젝트에 연결할 수 있다. |
 | `programs` | 프로그램 목록과 개발계획 정보를 저장한다. 계획 진척도(`progress_rate`)와 일정, 담당자 정보의 기준 테이블이다. |
-| `git_commits` | Git 커밋 메타데이터를 저장한다. 커밋 기준 매핑 분석 상태도 가진다. |
-| `commit_files` | 커밋별 변경 파일, 변경 유형, diff 일부를 저장한다. |
+| `git_commits` | 프로젝트별 Git 커밋 메타데이터를 저장한다. `(project_id, commit_hash)`가 unique이며 커밋 기준 매핑 분석 상태도 가진다. |
+| `commit_files` | 프로젝트별 `git_commits.id`를 따라 커밋의 변경 파일, 변경 유형, diff 일부를 저장한다. |
 | `program_commit_mappings` | 프로그램-커밋 관련성 분석 결과. LLM 판단 결과, 관련도 점수, 구현 상태, 판단 근거를 저장한다. |
 | `program_implementation_status` | 프로그램별 관련 커밋 묶음을 기반으로 LLM이 판단한 구현 상태, 완료/미완료 기능, 근거 커밋을 저장한다. |
 | `analysis_runs` | Mapping 분석 실행 이력. 실행 상태, 처리 수, 실패 수, 파라미터, 요약을 저장한다. |
@@ -536,8 +548,8 @@ erDiagram
 | `risk_findings` | 리스크 분석 결과. 리스크 유형/등급, 설명, 근거, 해결 여부를 저장한다. |
 | `project_chat_sessions` | Project Chat의 프로젝트별 대화 session 제목, 상태, 마지막 메시지 시각을 저장한다. |
 | `project_chat_messages` | Project Chat user/assistant message와 검색 근거, 확장 쿼리, 근거 부족 여부, graph evidence raw metadata, 복사용 citation metadata를 저장한다. |
-| `document_chunks` | RAG 검색용 chunk 저장소. source_file, program, commit, commit_file 원문을 검색 가능한 텍스트 단위로 저장한다. |
-| `vector_items` | `document_chunks`의 embedding vector를 저장한다. pgvector cosine 검색에 사용된다. |
+| `document_chunks` | 프로젝트 범위 RAG 검색용 chunk 저장소. `project_id`와 source_file, program, commit, commit_file 원문을 검색 가능한 텍스트 단위로 저장한다. |
+| `vector_items` | `document_chunks`의 embedding vector를 저장한다. 프로젝트 경계는 chunk FK를 따라가며 pgvector cosine 검색에 사용된다. |
 
 ## 5. 서비스별 역할 설명
 
@@ -545,7 +557,7 @@ erDiagram
 |---|---|
 | `project_management_service.py` | 프로젝트 삭제 영향 건수 계산과 프로젝트 소유 데이터 삭제를 처리한다. 전역 개발자 마스터는 유지한다. |
 | `excel_service.py` | 프로그램/개발자 Excel 파일 읽기, 컬럼 매핑, 정규화, DB 저장. |
-| `git_service.py` | 앱 서버 Git 저장소에서 commit hash, message, author, changed files, diff 수집 및 DB 저장. |
+| `git_service.py` | 앱 서버 Git 저장소에서 commit hash, message, author, changed files, diff를 수집한다. 현재 프로젝트 안에서만 hash 중복을 판단하고 프로젝트별 commit/file 행을 저장한다. |
 | `git_repository_status_service.py` | 앱 서버 Git 저장소의 branch, HEAD, upstream, ahead/behind, working tree 변경, DB sync mismatch 상태를 읽기 전용으로 조회한다. |
 | `git_followup_service.py` | Git Sync 이후 source index, embedding, Mapping, Risk Analysis, Knowledge Graph 갱신 필요성을 현재 DB/HEAD 상태로 계산하고 권장 순서와 재시작 가능한 이동 대상을 제공한다. |
 | `developer_service.py` | Git author 기반 개발자 자동 추출, role/skills 추정, 현재 프로젝트 개발자 연결, 개발자 통계 생성. |

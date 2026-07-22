@@ -237,6 +237,47 @@ Invoke-RestMethod -Uri http://127.0.0.1:1234/v1/models -Method Get
 .\.venv\Scripts\python.exe scripts\capture_feature_screenshot.py --url http://localhost:8502 --feature dashboard-pl-briefing --project-name "AAA Sample Shop Usage Verification 20260614" --surface local --height 3600 --screenshot docs\images\usage-verification\12-pl-briefing.png --expect-text "provider=local_openai" --expect-text "mode=LLM 생성" --expect-text "최근 저장된 PL Briefing" --expect-text "PL Briefing 이력" --expect-text "PL 주간 점검 브리핑" --expect-text "요약" --expect-text "회의 질문" --forbid-text "```json" --forbid-text "한국어 브리핑" --forbid-text "本周" --forbid-text "기반으로이번"
 ```
 
+## 2026-07-22 공개 GitHub 관리형 등록 검증
+
+로컬에서만 사용하던 Sample Shop history를 공개 GitHub 저장소로 게시하고, Docker 8501 앱의 실제 `Git URL에서 가져오기` 화면에서 관리형 clone을 검증했습니다.
+
+| 항목 | 값 |
+|---|---|
+| 공개 저장소 | `https://github.com/ino5/ai-advisor-sample-shop` |
+| 공개 범위 / branch | `public` / `main` |
+| 로컬·원격 HEAD | `221eb9ac9c83364f4450bdf4970196b51cb1f9e1` |
+| 원격 commit 수 | 48 |
+| 실행 surface | Docker Streamlit 8501 + Docker PostgreSQL |
+| 앱 프로젝트 | `Sample Shop Demo (github)` (`project_id=393`) |
+| 입력 clone URL | `https://github.com/ino5/ai-advisor-sample-shop.git` |
+| 관리형 경로 | `C:\dev\ai-commit-advisor-managed-repos\project-393` |
+| clone branch / HEAD / commit 수 | `main` / `221eb9ac9c83` / 48 |
+| 기존 기준 프로젝트 | `Sample Shop Demo` (`project_id=1`), DB commit/file 48/106건 유지 |
+| 새 프로젝트 Git 수집 | commit/file 48/106건, 오류 0건 |
+| 새 프로젝트 재수집 | 저장 0건, 현재 프로젝트 중복 48건 건너뜀 |
+| RAG source/vector | project `1` 79/79, project `393` 79/79 |
+| Neo4j graph | project `1` node 213, project `393` node 202 / edge 533 |
+
+검증 순서와 결과:
+
+1. 로컬 샘플 저장소가 clean `main`, 48 commits인지 확인했습니다.
+2. 전체 history의 작성자가 `sample.local` synthetic 계정인지 확인하고 private key, AWS key, password, token 형태의 민감정보 경로가 없음을 점검했습니다.
+3. `ino5/ai-advisor-sample-shop` public repository를 만들고 `main`을 push했습니다.
+4. 실제 브라우저 UI에서 `Sample Shop Demo (github)`, 공개 clone URL, `main`을 입력했습니다.
+5. 화면의 `저장소 clone 완료`, `HEAD 221eb9ac9c83`, `프로젝트와 관리형 저장소를 준비했습니다`를 확인했습니다.
+6. 서버 clone의 `origin`, branch, HEAD, 48개 history와 DB 저장값을 다시 확인했습니다.
+7. Alembic revision `20260722_0011`을 적용한 뒤 `project_id=393`에서 전체 수집을 실행해 commit 48건과 변경 파일 106건을 저장했습니다.
+8. `project_id=1`도 commit 48건과 변경 파일 106건을 유지하고, 두 프로젝트의 hash 집합 48개가 같지만 DB ID는 서로 다른지 확인했습니다.
+9. `project_id=393`을 다시 전체 수집했을 때 저장 0건, 현재 프로젝트 중복 48건, 두 프로젝트 commit 각 48건으로 유지되는지 확인했습니다.
+10. 공개 clone의 현재 소스 79건을 실제 `text-embedding-nomic-embed-text-v2-moe` 768차원 vector 79건으로 만들고, 기존 project `1`의 79/79가 바뀌지 않았는지 확인했습니다. 같은 query의 상위 5개 결과도 요청한 프로젝트의 chunk만 반환했습니다.
+11. Neo4j 전체 동기화로 project `393`에 node 202개와 edge 533개를 저장했습니다. 같은 HEAD commit node는 `p1:commit:221eb9...`와 `p393:commit:221eb9...`로 분리되고 project `1`의 node 213개가 유지됐습니다.
+
+`git_commits`는 이제 `(project_id, commit_hash)`만 unique로 유지합니다. RAG는 `document_chunks.project_id`와 프로젝트별 commit/file DB ID를 사용하고, vector는 chunk FK를 따릅니다. Neo4j node ID는 `p{project_id}:` 접두사를 사용하므로 PostgreSQL 외 저장소에 별도 schema migration은 필요하지 않았습니다. 이 검증 전 PostgreSQL custom dump를 `C:\dev\ai-commit-advisor-backups\ai_commit_advisor_pre_project_scope_20260722.dump`에 저장했습니다.
+
+교차 프로젝트 무결성 조회 결과는 Mapping 0건, commit chunk 0건, commit_file chunk 0건이었고, Neo4j node ID 접두사 불일치도 0건이었습니다.
+
+`demo_start.ps1 -CheckOnly`에서 Docker app과 외부 Quick Tunnel health, LM Studio, embedding, 기본 프로젝트의 program 8건·commit 48건·Mapping·source/vector·Knowledge Graph는 통과했습니다. 전체 preflight는 이번 clone과 무관하게 가장 최근 저장 AI Code Review 결과의 bug finding이 0건이라 `FAIL=1`이었습니다. 기존 실패 이력의 대표 리뷰 결과 선택 제한에 해당하므로 저장 결과를 임의로 바꾸지 않았습니다.
+
 ## 남은 제한 사항
 
 - 검증은 local LM Studio의 현재 모델 응답에 의존합니다. 같은 코드라도 모델, prompt template, GPU/CPU 상태에 따라 Mapping reason, Code Review summary, Project Chat wording은 달라질 수 있습니다.
