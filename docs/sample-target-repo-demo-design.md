@@ -8,10 +8,11 @@
 
 - 애플리케이션 저장소: `C:\dev\ai-commit-advisor`
 - 샘플 프로젝트 Git 저장소: `C:\dev\ai-advisor-sample-shop`
+- 공개 GitHub mirror: `https://github.com/ino5/ai-advisor-sample-shop`
 - 생성 스크립트: `scripts/create_sample_target_repo.py`
 - 생성된 upload 파일: `C:\dev\ai-advisor-sample-shop\advisor_uploads`
 
-위 경로는 기본 Windows 개발 환경 기준입니다. 사내 서버에서 검증할 때는 샘플 프로젝트를 앱 서버가 접근 가능한 저장소 root 아래에 생성하거나 복사한 뒤 서버 기준 경로를 등록합니다. 실행 환경별 경로 설정은 [설치와 운영](setup-and-operations.md)의 샘플 프로젝트 경로 설정을 따릅니다.
+로컬 sibling 저장소는 생성 스크립트의 검증 대상이며, 공개 GitHub 저장소는 검증된 `main` history를 외부 관리형 등록에서 사용할 수 있게 게시한 mirror입니다. 위 경로는 기본 Windows 개발 환경 기준입니다. 사내 서버에서 검증할 때는 샘플 프로젝트를 앱 서버가 접근 가능한 저장소 root 아래에 생성하거나, 공개 HTTPS URL을 `Git URL에서 가져오기`로 등록합니다. 실행 환경별 경로 설정은 [설치와 운영](setup-and-operations.md)의 샘플 프로젝트 경로 설정을 따릅니다.
 
 ## 현재 상태
 
@@ -20,6 +21,7 @@
 - Programs: 8
 - Developers: 6
 - Git commits: 48
+- Public branch / HEAD: `main` / `221eb9ac9c83`
 - Commit date range: 2026-04-25 to 2026-06-14
 - Main stack: Java, Spring MVC, JSP, MyBatis XML
 - Current domains: orders, inventory, payments, reports, dashboard, coupon, settlement planning
@@ -240,6 +242,8 @@ AI Progress는 다음을 보여야 합니다.
 
 - `scripts/create_sample_target_repo.py`를 수정해 더 현실적인 commit history를 생성합니다.
 - 샘플 프로젝트 Git 저장소는 `C:\dev\ai-commit-advisor` 밖의 sibling repo로 유지합니다.
+- 공개 GitHub mirror를 갱신하기 전에는 로컬 작업트리, 48개 commit shape, synthetic author, 민감정보, 원격 HEAD를 확인합니다.
+- 로컬 샘플 프로젝트와 GitHub mirror 프로젝트를 같은 PostgreSQL DB에서 검증할 때는 각 프로젝트의 commit/file 수, RAG/vector 수, Neo4j `project_id`와 node ID를 함께 확인합니다. 동일 hash는 `(project_id, commit_hash)`로 분리되고 같은 프로젝트의 재수집만 중복으로 처리되어야 합니다.
 - 필요하면 `sample_data`와 `advisor_uploads` output을 update 또는 regenerate합니다.
 - expected sample shape, developer profile, program row, risk/demo scenario에 대한 test를 추가하거나 수정합니다.
 - 샘플 보강은 실제 local LLM이 읽을 source, diff, test/probe, XML, Excel 데이터를 늘리는 방식으로만 진행하고, mock output을 보강해 데모 결과처럼 보이게 만들지 않습니다.

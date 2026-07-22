@@ -137,6 +137,8 @@
 | P2 | Data UX | Project reset action after delete flow | Done | Project reset action after delete flow |
 | P3 | Git Ops | Server-managed clone/fetch workflow | Done | Server-managed clone/fetch workflow |
 | P2 | Git UX / Ops | Managed Git URL project onboarding | Done | 관리형 Git URL 프로젝트 등록 |
+| P2 | Sample Data / Git UX | Public sample repository and managed onboarding verification | Done | 공개 샘플 GitHub 저장소와 관리형 등록 검증 |
+| P1 | Data Model / Git Sync | Project-scoped Git commit identity across RAG and graph | Done | 프로젝트 범위 Git commit identity와 전체 저장소 격리 |
 | P1 | AX / AI 검증 | AI evidence trace view | Done | AX AI 검증과 telemetry 구현 |
 | P1 | Readiness | AI readiness cockpit | Done | AX AI 검증과 telemetry 구현 |
 | P1 | AI Quality | Sample project AI evaluation scorecard | Done | AX AI 검증과 telemetry 구현 |
@@ -785,7 +787,6 @@ These items are known follow-up concerns, not approved implementation tasks. Kee
 
 | Priority | Area | Candidate | Why It Matters |
 |---|---|---|---|
-| P1 | Data Model / Git Sync | Make Git commit uniqueness project-scoped | 현재 `commit_hash` 전역 unique와 Git Sync 소유권 이동 때문에 같은 저장소를 여러 프로젝트가 독립 분석할 수 없다. migration, 기존 데이터 변환, cascade 관계, 두 프로젝트 동시 수집 회귀 test를 함께 설계해야 한다. |
 | P1 | Data Model / RAG | Enforce vector uniqueness per embedding profile | 현재 `vector_items`에는 `(chunk_id, embedding_model)` unique constraint가 없어 같은 profile의 re-embedding worker가 겹치면 중복 검색 row가 생길 수 있다. Alembic migration, 기존 duplicate 정리, conflict-safe insert, concurrent 회귀 test를 함께 설계해야 한다. |
 | P2 | AI Verification | Add non-mutating local AI verification mode | 현재 `run_local_ai_verification.py`의 PL Briefing, Project Chat, Code Review, Mapping은 정상 결과를 저장하므로 연결/schema만 점검해도 최신 시연 결과가 바뀔 수 있다. rollback 가능한 probe와 저장형 검증을 명시적으로 분리해야 한다. |
 | P2 | Sample Data / Demo Quality | Additional multi-release evidence scenarios | 앞으로 샘플을 더 키울 때는 release rehearsal, incident postmortem, operator handoff처럼 실제 PL 검토에서 묻는 증거를 단계적으로 추가한다. 단순 commit 수 증량은 지양한다. |
@@ -1215,6 +1216,50 @@ Checklist:
 - [x] compile, focused/full tests, Docker config와 문서 diff를 검증한다.
 
 Related AI Change Log: `관리형 Git URL 프로젝트 등록`
+
+## P2 - Public Sample Repository And Managed Onboarding Verification
+
+Status: Done
+
+Goal:
+현재 48개 commit Sample Shop 저장소를 공개 GitHub 저장소로 게시하고, Docker 시연 앱의 `Git URL에서 가져오기` 흐름이 공개 HTTPS URL에서 관리형 clone과 HEAD 확인까지 실제로 동작하는지 검증한다.
+
+Rationale:
+관리형 Git URL 등록은 공개 외부 저장소 clone을 지원하지만, 현재 샘플 저장소는 로컬 sibling 경로에만 존재한다. 공개 샘플 원격을 준비하고 실제 시연 앱에서 등록해야 외부 사용자가 서버 경로를 알지 못해도 같은 clone 흐름을 재현할 수 있으며, 같은 commit을 기본 DB에 다시 수집할 때 발생할 수 있는 전역 commit hash 제약도 검증 범위에서 분리해 보존할 수 있다.
+
+Checklist:
+
+- [x] 로컬 샘플 저장소의 작업트리, history, 공개 게시 안전성을 확인한다.
+- [x] `ino5/ai-advisor-sample-shop` 공개 GitHub 저장소를 만들고 48개 commit `main` history를 push한다.
+- [x] 시연 앱에 `Sample Shop Demo (github)` 프로젝트를 관리형 Git URL로 등록한다.
+- [x] 관리형 clone 경로, remote URL, branch, Repo HEAD가 공개 원격과 일치하는지 확인한다.
+- [x] 기본 프로젝트 commit 소유권을 보호하기 위해 같은 DB에서의 중복 Git 수집 제한을 검증 결과에 기록한다.
+- [x] 샘플 설계, 사용/검증 문서, engineering decision, `AI_CHANGELOG.md`를 갱신한다.
+- [x] 관련 테스트와 문서 검증을 완료한다.
+
+Related AI Change Log: `공개 샘플 GitHub 저장소와 관리형 등록 검증`
+
+## P1 - Project-Scoped Git Commit Identity Across RAG And Graph
+
+Status: Done
+
+Goal:
+동일한 Git history를 여러 프로젝트가 독립적으로 수집해도 기존 프로젝트의 commit, 변경 파일, Mapping, RAG/vector, Knowledge Graph, 저장 AI 근거가 이동하거나 섞이지 않도록 commit identity와 후속 데이터 흐름을 프로젝트 범위로 통일한다.
+
+Rationale:
+작업 시작 당시 `git_commits`에는 `(project_id, commit_hash)` unique constraint와 별도로 `commit_hash` 전역 unique constraint가 남아 있었고, Git Sync는 같은 hash가 다른 프로젝트에 있으면 해당 row의 `project_id`를 새 프로젝트로 바꿨다. 이 동작은 오류를 내지 않는 대신 기존 프로젝트의 commit 소유권을 조용히 이동시키며, commit/file DB ID를 참조하는 Mapping과 RAG chunk, 프로젝트별 Neo4j read model, 저장된 AI 근거를 stale 상태로 만들 수 있었다.
+
+Checklist:
+
+- [x] `GitCommit`의 hash/id 조회, FK, Mapping, RAG/vector, Neo4j node key와 cleanup 경로를 전수 감사한다.
+- [x] Alembic migration으로 전역 `commit_hash` unique constraint를 제거하고 `(project_id, commit_hash)` unique를 유지한다.
+- [x] Git Sync가 현재 프로젝트 안에서만 중복을 판단하고 다른 프로젝트의 commit 소유권을 바꾸지 않게 수정한다.
+- [x] 동일 저장소를 두 프로젝트에 수집해 commit/file/mapping/RAG/vector/graph identity가 분리되는 회귀 테스트를 추가한다.
+- [x] 기존 DB upgrade와 영향 프로젝트의 재색인·graph 재동기화 복구 절차를 검증한다.
+- [x] README, architecture, AI technical overview, DB migration, sample/user guide, engineering decision, failure history를 갱신한다.
+- [x] focused/full tests, migration, Docker runtime, 문서와 사용자 문구 검증을 완료한다.
+
+Related AI Change Log: `프로젝트 범위 Git commit identity와 전체 저장소 격리`
 
 ## P2 - Project Reset Action After Delete Flow
 

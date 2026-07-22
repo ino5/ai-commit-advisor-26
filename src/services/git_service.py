@@ -217,10 +217,12 @@ def sync_git_repository(db: Session, project: Project, full: bool = False) -> Gi
         return result
 
     for commit_hash in commit_hashes:
-        existing = db.query(GitCommit).filter(GitCommit.commit_hash == commit_hash).one_or_none()
+        existing = (
+            db.query(GitCommit)
+            .filter(GitCommit.project_id == project.id, GitCommit.commit_hash == commit_hash)
+            .one_or_none()
+        )
         if existing is not None:
-            if existing.project_id != project.id:
-                existing.project_id = project.id
             result.skipped_duplicate_count += 1
             continue
 

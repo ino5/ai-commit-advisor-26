@@ -93,6 +93,18 @@ flowchart TD
     SI --> RI["One-click source re-index"]
 ```
 
+## 동일 저장소를 여러 프로젝트로 분석할 때의 근거 격리
+
+Git hash가 같다고 해서 두 프로젝트의 AI 근거를 공유하지 않습니다. 같은 원격 저장소라도 산출물, 분석 시점, Mapping 설정과 저장 대화가 다를 수 있으므로 commit identity는 `(project_id, commit_hash)`입니다. 각 프로젝트는 별도 `GitCommit.id`와 변경 파일을 만들고, Mapping·구현상태·Risk·저장 AI 결과는 현재 프로젝트의 행만 사용합니다.
+
+RAG와 graph도 같은 경계를 이어받습니다.
+
+- `DocumentChunk.project_id`가 chunk와 vector 검색 범위를 제한합니다. commit/commit_file chunk는 프로젝트별 DB ID를 `source_id`로 사용하고 `VectorItem`은 chunk FK로 연결됩니다.
+- Project Chat과 RAG 화면은 retrieval과 embedding 작업에 현재 `project_id`를 전달합니다. 같은 내용의 vector가 다른 프로젝트에 있어도 다른 프로젝트의 chunk는 결과에 포함하지 않습니다.
+- Neo4j `KnowledgeNode.node_id`는 `p{project_id}:` 접두사를 사용합니다. 같은 hash의 commit도 `p1:commit:<hash>`, `p393:commit:<hash>`처럼 분리되며, graph 조회와 삭제도 `project_id`를 조건으로 사용합니다.
+
+따라서 revision `20260722_0011`은 PostgreSQL의 전역 commit hash unique constraint와 Git Sync만 바꿉니다. RAG와 Neo4j는 이미 프로젝트 범위 구조이므로 schema를 늘리지 않고 교차 프로젝트 통합 테스트로 격리를 검증합니다. 다만 이전 version에서 commit 소유권이 이미 이동했다면 stale Mapping, chunk, vector, graph, 저장 AI 근거를 자동으로 어느 프로젝트에 돌려놓을 수 없습니다. DB를 백업한 뒤 관련 프로젝트의 분석 데이터를 초기화하고 전체 근거를 다시 생성해야 합니다.
+
 ## RAG와 Project Chat 안전장치
 
 Source-code chatbot에서 가장 중요한 위험은 오래된 코드를 현재 코드처럼 제시하는 것입니다. AI Commit Advisor는 이 위험을 줄이기 위해 evidence type을 분리합니다.

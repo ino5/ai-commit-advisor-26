@@ -2,6 +2,26 @@
 
 ## 2026-07-22
 
+### 프로젝트 범위 Git commit identity와 전체 저장소 격리
+
+- `git_commits.commit_hash` 전역 unique constraint를 Alembic revision `20260722_0011`에서 제거하고 `(project_id, commit_hash)` unique만 유지했습니다. 같은 remote history도 프로젝트마다 별도 `GitCommit.id`와 `CommitFile`을 가지며, 같은 프로젝트에서 다시 수집할 때만 중복으로 건너뜁니다.
+- Git Sync가 hash만으로 기존 행을 찾고 다른 프로젝트의 `project_id`로 옮기던 로직을 제거했습니다. Commit Impact의 DB ID 조회도 현재 `project_id`를 함께 확인해 다른 프로젝트의 commit ID를 직접 전달해도 조회되지 않게 했습니다.
+- PostgreSQL commit/file과 Mapping, RAG `DocumentChunk`/`VectorItem`, Neo4j graph payload를 한 테스트에서 검증했습니다. RAG는 기존 `DocumentChunk.project_id`와 프로젝트별 commit/file DB ID, vector의 chunk FK를 사용하고, Neo4j는 기존 `p{project_id}:` node ID를 사용하므로 추가 schema 변경 없이 격리가 유지됩니다.
+- migration 적용 전 PostgreSQL custom dump를 `C:\dev\ai-commit-advisor-backups\ai_commit_advisor_pre_project_scope_20260722.dump`에 저장했습니다. 이전 version에서 commit 소유권이 이미 이동한 DB는 migration만으로 추정 복구하지 않고, 관련 프로젝트의 분석 데이터를 초기화한 뒤 Git/Mapping/RAG/vector/graph를 다시 만드는 절차를 문서화했습니다.
+- 실제 기본 DB에서 `Sample Shop Demo (#1)`과 `Sample Shop Demo (github) (#393)`이 같은 48개 hash와 변경 파일 106건을 각각 유지하는지 확인했습니다. project `393` 재수집은 저장 0건·현재 프로젝트 중복 48건·오류 0건이었고, project `1`의 commit 48건은 유지됐습니다.
+- 실제 `text-embedding-nomic-embed-text-v2-moe` 768차원으로 project `393`의 source/vector 79/79를 만들었습니다. 같은 query의 상위 5개 검색 결과는 project `1` 요청에서 모두 `1`, project `393` 요청에서 모두 `393` chunk만 반환했습니다. 두 프로젝트 모두 source/vector 79/79를 유지했고, Neo4j는 project `1` node 213개와 project `393` node 202개/edge 533개를 별도 저장했습니다. 동일 HEAD의 node ID는 `p1:commit:221eb9...`와 `p393:commit:221eb9...`로 분리됐습니다.
+- 주요 파일: `src/db/models.py`, `src/services/git_service.py`, `src/services/commit_impact_service.py`, `src/ui/commit_impact_page.py`, `migrations/versions/20260722_0011_scope_git_commit_hash_by_project.py`, `tests/test_project_scoped_git_identity.py`, `README.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, `docs/demo-user-guide.md`, `docs/demo-runbook.md`, `docs/sample-target-repo-demo-design.md`, `docs/sample-project-usage-verification.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`.
+- 검증: migration 전 revision `20260615_0010`에서 `alembic upgrade head` 실행 후 `20260722_0011 (head)`과 `uq_git_commits_project_hash: UNIQUE (project_id, commit_hash)`만 남은 것을 확인했습니다. 신규 테스트 2개, Git/Mapping/RAG/Neo4j focused test 46개, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 217개와 `compileall`, `git diff --check`가 통과했습니다. Docker app을 재빌드한 뒤 local/external health `200 ok`를 확인했습니다. `demo_start.ps1 -CheckOnly`은 Git·DB·RAG·Neo4j·LLM·embedding·app/Tunnel 항목을 통과했지만, 이번 변경과 무관한 최신 저장 AI Code Review `bug=0` 제한으로 기존과 같이 전체 `FAIL=1`이었습니다.
+
+### 공개 샘플 GitHub 저장소와 관리형 등록 검증
+
+- 로컬 `C:\dev\ai-advisor-sample-shop`의 clean `main` 48개 commit을 public repository `https://github.com/ino5/ai-advisor-sample-shop`에 게시했습니다. 전체 history의 작성자가 `sample.local` synthetic 계정인지 확인하고 private key, AWS key, password, token 형태의 민감정보 후보와 Git 무결성을 점검한 뒤 push했습니다.
+- 실제 Docker 8501 화면의 `Git URL에서 가져오기`에 프로젝트명 `Sample Shop Demo (github)`, 공개 clone URL, branch `main`을 입력했습니다. 앱이 `C:\dev\ai-commit-advisor-managed-repos\project-393`에 clone했고, 화면과 서버에서 remote, branch, 48개 commit, HEAD `221eb9ac9c83` 일치를 확인했습니다.
+- 최초 관리형 등록 검증에서는 기본 `Sample Shop Demo (#1)`의 DB commit 48건을 그대로 유지했습니다. 당시 `git_commits.commit_hash` 전역 unique 제약으로 기존 commit 소유권이 이동할 수 있어 project `#393`은 clone과 Repo HEAD까지만 확인했으며, 같은 날 이어진 project-scoped identity 변경 뒤 전체 수집과 RAG/graph 검증을 완료했습니다.
+- README와 사용 가이드에 공개 URL 입력 예시를 추가하고, 샘플 설계·검증 문서와 engineering decision에 로컬 생성본과 공개 mirror의 관계, 공개 전 안전 점검, 같은 DB에서 clone과 전체 수집을 분리하는 이유를 기록했습니다.
+- 주요 파일: `README.md`, `docs/sample-target-repo-demo-design.md`, `docs/demo-user-guide.md`, `docs/sample-project-usage-verification.md`, `docs/engineering-decisions.md`, `ROADMAP.md`, `AI_CHANGELOG.md`.
+- 검증: GitHub repository는 `public`, default branch `main`, remote HEAD `221eb9ac9c83`이며 UI 등록·관리형 clone에 성공했습니다. `tests/test_repo_path.py tests/test_git_remote_service.py` 16개 통과, `docker compose config --quiet` 통과, 대상 문서 `git diff --check` 통과. `demo_start.ps1 -CheckOnly`은 app·외부 Tunnel health와 기본 프로젝트의 program 8건, commit 48건, Mapping, source/vector, Knowledge Graph를 통과했지만, 이번 clone과 무관한 최근 저장 AI Code Review 결과가 bug finding 0건이라 기존 failure-history 제한에 따라 전체 preflight는 `FAIL=1`이었습니다.
+
 ### AI Code Review 한국어 보정과 영어 원문 fallback
 
 - AI Code Review의 사용자 설명 필드에서 한글 문자 수와 비율을 검사하고, 영어 위주 결과에는 동일한 JSON Schema를 사용하는 한국어 보정 호출을 한 번 추가했습니다. 보정본은 finding/suggestion 수와 순서, file, line, severity, impact scope, risk level이 최초 결과와 같을 때만 채택합니다.
