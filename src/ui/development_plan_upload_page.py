@@ -16,6 +16,7 @@ from src.services.development_plan_management_service import (
 )
 from src.services.excel_service import read_program_excel
 from src.ui.project_context import require_project_context
+from src.ui.sample_artifact_download import render_sample_artifact_download
 
 
 def _load_programs(project_id: int, keyword: str | None = None) -> list[Program]:
@@ -148,6 +149,10 @@ def _existing_ids(project_id: int) -> tuple[set[str], set[str]]:
 
 def _render_upload_tab(project_id: int) -> None:
     st.subheader("Excel 업로드")
+    render_sample_artifact_download(
+        "development_plan",
+        prerequisite="샘플 개발계획은 같은 Sample Shop의 개발자 목록과 프로그램 목록을 먼저 저장해야 검증을 통과합니다.",
+    )
     uploaded_file = st.file_uploader("개발계획 엑셀 파일", type=["xlsx", "xls"])
     if not uploaded_file:
         return
