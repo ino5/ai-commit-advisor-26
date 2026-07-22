@@ -14,6 +14,7 @@
 
 | Priority | Area | Task | Status | Related AI Change Log |
 |---|---|---|---|---|
+| P1 | UX / State | Remove current-project URL synchronization | Done | 현재 프로젝트 URL 연동 제거 |
 | P0 | Project Chat / Demo Data | Restore UTF-8 sample Project Chat evidence | Done | 샘플 Project Chat 한글 대화 복구 |
 | P0 | Project Chat / Performance | Project Chat initial render latency reduction | Done | Project Chat 초기 화면 지연 개선 |
 | P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 |
@@ -168,6 +169,26 @@
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
 | P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
 | P0 | Demo Operations | Canonical demo startup contract and legacy Tunnel reuse | Done | 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용 |
+
+## P1 - Remove Current-Project URL Synchronization
+
+Status: Done
+
+Goal:
+사이드바의 현재 프로젝트 선택을 Streamlit session state만으로 관리해 첫 선택이 이전 URL `project_id`에 덮이는 상태 충돌을 제거한다.
+
+Rationale:
+URL query parameter와 widget/session state를 동시에 현재값의 기준으로 사용하면 Streamlit rerun 시점에 서로 다른 값이 경쟁할 수 있다. 현재 프로젝트는 앱 안에서 사용자가 직접 바꾸는 작업 컨텍스트이므로 URL 공유·복원보다 한 번의 선택이 즉시 반영되는 동작을 우선한다.
+
+Checklist:
+
+- [x] `project_id` query parameter 읽기·쓰기와 관련 복원 정책을 제거한다.
+- [x] 현재 프로젝트 selector에 고정 widget key와 session-state callback을 적용한다.
+- [x] 첫 선택, 잘못된 선택 복구, URL 무시 동작의 회귀 test를 추가한다.
+- [x] 사용자 문서, architecture, engineering decision, failure history를 새 상태 정책에 맞춘다.
+- [x] `AI_CHANGELOG.md`를 갱신하고 focused/full test와 실제 UI 전환을 검증한다.
+
+Related AI Change Log: `현재 프로젝트 URL 연동 제거`
 
 ## P1 - AI Code Review Commit List Selection
 
@@ -1574,6 +1595,8 @@ Checklist:
 ## P2 - Current Project Selection Persistence
 
 Status: Done
+
+Superseded: 2026-07-22 `Remove Current-Project URL Synchronization`에서 첫 선택 안정성을 우선해 URL `project_id` 연동을 제거했습니다. 아래 내용은 당시 구현 목표를 보존한 기록입니다.
 
 Goal:
 Keep the sidebar current project selection stable after browser reloads or shared URL navigation so users do not accidentally fall back to another project with a similar name.

@@ -21,6 +21,43 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-22 - 현재 프로젝트 선택은 session state를 단일 기준으로 관리한다
+
+### 배경
+
+전역 현재 프로젝트 selector는 대부분의 화면에서 조회·분석 대상을 결정합니다. 기존 구현은 선택값을 Streamlit session state와 URL `project_id`에 함께 저장하고 URL 값을 먼저 복원했는데, Streamlit rerun 시점에 이전 URL 값과 새 widget 값이 경쟁하면 사용자가 프로젝트를 한 번 골라도 이전 프로젝트가 다시 표시될 수 있었습니다.
+
+### 결정
+
+- 현재 프로젝트 ID는 Streamlit session state만을 기준으로 관리합니다.
+- 앱은 URL의 `project_id`를 읽거나 쓰지 않습니다.
+- 전역 selector는 고정 widget key와 `on_change` callback으로 첫 선택을 현재 프로젝트 상태에 반영합니다.
+- 선택값이 삭제되었거나 유효하지 않을 때만 남아 있는 첫 프로젝트로 복구합니다.
+
+### 이유
+
+- 현재 프로젝트는 앱 안에서 사용자가 직접 바꾸는 작업 컨텍스트이므로 공유 URL 복원보다 선택 즉시성과 예측 가능한 상태가 중요합니다.
+- 두 저장소의 우선순위와 갱신 시점을 조정하는 대신 단일 기준을 사용하면 rerun 순서에 따른 경쟁을 제거할 수 있습니다.
+- 고정 widget key는 기본 `index` 변경으로 selector identity가 달라지는 일을 막습니다.
+
+### 검토한 대안
+
+- URL은 최초 진입 때만 읽고 이후 session state를 우선: deep link는 유지할 수 있지만 초기화 여부를 구분하는 상태와 테스트가 추가됩니다.
+- URL과 session state의 갱신 순서만 변경: 브라우저와 Streamlit rerun 시점이라는 두 상태원이 계속 남아 같은 종류의 회귀 가능성이 있습니다.
+- 사용자별 마지막 프로젝트를 DB에 저장: 로그인과 사용자 식별이 없는 현재 앱 범위보다 무겁습니다.
+
+### 영향, tradeoff, 남은 한계
+
+- URL을 공유해 특정 프로젝트를 바로 여는 기능과 URL 기반 새로고침 복원은 제공하지 않습니다.
+- 새 browser session에서는 첫 프로젝트로 초기화될 수 있으므로 사용자가 사이드바에서 작업 대상을 다시 확인해야 합니다.
+- 프로젝트 저장·삭제처럼 코드가 현재 프로젝트를 바꾸는 흐름은 다음 rerun에서 selector 상태와 동기화됩니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Remove Current-Project URL Synchronization`
+- `docs/failure-history.md`의 `현재 프로젝트 선택이 첫 시도에 반영되지 않았다`
+- `AI_CHANGELOG.md`의 `현재 프로젝트 URL 연동 제거`
+
 ## 2026-07-22 - 샘플 산출물은 다운로드 후 기존 업로드 검증을 거친다
 
 ### 배경
@@ -1441,6 +1478,8 @@ Program Detail, AI Progress, Git History, Commit Impact, Risk Analysis, AI Code 
 - `AI_CHANGELOG.md`의 `분석 화면 표시 정리`
 
 ## 2026-06-14 - 현재 프로젝트 선택은 URL query parameter로도 보존한다
+
+> 2026-07-22 `현재 프로젝트 선택은 session state를 단일 기준으로 관리한다` 결정으로 대체되었습니다. 아래 내용은 당시 선택 유지 정책의 배경을 보존한 기록입니다.
 
 ### 배경
 

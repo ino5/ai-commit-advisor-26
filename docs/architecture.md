@@ -786,7 +786,7 @@ LLM 출력 예시:
 - `PAGE_GROUPS`에서 업무 흐름 기준 메뉴를 정의한다.
 - 각 메뉴 항목은 `src/ui/*_page.py`의 render 함수로 연결된다.
 - 사이드바에서 현재 프로젝트를 한 번 선택하고, 프로젝트 단위 화면은 `src/ui/project_context.py`를 통해 같은 프로젝트 컨텍스트를 사용한다.
-- 현재 프로젝트 ID는 Streamlit session state와 URL `project_id` query parameter에 함께 저장해 새로고침이나 공유 URL에서도 같은 프로젝트를 복원한다.
+- 현재 프로젝트 ID는 Streamlit session state를 단일 기준으로 저장한다. URL query parameter는 현재 프로젝트를 읽거나 쓰지 않으며, selector callback이 한 번의 선택을 즉시 session state에 반영한다.
 - 프로젝트별 프로그램, 커밋, 리스크, RAG 검색 조건처럼 현재 프로젝트 데이터에 묶인 widget state는 `project_context.project_scoped_key()`로 key를 만들고, 검색/선택값이 다른 프로젝트 화면에 섞이지 않게 한다.
 - 사이드바 메뉴 그룹은 접이식 section으로 렌더링하고, 현재 위치의 그룹만 기본으로 펼친다.
 
@@ -805,7 +805,7 @@ LLM 출력 예시:
 |---|---|
 | `src/ui/home_page.py` | 현재 프로젝트 기준 KPI, 분석 상태, 다음 작업, 리스크 요약. |
 | `src/ui/display_utils.py` | 여러 분석 화면에서 공유하는 날짜 포맷과 `항목/값` 표시용 DataFrame helper. |
-| `src/ui/project_context.py` | 현재 프로젝트 선택값 저장/조회, URL `project_id` 복원, 삭제된 선택 복구, 사이드바 전역 프로젝트 selector, 프로젝트별 widget key helper. |
+| `src/ui/project_context.py` | 현재 프로젝트 선택값의 session-state 저장/조회, 삭제된 선택 복구, 사이드바 전역 프로젝트 selector, 프로젝트별 widget key helper. |
 | `src/ui/project_page.py` | 프로젝트 등록/수정. |
 | `src/ui/developer_page.py` | Git author 기반 개발자 현황, 자동 추출, 개발자 통계. |
 | `src/ui/developer_upload_page.py` | 현재 프로젝트 개발자 조회, 전역 개발자 마스터 조회, 직접 추가/수정/삭제, Excel 양식, 업로드 검증, 저장. |

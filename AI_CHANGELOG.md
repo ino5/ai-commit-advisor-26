@@ -2,6 +2,15 @@
 
 ## 2026-07-22
 
+### 현재 프로젝트 URL 연동 제거
+
+- 사이드바 `현재 프로젝트` 선택의 URL `project_id` 읽기·쓰기와 URL 우선 복원 로직을 제거하고 Streamlit session state를 단일 기준으로 바꿨습니다. 이전 URL 값이 새 widget 선택을 덮을 수 없으므로 한 번의 선택이 즉시 현재 프로젝트에 반영됩니다.
+- 전역 selector에 고정 `current_project_selector` key와 `on_change` callback을 적용했습니다. 프로젝트 저장·삭제 등 코드가 현재 프로젝트를 바꾸는 흐름은 다음 rerun에서 selector와 동기화하고, 삭제되거나 잘못된 선택만 남은 경우에는 첫 프로젝트로 복구합니다.
+- 기존 URL 복원 test를 URL 무시·비수정 test로 교체하고, fake selector와 실제 Streamlit `AppTest`에서 두 번째 시도 없이 첫 선택으로 프로젝트가 바뀌는 회귀 test를 추가했습니다.
+- 기능 가이드와 architecture의 상태 정책을 session-state 기준으로 고쳤고, 기존 URL 복원 결정을 대체하는 engineering decision과 첫 선택 실패의 원인·검증 누락·재발 방지 규칙을 failure history에 기록했습니다. 사용자-facing 문구는 선택 동작과 새 브라우저 세션의 한계를 직접 설명하는지 확인했으며 과장형·번역체 표현이 남지 않았는지 점검했습니다.
+- 주요 파일: `src/ui/project_context.py`, `tests/test_project_context.py`, `docs/feature-guide.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`.
+- 검증: `tests/test_project_context.py` 9개 통과; `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 227개 통과; `compileall` 통과; 실제 `app.py` Streamlit `AppTest`에서 `Sample Shop Demo (1)`에서 `Sample Shop Demo (github) (393)`으로 한 번 선택한 뒤 selector와 Home 현재 프로젝트가 모두 `393`, query parameter가 빈 상태임을 확인; `git diff --check` 통과(Windows 줄바꿈 경고만 확인).
+
 ### 산출물 관리 샘플 Excel 다운로드
 
 - 산출물 관리의 개발자 목록, 프로그램 목록, 개발계획, 표준용어/표준단어 `Excel 업로드` 탭에 Sample Shop 시연 데이터를 바로 내려받는 버튼을 추가했습니다. 다운로드는 현재 프로젝트를 자동 변경하지 않으며, 사용자가 기존 업로더에서 미리보기·검증 결과를 확인한 뒤 저장합니다.

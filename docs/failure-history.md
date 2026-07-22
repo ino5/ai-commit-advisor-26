@@ -31,6 +31,59 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-22 - 현재 프로젝트 선택이 첫 시도에 반영되지 않았다
+
+관련 기능과 문서:
+
+- `src/ui/project_context.py`
+- `ROADMAP.md`의 `Remove Current-Project URL Synchronization`
+- `docs/engineering-decisions.md`의 `현재 프로젝트 선택은 session state를 단일 기준으로 관리한다`
+
+증상:
+
+- 사이드바의 `현재 프로젝트`에서 다른 프로젝트를 한 번 선택해도 이전 프로젝트가 남고, 같은 프로젝트를 두 번째로 선택해야 반영되는 현상이 발생했습니다.
+- 로컬 Docker 8501에서는 한 번에 전환되는 경우도 있어 브라우저·network·rerun timing에 따라 간헐적으로 보였습니다.
+
+직접 원인:
+
+- 현재 프로젝트를 Streamlit session state와 URL `project_id`에 동시에 저장하면서 `_resolve_current_project_id()`가 매 rerun마다 URL 값을 우선했습니다.
+- selector는 고정 widget key 없이 현재 프로젝트로 계산한 `index`를 사용해, 현재값 변경 시 Streamlit widget identity도 함께 달라질 수 있었습니다.
+
+배경 또는 구조적 원인:
+
+- 새로고침과 공유 URL에서 선택을 복원하려는 요구를 UI의 현재 선택 처리와 같은 경로에 결합했습니다.
+- URL과 session state 중 어느 값이 사용자 직전 입력인지 구분하지 않은 채 항상 URL을 authoritative source로 취급했습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 기존 test는 query parameter 복원과 잘못된 ID 복구만 확인했고 실제 selectbox의 첫 `on_change`와 rerun 흐름은 검증하지 않았습니다.
+- 기존 Browser 검증은 URL로 특정 프로젝트에 진입하고 reload 후 유지되는지만 확인했으며, 여러 프로젝트 사이의 첫 선택 전환을 검증하지 않았습니다.
+- local 8501에서는 첫 선택이 정상 동작할 수 있어 timing 의존 문제가 고정된 재현 절차로 드러나지 않았습니다.
+
+수정 내용:
+
+- URL `project_id` 읽기·쓰기와 복원 함수를 제거하고 현재 프로젝트를 Streamlit session state만으로 관리합니다.
+- selector에 고정 key와 `on_change` callback을 적용해 첫 선택이 즉시 현재 프로젝트 상태를 바꾸도록 했습니다.
+- 기존 URL 값이 있어도 무시하는 test와 실제 Streamlit `AppTest`에서 한 번의 선택으로 프로젝트가 바뀌는 회귀 test를 추가했습니다.
+
+재발 방지 규칙:
+
+- 사용자가 직접 조작하는 전역 UI context는 하나의 authoritative state만 사용합니다.
+- URL deep link가 꼭 필요하면 최초 진입 복원과 이후 widget 변경을 명시적으로 분리하고, 첫 사용자 입력·rerun·URL 갱신을 함께 검증합니다.
+- Streamlit의 전역 selector에는 고정 widget key와 실제 widget interaction test를 둡니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- URL 기반 특정 프로젝트 공유와 새 browser session에서의 자동 복원은 더 이상 지원하지 않습니다.
+- session이 새로 만들어지면 프로젝트 정렬상 첫 항목이 기본 선택이므로 사용자가 작업 대상을 다시 확인해야 합니다.
+
+검증 명령과 결과:
+
+- `tests/test_project_context.py`: URL 무시, 잘못된 선택 복구, 첫 selectbox 선택, 코드에서 변경한 현재 프로젝트와 selector 동기화를 포함한 9개 test 통과.
+- `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 227개와 `compileall` 통과.
+- 실제 `app.py` Streamlit `AppTest`에서 `Sample Shop Demo (1)`을 `Sample Shop Demo (github) (393)`으로 한 번 선택한 뒤 selector와 Home의 현재 프로젝트가 모두 `393`으로 바뀌고 query parameter가 비어 있는 것을 확인했습니다.
+- `git diff --check` 통과. Windows 줄바꿈 경고만 확인했습니다.
+
 ## 2026-07-22 - AI Code Review 한국어 지시가 언어 검증 없이 통과했다
 
 분류:
