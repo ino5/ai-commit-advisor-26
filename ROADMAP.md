@@ -95,6 +95,7 @@
 | P2 | Data UX | Project delete and reset safety | Done | Project delete and reset safety |
 | P2 | UX / Data Model | Project developer membership model | Done | 프로젝트 개발자 연결 모델 |
 | P2 | Code Review UX | AI Code Review server repository target wording | Done | AI Code Review 서버 저장소 대상 설명 정리 |
+| P2 | Code Review UX | Remove server-local AI Code Review targets | Done | AI Code Review 서버 local 대상 제거 |
 | P1 | Resource Analytics | Resource metric snapshot and trend dashboard | Done | 자원관리 지표 시계열 snapshot과 추세 분석 |
 | P2 | Project Chat UX | Project Chat conversation controls cleanup | Done | Project Chat 대화 관리 UX 정리 |
 | P2 | Project Chat UX | Project Chat source refresh wording cleanup | Done | Project Chat 근거 갱신 안내 UX 정리 |
@@ -1832,6 +1833,27 @@ Checklist:
 - [x] Update README, user guide, feature guide, architecture, AI technical overview, and Application Preview wording.
 - [x] Record the operating-model decision in `docs/engineering-decisions.md`.
 - [x] Update `AI_CHANGELOG.md`.
+
+## P2 - Remove Server-Local AI Code Review Targets
+
+Status: Done
+
+Goal:
+AI Code Review의 실행 대상을 앱 서버에서 안정적으로 재현할 수 있는 최신 commit과 선택 commit으로 한정하고, 서버 clone의 working tree/staged 변경을 일반 사용자와 운영 검증 경로에서 제거한다.
+
+Rationale:
+서버 작업트리와 서버 Staged 변경은 개발자 개인 PC의 미커밋 변경을 보여주지 못하고, 분석용 서버 clone에 local 변경을 남기지 않는 현재 관리형 clone/fetch 운영 원칙과도 맞지 않는다. 예외적인 서버 임시 변경 점검 기능을 기본 리뷰 대상으로 유지하면 사용자가 지원 범위를 오해하고 화면 선택지만 복잡해진다. 기존 저장 리뷰는 삭제하지 않고 과거 대상 label을 계속 표시한다.
+
+Checklist:
+
+- [x] UI에서 서버 작업트리와 서버 Staged 변경 선택지 및 관련 안내를 제거한다.
+- [x] service와 local AI verification CLI에서 `working_tree`/`staged` 실행 경로를 제거한다.
+- [x] 기존 저장 리뷰의 legacy target label 표시를 유지하고 회귀 test를 추가한다.
+- [x] 사용자 가이드, feature/architecture/AI 문서와 engineering decision을 현재 commit-only 운영 모델에 맞춘다.
+- [x] `AI_CHANGELOG.md`를 갱신하고 사용자 문구를 점검한다.
+- [x] focused test, compileall, 전체 test와 diff hygiene을 검증한다.
+
+Related AI Change Log: `AI Code Review 서버 local 대상 제거`
 
 ## P1 - AX Resource Management Metrics Foundation
 
