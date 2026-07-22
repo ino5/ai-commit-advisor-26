@@ -19,6 +19,7 @@
 | P0 | Data UX | Program management UX improvement | Done | 프로그램 관리 UX 2차 개선 |
 | P0 | Data UX | Developer management UX improvement | Done | 개발자 관리 UX 개선 |
 | P0 | Data UX | Development plan management UX improvement | Done | 개발계획 관리 UX 개선 |
+| P2 | Data UX / Sample Data | Artifact sample Excel downloads | Done | 산출물 관리 샘플 Excel 다운로드 |
 | P1 | RAG | Project Chat answer quality and history persistence | Done | Project Chat database history and citation export |
 | P1 | RAG | Standard terminology glossary upload and Korean query expansion | Done | Standard terminology documentation and screenshots |
 | P1 | RAG | Incremental source indexing and embedding cost control | Done | Incremental source indexing and embedding cost control |
@@ -778,6 +779,27 @@ Checklist:
 - [x] README와 기존 사용 가이드에서 새 문서로 연결한다.
 - [x] `AI_CHANGELOG.md`를 갱신한다.
 - [x] 링크, 현재 상태 수치, 사용자-facing 문구와 whitespace를 검증한다.
+
+## P2 - Artifact Sample Excel Downloads
+
+Status: Done
+
+Goal:
+산출물 관리의 개발자 목록, 프로그램 목록, 개발계획, 표준용어/표준단어 화면에서 Sample Shop 기준 Excel을 바로 내려받아 기존 업로드 검증 흐름을 실행할 수 있게 한다.
+
+Rationale:
+현재 샘플 Excel은 별도 샘플 프로젝트의 `advisor_uploads` 경로에만 있어 사용자가 파일 위치와 업로드 순서를 먼저 알아야 한다. 각 `Excel 업로드` 탭에서 해당 샘플 파일을 제공하면 로컬 경로를 모르는 사용자도 실제 파일 업로드, 미리보기, 검증, 저장 절차를 같은 화면에서 확인할 수 있다. 샘플 데이터는 자동 저장하지 않고 사용자가 내려받은 뒤 기존 검증 절차를 거치게 해 현재 프로젝트 데이터가 의도치 않게 바뀌는 것을 막는다.
+
+Checklist:
+
+- [x] Sample Shop 개발자, 프로그램, 개발계획, 표준용어 dataset을 앱에서 Excel로 생성한다.
+- [x] 각 산출물 `Excel 업로드` 탭에 용도가 분명한 샘플 Excel 다운로드 버튼을 추가한다.
+- [x] 개발계획 샘플의 선행 업로드 순서를 안내한다.
+- [x] 생성 파일의 column, row, 핵심 시나리오를 회귀 test로 검증한다.
+- [x] 사용자 가이드, engineering decision, `AI_CHANGELOG.md`를 갱신한다.
+- [x] focused test, compileall, 전체 test를 실행한다.
+
+Related AI Change Log: `산출물 관리 샘플 Excel 다운로드`
 
 ## Candidate Tasks
 

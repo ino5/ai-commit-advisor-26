@@ -33,6 +33,7 @@
 - Git sync, developer extraction, program upload, development plan upload, Mapping, RAG, Project Chat, Risk Analysis, AI Code Review, Commit Impact, Knowledge Graph, AI Progress 확인에 필요한 구조가 충분합니다.
 - package path와 program module이 명확해 program-commit mapping 후보 선택에 도움이 됩니다.
 - 생성된 Excel file이 커밋 이력과 서로 맞습니다.
+- 앱의 각 산출물 `Excel 업로드` 탭에서도 같은 개발자, 프로그램, 개발계획, 표준용어 dataset을 내려받을 수 있어 별도 로컬 경로 없이 업로드 절차를 실행할 수 있습니다.
 - history에는 feature addition, bug-introducing change, bug fix, test/probe, refactoring, cross-module change, incomplete work가 포함되어 있습니다.
 - AI Code Review용 risky commit은 diff와 test/probe source만 보고도 새로 허용된 input, affected method, user impact, suggested fix를 추론할 수 있도록 설계합니다.
 - Project Chat/RAG/PL Briefing은 샘플 프로젝트 내부 Markdown 설명 파일에 기대지 않고 source, MyBatis XML, test/probe class, Git diff, Excel upload 데이터를 함께 읽어 ready/watch/not-ready 상태를 구분할 수 있어야 합니다.
@@ -245,6 +246,7 @@ AI Progress는 다음을 보여야 합니다.
 - 공개 GitHub mirror를 갱신하기 전에는 로컬 작업트리, 48개 commit shape, synthetic author, 민감정보, 원격 HEAD를 확인합니다.
 - 로컬 샘플 프로젝트와 GitHub mirror 프로젝트를 같은 PostgreSQL DB에서 검증할 때는 각 프로젝트의 commit/file 수, RAG/vector 수, Neo4j `project_id`와 node ID를 함께 확인합니다. 동일 hash는 `(project_id, commit_hash)`로 분리되고 같은 프로젝트의 재수집만 중복으로 처리되어야 합니다.
 - 필요하면 `sample_data`와 `advisor_uploads` output을 update 또는 regenerate합니다.
+- Sample Shop의 프로그램, 개발자, 표준용어 정의나 개발계획 시나리오가 바뀌면 `src/services/sample_artifact_service.py`의 화면 다운로드 dataset과 업로드 검증 회귀 test도 함께 갱신합니다.
 - expected sample shape, developer profile, program row, risk/demo scenario에 대한 test를 추가하거나 수정합니다.
 - 샘플 보강은 실제 local LLM이 읽을 source, diff, test/probe, XML, Excel 데이터를 늘리는 방식으로만 진행하고, mock output을 보강해 데모 결과처럼 보이게 만들지 않습니다.
 - 샘플 프로젝트 내부에는 AI 답변을 고정하는 Markdown 정답지나 demo guide를 넣지 않습니다. 기능 사용 가이드와 질문 예시는 애플리케이션 저장소의 `docs/`에 둡니다.

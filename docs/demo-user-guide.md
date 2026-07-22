@@ -36,7 +36,7 @@ C:\dev\ai-advisor-sample-shop
 
 샘플 프로젝트에는 8개 프로그램, 48개 commit, Spring MVC + MyBatis 예제 소스, 업로드용 Excel 파일이 포함됩니다.
 
-업로드 파일 위치:
+각 산출물 화면의 `Excel 업로드` 탭에서 같은 파일을 바로 내려받을 수 있습니다. 샘플 프로젝트를 로컬에서 생성했다면 아래 경로의 파일을 직접 사용해도 됩니다.
 
 ```text
 C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_developers.xlsx
@@ -103,41 +103,19 @@ C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_standard_terms.xlsx
 
 ### 개발자 목록
 
-`산출물 관리 > 개발자 목록`으로 이동해 아래 파일을 업로드합니다.
-
-```text
-C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_developers.xlsx
-```
-
-업로드 전 미리보기와 검증 결과를 확인한 뒤 저장합니다.
+`산출물 관리 > 개발자 목록`의 `Excel 업로드` 탭으로 이동합니다. `샘플 개발자 Excel 다운로드`를 누르고, 내려받은 `sample_developers.xlsx`를 바로 아래 업로더에서 선택합니다. 미리보기와 검증 결과를 확인한 뒤 저장합니다.
 
 ### 프로그램 목록
 
-`산출물 관리 > 프로그램 목록`으로 이동해 아래 파일을 업로드합니다.
-
-```text
-C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_programs.xlsx
-```
-
-현재 프로젝트에 저장하는 흐름을 사용합니다. 저장 후 8개 프로그램이 보이는지 확인합니다.
+`산출물 관리 > 프로그램 목록`의 `Excel 업로드` 탭에서 `샘플 프로그램 Excel 다운로드`를 누릅니다. 내려받은 `sample_programs.xlsx`를 선택해 현재 프로젝트에 저장하고, 프로그램 8개가 보이는지 확인합니다.
 
 ### 개발계획
 
-`산출물 관리 > 개발계획`으로 이동해 아래 파일을 업로드합니다.
-
-```text
-C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_development_plan.xlsx
-```
-
-저장 후 계획 일정, 담당자, 진행률이 들어왔는지 확인합니다.
+개발자와 프로그램을 먼저 저장한 뒤 `산출물 관리 > 개발계획`의 `Excel 업로드` 탭으로 이동합니다. `샘플 개발계획 Excel 다운로드`를 누르고, 내려받은 `sample_development_plan.xlsx`를 선택합니다. 저장 후 계획 일정, 담당자, 진행률이 들어왔는지 확인합니다.
 
 ### 표준용어/표준단어
 
-Project Chat에서 한글 업무 질문을 더 잘 검색하도록 `산출물 관리 > 표준용어/표준단어`에서 아래 파일을 업로드합니다.
-
-```text
-C:\dev\ai-advisor-sample-shop\advisor_uploads\sample_standard_terms.xlsx
-```
+Project Chat에서 한글 업무 질문을 더 잘 검색하도록 `산출물 관리 > 표준용어/표준단어`의 `Excel 업로드` 탭에서 `샘플 표준용어/표준단어 Excel 다운로드`를 누릅니다. 내려받은 `sample_standard_terms.xlsx`를 선택해 저장합니다.
 
 이 화면에서 강조할 점:
 

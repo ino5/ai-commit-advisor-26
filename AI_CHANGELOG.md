@@ -2,6 +2,15 @@
 
 ## 2026-07-22
 
+### 산출물 관리 샘플 Excel 다운로드
+
+- 산출물 관리의 개발자 목록, 프로그램 목록, 개발계획, 표준용어/표준단어 `Excel 업로드` 탭에 Sample Shop 시연 데이터를 바로 내려받는 버튼을 추가했습니다. 다운로드는 현재 프로젝트를 자동 변경하지 않으며, 사용자가 기존 업로더에서 미리보기·검증 결과를 확인한 뒤 저장합니다.
+- `sample_artifact_service.py`가 샘플 개발자 6명, 프로그램 8개, 개발계획 8건, 표준용어/표준단어 14건을 기존 파일명으로 Excel로 생성합니다. 개발계획 화면에는 같은 Sample Shop의 개발자와 프로그램을 먼저 저장해야 한다는 안내를 표시합니다.
+- 생성된 네 파일이 현재 Sample Shop의 `advisor_uploads` Excel과 행·컬럼·값까지 일치하고, 개발자·프로그램·개발계획·표준용어 upload validator를 모두 통과하는 회귀 test를 추가했습니다. 개발계획의 쿠폰 지연과 정산 미배정 시나리오도 유지합니다.
+- README, 기능 가이드, 사용 가이드, 처음 시작 가이드, 샘플 프로젝트 설계, engineering decision을 화면 다운로드 흐름에 맞췄습니다. 사용자-facing 문구는 버튼 동작, 선행 순서, 자동 저장이 아니라는 경계를 구체적으로 표현하는지 점검했고 과장형·번역체 표현이 남지 않았는지 검색했습니다.
+- 주요 파일: `src/services/sample_artifact_service.py`, `src/ui/sample_artifact_download.py`, `src/ui/developer_upload_page.py`, `src/ui/upload_page.py`, `src/ui/development_plan_upload_page.py`, `src/ui/standard_terms_page.py`, `tests/test_sample_artifact_service.py`, `README.md`, `docs/feature-guide.md`, `docs/demo-user-guide.md`, `docs/sample-project-first-run-guide.md`, `docs/sample-target-repo-demo-design.md`, `docs/engineering-decisions.md`, `ROADMAP.md`.
+- 검증: 샘플 산출물 및 upload service focused test 41개와 `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 224개가 통과했습니다. `compileall`, 앱 import, Streamlit `AppTest`의 다운로드 component exception 0건, 샘플 원본 Excel 4종과 생성본의 DataFrame 일치 확인, `git diff --check`도 통과했습니다.
+
 ### 프로젝트 범위 Git commit identity와 전체 저장소 격리
 
 - `git_commits.commit_hash` 전역 unique constraint를 Alembic revision `20260722_0011`에서 제거하고 `(project_id, commit_hash)` unique만 유지했습니다. 같은 remote history도 프로젝트마다 별도 `GitCommit.id`와 `CommitFile`을 가지며, 같은 프로젝트에서 다시 수집할 때만 중복으로 건너뜁니다.
