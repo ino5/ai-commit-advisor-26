@@ -170,7 +170,67 @@ Docker에서도 `app` container는 `streamlit run app.py` 하나만 실행합니
 
 이 질의를 embedding으로 변환한 뒤 같은 프로젝트의 `program` 청크와 vector 유사도를 비교합니다. `program` 청크에는 프로그램 ID, 프로그램명, 모듈, 화면명과 설명이 들어 있습니다. 유사도가 높은 프로그램을 최대 10개 후보로 가져옵니다.
 
-Vector 검색만 사용하지는 않습니다. 프로그램 정보와 커밋 메시지·파일 경로·diff의 단어가 얼마나 겹치는지도 계산하고, 모듈명이나 프로그램명이 파일 경로에 포함되면 가중치를 더합니다. Vector 검색 후보와 token 유사도 후보를 합치고 중복을 제거한 뒤 LLM에 전달합니다. LLM은 이 후보 안에서 실제 관련 프로그램, 관련도 점수, 구현상태와 판단 근거를 결정합니다.
+Vector 검색만 사용하지는 않습니다. 프로그램 정보와 커밋 메시지·파일 경로·diff의 단어가 얼마나 겹치는지도 계산하고, 모듈명이나 프로그램명이 파일 경로에 포함되면 가중치를 더합니다. Vector 검색 결과를 먼저 후보 목록에 넣고, 남은 자리를 token·파일 경로 후보로 채우면서 중복을 제거합니다. 두 점수를 가중 평균해 다시 순위를 매기는 방식은 아닙니다. LLM은 이 후보 안에서 실제 관련 프로그램, 관련도 점수, 구현상태와 판단 근거를 결정합니다.
+
+### 파일 경로 유사도 후보는 어떻게 계산하는가
+
+현재 구현에서 “파일 경로 유사도”는 두 경로 사이의 편집거리나 경로 전용 embedding을 뜻하지 않습니다. `_candidate_score()`가 프로그램 정보와 commit 정보의 token 겹침을 계산한 뒤, 변경 파일 경로에 모듈명이나 프로그램명 일부가 들어 있으면 보너스를 더하는 규칙 기반 점수입니다.
+
+```text
+program_tokens = tokens(
+  program_id + program_name + module + screen_name + description
+)
+
+commit_tokens = tokens(commit message)
+              ∪ tokens(모든 변경 파일 경로)
+              ∪ tokens(각 파일 diff의 앞 3,000자)
+
+base_score = floor(
+  |program_tokens ∩ commit_tokens| / |program_tokens| × 100
+)
+
+각 변경 파일 경로마다
+  module 문자열이 경로에 포함됨             → +20
+  program_name을 공백으로 나눈 단어가 포함됨 → +10
+
+candidate_score = min(base_score + 경로 보너스, 100)
+```
+
+#### 여기서 token은 무엇인가
+
+여기서 `token`은 LLM이 prompt 길이·과금 계산에 사용하는 모델별 tokenizer token이 아닙니다. Mapping 후보를 빠르게 비교하기 위해 `_tokens()`가 문자열에서 정규식으로 잘라낸 검색용 단어 조각입니다. Embedding model과 LLM은 입력을 처리할 때 각자의 tokenizer를 별도로 사용하며, 이 집합에는 그 결과가 들어오지 않습니다.
+
+`_tokens()`는 문자열을 소문자로 바꾼 뒤 영문·숫자·한글이 2자 이상 연속된 부분을 찾습니다. `/`, `.`, `_`, `-`, 공백 같은 문자는 경계가 됩니다. 결과는 `set`이므로 같은 token이 반복돼도 한 번만 세며, `src`, `main`, `java`, `html`, `class`, `public`, `private`, `return`, `null`은 제외합니다.
+
+```text
+"src/auth/login_service.py"
+→ src, auth, login, service, py
+→ stop word인 src 제외
+→ {auth, login, service, py}
+
+"결제 승인 결제"
+→ {결제, 승인}      # 반복된 결제는 한 번만 유지
+
+"PaymentService.java"
+→ {paymentservice} # CamelCase는 payment와 service로 나누지 않음
+```
+
+프로그램 쪽에서는 프로그램 ID·이름·모듈·화면명·설명에서 만든 token 집합을 사용하고, commit 쪽에서는 메시지·변경 파일 경로·diff에서 만든 token 집합을 사용합니다. 두 집합에 같은 문자열이 있으면 겹치는 token으로 셉니다. 예를 들어 양쪽에 `login`이 있으면 1개가 겹치지만 `로그인`과 `login`은 서로 다른 token이므로 겹치지 않습니다.
+
+기본 점수의 분모가 전체 합집합이 아니라 `program_tokens` 수이므로 이 값은 Jaccard 유사도나 확률이 아니라 “프로그램 정보의 token을 commit이 얼마나 포함하는가”에 가까운 휴리스틱 점수입니다.
+
+예를 들어 프로그램명이 `Login API`, 모듈이 `auth`이고 commit에 `src/auth/login_service.py`가 있으면, 경로의 `auth` 때문에 20점, 프로그램명 단어 `login` 때문에 10점이 더해집니다. 여기에 commit 메시지·경로·diff에서 겹친 token의 기본 점수를 합칩니다. 점수가 0인 프로그램은 제외하고, 나머지는 점수 내림차순으로 정렬해 token·파일 경로 후보를 만듭니다.
+
+Vector 후보와 합칠 때는 vector 후보를 먼저 넣고, 같은 프로그램을 건너뛰면서 token·파일 경로 후보를 TOP N의 남은 자리에 추가합니다. 따라서 vector 후보가 이미 N개를 채우면 규칙 기반 후보는 추가되지 않으며, vector 점수와 위 `candidate_score`를 하나의 점수로 합산하지도 않습니다. Vector 검색이 실패하면 규칙 기반 후보만 사용합니다.
+
+이 규칙에는 다음 한계가 있습니다.
+
+- 경로 포함 여부는 단순 substring 비교이므로 디렉터리 구간 경계나 CamelCase 의미를 해석하지 않습니다. 예를 들어 짧은 이름이 다른 단어 안에 우연히 포함될 수 있습니다.
+- 프로그램명이 한글이고 경로가 영문인 경우처럼 표기가 다르면 경로 보너스를 받기 어렵습니다.
+- 보너스는 변경 파일마다 반복해서 더해지므로 일치하는 파일이 여러 개면 100점 상한에 빨리 도달할 수 있습니다.
+- 프로그램 정보를 label이 포함된 문자열로 만든 뒤 token화하므로 `program`, `name`, `module` 같은 label token도 현재 분모에 포함될 수 있습니다.
+
+후보 점수는 LLM이 검토할 대상을 줄이는 용도이며 최종 관련도 판정이 아닙니다. 또한 이 규칙 기반 계산은 모든 변경 파일 경로와 파일별 diff 앞 3,000자를 보지만, vector 검색 문장은 최대 20개 경로·3개 diff 일부·총 2,200자로 별도 제한됩니다.
 
 ### 여기서 Mapping 결과란 무엇인가
 
@@ -198,7 +258,7 @@ Program 목록 + Git Sync로 저장한 commit·file·diff
                          ↓
              commit 검색 문장 구성
                          ↓
-     program vector 후보 + token·파일 경로 후보
+     program vector 후보 → token·파일 경로 후보로 빈자리 보충
                          ↓
              중복 제거 후 TOP N
                          ↓
@@ -217,7 +277,7 @@ Program 목록 + Git Sync로 저장한 commit·file·diff
 1. 선행 데이터로 프로그램 목록이 `programs`에, `Git Sync`가 수집한 commit·변경 파일·diff가 `git_commits`와 `commit_files`에 있어야 합니다. `program` chunk와 vector가 있으면 후보 검색에 사용하고, 없거나 vector 검색이 실패하면 token·파일 경로 유사도로만 후보를 만듭니다.
 2. 사용자가 Mapping 화면에서 `미완료 커밋 전체 분석` 또는 `선택한 커밋 분석`을 누르면 Streamlit page가 `MappingService.analyze_commits(...)`를 직접 호출합니다. Service는 batch 추적용 `AnalysisRun` 행을 먼저 만듭니다.
 3. 각 commit에 대해 hash, 메시지, 작성자, 최대 20개 변경 파일 경로와 최대 3개 파일의 diff 일부를 검색 문장으로 만듭니다. 전체 commit 입력은 최대 2,200자로 제한합니다.
-4. 이 문장으로 `program` chunk vector 검색을 하고, 별도로 프로그램 정보와 commit 메시지·파일·diff의 token 겹침 및 모듈·프로그램명의 파일 경로 포함 여부를 계산합니다. Vector 후보를 먼저 두고 token 후보를 합친 뒤 중복을 제거하고 커밋당 TOP N만 남깁니다. 기본 N은 10이며 UI에서 3~30으로 조정할 수 있습니다.
+4. 이 문장으로 `program` chunk vector 검색을 하고, 별도로 프로그램 정보와 commit 메시지·파일·diff의 token 겹침 및 모듈·프로그램명의 파일 경로 포함 여부를 계산합니다. Vector 후보를 먼저 넣고, 중복되지 않는 token 후보로 남은 자리만 채워 커밋당 TOP N을 만듭니다. 두 후보 점수를 합산해 재정렬하지 않습니다. 기본 N은 10이며 UI에서 3~30으로 조정할 수 있습니다.
 5. LLM에는 해당 commit과 후보 program 목록만 전달합니다. LLM은 관련 program 0개 이상을 고르고 각 program의 `relevance_score`, `implementation_status`, `reason`을 JSON Schema에 맞춰 반환합니다. 후보 목록 밖의 program ID는 파싱 단계에서 제외하고, 점수는 0~100으로 제한합니다.
 6. LLM 호출이 실패하거나 JSON을 구조화하지 못하면 token·파일 경로 유사도 fallback을 사용합니다. Fallback 점수가 30점 이상인 쌍만 관련 Mapping으로 남깁니다. Fallback으로 Mapping이 저장되는 경우 사용 여부와 오류를 `raw_response`와 AI 호출 이력에 남깁니다.
 7. 관련 후보마다 `(program_id, commit_id)` 행을 조회합니다. 행이 없으면 `ProgramCommitMapping(...)`을 `db.add()`해 INSERT하고, 이미 있으면 점수·상태·근거·원본 응답을 UPDATE합니다. DB unique constraint도 같은 program–commit 쌍의 중복 행을 막습니다.
