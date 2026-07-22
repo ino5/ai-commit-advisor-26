@@ -13,6 +13,7 @@ from src.services.standard_term_service import (
     validate_standard_term_import,
 )
 from src.ui.project_context import require_project_context
+from src.ui.sample_artifact_download import render_sample_artifact_download
 
 
 def _render_column_guide() -> None:
@@ -56,6 +57,7 @@ def _render_current_terms(project_id: int) -> None:
 def _render_upload_tab(project_id: int) -> None:
     st.subheader("Excel 업로드")
     st.caption("저장 전 미리보기와 검증 결과를 확인한 뒤 반영합니다.")
+    render_sample_artifact_download("standard_terms")
     uploaded_file = st.file_uploader("표준용어/표준단어 엑셀 파일", type=["xlsx", "xls"])
     if not uploaded_file:
         return
