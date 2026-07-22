@@ -43,6 +43,10 @@ def test_select_page_updates_navigation_and_requests_mobile_collapse(monkeypatch
     assert collapse_requests == [True]
 
 
+def test_project_settings_navigation_excludes_sample_data_generator() -> None:
+    assert tuple(app.PAGE_GROUPS["프로젝트 설정"]) == ("프로젝트/Git 설정", "Git 동기화")
+
+
 def test_sidebar_behavior_targets_streamlit_mobile_overlay_and_open_sidebar() -> None:
     assert MOBILE_BREAKPOINT_PX == 768
     assert f"max-width: {MOBILE_BREAKPOINT_PX}px" in MOBILE_COLLAPSE_COMPONENT

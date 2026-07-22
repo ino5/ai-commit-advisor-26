@@ -72,11 +72,6 @@ PL Briefing 회의 질문, 다음 action, 이력 확인
 ![Git Sync](images/features/git-sync.png)
 
 
-### 샘플 데이터 생성
-
-![Sample Data](images/features/sample-data.png)
-
-
 ### 개발자 현황
 
 ![개발자 현황](images/features/developer.png)

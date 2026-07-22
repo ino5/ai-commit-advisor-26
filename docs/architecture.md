@@ -578,6 +578,7 @@ erDiagram
 | `ai_invocation_service.py` | AI 호출 telemetry 저장과 조회를 담당한다. provider/model, feature, latency, prompt/response length, validation/fallback/error metadata를 `ai_invocation_logs`에 기록한다. |
 | `ai_evidence_service.py` | AI 운영 현황 화면용 LLM/embedding/Neo4j 연결 상태, Knowledge Graph/GraphRAG 준비 상태, 운영 준비 상태, 근거 추적, 프로젝트 AI 품질 점검, 실제 LLM 검증 요약, graph impact가 포함된 주간 보고서 Markdown, 검증용 AI 실행 shortcut 결과를 구성한다. |
 | `first_run_service.py` | 프로젝트/Git/프로그램/Mapping/source/vector/Knowledge Graph 준비 상태를 읽어 Home과 AI 운영 현황의 다음 준비 작업 목록을 구성한다. |
+| `scripts/generate_sample_development_data.py` | 지정한 로컬 Git 저장소의 commit author, commit date, 변경 파일을 분석해 개발자·프로그램·개발계획 검증용 Excel을 생성하는 CLI다. 사용자 메뉴나 DB 저장 경로에서는 호출하지 않는다. |
 | `scripts/run_local_ai_verification.py` | local OpenAI-compatible provider로 embedding 연결, PL Briefing, Project Chat, AI Code Review, Mapping 검증을 명시 실행하고 telemetry와 Markdown 결과를 남긴다. |
 | `chunker.py` | program, commit, commit_file 데이터를 `document_chunks`로 생성한다. |
 | `embedding_client.py` | mock/openai/local embedding provider를 추상화한다. |
@@ -793,7 +794,7 @@ LLM 출력 예시:
 주요 메뉴 그룹:
 
 - `개요`: Home, Dashboard, AI Progress, AI 운영 현황
-- `프로젝트 설정`: 프로젝트/Git 설정, Git 동기화, 샘플 데이터 생성
+- `프로젝트 설정`: 프로젝트/Git 설정, Git 동기화
 - `산출물 관리`: 개발자 현황, 개발자 목록, 프로그램 목록, 개발계획, 표준용어/표준단어
 - `분석 실행`: Mapping, Risk Analysis, RAG 검색, Project Chat, AI Code Review
 - `분석 결과`: Program Detail, Git History, Commit Impact, Knowledge Graph, 개발계획 대시보드
