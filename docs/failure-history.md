@@ -31,6 +31,62 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-23 - AI Code Review preview 캡처가 공유 DB의 최신 리뷰 순서에 의존했다
+
+관련 기능과 문서:
+
+- `scripts/capture_feature_screenshot.py`
+- `src/ui/code_review_page.py`
+- `docs/images/features/ai-code-review.png`
+- `docs/application-preview.md`
+- `docs/failure-history.md`의 `AI Code Review demo 요청을 실제 실행 대신 추천 목록 문서화로 처리했다`
+
+증상:
+
+서버 working tree/staged 대상을 제거한 AI Code Review 화면을 local Streamlit에서 다시 캡처할 때, 앱과 페이지 이동은 정상이었지만 캡처 script가 `Page.wait_for_function: Timeout 20000ms exceeded`로 실패했습니다. Browser snapshot에는 새 commit-only 선택지가 정상적으로 보였지만, 공유 기본 DB의 최신 리뷰가 Application Preview 대표 결과와 달랐습니다.
+
+직접 원인:
+
+- 캡처 scenario는 실제 local LLM 대표 결과인 commit `2325182`의 `PaymentService.java`, `amount == 0`, bug finding을 요구합니다.
+- 화면은 `get_recent_code_reviews(..., limit=1)`로 가장 최근 저장 리뷰를 표시합니다. 기본 DB에서는 이후 실행된 commit `c9ef8fd` 리뷰가 최신이라 대표 결과 문자열을 찾을 수 없었습니다.
+- 캡처 script의 text wait timeout은 페이지 render 실패와 기대 결과 불일치를 같은 형태로 보고해 첫 오류만으로 원인을 구분하기 어려웠습니다.
+
+배경 또는 구조적 원인:
+
+AI Code Review와 local AI verification은 정상 실행 결과를 DB에 저장하므로, 기능을 검증할수록 최신 결과 순서가 바뀝니다. 반면 Application Preview는 특정 commit과 finding을 대표 증거로 고정합니다. 제품 화면에 과거 리뷰 상세 선택 기능이 없는 상태에서 공유 DB의 최신 row에만 의존하면 UI 변경과 관계없는 AI 실행이 screenshot 재현성을 깨뜨립니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- Target 선택지 단위 test와 code review focused test는 저장 리뷰의 최신 순서까지 포함하지 않습니다.
+- 캡처 전 기본 DB의 최신 `code_review_results` target과 scenario의 기대 commit을 비교하지 않았습니다.
+- 기존 screenshot이 대표 결과를 보여주고 있어 같은 기본 DB에서도 계속 재현될 것이라고 가정했습니다.
+
+수정 내용:
+
+- Playwright snapshot으로 `최신 커밋 (권장)`과 `커밋 목록에서 선택`만 렌더링되고 페이지 자체에는 오류가 없음을 먼저 확인했습니다.
+- 공유 기본 DB는 변경하지 않고 고유한 임시 PostgreSQL DB에 현재 데이터를 복제한 뒤, 이미 저장된 실제 `local_openai / qwen2.5-coder-7b-instruct` commit `2325182` 결과만 임시 복제본에서 최신으로 정렬했습니다.
+- 임시 DB를 사용하는 별도 local Streamlit에서 대표 finding과 새 target 선택지를 함께 검증해 screenshot을 갱신했습니다.
+- 캡처 scenario가 `커밋 목록에서 선택` label도 필수로 확인하도록 보강했습니다. 캡처 후 임시 Streamlit process와 임시 DB를 제거했고 기본 DB, Docker 8501, Quick Tunnel은 변경하지 않았습니다.
+
+재발 방지 규칙:
+
+- 대표 AI 결과 screenshot을 갱신할 때 공유 DB row의 시각이나 순서를 바꾸지 않습니다.
+- 최신 저장 결과와 대표 결과가 다르면 검증 문자열을 일반적인 label만 남기도록 약화하지 말고, 격리 DB 복제본 또는 제품이 제공하는 명시적 결과 선택 경로를 사용합니다.
+- Screenshot timeout이 발생하면 app health만 확인하지 말고 browser snapshot으로 navigation/render 실패와 기대 데이터 불일치를 먼저 구분합니다.
+- 임시 DB는 충돌하지 않는 고유 이름으로 만들고, 캡처 종료 후 연결 수가 0인지 확인한 뒤 제거합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+현재 screenshot script 자체는 여전히 최신 저장 리뷰를 표시하는 제품 동작을 따릅니다. 대표 리뷰를 자동으로 선택하는 격리 fixture는 없으므로, 기본 DB 최신 결과가 바뀐 뒤 같은 screenshot을 재현하려면 임시 복제 준비가 필요합니다. 장기적으로 리뷰 기록에서 상세 결과를 선택할 수 있게 되면 screenshot도 그 UI 경로를 사용할 수 있습니다.
+
+검증 명령과 결과:
+
+- 최초 `capture_feature_screenshot.py --url http://127.0.0.1:8502 --feature ai-code-review` 실행은 기대 대표 문자열 대기에서 20초 timeout으로 실패했습니다.
+- Browser snapshot에서 radio option이 `최신 커밋 (권장)`, `커밋 목록에서 선택` 두 개뿐이고 console error가 0건임을 확인했습니다.
+- 임시 DB의 최신 review가 `id=1`, `target_type=commit`, `target_ref=2325182ecf5c`, `status=completed`인지 확인했습니다.
+- 격리 local Streamlit 캡처는 `커밋 목록에서 선택`, `local_openai / qwen2.5-coder-7b-instruct`, `2325182ecf5c`, `PaymentService.java`, `amount == 0`, `리팩토링 제안이 없습니다`를 모두 확인하고 통과했습니다.
+- 캡처 후 port 8502/8503 listener가 없고 임시 DB `ai_commit_advisor_capture_20260723_targets`가 제거됐으며, 기본 Docker app과 Quick Tunnel은 계속 실행 중임을 확인했습니다.
+
 ## 2026-07-23 - 모바일 sidebar가 첫 이동 뒤 다시 자동으로 닫히지 않을 수 있었다
 
 관련 기능과 문서:

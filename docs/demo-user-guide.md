@@ -358,9 +358,9 @@ Extract shared order status constants
 
 이 화면에서 강조할 점:
 
-- 중앙 앱 서버 데모에서는 최신 commit 또는 특정 commit 리뷰가 기본 흐름입니다.
-- 서버 작업트리/Staged 변경 옵션은 앱 서버의 분석용 clone에 local 변경이 남아 있을 때만 의미가 있습니다.
-- 특정 commit을 선택하면 결과를 설명하기 쉽고, 개발자 개인 PC의 미커밋 변경과 서버 저장소 commit 이력을 혼동하지 않을 수 있습니다.
+- 중앙 앱 서버 데모에서는 최신 commit 또는 목록에서 선택한 commit만 리뷰합니다.
+- 개발자 개인 PC나 분석용 서버 clone의 미커밋 변경은 리뷰 대상이 아닙니다.
+- 특정 commit을 선택하면 리뷰 입력 diff와 저장 결과를 같은 hash로 다시 확인할 수 있습니다.
 
 ## 사용 흐름 요약
 

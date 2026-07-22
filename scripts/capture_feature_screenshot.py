@@ -607,6 +607,7 @@ SCENARIOS: dict[str, FeatureScenario] = {
         wait_text="리뷰 결과",
         required_texts=(
             "AI Code Review",
+            "커밋 목록에서 선택",
             "리뷰 결과",
             "local_openai",
             "완료",
