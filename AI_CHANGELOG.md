@@ -2,6 +2,26 @@
 
 ## 2026-07-23
 
+### Knowledge Graph 선택 node 관계도 시각화
+
+- `Knowledge Graph > 관계 탐색`에 선택한 프로그램, 클래스, 도메인, 커밋 주변 path를 실제 node-edge 관계도로 표시하는 1차 시각화를 추가했습니다. 선택 node는 파란 테두리로 강조하고, node 종류는 색과 모양으로 구분하며, 화살표는 Neo4j에 저장된 관계 방향을 그대로 사용합니다. Edge에 마우스를 올리면 관계 이름을 확인할 수 있습니다.
+- Neo4j path 조회가 최종 대상과 표시 문자열만 반환하던 구조를 확장해 중간 node의 ID/type/label과 edge의 시작·종료 node ID, 관계 종류를 구조화해 반환합니다. 화면은 완전한 path 단위로 node 12개와 edge 16개까지만 그리며, 생략된 path를 포함한 조회 결과 전체는 기존 표에 유지합니다. 기본 깊이는 3에서 2로 낮추고 필요할 때 1~3 범위에서 조정하게 했습니다.
+- Project Chat에 있던 `streamlit-agraph` 표시 모델과 스타일을 `src/ui/graph_visualization.py`로 분리해 두 화면이 같은 renderer를 사용합니다. 기존 Project Chat의 compact 관계도 변환과 표시 동작은 유지했습니다.
+- 숨겨진 `st.tabs` 안에서 관계도를 미리 초기화하면 component가 실제 폭을 얻지 못해 확대·잘림 상태로 남는 문제를 browser 검증에서 확인했습니다. Knowledge Graph의 다섯 보기를 `st.segmented_control`로 바꾸고 선택한 보기만 렌더링하도록 수정했으며, 원인과 재발 방지 기준을 `docs/failure-history.md`와 `docs/engineering-decisions.md`에 기록했습니다.
+- README, 기능 가이드, AI 기술 개요, architecture, Application Preview를 현재 동작과 한계에 맞춰 갱신하고 실제 Neo4j 데이터로 그린 `docs/images/features/knowledge-graph-explore.png`를 추가했습니다. 사용자-facing 문구는 선택 대상, 방향 기준, 표시 상한, 표의 역할을 구체적으로 설명하는지 확인했고 과장형·번역체 표현이 남지 않았는지 점검했습니다.
+- Graph 저장 schema와 동기화 payload는 바꾸지 않았으므로 Alembic migration이나 Neo4j 재동기화는 필요하지 않습니다. 이 기능은 LLM/embedding mock을 사용하지 않고 저장된 실제 Neo4j graph를 직접 조회합니다. 전체 회귀 test에서만 외부 AI 호출을 막기 위해 기존 mock provider 환경을 사용했습니다.
+- 주요 파일: `src/services/neo4j_graph_service.py`, `src/ui/graph_visualization.py`, `src/ui/knowledge_graph_page.py`, `src/ui/project_chat_page.py`, `scripts/capture_feature_screenshot.py`, `tests/test_neo4j_graph_service.py`, `tests/test_knowledge_graph_page.py`, `tests/test_graph_visualization.py`, `README.md`, `docs/feature-guide.md`, `docs/ai-technical-overview.md`, `docs/application-preview.md`, `docs/architecture.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`.
+- 검증: focused test 33개, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 243개와 `compileall src app.py scripts tests`가 통과했습니다. Host와 Docker app container의 실제 Neo4j에서 project `1`의 path 80개를 읽고 구조화 node/edge와 관계도 node 12개·edge 16개, error 0개를 확인했습니다. Playwright로 desktop과 390px mobile 배치, Docker 8501의 관계도 iframe·path 표, console error 0개를 확인했습니다. `scripts/demo_start.ps1 -Build`로 image `sha256:a6a0aaec745c87b3e564c8bcd2bfdc6c194824c1700662dea35b80d573c84cae`와 app container를 재생성했고 app `running/healthy`, local/external health `200 ok`를 확인했습니다. 통합 preflight는 이번 변경과 무관한 기존 저장 AI Code Review `bug=0` 조건만 `FAIL=1`로 남았습니다.
+
+### Knowledge Graph 관계 탐색 Cypher 집계 오류 수정
+
+- `Knowledge Graph`의 `관계 탐색`에서 선택 node의 나가는 관계 수와 들어오는 관계 수를 더하던 Cypher가 Neo4j `5.26.27`의 implicit grouping 규칙에 걸려 `Neo.ClientError.Statement.SyntaxError`를 반환하던 문제를 수정했습니다. `count(in_rel)`을 앞선 `WITH` 절에서 `incoming_count`로 집계한 뒤 최종 `RETURN`에서는 두 scalar 값을 더하도록 분리했습니다.
+- 기존 service test가 `FakeTx`에서 완성된 `related_count`를 바로 반환해 실제 Cypher parser 오류를 잡지 못한 점을 보완했습니다. 회귀 test는 들어오는 관계 집계가 별도 `WITH`에 있고, 최종 표현식에 집계 함수가 섞이지 않으며, 이전의 `outgoing_count + count(in_rel)` 형태가 남지 않는지 확인합니다.
+- 수정 전 project `1`의 실제 Neo4j 조회에서 같은 syntax error를 재현했고, 수정 후 host와 재배포된 Docker app container에서 같은 node를 조회해 `completed`, `related_count=2`, path 2건, error 0건을 확인했습니다.
+- 이 변경은 기존 관계 탐색 동작을 복구하는 결함 수정으로 화면 workflow, architecture, AI 설명, schema, sample scenario를 바꾸지 않습니다. 따라서 완료된 Roadmap task 상태와 README, `docs/feature-guide.md`, `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, sample 관련 문서는 갱신하지 않았고, 검증 누락의 원인과 재발 방지 기준만 `docs/failure-history.md`에 기록했습니다.
+- 주요 파일: `src/services/neo4j_graph_service.py`, `tests/test_neo4j_graph_service.py`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: `tests/test_neo4j_graph_service.py` 18개, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 239개와 `compileall src app.py scripts tests`가 통과했습니다. `scripts/demo_start.ps1 -Build`로 image `sha256:88062188a9bd496201650cd77516e60c4012d147204b862d9b1a7a90ce96f562`와 app container를 재생성했고 local/external health `200 ok`, app `running/healthy`를 확인했습니다. 통합 preflight는 재기동 직후 일시적인 container health `starting`과 이번 변경과 무관한 기존 저장 AI Code Review `bug=0` 때문에 최초 `FAIL=2`였으며, 후속 `-CheckOnly`에서는 health가 통과하고 기존 Code Review 항목만 `FAIL=1`로 남았습니다.
+
 ### AI Code Review 서버 local 대상 제거
 
 - `AI Code Review`의 실행 대상을 앱 서버 Git 저장소의 `최신 커밋 (권장)`과 `커밋 목록에서 선택`으로 한정했습니다. 개발자 PC의 변경을 볼 수 없고 관리형 clone에는 local 변경을 남기지 않는 현재 운영 모델에 맞춰 `서버 작업트리 변경`, `서버 Staged 변경` 선택지와 안내 문구를 화면에서 제거했습니다.

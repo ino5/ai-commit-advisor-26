@@ -21,6 +21,49 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-23 - Knowledge Graph 관계도는 선택한 보기에서 제한된 주변 path만 그린다
+
+### 배경
+
+`Knowledge Graph > 관계 탐색`은 node properties, depth, 관계 filter, path 표를 제공했지만 연결 구조를 직접 그리지 않았습니다. 사용자는 `Knowledge Graph`라는 화면에서 선택한 프로그램이 커밋, 클래스, 도메인과 어떻게 이어지는지 먼저 보고 싶어 합니다. Project Chat에는 이미 `streamlit-agraph` 관계도가 있었으므로, 같은 역할의 renderer를 별도로 복제할 이유도 없었습니다. 구현 중에는 숨겨진 `st.tabs` 안에서 component가 먼저 초기화되면 사용자가 탭을 열었을 때 관계도가 과도하게 확대되거나 잘린 상태로 남는 문제도 확인됐습니다.
+
+### 결정
+
+- Neo4j path 조회는 표시 문자열만 반환하지 않고 각 node의 ID/type/label과 각 edge의 시작 node ID, 종료 node ID, 관계 종류를 함께 반환합니다.
+- `src/ui/graph_visualization.py`에 표시 모델, 종류별 스타일, `streamlit-agraph` 설정을 모아 Project Chat과 Knowledge Graph가 공유합니다.
+- Knowledge Graph의 다섯 가지 보기는 `st.segmented_control`로 선택하고 현재 보기만 조건부로 렌더링합니다. 관계도 component는 화면에 보이는 시점에 처음 생성합니다.
+- 관계 탐색의 기본 깊이는 2로 두고, 관계도는 완전한 path 단위로 최대 node 12개와 edge 16개까지만 표시합니다. 선택 node는 파란 테두리로 강조하고 edge 방향은 Neo4j 저장 방향을 유지합니다.
+- 화면 제한으로 생략된 path를 포함한 전체 조회 결과는 기존 표에 유지합니다. 관계 이름은 edge hover와 표시 관계 요약에서 확인할 수 있습니다.
+
+### 이유
+
+- 전체 graph가 아니라 선택 node 주변만 그리면 연결 구조를 읽을 수 있으면서도 대형 프로젝트와 모바일에서 초기 배치 비용을 제한할 수 있습니다.
+- 구조화된 node/edge 결과를 사용해야 중간 node를 잃지 않고 동일 node를 안정적으로 합치며, 화면이 임의로 관계 방향을 뒤집지 않습니다.
+- 표를 함께 두면 자동 배치에서 label이 겹치거나 표시 상한을 넘더라도 조회된 path를 빠뜨리지 않고 검증할 수 있습니다.
+- 보이지 않는 container의 크기로 component를 초기화하지 않으면 별도의 resize hack 없이 desktop과 mobile에서 같은 renderer를 사용할 수 있습니다.
+
+### 검토한 대안
+
+- 프로젝트 전체 graph를 한 번에 표시: 별도 탐색기에는 적합하지만 node 수가 많은 프로젝트에서 화면 과밀과 초기 배치 비용이 커 현재 1차 범위에서 제외했습니다.
+- 기존 `st.tabs`를 유지하고 JavaScript로 강제 resize: tab 전환과 Streamlit rerun마다 component 내부 iframe까지 맞춰야 해 version 의존성이 커집니다.
+- Graphviz 정적 그림: 방향과 label은 표현할 수 있지만 hover와 물리 배치가 없고 기존 Project Chat renderer를 재사용할 수 없습니다.
+- Cytoscape 또는 별도 React component: click-to-expand 같은 고급 기능에는 유리하지만 frontend build와 상태 동기화가 필요한 다음 단계입니다.
+
+### 영향, tradeoff, 남은 한계
+
+- 데이터 저장 schema와 Neo4j 동기화 결과는 바뀌지 않으므로 migration이나 graph 재동기화가 필요하지 않습니다.
+- 보기 선택은 기존 tab 모양 대신 한 줄 control로 표시됩니다. 현재 보기만 렌더링하므로 초기 page 비용과 숨김 component 배치 문제를 줄이지만, 각 보기의 내부 상태는 Streamlit rerun 규칙을 따릅니다.
+- 관계도는 node 클릭으로 중심을 바꾸거나 추가 이웃을 불러오는 graph browser가 아닙니다. 긴 label은 축약되며 모바일에서는 label이 가까워질 수 있어 전체 값과 path는 표로 확인해야 합니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `P1 - Interactive Knowledge Graph Neighborhood Visualization`
+- `AI_CHANGELOG.md`의 `Knowledge Graph 선택 node 관계도 시각화`
+- `docs/failure-history.md`의 `숨겨진 Streamlit tab에서 초기화한 관계도가 확대·잘림 상태로 남았다`
+- `docs/feature-guide.md`
+- `docs/ai-technical-overview.md`
+- `docs/application-preview.md`
+
 ## 2026-07-23 - AI Code Review 실행 대상은 commit 이력으로 한정한다
 
 ### 배경

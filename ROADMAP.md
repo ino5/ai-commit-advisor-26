@@ -14,6 +14,7 @@
 
 | Priority | Area | Task | Status | Related AI Change Log |
 |---|---|---|---|---|
+| P1 | Graph UX | Interactive Knowledge Graph neighborhood visualization | Done | Knowledge Graph 선택 node 관계도 시각화 |
 | P2 | Navigation UX / Sample Data | Remove sample data UI and retain CLI workflow | Done | 샘플 데이터 생성 메뉴 제거와 CLI 유지 |
 | P1 | Navigation UX | Tablet sidebar sticky header theme and touch fix | Done | 태블릿 sidebar 상단 고정 영역 보정 |
 | P2 | Navigation UX | Mobile sidebar auto-collapse and sticky close control | Done | 모바일 sidebar 자동 닫기와 닫기 버튼 상단 고정 |
@@ -175,6 +176,29 @@
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
 | P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
 | P0 | Demo Operations | Canonical demo startup contract and legacy Tunnel reuse | Done | 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용 |
+
+## P1 - Interactive Knowledge Graph Neighborhood Visualization
+
+Status: Done
+
+Goal:
+`Knowledge Graph > 관계 탐색`에서 선택 node 주변의 제한된 Neo4j path를 실제 node-edge 관계도로 확인하고, 같은 결과를 기존 표에서도 검증할 수 있게 한다.
+
+Rationale:
+현재 관계 탐색은 node detail, depth, relationship filter와 path 표를 제공하지만 연결 구조를 시각적으로 보여주지 않아 `Knowledge Graph`라는 화면 이름과 사용자의 기대가 어긋납니다. Project Chat에는 이미 `streamlit-agraph` 기반 compact 관계도가 있으므로 별도 frontend stack을 추가하지 않고 공용 렌더링 계층을 재사용할 수 있습니다. 전체 graph를 한 번에 펼치는 대신 현재 depth/path 제한 안에서 선택 node 주변만 그려 화면 과밀과 mobile 성능 저하를 막고, 표를 함께 유지해 배치와 축약에 관계없이 원본 경로를 확인하게 합니다.
+
+Checklist:
+
+- [x] Neo4j path 조회가 중간 node ID/type/label과 저장 edge 방향을 구조화해 반환하도록 확장한다.
+- [x] Project Chat과 Knowledge Graph가 함께 사용할 수 있는 node-edge 렌더링 계층을 분리한다.
+- [x] 선택 node 강조, node type별 색상, 관계 label, node/edge 제한이 있는 주변 관계도를 추가한다.
+- [x] 기존 path 표와 node properties를 유지하고 빈 결과·Neo4j 오류 안내를 보존한다.
+- [x] 서비스 path 변환, node/edge 중복 제거·제한, 기존 Project Chat 관계도 회귀 test를 추가한다.
+- [x] README, 기능 가이드, AI 기술 개요, Application Preview와 engineering decision을 갱신한다.
+- [x] 실제 Neo4j와 desktop/mobile browser에서 관계도와 표를 검증하고 Docker app을 재빌드한다.
+- [x] `AI_CHANGELOG.md`를 갱신하고 전체 test·문서·diff 검증을 완료한다.
+
+Related AI Change Log: `Knowledge Graph 선택 node 관계도 시각화`
 
 ## P2 - Remove Sample Data UI And Retain CLI Workflow
 
