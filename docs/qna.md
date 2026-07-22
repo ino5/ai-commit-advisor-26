@@ -1,20 +1,273 @@
-# 시연 Q&A
+# Q&A
 
-## Q. AI는 어디에 활용됐나?
+## Q. AI는 어느 단계에서 어떻게 활용됐나?
 
-AI는 크게 다섯 부분에 활용됐습니다.
+이 프로젝트에서 AI는 `LLM`과 `Embedding model` 두 종류로 나뉩니다. LLM은 commit이나 코드의 의미를 해석하고 문장을 생성하며, Embedding model은 텍스트를 vector로 바꿔 관련 근거를 찾습니다. 모든 단계에서 모델을 호출하는 것은 아니며, 전체 흐름은 다음과 같습니다.
 
-첫째, Git 커밋과 변경 파일을 분석해 어떤 프로그램과 관련된 변경인지 매핑합니다.
+```text
+개발계획 등록 + Git Sync                    모델 호출 없음
+             ↓
+RAG chunk 생성                              모델 호출 없음
+             ↓
+검색 준비·질의 vector 생성                  Embedding model
+             ↓
+프로그램-commit 후보 검색                   Embedding + token 규칙
+             ↓
+Mapping                                     LLM
+             ↓
+프로그램 구현상태 분석                      LLM
+             ↓
+AI Progress · Risk · 예상 일정 · Radar      규칙 계산, 새 모델 호출 없음
+             ↓
+PL Briefing                                 LLM
+```
 
-둘째, 관련 커밋 전체를 바탕으로 프로그램별 구현 상태를 판단하고, 계획 진척도와 비교해 `AI Progress`로 보여줍니다.
+단계별 역할은 다음과 같습니다.
 
-셋째, 소스 코드를 임베딩으로 검색한 뒤 `Project Chat`에서 현재 코드와 GraphRAG 관계를 근거로 질문에 답합니다. 이때 파일과 라인 등 답변 근거도 함께 제공합니다.
+| 단계 | 모델 사용 여부 | 실제 처리 |
+|---|---|---|
+| 개발계획 등록 | 없음 | 프로그램 ID, 설명, 계획 일정, 계획 진척도와 담당자를 구조화해 저장합니다. |
+| Git Sync | 없음 | Git에서 commit, 메시지, 작성자, 변경 파일과 diff를 수집해 PostgreSQL에 저장합니다. |
+| RAG chunk 생성 | 없음 | 현재 소스, 프로그램, commit과 diff 텍스트를 검색 단위로 나누고 metadata를 저장합니다. 이 시점에는 아직 vector를 만들지 않습니다. |
+| 검색 준비 | Embedding | vector가 없는 chunk만 `text-embedding-nomic-embed-text-v2-moe`로 변환해 pgvector에 저장합니다. Git Sync 직후 자동 호출하지 않고 사용자가 검색 준비를 실행할 때 처리합니다. |
+| Mapping 후보 검색 | Embedding + 규칙 | commit 메시지·변경 파일·diff를 query vector로 바꿔 유사한 `program` chunk를 찾습니다. 프로그램명·모듈·파일 경로의 token 유사도 후보도 합칩니다. Embedding 검색이 실패하면 token 후보만 사용합니다. |
+| 프로그램-commit Mapping | LLM | 후보 프로그램이 있을 때 commit 정보와 후보 프로그램만 prompt에 넣어 관련 프로그램, 관련도 점수, commit 단위 구현상태와 근거를 JSON으로 받습니다. 후보가 없으면 호출하지 않고, 호출·파싱 실패 시 token 유사도 규칙으로 fallback합니다. |
+| 프로그램 구현상태 분석 | LLM | 관련 commit이 있을 때 프로그램 계획과 commit·Mapping 근거를 종합해 `NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`, `UNKNOWN`, 완료·미완료 항목과 근거 commit을 구조화해 저장합니다. 입력은 관련도순 최대 10개 commit과 commit당 최대 12개 변경 파일로 제한하며, 관련 commit이 없거나 호출에 실패하면 보수적인 규칙 결과를 사용합니다. |
+| `AI Progress` 표시 | 새 호출 없음 | 저장된 프로그램 구현상태를 `0/50/100` 진척도로 환산하고 계획 진척도와 비교합니다. 관련 commit 구성이 바뀌었으면 기존 분석을 `재분석 필요`로 표시합니다. 화면을 조회하는 것만으로 LLM을 다시 호출하지 않습니다. |
+| `Risk Analysis` | 새 호출 없음 | 관련 commit 없음, 계획 종료일 경과, 진척도 차이, 판단불가, 최근 commit 없음, 담당자 누락, 예상 지연을 규칙으로 판정합니다. Mapping과 구현상태라는 AI 결과를 입력으로 사용하지만 리스크 자체는 LLM이 단정하지 않습니다. |
+| 예상 일정·자원 지표 | 새 호출 없음 | 계획일, AI 진척도, commit·diff 규모, 리스크를 산식으로 결합해 예상 종료일, 난이도와 관리 부담을 계산합니다. |
+| `AI Resource Radar` | 새 호출 없음 | 앞 단계의 AI 결과와 규칙 지표를 고정 가중치로 합산해 PL 우선 검토 순위를 만듭니다. |
+| `PL Briefing` | LLM | live provider에서 Radar 상위 항목의 점수와 근거만 전달해 요약, 회의 질문과 다음 액션을 JSON으로 생성합니다. 순위는 LLM이 바꾸지 않으며, `mock`이나 호출·검증 실패 시 규칙 기반 브리핑을 사용합니다. |
 
-넷째, 특정 커밋의 diff를 분석해 버그 가능성과 개선 사항을 제안하는 `AI Code Review`에 사용했습니다.
+`Project Chat`, Knowledge Graph와 코드리뷰는 위 자원관리 흐름에서 갈라지는 별도 AI 사용 경로입니다.
 
-다섯째, 이미 계산된 리스크와 진척도 근거를 PL 회의용 브리핑으로 요약합니다.
+| 기능 | 모델 사용 여부 | 실제 처리 |
+|---|---|---|
+| Knowledge Graph 동기화 | 없음 | 저장된 프로젝트·프로그램·commit·파일 데이터와 현재 Java 소스 parser 결과로 Neo4j node와 관계를 만듭니다. LLM이 관계를 추출하지 않습니다. |
+| `Project Chat` 검색 | Embedding | 질문과 확장 질의를 vector로 만들고 pgvector에서 관련 소스 청크를 검색합니다. |
+| `Project Chat` 근거 준비 | 없음 | 검색한 소스를 현재 파일·라인·hash와 비교하고, 검증된 파일과 class를 시작점으로 Neo4j 관계를 조회합니다. |
+| `Project Chat` 답변 | LLM | 검증된 소스와 GraphRAG 관계를 context로 전달해 한국어 답변을 만듭니다. 검증된 현재 소스가 하나도 없으면 LLM을 호출하지 않고 근거 부족으로 종료합니다. |
+| `AI Code Review` | LLM | live provider와 비어 있지 않은 diff가 있을 때 사용자가 고른 commit의 메시지와 diff를 전달해 변경 의도, 영향 범위, 위험도, 버그 후보와 리팩토링 제안을 구조화 JSON으로 생성합니다. 빈 diff나 `mock`, 호출 실패는 별도 결과로 표시합니다. |
+| `AI 운영 현황`·품질 점검 | 새 호출 없음 | 저장된 provider/model, fallback, validation, latency, source·graph evidence와 결과 분포를 집계해 보여줍니다. |
 
-다만 모든 판단을 AI에 맡긴 것은 아닙니다. 일정 지연, 담당자 누락 같은 `Risk Analysis`와 우선순위 점수는 설명 가능한 규칙으로 계산하고, AI는 코드의 의미를 해석하거나 근거를 요약하는 역할에 집중했습니다. 또한 시연 환경에서는 로컬 LLM과 임베딩 모델을 사용해 프로젝트 코드가 외부로 전달되지 않도록 구성했습니다.
+정리하면 LLM 호출 지점은 `Mapping`, 프로그램 구현상태 분석, `Project Chat` 답변, `AI Code Review`, `PL Briefing`입니다. Embedding 호출 지점은 문서 vector 준비와 Mapping/RAG/Project Chat의 query 검색입니다. `Risk Analysis`, `AI Progress` 화면, 예상 일정, Resource Radar와 Knowledge Graph 구성은 애플리케이션 규칙과 검증 로직이 담당합니다.
+
+이 분리는 LLM이 잘하는 의미 해석과 문장 생성을 활용하면서도 일정·리스크·우선순위처럼 설명 가능성과 재현성이 필요한 판단은 코드로 통제하기 위한 것입니다. 준비된 시연 환경에서는 두 모델 모두 외부 cloud가 아닌 LM Studio에서 실행되므로 프로젝트 코드와 diff가 외부 서비스로 전달되지 않습니다.
+
+## Q. AI Resource Radar는 어떤 원리로 우선순위를 정하나?
+
+`AI Resource Radar`는 LLM이 프로그램 순위를 직접 판단하는 기능이 아닙니다. Mapping과 구현상태 분석에서 얻은 AI 근거에 일정, 리스크, Git 변경 범위와 프로그램별 관리 부담 신호를 더해 고정된 가중치로 계산하는 규칙 기반 우선순위 목록입니다. 같은 날짜에 같은 데이터가 들어오면 같은 점수가 나옵니다.
+
+### 어떤 데이터를 사용하는가
+
+프로젝트의 각 프로그램에 대해 다음 신호를 계산합니다.
+
+| 신호 | 계산에 사용하는 데이터 | 의미 |
+|---|---|---|
+| 계획 진척도 | 프로그램의 `progress_rate` | PL이 입력한 계획상 진척도 |
+| AI 진척도 | 최신 프로그램 구현상태 분석 결과 | `COMPLETED=100`, `IN_PROGRESS=50`, `NOT_STARTED/UNKNOWN=0`; 분석이 없거나 관련 commit이 바뀌어 오래됐으면 수치 대신 `분석 필요` 또는 `재분석 필요` |
+| 진척도 차이 | `계획 진척도 - AI 진척도` | 계획보다 코드 구현 근거가 뒤처진 정도. 음수는 위험 점수를 차감하지 않음 |
+| 리스크 | 해결되지 않은 `RiskFinding`과 그중 `HIGH` 건수 | 일정·품질상 우선 확인할 문제 |
+| 예상 종료일 | 계획 시작일, 계획 종료일, 오늘 날짜, AI 진척도 | 지금까지의 일평균 진척도를 단순 연장해 종료일과 지연일을 추정 |
+| 변경 난이도 | 관련 commit 수, 변경 파일 수, diff 증감 라인, 변경 영역, 여러 프로그램에 걸친 commit, 미해결 리스크 | 변경 범위가 넓고 복잡한 정도 |
+| commit 근거 | Mapping에서 `is_related=true`인 commit | 구현 근거 존재 여부와 관련성이 높은 commit 메시지 |
+| 프로그램 관리 부담 | 미완료 여부, 리스크, 진척도 차이와 난이도 | 해당 프로그램을 점검하는 데 필요한 부담의 참고값인 `workload_points` |
+
+예상 종료일은 AI 진척도가 있고 계획 시작일이 있을 때 다음 방식으로 계산합니다.
+
+```text
+경과일 = max(오늘 - 계획 시작일, 1일)
+일평균 진척도 = AI 진척도 / 경과일
+남은 일수 = ceil((100 - AI 진척도) / 일평균 진척도)
+예상 종료일 = 오늘 + 남은 일수
+예상 지연일 = max(예상 종료일 - 계획 종료일, 0일)
+```
+
+예상 지연이 7일 이상이면 `DELAY_EXPECTED`, 1~6일이거나 계획 종료일까지 7일 이하인데 AI 진척도가 80% 미만이면 `AT_RISK`로 분류합니다. 구현상태 분석이 없거나 계획 종료일이 없으면 일부 예상값은 `UNKNOWN`이 됩니다. AI 진척도가 0이거나 계획 시작일이 없으면 계획 종료일과 오늘 중 늦은 날짜에서 14일을 더하는 보수적인 기본값을 사용합니다.
+
+### 점수는 어떻게 계산하는가
+
+각 프로그램은 0점에서 시작해 다음 위험 신호를 더합니다.
+
+| 조건 | Radar 가산점 |
+|---|---:|
+| 구현상태 분석이 없거나 오래됨 | `+18` |
+| `HIGH` 미해결 리스크 존재 | `+30 + min(HIGH 건수 × 8, 16)` |
+| `HIGH`는 없지만 미해결 리스크 존재 | `+min(미해결 건수 × 10, 25)` |
+| 예상 지연 7일 이상 | `+28` |
+| 예상 종료일 주의 | `+16` |
+| 계획 대비 AI 진척도 차이가 양수 | `+min(차이 × 0.45, 22)` |
+| 난이도 `HIGH` | `+18` |
+| 난이도 `MEDIUM` | `+8` |
+| 여러 프로그램에 걸친 commit | `+min(commit 수 × 8, 16)` |
+| 미완료 상태인데 관련 commit 없음 | `+18` |
+| 프로그램 관리 부담 | `+min(workload_points × 0.15, 12)` |
+
+난이도와 프로그램 관리 부담의 내부 계산식은 다음과 같습니다. 난이도 점수는 `70점 이상=HIGH`, `35점 이상=MEDIUM`, 그 미만은 `LOW`입니다.
+
+```text
+난이도 = min(
+  관련 commit 수 × 8
+  + 변경 파일 수 × 4
+  + min(diff 증감 라인, 300) × 0.08
+  + 변경 영역 수 × 8
+  + cross-program commit 수 × 10
+  + 미해결 리스크 수 × 12,
+  100
+)
+
+workload_points =
+  10
+  + 미완료이면 15
+  + 미해결 리스크 수 × 15
+  + max(진척도 차이, 0) × 0.5
+  + 난이도 × 0.25
+```
+
+최종 점수는 모든 가산점을 합한 뒤 100점으로 제한하고 소수점 첫째 자리까지 표시합니다. Radar 등급은 `75점 이상=HIGH`, `45점 이상=MEDIUM`, 그 미만은 `LOW`입니다.
+
+점수가 같으면 `HIGH` 리스크 수, 전체 미해결 리스크 수, 예상 지연일, 난이도 순으로 다시 비교합니다. Dashboard에는 기본적으로 상위 5개 프로그램을 표시하고, 각 프로그램에는 Mapping 관련도 순으로 최대 3개의 commit 해시와 메시지를 근거로 붙입니다.
+
+권장 액션도 LLM 생성물이 아니라 다음 우선순위 규칙으로 정합니다.
+
+1. AI 진척도가 없으면 구현상태 분석 실행 또는 갱신을 안내합니다.
+2. `HIGH` 리스크나 예상 지연이 있으면 담당자와 범위·일정 조정 여부를 확인하게 합니다.
+3. 진척도 차이가 30%p 이상이면 `Program Detail`의 commit과 구현상태 근거를 확인하게 합니다.
+4. 난이도가 높거나 cross-program commit이 있으면 `AI Code Review`와 `Commit Impact` 확인을 안내합니다.
+5. 관련 commit이 없으면 Git 동기화와 실제 구현 착수 여부를 확인하게 합니다.
+6. 어느 조건에도 해당하지 않으면 다음 주 추세 관찰 대상으로 둡니다.
+
+### 여기서 AI가 담당하는 부분과 한계
+
+Radar를 화면에 계산하는 순간에는 LLM, embedding 또는 GraphRAG를 호출하지 않습니다. 이름에 `AI`가 붙은 이유는 프로그램-commit Mapping과 프로그램 구현상태 분석처럼 앞 단계에서 LLM이 만든 결과를 입력 신호로 사용하기 때문입니다. Radar 계산 뒤 사용자가 `PL Briefing 생성`을 눌렀을 때만 별도로 LLM을 호출해 상위 항목을 회의 문장으로 정리합니다.
+
+이 점수는 학습된 예측 모델의 확률이나 개인 성과 점수가 아닙니다. 현재 상태에서 PL이 먼저 확인할 프로그램을 놓치지 않기 위한 위험 가산식입니다. 좋은 신호가 위험 점수를 상쇄하지 않고, 리스크가 직접 점수뿐 아니라 난이도와 프로그램 관리 부담에도 일부 중복 반영되므로 100점이 실제 실패 확률 100%를 뜻하지 않습니다. 또한 Radar에는 담당자별 전체 `workload_score`가 아니라 각 프로그램의 `workload_points`가 들어갑니다. 프로젝트 규모별 통계 보정이나 과거 결과에 따른 자동 가중치 학습도 하지 않으므로, 화면의 근거 상세와 실제 일정 상황을 PL이 함께 확인해야 합니다.
+
+## Q. PL Briefing은 정확히 LLM을 어떻게 사용하며, 어떤 prompt를 보내나?
+
+`PL Briefing`에서 LLM은 프로그램 우선순위를 결정하지 않습니다. 애플리케이션이 먼저 `AI Resource Radar`의 점수와 순위를 계산하고, LLM은 그 근거를 PL 회의에서 읽을 수 있는 요약, 우선 확인 항목, 회의 질문과 다음 액션으로 정리합니다.
+
+처리 순서는 다음과 같습니다.
+
+1. Dashboard가 프로젝트의 프로그램별 계획/AI 진척도, 진척도 차이, 미해결 리스크, 예상 지연, 난이도, 관련 commit 수, 변경 파일 수, cross-program commit과 프로그램 관리 부담을 모읍니다.
+2. 애플리케이션 코드가 정해진 가중치로 우선순위 점수를 계산하고 상위 5개 프로그램을 고릅니다. `HIGH` 리스크, 예상 지연, 큰 진척도 차이, 높은 난이도처럼 점수에 영향을 준 이유도 함께 남깁니다.
+3. 사용자가 `PL Briefing 생성`을 누르면 상위 항목을 다음 구조의 JSON으로 만듭니다.
+
+```json
+{
+  "generated_on": "2026-07-23",
+  "items": [
+    {
+      "rank": 1,
+      "program_id": "SMP-ORD-001",
+      "program_name": "주문 접수",
+      "developer": "김민수",
+      "priority_score": 88.0,
+      "priority_level": "HIGH",
+      "reasons": ["HIGH 리스크 2건", "예상 종료일 기준 53일 지연 가능성"],
+      "recommended_action": "담당자와 범위/일정 조정 필요 여부를 먼저 확인하세요.",
+      "evidence": [{"label": "미해결 리스크", "value": "2"}],
+      "related_commits": ["커밋 해시와 메시지"]
+    }
+  ]
+}
+```
+
+4. 이 JSON을 아래 user prompt의 마지막에 붙입니다. 실제 실행 시 `[Radar JSON]` 자리에 위 데이터가 들어갑니다.
+
+```text
+다음 AI Resource Radar 근거를 바탕으로 PL 주간 점검 브리핑 데이터를 작성하세요.
+
+규칙:
+- 응답은 JSON object 하나만 반환하세요. Markdown, code fence, 표를 쓰지 마세요.
+- 모든 문장은 한국어로 작성하되, 제목에는 "한국어 브리핑" 같은 언어 설명을 넣지 마세요.
+- title은 "PL 주간 점검 브리핑"으로 작성하세요.
+- 근거에 없는 사실을 추가하지 마세요.
+- 위험 단정 대신 "확인 필요", "주의", "우선 검토"처럼 보조 판단으로 표현하세요.
+- priority_items와 next_actions에는 program_id 또는 program_name과 근거 숫자를 포함하세요.
+- 다음 schema를 지키세요:
+{
+  "title": "PL 주간 점검 브리핑",
+  "summary": "한 문단 요약",
+  "priority_items": [
+    {"program_id": "SMP-ORD-001", "program_name": "주문 접수", "reason": "미해결 리스크 2건, 예상 지연 53일", "owner": "김민수"}
+  ],
+  "meeting_questions": ["회의에서 확인할 질문"],
+  "next_actions": [
+    {"program_id": "SMP-ORD-001", "action": "담당자와 범위/일정 조정 필요 여부 확인"}
+  ]
+}
+
+AI Resource Radar JSON:
+[Radar JSON]
+```
+
+LLM 요청은 OpenAI-compatible `POST {LLM_BASE_URL}/chat/completions`로 전송합니다. 준비된 Docker 시연 환경에서는 host LM Studio의 `http://host.docker.internal:12345/v1`와 `qwen2.5-coder-7b-instruct`를 사용합니다. 핵심 요청 설정은 다음과 같습니다.
+
+```json
+{
+  "model": "qwen2.5-coder-7b-instruct",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a precise software analysis assistant. Follow the user's requested output format."
+    },
+    {"role": "user", "content": "위 PL Briefing prompt와 실제 Radar JSON"}
+  ],
+  "temperature": 0.1,
+  "max_tokens": 900,
+  "stream": false,
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "pl_weekly_briefing",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string", "enum": ["PL 주간 점검 브리핑"]},
+          "summary": {"type": "string"},
+          "priority_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "program_id": {"type": "string"},
+                "program_name": {"type": "string"},
+                "reason": {"type": "string"},
+                "owner": {"type": "string"}
+              },
+              "required": ["program_id", "program_name", "reason", "owner"],
+              "additionalProperties": false
+            }
+          },
+          "meeting_questions": {"type": "array", "items": {"type": "string"}},
+          "next_actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "program_id": {"type": "string"},
+                "action": {"type": "string"}
+              },
+              "required": ["program_id", "action"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["title", "summary", "priority_items", "meeting_questions", "next_actions"],
+        "additionalProperties": false
+      }
+    }
+  }
+}
+```
+
+`PL_BRIEFING_SCHEMA`는 `title`, `summary`, `priority_items`, `meeting_questions`, `next_actions`를 필수로 하고 정의하지 않은 필드는 허용하지 않습니다. 응답을 받으면 앱이 JSON을 파싱하고 필수 항목을 확인합니다. 형식이 맞지 않으면 오류 목록과 원본 응답을 넣어 한 번만 보정 요청을 보냅니다. 호출 실패, 두 번째 형식 오류 또는 `mock` provider 사용 시에는 같은 Radar 근거로 규칙 기반 fallback 브리핑을 만듭니다.
+
+화면의 Markdown은 LLM이 직접 만드는 것이 아닙니다. 앱이 구조화 JSON을 `요약`, `우선 확인 항목`, `회의 질문`, `다음 액션` 순서로 렌더링합니다. 결과와 함께 provider/model, LLM 또는 fallback 여부, Radar 근거 JSON, 원본 응답과 검증 상태를 `pl_briefing_history` 및 AI 호출 이력에 저장합니다.
+
+따라서 `PL Briefing` 생성 시점에는 embedding 검색이나 GraphRAG를 새로 호출하지 않고, 전체 소스나 diff 원문도 prompt에 넣지 않습니다. 다만 Radar가 사용하는 `AI Progress`와 Mapping 같은 선행 데이터에는 앞서 LLM이 분석한 결과가 포함될 수 있으며, PL Briefing은 그 결과와 규칙 기반 리스크·일정 지표를 다시 요약하는 단계입니다.
 
 ## Q. GraphRAG는 구체적으로 어떻게 활용했나?
 
