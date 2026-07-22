@@ -10,6 +10,7 @@ from src.services.neo4j_graph_service import (
     GraphPayload,
     ImpactPathRow,
     Neo4jGraphFreshness,
+    Neo4jGraphExploreResult,
     Neo4jGraphPreview,
     Neo4jSyncResult,
     build_project_graph_payload,
@@ -21,6 +22,12 @@ from src.services.neo4j_graph_service import (
     get_project_graph_freshness,
     sync_project_graph_incrementally_to_neo4j,
     sync_project_graph_to_neo4j,
+)
+from src.ui.graph_visualization import (
+    GraphDisplayEdge,
+    GraphDisplayNode,
+    render_node_edge_graph,
+    short_graph_label,
 )
 from src.ui.project_context import require_project_context
 
@@ -44,6 +51,9 @@ RELATIONSHIP_TYPE_LABELS = {
     "CONTAINS_CLASS": "파일-클래스",
     "IMPORTS_CLASS": "클래스 import",
 }
+
+GRAPH_EXPLORER_MAX_NODES = 12
+GRAPH_EXPLORER_MAX_EDGES = 16
 
 
 def _counter_df(counter) -> pd.DataFrame:
@@ -250,6 +260,95 @@ def _render_node_detail(result) -> None:
             st.dataframe(pd.DataFrame(property_rows), hide_index=True, use_container_width=True)
 
 
+def build_graph_exploration_display(
+    result: Neo4jGraphExploreResult,
+    *,
+    max_nodes: int = GRAPH_EXPLORER_MAX_NODES,
+    max_edges: int = GRAPH_EXPLORER_MAX_EDGES,
+) -> tuple[list[GraphDisplayNode], list[GraphDisplayEdge], bool]:
+    detail = result.node_detail
+    if detail is None:
+        return [], [], False
+
+    safe_max_nodes = max(2, int(max_nodes))
+    safe_max_edges = max(1, int(max_edges))
+    nodes: dict[str, GraphDisplayNode] = {
+        detail.node_id: GraphDisplayNode(
+            id=detail.node_id,
+            label=short_graph_label(detail.label),
+            node_type=detail.node_type,
+            title=f"{NODE_TYPE_LABELS.get(detail.node_type, detail.node_type)}: {detail.label}\nNode ID: {detail.node_id}",
+            highlighted=True,
+        )
+    }
+    edges: dict[tuple[str, str, str], GraphDisplayEdge] = {}
+    truncated = False
+
+    for row in result.rows:
+        path_nodes = {
+            node.node_id: GraphDisplayNode(
+                id=node.node_id,
+                label=short_graph_label(node.label),
+                node_type=node.node_type,
+                title=f"{NODE_TYPE_LABELS.get(node.node_type, node.node_type)}: {node.label}\nNode ID: {node.node_id}",
+                highlighted=node.node_id == detail.node_id,
+            )
+            for node in row.nodes
+            if node.node_id and node.node_id != "-"
+        }
+        path_edges = {
+            (edge.source_node_id, edge.target_node_id, edge.edge_type): GraphDisplayEdge(
+                source=edge.source_node_id,
+                target=edge.target_node_id,
+                label=edge.edge_type,
+            )
+            for edge in row.edges
+            if edge.source_node_id in path_nodes
+            and edge.target_node_id in path_nodes
+            and edge.source_node_id != edge.target_node_id
+        }
+        new_node_ids = [node_id for node_id in path_nodes if node_id not in nodes]
+        new_edge_keys = [edge_key for edge_key in path_edges if edge_key not in edges]
+        if len(nodes) + len(new_node_ids) > safe_max_nodes or len(edges) + len(new_edge_keys) > safe_max_edges:
+            truncated = True
+            continue
+
+        for node_id, node in path_nodes.items():
+            existing = nodes.get(node_id)
+            if existing is None or (node.highlighted and not existing.highlighted):
+                nodes[node_id] = node
+        edges.update(path_edges)
+
+    return list(nodes.values()), list(edges.values()), truncated
+
+
+def _render_graph_exploration_visualization(result: Neo4jGraphExploreResult) -> None:
+    nodes, edges, truncated = build_graph_exploration_display(result)
+    if not nodes or not edges:
+        st.info("선택한 조건에서 관계도로 표시할 node와 edge가 없습니다. 아래 path 표를 확인하세요.")
+        return
+
+    st.markdown("##### 선택 node 관계도")
+    st.caption(
+        "파란 테두리는 선택 node이며 화살표는 Neo4j에 저장된 관계 방향입니다. "
+        "프로그램·커밋·파일·클래스·도메인은 종류별 색과 모양으로 구분하고, 선 위에 마우스를 올리면 관계 이름을 확인할 수 있습니다."
+    )
+    render_node_edge_graph(
+        nodes,
+        edges,
+        height=520,
+        show_edge_labels=False,
+        use_component_variants=False,
+    )
+    st.caption(f"관계도 표시: node {len(nodes)}개 · edge {len(edges)}개")
+    st.caption("표시 관계: " + ", ".join(sorted({edge.label for edge in edges})))
+    if truncated:
+        st.caption(
+            f"화면 가독성을 위해 최대 node {GRAPH_EXPLORER_MAX_NODES}개, edge {GRAPH_EXPLORER_MAX_EDGES}개까지만 그립니다. "
+            "조회된 경로는 아래 표에서 계속 확인할 수 있습니다."
+        )
+
+
 def _render_graph_explorer(project_id: int, status_connected: bool) -> None:
     st.markdown("#### 관계 탐색")
     st.caption("Neo4j에 저장된 graph에서 선택한 프로그램, 클래스, 도메인, 커밋 주변 path만 좁혀 봅니다.")
@@ -291,7 +390,7 @@ def _render_graph_explorer(project_id: int, status_connected: bool) -> None:
         placeholder="전체 관계",
         key=f"kg_explore_relationships_{project_id}_{selected_type}",
     )
-    depth = filter_cols[1].slider("깊이", min_value=1, max_value=3, value=3, key=f"kg_explore_depth_{project_id}")
+    depth = filter_cols[1].slider("깊이", min_value=1, max_value=3, value=2, key=f"kg_explore_depth_{project_id}")
     limit = filter_cols[2].number_input(
         "최대 path",
         min_value=10,
@@ -319,6 +418,7 @@ def _render_graph_explorer(project_id: int, status_connected: bool) -> None:
 
     _render_node_detail(result)
     if result.rows:
+        _render_graph_exploration_visualization(result)
         st.markdown("##### 주변 path")
         st.dataframe(_explore_path_df(result.rows), hide_index=True, use_container_width=True)
     else:
@@ -401,14 +501,22 @@ def render_knowledge_graph_page() -> None:
             for warning in payload.warnings:
                 st.warning(warning)
 
-    domain_tab, explore_tab, class_tab, impact_tab, count_tab = st.tabs(
-        ["도메인 묶음", "관계 탐색", "클래스 관계도", "영향 경로", "노드/엣지"]
+    graph_views = ["도메인 묶음", "관계 탐색", "클래스 관계도", "영향 경로", "노드/엣지"]
+    selected_view = st.segmented_control(
+        "Knowledge Graph 보기",
+        graph_views,
+        default="도메인 묶음",
+        selection_mode="single",
+        key=f"knowledge_graph_view_{context.project_id}",
+        label_visibility="collapsed",
     )
-    with domain_tab:
+    selected_view = selected_view or "도메인 묶음"
+
+    if selected_view == "도메인 묶음":
         st.dataframe(_domain_df(payload), hide_index=True, use_container_width=True)
-    with explore_tab:
+    elif selected_view == "관계 탐색":
         _render_graph_explorer(context.project_id, status.connected)
-    with class_tab:
+    elif selected_view == "클래스 관계도":
         neo4j_class_rows = neo4j_preview.class_import_rows if neo4j_preview else []
         if _uses_saved_graph(neo4j_preview, neo4j_class_rows):
             st.caption("Neo4j 저장 그래프 기준")
@@ -422,7 +530,7 @@ def render_knowledge_graph_page() -> None:
             st.caption("동기화 대상 preview 기준")
             st.graphviz_chart(_class_graph_dot(payload), use_container_width=True)
             st.info("프로젝트 내부 import 관계가 아직 충분히 추출되지 않아 파일-클래스 관계를 표시했습니다.")
-    with impact_tab:
+    elif selected_view == "영향 경로":
         neo4j_impact_rows = neo4j_preview.impact_rows if neo4j_preview else []
         if _uses_saved_graph(neo4j_preview, neo4j_impact_rows):
             st.caption("Neo4j 저장 그래프 기준")
@@ -430,7 +538,7 @@ def render_knowledge_graph_page() -> None:
         else:
             st.caption("동기화 대상 preview 기준")
             st.dataframe(_impact_df(payload), hide_index=True, use_container_width=True)
-    with count_tab:
+    elif selected_view == "노드/엣지":
         if neo4j_summary and neo4j_summary.status == "completed" and (neo4j_summary.node_count or neo4j_summary.edge_count):
             st.caption("Neo4j에서 조회한 저장 상태입니다.")
             left, right = st.columns(2)

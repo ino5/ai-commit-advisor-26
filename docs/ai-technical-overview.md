@@ -253,7 +253,7 @@ Knowledge Graph는 LLM 호출을 새로 만드는 기능이 아니라, AI Commit
 | Node | `project`, `program`, `commit`, `file`, `class`, `domain` |
 | Edge | `HAS_PROGRAM`, `HAS_COMMIT`, `HAS_FILE`, `HAS_DOMAIN`, `OWNS_PROGRAM`, `MAPPED_TO_COMMIT`, `TOUCHES_FILE`, `TOUCHES_DOMAIN`, `CONTAINS_CLASS`, `IMPORTS_CLASS` |
 
-제품 관점에서 이 기능은 "AI가 뭔가를 더 생성한다"보다 "AI 분석에 쓰이는 근거 관계를 눈으로 검증하고 설명 가능하게 만든다"는 역할입니다. 예를 들어 하나의 커밋이 어떤 프로그램과 매핑됐고, 어떤 파일과 class를 건드렸으며, 어느 domain 묶음에 영향을 주는지 Neo4j에 저장된 graph path로 확인할 수 있습니다. Knowledge Graph 화면은 동기화 대상 preview를 만든 뒤 Neo4j에 저장하고, 클래스 관계도, 영향 경로, node/edge 저장 상태를 저장된 graph read model에서 다시 조회해 보여줍니다. `관계 탐색`은 프로그램, class, domain, commit 중 선택한 node를 기준으로 최대 3-depth path만 읽어 대형 graph 전체를 한 번에 펼치지 않고도 연결 근거를 확인하게 합니다. Project Chat은 같은 저장 graph에서 관련 path를 조회해 "결제 변경이 주문 도메인에 왜 영향을 주나요?" 같은 질문의 보조 관계 근거로 사용할 수 있습니다.
+제품 관점에서 이 기능은 "AI가 뭔가를 더 생성한다"보다 "AI 분석에 쓰이는 근거 관계를 눈으로 검증하고 설명 가능하게 만든다"는 역할입니다. 예를 들어 하나의 커밋이 어떤 프로그램과 매핑됐고, 어떤 파일과 class를 건드렸으며, 어느 domain 묶음에 영향을 주는지 Neo4j에 저장된 graph path로 확인할 수 있습니다. Knowledge Graph 화면은 동기화 대상 preview를 만든 뒤 Neo4j에 저장하고, 클래스 관계도, 영향 경로, node/edge 저장 상태를 저장된 graph read model에서 다시 조회해 보여줍니다. `관계 탐색`은 프로그램, class, domain, commit 중 선택한 node를 기준으로 최대 3-depth path를 구조화된 node ID/type/label과 edge 시작·종료 ID로 읽습니다. 화면에는 선택 node를 강조한 방향성 관계도를 최대 node 12개와 edge 16개까지 그리고, 조회된 전체 path는 표로 유지합니다. 기본 깊이는 2이며 대형 graph 전체를 한 번에 펼치지 않습니다. Project Chat은 같은 저장 graph에서 관련 path를 조회해 "결제 변경이 주문 도메인에 왜 영향을 주나요?" 같은 질문의 보조 관계 근거로 사용할 수 있습니다.
 
 GraphRAG가 오래된 관계를 근거처럼 보여주지 않도록 프로젝트별 graph sync 상태를 PostgreSQL에 저장합니다. `project_graph_sync_state`는 마지막 Graph HEAD, DB Sync HEAD, sync mode, node/edge count, 마지막 commit row, mapping update 기준을 기록합니다. Knowledge Graph 화면은 이 값을 현재 Repo HEAD와 비교해 `최신`, `갱신 필요`, `실패`, `저장 필요` 상태를 보여줍니다.
 
@@ -271,7 +271,7 @@ Java parser는 compiler가 아니라 graph read model을 만들기 위한 경량
 
 - Neo4j 동기화는 사용자가 `Knowledge Graph` 화면에서 실행합니다. 처음에는 `전체 재동기화`, Git Sync 이후에는 `최신 변경분만 Neo4j 반영`을 사용합니다.
 - Project Chat graph evidence는 저장된 Neo4j graph가 있을 때만 조회됩니다. Graph가 없거나 Neo4j가 꺼져 있으면 기존 RAG-only 답변 흐름을 유지합니다.
-- Project Chat의 GraphRAG 관계도는 답변에 쓰인 제한된 주변 evidence를 시각화하는 compact view입니다. 전체 graph 탐색, depth/filter 조정, 저장 node detail 확인은 `Knowledge Graph` 화면의 역할로 유지합니다.
+- Project Chat의 GraphRAG 관계도는 답변에 쓰인 제한된 주변 evidence를 시각화하는 compact view입니다. `Knowledge Graph`의 관계도도 선택 node 주변만 표시하며, depth/filter 조정과 저장 node detail, 전체 path 표를 함께 제공합니다. Neo4j Browser처럼 전체 graph를 임의로 확장하는 탐색기는 아닙니다.
 - Graph evidence는 관계 보조 근거입니다. 현재 코드 사실은 계속 verified `source_file` evidence가 있어야 답변합니다.
 - Java class/import 추출은 정규식과 brace depth를 조합한 경량 parser입니다. annotation type, static import, nested member type은 다루지만, annotation processing 결과물이나 compiler-level type resolution을 보장하지 않습니다.
 - Neo4j가 꺼져 있어도 PostgreSQL 기반 preview와 기존 AI/RAG 기능은 계속 동작합니다.

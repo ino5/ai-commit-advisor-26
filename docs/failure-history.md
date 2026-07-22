@@ -31,6 +31,114 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-23 - 숨겨진 Streamlit tab에서 초기화한 관계도가 확대·잘림 상태로 남았다
+
+관련 기능과 문서:
+
+- `src/ui/knowledge_graph_page.py`
+- `src/ui/graph_visualization.py`
+- `Knowledge Graph > 관계 탐색`
+- `docs/images/features/knowledge-graph-explore.png`
+
+증상:
+
+선택 node 주변 관계도를 처음 구현한 뒤 실제 브라우저에서 `관계 탐색` tab을 열면 node와 edge는 조회됐지만 화면 한쪽에 과도하게 확대되거나 일부만 잘려 보였습니다. 같은 데이터를 관계도가 보이는 상태에서 새로 초기화하면 desktop과 mobile 폭에 맞게 정상 배치됐습니다.
+
+직접 원인:
+
+Streamlit의 `st.tabs`는 선택하지 않은 tab 본문도 Python 실행 중 렌더링합니다. `streamlit-agraph` iframe이 숨겨져 유효한 표시 폭을 얻지 못한 시점에 물리 배치를 시작했고, 나중에 tab이 보일 때 container 크기는 바뀌어도 초기 fit 결과가 다시 계산되지 않았습니다.
+
+배경 또는 구조적 원인:
+
+기존 Knowledge Graph는 표와 정적 요약 중심이라 모든 tab을 한 번에 실행해도 시각적 문제가 드러나지 않았습니다. 새 관계도 구현도 node/edge 변환과 query 결과부터 검증해, component가 보이지 않는 container 안에서 초기화되는 생명주기를 고려하지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 순수 함수와 service test는 표시 node/edge와 방향을 확인하지만 browser layout은 실행하지 않습니다.
+- 관계도 renderer만 단독으로 확인하면 component가 처음부터 보이므로 문제가 재현되지 않습니다.
+- HTML text와 iframe 존재만 확인해서는 실제 node 배치가 viewport 안에 들어왔는지 알 수 없습니다.
+
+수정 내용:
+
+- 다섯 가지 graph 보기를 `st.segmented_control`로 선택하고 현재 보기만 조건부로 렌더링하도록 변경했습니다.
+- 관계도 component가 화면에 보이는 시점에 처음 생성되게 해 실제 container 폭으로 초기 배치하게 했습니다.
+- Application Preview 캡처는 전체 문장을 포함한 상위 `div`가 아니라 가장 짧은 visible text element를 찾아 관계도 영역으로 스크롤하도록 보정했습니다.
+
+재발 방지 규칙:
+
+- iframe, canvas, chart처럼 초기 container 크기에 의존하는 component는 숨겨진 `st.tabs` branch에서 미리 생성하지 않습니다.
+- component 기반 시각화는 DOM 존재 확인에 그치지 않고 첫 진입, 보기 전환, desktop/mobile viewport에서 실제 배치를 캡처해 확인합니다.
+- 대표 screenshot은 기능의 control만이 아니라 결과 시각화와 원본 확인 표가 함께 보이는 위치를 기준으로 캡처합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- `streamlit-agraph`의 물리 배치는 viewport와 node label 길이에 따라 달라집니다. 작은 화면에서 label이 가까워질 수 있으므로 전체 경로와 값은 계속 표로 제공합니다.
+- Streamlit이나 component version을 올릴 때 iframe 초기화와 보기 전환 회귀 확인이 필요합니다.
+
+검증 명령과 결과:
+
+- 실제 Neo4j project `1`의 프로그램 node를 깊이 2로 조회해 구조화 node/edge와 저장 방향을 확인했습니다.
+- Playwright로 1400px desktop과 390px mobile에서 `도메인 묶음`과 `관계 탐색`을 전환한 뒤 관계도가 viewport 안에 배치되고 console error가 없음을 확인했습니다.
+- `scripts/capture_feature_screenshot.py --feature knowledge-graph-explore`로 관계도와 path 표가 함께 보이는 Application Preview 이미지를 생성했습니다.
+- 관계도·service·Project Chat·문서 이미지 focused test 33개와 전체 test 243개, `compileall src app.py scripts tests`가 통과했습니다.
+- 재빌드한 Docker app container에서 실제 Neo4j path 80개, 관계도 node 12개·edge 16개, error 0개를 확인했고, Docker 8501 browser에서 console error 0개와 local/external health `200 ok`를 확인했습니다.
+
+## 2026-07-23 - Knowledge Graph 관계 탐색 쿼리가 Neo4j implicit grouping 문법 오류로 실패했다
+
+관련 기능과 문서:
+
+- `src/services/neo4j_graph_service.py`의 `_read_graph_exploration_tx`
+- `tests/test_neo4j_graph_service.py`
+- `Knowledge Graph`의 `관계 탐색` 탭
+- Docker Neo4j `5.26.27`
+
+증상:
+
+외부 Docker 앱에서 `Knowledge Graph > 관계 탐색`의 node를 선택하면 `Neo4j graph 탐색 조회 실패`가 표시됐습니다. 상세 오류는 `outgoing_count + count(in_rel) AS related_count`에 암시적 grouping expression이 포함됐다는 `Neo.ClientError.Statement.SyntaxError`였습니다. Graph 저장 상태와 탐색 후보 목록은 정상이어도 선택 node 상세와 path 조회는 시작되지 않았습니다.
+
+직접 원인:
+
+- 쿼리는 첫 번째 `OPTIONAL MATCH` 뒤 `count(out_rel) AS outgoing_count`를 계산했습니다.
+- 다음 `OPTIONAL MATCH`의 `count(in_rel)`을 별도로 집계하지 않고 최종 `RETURN` 안에서 `outgoing_count + count(in_rel)`로 바로 더했습니다.
+- Neo4j `5.26.27`은 하나의 aggregation expression 안에 이처럼 암시적 grouping key와 집계 함수를 섞는 구문을 허용하지 않아 실행 전에 statement를 거부했습니다.
+
+배경 또는 구조적 원인:
+
+관계 탐색 service는 node 상세의 전체 연결 수와 주변 path를 한 transaction callback에서 연속 조회합니다. 첫 상세 쿼리가 실패하면 path 쿼리까지 진행하지 못하고 service 전체가 `failed`로 반환됩니다. 구현 시 Python 결과 변환과 depth/filter 제한을 중심으로 검증했고, Cypher의 집계 projection 경계가 실제 Neo4j parser에서 유효한지는 분리해 확인하지 않았습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 기존 unit test의 `FakeTx`는 Cypher를 Neo4j에 전달하지 않고 미리 만든 `related_count=3` row를 반환했습니다.
+- Test는 path 쿼리의 depth, filter parameter와 변환 결과는 확인했지만 node 상세 쿼리의 집계 형태를 확인하지 않았습니다.
+- 시연 preflight는 Neo4j 연결, node/edge 저장 수, freshness를 확인하지만 실제 node를 선택해 관계 탐색 read query를 실행하지 않습니다.
+
+수정 내용:
+
+- 들어오는 관계를 매칭한 뒤 `WITH focus, outgoing_count, count(in_rel) AS incoming_count`로 집계를 끝냈습니다.
+- 최종 `RETURN`은 집계 함수 없이 `outgoing_count + incoming_count AS related_count`만 계산하도록 변경했습니다.
+- 회귀 test가 별도 집계 `WITH`, 최종 scalar 합산, 이전 오류 표현식 제거, 상세 쿼리 parameter를 확인하도록 보강했습니다.
+
+재발 방지 규칙:
+
+- Cypher에서 집계 함수와 이미 계산한 값을 산술식으로 조합할 때는 집계를 앞선 `WITH` 절에서 끝내고 다음 projection에서 scalar 값만 조합합니다.
+- Mock transaction test는 결과 변환뿐 아니라 오류가 발생했던 Cypher 구조도 명시적으로 확인합니다.
+- Neo4j read query를 변경한 경우 mock test만으로 끝내지 않고 지원 Neo4j runtime에서 대표 node를 실제 조회해 parser와 결과를 함께 확인합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- 문자열 구조를 확인하는 unit test는 Neo4j parser 전체를 대체하지 않습니다. CI에 Neo4j service를 추가하지 않은 현재 구조에서는 Cypher 변경마다 local 또는 배포 runtime의 실제 조회 검증이 필요합니다.
+- `docker-compose.yml`은 `neo4j:5-community` tag를 사용하므로 새 image를 pull하면 patch version이 달라질 수 있습니다. 이번 수정은 현재 배포 version `5.26.27`에서 검증했으며, version pinning 여부는 별도 운영 결정 범위입니다.
+- 통합 preflight의 기존 저장 AI Code Review `bug=0` 실패는 이 관계 탐색 오류와 무관하며, 이번 작업에서 DB 결과를 변경하지 않았습니다.
+
+검증 명령과 결과:
+
+- 수정 전 project `1`의 실제 node 조회는 `explore_status=failed`와 `Neo.ClientError.Statement.SyntaxError`를 재현했습니다.
+- `tests/test_neo4j_graph_service.py`: 18개 통과.
+- `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test: 239개 통과.
+- `python -m compileall -q src app.py scripts tests`: 통과.
+- 수정 후 host의 실제 Neo4j 조회와 재배포된 `ai_commit_advisor_app` 내부 조회가 모두 `explore_status=completed`, `related_count=2`, path 2건, error 0건이었습니다.
+- `scripts/demo_start.ps1 -Build`는 app image build와 container 재생성을 완료했고 local/external health가 모두 `200 ok`였습니다. 후속 `-CheckOnly`에서 app container `running/healthy`, Neo4j, LLM, embedding, Mapping, RAG, Knowledge Graph 상태가 통과했으며, 이번 변경과 무관한 기존 저장 AI Code Review 조건만 `FAIL=1`로 남았습니다.
+
 ## 2026-07-23 - AI Code Review preview 캡처가 공유 DB의 최신 리뷰 순서에 의존했다
 
 관련 기능과 문서:

@@ -298,6 +298,26 @@ SCENARIOS: dict[str, FeatureScenario] = {
         button_label="Neo4j 동기화",
         action_wait_text="Neo4j에 node",
     ),
+    "knowledge-graph-explore": FeatureScenario(
+        name="knowledge-graph-explore",
+        sidebar_label="Knowledge Graph",
+        wait_text="선택 node 관계도",
+        required_texts=(
+            "Knowledge Graph",
+            "관계 탐색",
+            "SMP-CPN-001 쿠폰 할인",
+            "선택 node 관계도",
+            "관계도 표시: node",
+            "표시 관계:",
+            "주변 path",
+        ),
+        forbidden_texts=("NEO4J_ENABLED=false", "StreamlitAPIException", "Traceback", "Neo.ClientError"),
+        default_screenshot="docs/images/features/knowledge-graph-explore.png",
+        description="Neo4j Knowledge Graph 선택 node 주변 관계도 화면",
+        tab_label="관계 탐색",
+        scroll_to_text="관계도 표시: node",
+        full_page=False,
+    ),
     "knowledge-graph-class": FeatureScenario(
         name="knowledge-graph-class",
         sidebar_label="Knowledge Graph",
@@ -816,7 +836,18 @@ def _scroll_text_into_view(page: Page, text: str) -> None:
         """
         (value) => {
             const elements = Array.from(document.querySelectorAll('h1,h2,h3,h4,p,li,div,span,strong'));
-            const target = elements.find((element) => (element.innerText || element.textContent || '').includes(value));
+            const candidates = elements
+                .map((element) => ({
+                    element,
+                    text: (element.innerText || element.textContent || '').trim(),
+                }))
+                .filter(({ element, text }) => text.includes(value) && element.getClientRects().length > 0)
+                .sort((left, right) => {
+                    const leftExact = left.text === value ? 0 : 1;
+                    const rightExact = right.text === value ? 0 : 1;
+                    return leftExact - rightExact || left.text.length - right.text.length;
+                });
+            const target = candidates[0]?.element;
             if (!target) {
                 throw new Error(`Text not found for scroll: ${value}`);
             }
@@ -970,7 +1001,11 @@ def _capture_scenario(
         if scenario.action_wait_text:
             _wait_for_body_text(page, scenario.action_wait_text, timeout=180_000)
     if scenario.tab_label:
-        page.get_by_role("tab", name=scenario.tab_label).click()
+        tab = page.get_by_role("tab", name=scenario.tab_label)
+        if tab.count():
+            tab.click()
+        else:
+            page.get_by_role("radiogroup").get_by_role("button", name=scenario.tab_label, exact=True).click()
     if scenario.radio_label:
         page.locator("label").filter(has_text=scenario.radio_label).click()
     if scenario.fill_label and scenario.fill_value is not None:

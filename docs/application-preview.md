@@ -203,11 +203,15 @@ Neo4j Knowledge Graph가 최신이면 Project Chat 답변 아래에서 그래프
 
 ### Knowledge Graph
 
-프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인을 Neo4j 관계 그래프로 동기화한 상태입니다. 화면 상단에서 Neo4j 연결, 사용 설정, Graph HEAD 최신성을 확인하고, `최신 변경분만 Neo4j 반영` 또는 `전체 재동기화` 실행 결과와 Neo4j에서 다시 조회한 저장 node/edge 수를 확인합니다. 아래 탭에서는 선택 node 주변 관계, 클래스 관계도, 커밋-프로그램-클래스 영향 경로, node/edge 저장 상태를 Neo4j에 저장된 그래프 기준으로 이어서 볼 수 있습니다.
+프로젝트, 프로그램, 커밋, 파일, 클래스, 도메인을 Neo4j 관계 그래프로 동기화한 상태입니다. 화면 상단에서 Neo4j 연결, 사용 설정, Graph HEAD 최신성을 확인하고, `최신 변경분만 Neo4j 반영` 또는 `전체 재동기화` 실행 결과와 Neo4j에서 다시 조회한 저장 node/edge 수를 확인합니다. 아래 보기 선택에서는 선택 node 주변 관계도와 path 표, 클래스 관계도, 커밋-프로그램-클래스 영향 경로, node/edge 저장 상태를 Neo4j에 저장된 그래프 기준으로 이어서 볼 수 있습니다.
 
 Neo4j 연결, 동기화, 저장 확인
 
 ![Knowledge Graph](images/features/knowledge-graph.png)
+
+선택 node 주변 관계도와 path 표
+
+![Knowledge Graph Explore](images/features/knowledge-graph-explore.png)
 
 클래스 관계도
 

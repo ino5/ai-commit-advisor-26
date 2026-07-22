@@ -818,9 +818,10 @@ LLM 출력 예시:
 | `src/ui/risk_page.py` | 프로젝트 리스크 분석, 미해결 리스크 조회 및 해결 처리. |
 | `src/ui/git_history_page.py` | 프로젝트별 Git 커밋 이력, 변경 파일, diff 조회. |
 | `src/ui/commit_impact_page.py` | 특정 커밋의 영향도 분석. |
-| `src/ui/knowledge_graph_page.py` | Neo4j Knowledge Graph preview, Graph HEAD 최신성 표시, 전체/증분 동기화, 저장 그래프 기준 도메인/선택 node path/클래스/영향 경로/node-edge 조회. |
+| `src/ui/knowledge_graph_page.py` | Neo4j Knowledge Graph preview, Graph HEAD 최신성 표시, 전체/증분 동기화, 저장 그래프 기준 도메인/선택 node 관계도와 path 표/클래스/영향 경로/node-edge 조회. |
+| `src/ui/graph_visualization.py` | Project Chat과 Knowledge Graph가 공유하는 node/edge 표시 모델, 종류별 스타일, `streamlit-agraph` 렌더링 설정. |
 | `src/ui/rag_page.py` | RAG chunk/embedding/search 관리. |
-| `src/ui/project_chat_page.py` | 검증된 현재 소스와 Neo4j graph evidence를 분리 표시하는 프로젝트 채팅. |
+| `src/ui/project_chat_page.py` | 검증된 현재 소스와 Neo4j graph evidence를 분리 표시하고 공용 관계도 renderer를 사용하는 프로젝트 채팅. |
 | `src/ui/code_review_page.py` | AI 코드 리뷰 실행 및 이력 조회. |
 | `src/ui/dashboard_page.py` | 프로젝트 운영 요약. |
 | `src/ui/planning_dashboard_page.py` | 개발계획 기준 일정/진척 현황. |
