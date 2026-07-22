@@ -1,5 +1,17 @@
 # AI 변경 이력
 
+## 2026-07-23
+
+### 모바일 sidebar 연속 자동 닫힘 안정화
+
+- 모바일에서 첫 메뉴 이동은 닫히지만 sidebar를 다시 열어 다음 메뉴로 이동하면 열린 상태가 남던 문제를 수정했습니다. 메뉴 전환마다 session state 요청 ID를 증가시키고 iframe HTML에 포함해, 같은 위치의 `components.html`이 재사용되어도 `srcdoc`가 바뀌고 닫기 script가 다시 실행됩니다.
+- Streamlit rerun 직후 sidebar 또는 기본 닫기 버튼 DOM이 아직 준비되지 않은 경우 50ms 간격으로 최대 20회만 재확인합니다. 768px 이하에서 실제 다른 메뉴로 이동할 때만 자동으로 닫고, desktop·현재 메뉴 재클릭·프로젝트 변경에는 적용하지 않는 기존 범위는 유지했습니다.
+- 요청 ID가 증가하며 한 번씩 소비되는지, 연속 요청이 서로 다른 component payload를 렌더링하는지, 제한적 DOM 재시도와 pinned Streamlit selector가 유지되는지 검증하도록 `tests/test_sidebar_behavior.py`를 보강했습니다.
+- 동일 iframe의 1회성 script가 반복 실행되지 않은 원인과 첫 이동만 확인한 검증 누락을 `docs/failure-history.md`에 기록했습니다. 요청별 component identity와 연속 UI workflow를 함께 확인하는 기준은 `docs/engineering-decisions.md`에 남겼습니다.
+- README와 `docs/feature-guide.md`는 이미 “모바일에서 다른 메뉴 선택 후 자동 닫힘”을 현재 동작으로 설명하며 사용자 workflow와 문구가 바뀌지 않아 수정하지 않았습니다. `docs/architecture.md`, `docs/ai-technical-overview.md`, `docs/db-migrations.md`, 샘플 관련 문서도 module 책임·AI 동작·schema·sample scenario 변경이 없어 갱신하지 않았습니다.
+- 주요 파일: `src/ui/sidebar_behavior.py`, `tests/test_sidebar_behavior.py`, `ROADMAP.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `AI_CHANGELOG.md`.
+- 검증: `tests/test_sidebar_behavior.py` 9개, `PGVECTOR_DIMENSION=768`, `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock` 기준 전체 test 236개와 `compileall`이 통과했습니다. 재빌드한 Docker 8501의 390x844 viewport에서 중간 rerun 없이 6회 연속 메뉴 이동이 모두 451~804ms 안에 `aria-expanded=false`가 됐고 request ID 1~6을 확인했습니다. 1280px desktop은 메뉴 이동 뒤 `aria-expanded=true`를 유지했고 browser warning/error는 0건이었습니다. `demo_start.ps1 -Build`로 image와 app 재생성, local/external health `200 ok`를 확인했으며, 통합 preflight만 이번 변경과 무관한 기존 저장 AI Code Review `bug=0` 조건으로 `FAIL=1`이었습니다.
+
 ## 2026-07-22
 
 ### 샘플 데이터 생성 메뉴 제거와 CLI 유지
