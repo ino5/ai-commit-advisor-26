@@ -14,6 +14,7 @@
 
 | Priority | Area | Task | Status | Related AI Change Log |
 |---|---|---|---|---|
+| P2 | Navigation UX | Mobile sidebar auto-collapse and sticky close control | Done | 모바일 sidebar 자동 닫기와 닫기 버튼 상단 고정 |
 | P1 | UX / State | Remove current-project URL synchronization | Done | 현재 프로젝트 URL 연동 제거 |
 | P0 | Project Chat / Demo Data | Restore UTF-8 sample Project Chat evidence | Done | 샘플 Project Chat 한글 대화 복구 |
 | P0 | Project Chat / Performance | Project Chat initial render latency reduction | Done | Project Chat 초기 화면 지연 개선 |
@@ -169,6 +170,26 @@
 | P1 | Demo Verification | Fresh end-to-end demo project rebuild and evidence | Done | 새 프로젝트 전체 시연 재현과 단계별 증적 |
 | P0 | Demo Operations | Canonical demo database and Docker 8501 recovery | Done | 기본 DB와 Docker 8501 시연 환경 통합 |
 | P0 | Demo Operations | Canonical demo startup contract and legacy Tunnel reuse | Done | 시연 서버 상태 우선 재기동과 legacy Tunnel 재사용 |
+
+## P2 - Mobile Sidebar Auto-Collapse And Sticky Close Control
+
+Status: Done
+
+Goal:
+모바일 화면에서 사이드바 메뉴로 다른 화면을 선택하면 본문을 바로 확인할 수 있도록 사이드바를 자동으로 닫고, 화면 크기와 관계없이 사이드바를 스크롤해도 닫기 버튼을 상단에 유지한다.
+
+Rationale:
+현재 custom `st.button` 내비게이션은 모바일에서 화면을 전환한 뒤에도 sidebar overlay가 열린 상태로 남아 본문을 가린다. 또한 메뉴가 길어 sidebar를 아래로 스크롤하면 Streamlit 기본 닫기 버튼이 함께 사라져 사용자가 다시 상단까지 이동해야 한다. 모바일 overlay에서만 실제 메뉴 이동 뒤 자동으로 닫고, 기본 닫기 버튼은 sticky header로 유지하면 데스크톱의 연속 탐색 흐름과 사용자의 수동 제어를 보존하면서 두 불편을 함께 줄일 수 있다.
+
+Checklist:
+
+- [x] 실제 sidebar 메뉴 이동에만 모바일 자동 닫기를 요청하고, 데스크톱·현재 메뉴 재클릭·프로젝트 변경에는 적용하지 않는다.
+- [x] Streamlit 기본 sidebar header를 sticky 처리해 스크롤 뒤에도 닫기 버튼을 유지한다.
+- [x] Python 상태 처리와 모바일/데스크톱 browser 회귀 test를 추가한다.
+- [x] 기능 가이드, engineering decision, `AI_CHANGELOG.md`를 갱신하고 사용자-facing 문구를 점검한다.
+- [x] focused/full test, compileall, 실제 viewport UI, Docker build를 검증한다.
+
+Related AI Change Log: `모바일 sidebar 자동 닫기와 닫기 버튼 상단 고정`
 
 ## P1 - Remove Current-Project URL Synchronization
 
