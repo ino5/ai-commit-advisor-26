@@ -1,5 +1,22 @@
 # Agent Instructions
 
+## Session-Scoped Q&A Mode
+
+Q&A mode is an explicit, session-scoped workflow for preparing demonstration questions and answers in `docs/qna.md`.
+
+- Q&A mode is `OFF` by default at the beginning of every new session.
+- Treat a standalone `qna ON` command case-insensitively as activation for the current session. Acknowledge the mode change, but do not save the activation command itself as a Q&A entry.
+- While Q&A mode is `ON`, answer the user's questions and automatically curate the question and final answer into `docs/qna.md` without requiring a separate save request.
+- Before editing, read the existing `docs/qna.md` and search for the same topic or a materially similar question.
+- If the same intent already exists, update and strengthen the existing answer instead of appending a duplicate entry.
+- If the question is a follow-up, integrate it near the related answer. Preserve unique evidence, important boundaries, and unresolved limitations while removing repetition or contradictions.
+- If the topic is new, place it in the most relevant location rather than always appending at the end. Create or reorganize topic sections only when that materially improves retrieval and readability.
+- Base corrections on the current repository implementation and verification evidence. When a new question exposes an inaccurate or incomplete existing answer, revise that answer in the same edit.
+- While Q&A mode is `ON`, treat every repository file except `docs/qna.md` as read-only. Read-only investigation is allowed. Code, schema, tests, other documentation, runtime state, commits, pushes, PRs, and other mutations require separate explicit user authorization.
+- Routine `docs/qna.md` curation while Q&A mode is `ON` is a narrow exception to the normal `AI_CHANGELOG.md` and Roadmap update requirements below. When the user turns the mode off and asks to publish or formalize the accumulated changes, apply the normal documentation impact and publication checks.
+- Treat a standalone `qna OFF` command case-insensitively as deactivation for the current session. Do not save the deactivation command as a Q&A entry. Existing Q&A content remains unchanged, and normal repository rules resume immediately.
+- Q&A mode does not persist across sessions. The user must run `qna ON` in each new session where automatic Q&A curation is wanted.
+
 ## AI Change Log
 
 When making code, schema, test, documentation, or behavior changes, update `AI_CHANGELOG.md` before finishing.
