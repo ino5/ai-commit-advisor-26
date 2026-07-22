@@ -21,6 +21,46 @@
 - `AI_CHANGELOG.md`만으로 충분히 설명되는 작은 변경
 - 실패나 사고에 해당해서 `docs/failure-history.md`에 기록하는 편이 더 적절한 사례
 
+## 2026-07-22 - sidebar sticky header는 테마 상속과 입력 장치 특성을 기준으로 구성한다
+
+### 배경
+
+모바일 메뉴 이동 후 자동 닫기와 sidebar 닫기 버튼 고정을 추가한 뒤, 어두운 테마의 태블릿에서 상단 고정 영역만 흰색으로 보이고 높이도 과도하게 커졌습니다. 터치 화면에는 hover가 없어 닫기 버튼을 발견하기도 어려웠습니다. sticky 위치만 유지하는 것으로는 테마, 터치 입력, 좁은 화면을 함께 지원할 수 없었습니다.
+
+### 결정
+
+- `stSidebarContent`와 `stSidebarHeader`가 `stSidebar`의 실제 계산 배경색을 상속하도록 하고, 존재 여부가 Streamlit version에 따라 달라질 수 있는 theme variable과 흰색 fallback은 사용하지 않습니다.
+- sticky header를 44px 높이의 compact toolbar로 맞추고 padding을 명시해 Streamlit 기본 여백 변경의 영향을 제한합니다.
+- `(hover: none)` 또는 `(pointer: coarse)`인 입력 장치에서는 Streamlit 기본 `stSidebarCollapseButton`을 항상 표시합니다. mouse 기반 데스크톱의 기본 hover 동작은 유지합니다.
+- Streamlit을 올릴 때 selector 존재 test뿐 아니라 밝은/어두운 테마, touch/mouse 입력, sidebar scroll, 390px/1280px/1440px viewport를 실제 browser에서 확인합니다.
+
+### 이유
+
+- sidebar 자체의 계산 배경색을 상속하면 Streamlit이 테마 값을 제공하는 방식과 관계없이 header와 본문이 같은 색을 유지합니다.
+- 별도 닫기 버튼을 만들지 않고 기본 버튼을 표시하면 sidebar 상태와 접근성 동작을 중복 구현하지 않아도 됩니다.
+- 입력 장치 capability를 기준으로 표시하면 태블릿처럼 화면 폭은 넓지만 hover가 없는 환경을 모바일 폭 조건과 별도로 다룰 수 있습니다.
+- 44px는 불필요한 빈 공간을 줄이면서 터치 control을 담을 수 있는 높이입니다.
+
+### 검토한 대안
+
+- `var(--secondary-background-color, #ffffff)` 유지: variable이 정의되지 않는 runtime에서 흰색 fallback이 어두운 테마와 충돌하므로 제외했습니다.
+- header를 투명하게만 설정: 뒤에 있는 content와 겹칠 때 글자나 메뉴가 비쳐 sticky toolbar 경계가 불명확해질 수 있습니다.
+- 태블릿을 viewport 폭으로만 구분: landscape 태블릿과 작은 desktop의 입력 방식 차이를 구분하지 못합니다.
+- custom 닫기 버튼 추가: Streamlit sidebar 상태와 keyboard/accessibility 동작을 별도로 연결해야 하므로 현재 범위보다 유지보수 부담이 큽니다.
+
+### 영향, tradeoff, 남은 한계
+
+- CSS와 자동 닫기 script는 `src/ui/sidebar_behavior.py` 한 곳에 유지하지만 Streamlit의 `data-testid` DOM 계약에는 계속 의존합니다.
+- mouse desktop에서는 Streamlit의 기존 표시 정책에 따라 버튼이 hover 전 숨겨질 수 있고, touch 장치에서는 항상 표시됩니다.
+- future Streamlit version에서 header 구조나 기본 버튼 크기가 바뀌면 44px toolbar와 selector를 다시 확인해야 합니다.
+
+### 관련 문서
+
+- `ROADMAP.md`의 `Tablet Sidebar Sticky Header Theme And Touch Fix`
+- `docs/failure-history.md`의 `태블릿 sidebar sticky header가 흰색 빈 영역으로 표시됐다`
+- `AI_CHANGELOG.md`의 `태블릿 sidebar 상단 고정 영역 보정`
+- GitHub PR `#13`의 최초 sticky header 변경
+
 ## 2026-07-22 - 모바일 메뉴 이동만 sidebar 자동 닫기를 요청한다
 
 ### 배경

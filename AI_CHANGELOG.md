@@ -2,6 +2,15 @@
 
 ## 2026-07-22
 
+### 태블릿 sidebar 상단 고정 영역 보정
+
+- 어두운 테마 태블릿에서 sidebar 상단이 흰색 빈 영역으로 보이던 문제를 수정했습니다. `stSidebarContent`와 sticky `stSidebarHeader`가 sidebar의 실제 배경색을 상속하므로 밝은/어두운 테마에서 본문과 같은 색을 유지합니다.
+- 상단 고정 영역을 44px 높이와 `6px 12px` padding의 compact toolbar로 줄였습니다. `(hover: none)` 또는 `(pointer: coarse)`인 터치 장치에서는 Streamlit 기본 닫기 버튼을 항상 표시하고, mouse 데스크톱의 기본 표시 방식과 메뉴 이동 후 열린 상태는 유지합니다.
+- CSS fallback, toolbar 크기, touch media query를 확인하는 회귀 test를 추가했습니다. 최초 변경이 테마·touch 조합을 놓친 원인과 재발 방지 기준을 engineering decision과 failure history에 기록했습니다.
+- README와 기능 가이드에 태블릿 touch, 밝은/어두운 테마에서의 상단 고정 영역 동작을 반영했습니다. 사용자-facing 문구는 실제 장치 조건과 화면 동작을 직접 설명하는지 확인했고 과장형·번역체 표현이 남지 않았는지 점검했습니다.
+- 주요 파일: `src/ui/sidebar_behavior.py`, `tests/test_sidebar_behavior.py`, `README.md`, `docs/feature-guide.md`, `docs/engineering-decisions.md`, `docs/failure-history.md`, `ROADMAP.md`.
+- 검증: `tests/test_sidebar_behavior.py` 6개, 전체 test 233개와 `compileall`, `git diff --check`가 통과했습니다. local Streamlit과 재빌드한 Docker 8501의 1280x800 dark/touch 환경에서 sidebar·content·header 배경 `rgb(38, 39, 48)`, header 44px, padding `6px 12px`, 닫기 버튼 36x32px/display `block`을 확인했습니다. scrollTop 297에서도 header top 2px가 유지됐고, 390x844 메뉴 이동 후 자동 닫힘과 1440x900 열린 상태 유지도 확인했습니다. `demo_start.ps1 -Build`로 image build와 app 재생성을 완료했고 local/external health는 `200 ok`입니다. 통합 preflight는 이번 변경과 무관한 기존 저장 AI Code Review `bug=0` 조건으로 `FAIL=1`이었습니다.
+
 ### 모바일 sidebar 자동 닫기와 닫기 버튼 상단 고정
 
 - 화면 폭이 768px 이하인 모바일 overlay에서 다른 sidebar 메뉴로 이동하면 메뉴가 자동으로 닫히도록 했습니다. 데스크톱, 현재 메뉴 재클릭, 메뉴 그룹 펼치기, 현재 프로젝트 변경에는 적용하지 않아 연속 탐색과 선택 흐름을 유지합니다.

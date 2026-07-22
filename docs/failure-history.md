@@ -31,6 +31,62 @@
 - 남은 한계 또는 후속 확인 사항
 - 검증 명령과 결과
 
+## 2026-07-22 - 태블릿 sidebar sticky header가 흰색 빈 영역으로 표시됐다
+
+관련 기능과 문서:
+
+- GitHub PR `#13`의 모바일 sidebar 자동 닫기와 sticky close control
+- `src/ui/sidebar_behavior.py`
+- `docs/engineering-decisions.md`의 `sidebar sticky header는 테마 상속과 입력 장치 특성을 기준으로 구성한다`
+
+증상:
+
+- 어두운 테마로 앱을 연 태블릿에서 sidebar 맨 위에 약 78px 높이의 흰색 영역이 생겼습니다.
+- 터치 화면에서는 `<` 닫기 버튼도 보이지 않아 흰색 빈 메뉴바처럼 보였고, sidebar 본문보다 상단 영역이 지나치게 두꺼웠습니다.
+
+직접 원인:
+
+- sticky `stSidebarHeader` 배경을 `var(--secondary-background-color, #ffffff)`로 지정했지만 해당 CSS variable이 실제 Streamlit page에 정의되지 않아 흰색 fallback이 적용됐습니다.
+- header의 Streamlit 기본 padding `22px 24px 24px`를 그대로 둬 계산 높이가 78px가 됐습니다.
+- 최초 구현은 pointer capability를 고려하지 않아 hover가 없는 touch 화면에서 닫기 버튼 표시 상태를 보장하지 않았습니다.
+
+배경 또는 구조적 원인:
+
+- sidebar를 아래로 스크롤한 뒤 버튼 위치가 고정되는지만 해결 대상으로 보고, sticky container가 새 시각 영역이 된다는 점을 테마·높이·입력 장치 기준으로 함께 설계하지 않았습니다.
+- Streamlit 내부 theme variable 이름을 실제 계산 style로 검증하지 않고 fallback이 안전할 것으로 가정했습니다.
+
+왜 사전 검증에서 놓쳤는지:
+
+- 최초 browser 검증은 390px와 1440px의 기본 밝은 테마 및 mouse pointer에서 자동 닫힘과 sticky top 위치만 확인했습니다.
+- header의 계산 배경색, 높이, padding과 collapse button의 display/크기 값을 수집하지 않았습니다.
+- 어두운 테마의 태블릿 viewport와 touch/coarse pointer 조합이 검증 matrix에 없었습니다.
+
+수정 내용:
+
+- sidebar content와 sticky header가 sidebar의 실제 계산 배경색을 상속하도록 바꿔 흰색 fallback을 제거했습니다.
+- header를 44px compact toolbar와 `6px 12px` padding으로 맞췄습니다.
+- `(hover: none)` 또는 `(pointer: coarse)`에서 Streamlit 기본 collapse button을 항상 표시하고, 관련 CSS 회귀 test를 추가했습니다.
+- README와 기능 가이드에 태블릿 touch 및 밝은/어두운 테마 동작을 명시했습니다.
+
+재발 방지 규칙:
+
+- sticky·fixed container를 추가할 때는 위치뿐 아니라 계산 배경색, 높이, padding, z-index와 control 가시성을 함께 확인합니다.
+- theme CSS variable에는 검증하지 않은 고정색 fallback을 두지 않고, 가능한 경우 실제 parent 계산 style을 상속합니다.
+- responsive UI 검증에는 viewport 폭뿐 아니라 밝은/어두운 테마와 mouse/touch capability 조합을 포함합니다.
+- Streamlit DOM selector를 사용하는 변경은 pinned bundle test와 실제 browser computed-style 검증을 함께 수행합니다.
+
+남은 한계 또는 후속 확인 사항:
+
+- Streamlit 내부 `data-testid`와 기본 button DOM에 의존하므로 version upgrade 때 재검증이 필요합니다.
+- 장치가 실제 touch screen이면서도 browser가 hover/pointer capability를 다르게 보고하면 Streamlit 기본 hover 정책이 적용될 수 있습니다.
+
+검증 명령과 결과:
+
+- `tests/test_sidebar_behavior.py` 6개와 전체 test 233개, `compileall` 통과.
+- local Streamlit과 재빌드한 Docker 8501의 1280x800 dark/touch 환경에서 sidebar, content, header 배경이 모두 `rgb(38, 39, 48)`, header 높이 44px, padding `6px 12px`, 닫기 버튼 36x32px/display `block`인 것을 확인했습니다.
+- sidebar content를 `scrollTop=297`까지 내린 뒤에도 sidebar/header top이 모두 2px로 유지됐습니다. 390x844에서는 다른 메뉴 이동 후 sidebar가 닫히고, 1440x900에서는 열린 상태가 유지됐습니다.
+- `demo_start.ps1 -Build`는 image build, app 재생성, local/external health `200 ok`까지 통과했습니다. 통합 preflight는 이번 변경과 무관한 기존 저장 AI Code Review `bug=0` 조건으로 `FAIL=1`이었습니다.
+
 ## 2026-07-22 - 현재 프로젝트 선택이 첫 시도에 반영되지 않았다
 
 관련 기능과 문서:

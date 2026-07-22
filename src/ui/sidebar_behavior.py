@@ -9,11 +9,23 @@ MOBILE_COLLAPSE_REQUEST_KEY = "_mobile_sidebar_collapse_requested"
 
 SIDEBAR_BEHAVIOR_STYLES = """
 <style>
+section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+    background-color: inherit;
+}
 section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] {
-    background: var(--secondary-background-color, #ffffff);
+    align-items: center;
+    background-color: inherit;
+    box-sizing: border-box;
+    min-height: 2.75rem;
+    padding: 0.375rem 0.75rem;
     position: sticky;
     top: 0;
     z-index: 2;
+}
+@media (hover: none), (pointer: coarse) {
+    section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] {
+        display: block !important;
+    }
 }
 </style>
 """
