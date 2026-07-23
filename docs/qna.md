@@ -54,20 +54,56 @@ PL Briefing                                 LLM
 
 이 분리는 LLM이 잘하는 의미 해석과 문장 생성을 활용하면서도 일정·리스크·우선순위처럼 설명 가능성과 재현성이 필요한 판단은 코드로 통제하기 위한 것입니다. 준비된 시연 환경에서는 두 모델 모두 외부 cloud가 아닌 LM Studio에서 실행되므로 프로젝트 코드와 diff가 외부 서비스로 전달되지 않습니다.
 
-## Q. 현재 프로젝트에 연결된 AI는 무엇인가?
+## Q. 현재 프로젝트에 연결된 AI 모델은 무엇이며, LLM 성능은 어느 정도인가?
 
-현재 시연 환경은 외부 cloud AI가 아니라 LM Studio의 OpenAI-compatible API에 연결된 두 개의 local model을 사용합니다.
+2026년 7월 23일 실제 실행 환경을 확인한 결과, 외부 cloud AI가 아니라 LM Studio의 OpenAI-compatible API에 연결된 두 개의 local model을 사용하고 있습니다.
 
 - LLM: `qwen2.5-coder-7b-instruct`
 - Embedding: `text-embedding-nomic-embed-text-v2-moe`
 
-`qwen2.5-coder-7b-instruct`는 프로그램-commit Mapping, 프로그램 구현상태 분석, `Project Chat`, `AI Code Review`와 PL Briefing 요약에 사용합니다.
+`qwen2.5-coder-7b-instruct`는 프로그램-commit Mapping, 프로그램 구현상태 분석, `Project Chat`, `AI Code Review`와 PL Briefing 생성에 사용합니다. `text-embedding-nomic-embed-text-v2-moe`는 답변을 생성하는 LLM이 아니라, 소스·프로그램·commit·diff 청크와 질문을 768차원 vector로 변환해 RAG 검색 및 Mapping 후보 검색에 사용하는 모델입니다.
 
-`text-embedding-nomic-embed-text-v2-moe`는 소스·프로그램·commit·diff 청크와 질문을 vector로 변환해 RAG 검색 및 Mapping 후보 검색에 사용합니다. 현재 vector dimension은 768이며, 문서와 질문에 서로 다른 Nomic retrieval task profile을 적용합니다.
+두 모델은 host의 LM Studio `12345` 포트에서 실행됩니다. 로컬 Python은 `http://127.0.0.1:12345/v1`, Docker 앱은 `http://host.docker.internal:12345/v1`로 같은 서버에 접근합니다. Docker 환경변수와 LM Studio의 실제 로드 목록, Chat·Embedding 시험 호출에서 위 model 연결을 확인했습니다. Neo4j와 PostgreSQL/pgvector는 AI model이 아니라 각각 GraphRAG 관계 저장소와 RAG 청크·vector 저장소입니다.
 
-두 모델은 host의 LM Studio `12345` 포트에서 실행됩니다. 로컬 Python은 `http://127.0.0.1:12345/v1`, 현재 Docker 앱은 `http://host.docker.internal:12345/v1`로 같은 서버에 접근합니다. 현재 LM Studio model 목록에서도 두 model이 실제로 로드된 것을 확인했습니다.
+### 현재 LLM 실행 설정
 
-LM Studio에는 다른 model도 로드되어 있지만, 앱 설정상 실제 호출 대상으로 지정된 model은 위 두 개입니다. Neo4j와 PostgreSQL/pgvector는 AI model이 아니라 각각 GraphRAG 관계 저장소와 RAG 청크·vector 저장소 역할을 합니다.
+| 항목 | 현재 값 | 의미 |
+|---|---|---|
+| Model | `Qwen2.5-Coder-7B-Instruct` | 코드 생성·추론·수정에 맞춰 학습한 instruction model |
+| Parameter | 7.61B | 공식 model card 기준. 일반적으로 14B·32B보다 가볍지만 복잡한 추론 능력도 더 제한적임 |
+| 실행 파일 | `qwen2.5-coder-7b-instruct-q4_k_m.gguf` | LM Studio에서 사용하는 GGUF 양자화본 |
+| Quantization | `Q4_K_M`, 4-bit | 파일 크기 약 4.68 GB로 줄여 8 GB VRAM급 PC에서 실행하기 쉬운 대신 원본 BF16보다 일부 품질 손실 가능 |
+| 실제 context length | 8,192 tokens | 모델의 최대 표기 길이와 별개로 현재 LM Studio가 한 요청에 허용하는 실효 상한 |
+| 생성 설정 | `temperature=0.1`, non-streaming | 결과 변동을 낮추고 전체 응답이 끝난 뒤 한 번에 받음 |
+| 기능별 최대 출력 | Mapping 350, 구현상태·Chat·Briefing 900, Code Review 1,200 tokens | 필요 이상으로 긴 응답과 대기시간을 제한 |
+| LM Studio 병렬도 | `parallel=1` | 동시에 여러 요청이 들어오면 한 번에 하나를 생성하고 나머지는 대기 |
+| 점검 PC | RTX 3060 Ti 8 GB, i5-12400F | 응답시간은 이 hardware와 당시 부하를 기준으로 한 값 |
+
+공식 Qwen 자료에서 이 모델은 7.61B parameter의 code-specific instruction model이며, code generation·reasoning·repair를 주요 평가 대상으로 삼습니다. 현재 사용하는 것은 `Q4_K_M` 양자화본이고 앱은 context를 8,192로 제한하므로, 공식 최대 context나 원본 precision benchmark를 현재 앱 성능으로 그대로 해석하면 안 됩니다. 자세한 사양은 [Qwen 공식 GGUF model card](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF)와 [Qwen2.5-Coder Technical Report](https://arxiv.org/abs/2409.12186)를 기준으로 확인할 수 있습니다.
+
+### 이 프로젝트에서 관찰한 응답 성능
+
+2026년 7월 23일 `Sample Shop Demo` 프로젝트의 `ai_invocation_logs`에서 현재 provider와 model이 일치하는 저장 호출을 집계한 결과입니다. 시간은 순수한 model token 생성 속도가 아니라 각 기능이 기록한 전체 호출 처리시간이며, 표본이 적은 기능은 일반화하기 어렵습니다.
+
+| 기능 | 완료 호출 | 유효 시간 표본 | 중앙값 | 범위 | 보정·fallback |
+|---|---:|---:|---:|---:|---:|
+| Commit Mapping | 48/48 | 45 | 1.29초 | 0.34~11.69초 | 0건 |
+| AI Code Review | 5/5 | 5 | 4.28초 | 2.37~13.14초 | 한국어 표현 보정 1건 |
+| PL Briefing | 2/2 | 2 | 6.29초 | 5.11~7.47초 | 0건 |
+| Project Chat | 7/7 | 7 | 7.21초 | 2.41~10.31초 | 현재 소스 근거 기반 deterministic repair 1건 |
+
+기록된 62회 호출은 모두 `completed`이고 model 연결 실패는 0건이었습니다. 다만 `completed`는 호출·저장 절차가 끝났다는 뜻이지 답변 내용이 모두 정답이라는 뜻은 아닙니다. 2건은 model 초안을 그대로 쓰지 않고 애플리케이션이 표현이나 근거를 보정했습니다.
+
+Mapping 시간 기록 3건은 `finished_at`이 `started_at`보다 앞선 음수 값이어서 표에서 제외했습니다. 현재 telemetry가 monotonic timer가 아니라 시스템 시각 차이로 시간을 계산하므로, 실행 중 PC 시계가 보정되면 이런 값이 생길 수 있습니다. 또한 `prompt_length`와 `response_length`는 token 수가 아니라 Python 문자열 길이이므로 현재 기록만으로 tokens/sec를 계산할 수 없습니다. 프로그램 구현상태 분석도 같은 LLM을 사용하지만 별도 `AIInvocationLog` latency를 남기지 않아 위 표에는 없습니다.
+
+### 성능을 어떻게 평가해야 하는가
+
+- 강점: 7B Q4 모델이라 한 대의 개발 PC에서 외부 전송 없이 실행할 수 있고, 코드·diff를 제한된 근거와 함께 분석하는 Mapping과 Code Review에 맞습니다. 낮은 temperature와 JSON Schema가 출력 형식을 안정화합니다.
+- 한계: 7B·4-bit 모델은 큰 모델보다 복잡한 다단계 추론, 긴 변경 이력 종합, 미묘한 한국어 표현에서 오류가 날 가능성이 큽니다. context 8,192 제한 때문에 저장소 전체를 한 번에 읽지 않고 후보와 근거를 잘라 전달합니다.
+- 품질 보호: RAG source 검증, 후보 제한, JSON parsing·validation, deterministic repair·fallback, 사람의 Mapping feedback을 함께 사용합니다. LLM 단독 판단을 확정값으로 사용하지 않습니다.
+- 아직 말할 수 없는 값: 이 프로젝트에는 정답 label이 붙은 Mapping·리뷰 평가 세트와 반복 benchmark가 없으므로 의미 정확도, 재현율, hallucination 비율을 퍼센트로 제시할 수 없습니다. 공식 코드 benchmark 결과도 이 프로젝트의 업무 프로그램 Mapping 정확도를 직접 증명하지 않습니다.
+
+따라서 현재 모델은 “시연과 소규모 프로젝트에서 수 초 안에 근거 기반 분석 초안을 만드는 local LLM”으로 보는 것이 정확합니다. 대규모 저장소, 동시 사용자, 높은 정확도가 필요한 운영 환경에서는 14B·32B급 모델 비교, hardware별 반복 측정, 정답 데이터 기반 기능별 평가가 추가로 필요합니다.
 
 ## Q. 프론트엔드·백엔드·DB 기술 스택은 무엇이며, Streamlit이 백엔드 framework 역할도 하나?
 
